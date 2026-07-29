@@ -125,3 +125,7 @@ im Transport und nicht in der UI, weil es sich nachtraeglich nur durch Umbau von
 Szenario-Generator.** Erste Etappe mit echter Spiellogik, damit auch die erste,
 in der die Purity-Regel greift: `(state, action) => newState`, kein `Date.now()`,
 kein `Math.random()`, Zufall nur ueber einen uebergebenen Seed.
+
+Der abgestimmte Plan liegt in [ETAPPE-1-PLAN.md](./ETAPPE-1-PLAN.md) —
+temporaere Datei, wird nach Abschluss von Etappe 1 geloescht und ihr Inhalt
+verdichtet hierher uebernommen.
