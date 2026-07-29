@@ -1,0 +1,17 @@
+{
+  // Separate Config fuer die Build-Werkzeuge: vite.config.ts und vitest.config.ts
+  // laufen in Node, nicht im Browser, und brauchen daher andere libs/types.
+  // Nicht Teil der Solution - wird von Vite selbst geladen.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true
+  },
+  "include": ["vite.config.ts", "vitest.config.ts"]
+}

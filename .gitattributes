@@ -1,0 +1,18 @@
+# Im Repository steht ausschliesslich LF, unabhaengig vom Betriebssystem der
+# Arbeitskopie. Ohne das produziert Windows mit core.autocrlf Diffs, in denen
+# jede Zeile geaendert erscheint - bei zwei Entwicklern der schnellste Weg zu
+# unlesbaren Reviews.
+* text=auto eol=lf
+
+# Binaerdateien nie anfassen.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Lockfile aus Diffs heraushalten, aber weiter versionieren.
+pnpm-lock.yaml -diff linguist-generated

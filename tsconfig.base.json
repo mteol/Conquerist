@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "moduleDetection": "force",
+    "useDefineForClassFields": true,
+
+    // Strenge. noUncheckedIndexedAccess und exactOptionalPropertyTypes sind die
+    // beiden, die tatsaechlich Fehler finden - und der Grund, warum Typen aus den
+    // Zod-Schemas abgeleitet und nicht danebengeschrieben werden.
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+
+    // Project References: composite + declarationMap sorgt dafuer, dass
+    // "Go to Definition" aus client/server in der shared-QUELLE landet,
+    // nicht in einer generierten .d.ts.
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    // Kein "types": [] mit DOM-Libs - shared muss im Browser UND in Node laufen,
+    // also darf hier weder DOM noch @types/node im Sichtfeld sein.
+    "lib": ["ES2023"],
+    "types": [],
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src"]
+}

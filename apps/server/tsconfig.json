@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src"],
+  // Project Reference auf shared: "tsc -b" baut shared bei Bedarf selbst neu,
+  // bevor der Server geprueft wird. Kein manueller Rebuild.
+  "references": [{ "path": "../../packages/shared" }]
+}
