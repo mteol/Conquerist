@@ -21,6 +21,8 @@ export const CLASSIC_56: ScenarioBlueprint = {
   id: 'classic56',
   name: 'Erweiterung (5-6 Spieler)',
   rows: [3, 4, 5, 6, 5, 4, 3],
+  minPlayers: 5,
+  maxPlayers: 6,
 
   terrainCounts: {
     forest: 6,

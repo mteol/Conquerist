@@ -81,6 +81,9 @@ export interface ScenarioBlueprint {
   readonly name: string;
   /** Feldzahl je Reihe, etwa `[3, 4, 5, 4, 3]`. */
   readonly rows: readonly number[];
+  /** Fuer wie viele Spieler das Brett gedacht ist. Wandert in die `ScenarioDefinition`. */
+  readonly minPlayers: number;
+  readonly maxPlayers: number;
   /** Wie viele Felder je Gelaendeart. Summe muss die Feldzahl treffen. */
   readonly terrainCounts: Readonly<Record<TerrainId, number>>;
   /** Der Chipvorrat. Anzahl muss die Zahl der Ertragsfelder treffen. */
@@ -366,6 +369,8 @@ export function generateScenario(blueprint: ScenarioBlueprint, seed: string): Sc
       return ScenarioDefinitionSchema.parse({
         id: blueprint.id,
         name: blueprint.name,
+        minPlayers: blueprint.minPlayers,
+        maxPlayers: blueprint.maxPlayers,
         hexes: placements,
         harbors,
         robberStart: findRobberStart(placements),

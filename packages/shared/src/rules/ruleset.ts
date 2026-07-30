@@ -51,6 +51,19 @@ export const RuleSetSchema = z.object({
   resourceBank: ResourceAmountsSchema,
   /** Siegpunkte, die das Spiel beenden. */
   victoryPointGoal: z.number().int().min(2),
+  /**
+   * Was welches Bauwerk zaehlt, und was die Laengste Handelsstrasse bringt.
+   *
+   * Steht hier und nicht im Wertungscode: eine Variante mit dreifach zaehlenden
+   * Staedten ist damit ein zweites RuleSet und kein zweiter Codepfad (Regel 5).
+   */
+  victoryPoints: z.object({
+    settlement: z.number().int().min(0),
+    city: z.number().int().min(0),
+    longestRoad: z.number().int().min(0),
+  }),
+  /** Ab wie vielen zusammenhaengenden Strassen die Laengste Handelsstrasse vergeben wird. */
+  longestRoadMinimum: z.number().int().min(1),
   /** Ab wie vielen Handkarten bei einer Sieben abgeworfen wird. */
   handLimitBeforeDiscard: z.number().int().min(1),
 });
@@ -77,5 +90,7 @@ export const CLASSIC_RULES: RuleSet = {
   resourceBank: { brick: 19, lumber: 19, wool: 19, grain: 19, ore: 19 },
 
   victoryPointGoal: 10,
+  victoryPoints: { settlement: 1, city: 2, longestRoad: 2 },
+  longestRoadMinimum: 5,
   handLimitBeforeDiscard: 7,
 };

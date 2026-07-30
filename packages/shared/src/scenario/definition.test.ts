@@ -12,6 +12,8 @@ function validScenario(): ScenarioDefinition {
   return {
     id: 'test',
     name: 'Testbrett',
+    minPlayers: 2,
+    maxPlayers: 4,
     hexes: [
       { hex: '0,0', terrain: 'desert' },
       { hex: '1,0', terrain: 'forest', chip: 5 },
@@ -190,6 +192,16 @@ describe('ScenarioDefinitionSchema', () => {
     scenario.hexes = [...scenario.hexes, { hex: '9,0', terrain: 'fields', chip: 4 }];
 
     expect(ScenarioDefinitionSchema.safeParse(scenario).success).toBe(false);
+  });
+
+  it('lehnt eine Spielerspanne ab, die keine ist', () => {
+    expect(
+      ScenarioDefinitionSchema.safeParse({ ...validScenario(), minPlayers: 4, maxPlayers: 3 })
+        .success,
+    ).toBe(false);
+    expect(ScenarioDefinitionSchema.safeParse({ ...validScenario(), minPlayers: 1 }).success).toBe(
+      false,
+    );
   });
 
   it('lehnt ein Szenario ohne Felder ab', () => {

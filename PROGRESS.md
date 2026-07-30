@@ -276,11 +276,140 @@ rund 2,6 ms (`classic34`) bzw. 5,6 ms (`classic56`) je Brett.
   keine React-Komponententests, kein CI, kompilierte Testdateien im `dist`, kein
   Node-Version-Pin.
 
+---
+
+## Etappe 2 — `shared`: GameState + Reducer, Basisregeln ✅
+
+Stand: 2026-07-31, Branch `etappe-2-reducer`.
+
+Alles unter `packages/shared/src/game/`. `apps/server` und `apps/client` sind
+unangetastet. Erstmals gilt die Purity-Regel fuer den Spielzustand:
+`(state, action) => newState`, kein `Date.now()`, kein `Math.random()`.
+
+### Abnahme
+
+| Pruefung                                      | Ergebnis                                           |
+| --------------------------------------------- | -------------------------------------------------- |
+| `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                              |
+| `pnpm test`                                   | 492 Tests gruen (shared 442, server 13, client 37) |
+| `pnpm build`                                  | gruen, Client-Bundle 283 kB (86 kB gzip)           |
+| `pnpm format:check`                           | gruen                                              |
+| `pnpm --filter @conquerist/server acceptance` | 7/7 gruen, gegen frisch gestartete Server          |
+
+`shared` waechst damit von 239 auf 442 Tests.
+
+### Was der Integrationstest belegt
+
+`game.integration.test.ts` spielt eine vollstaendige Partie auf dem erzeugten
+Basisbrett — drei Spieler, fester Seed, eine stumpfe aber deterministische
+Strategie — von `createGame` bis `phase === 'finished'`. Geprueft wird dabei:
+
+- Die Partie **endet**, mit einem Sieger, der das Siegpunktziel erreicht hat,
+  und niemand sonst erreicht es.
+- **Nach jedem einzelnen Zug** stimmt die Kartenbilanz: Bank plus alle Haende
+  ergeben immer dieselbe Summe. Karten wechseln den Besitzer, sie entstehen und
+  verschwinden nicht. Das ist die schaerfste Invariante, die das Spiel kennt,
+  und sie faengt Fehler in Ertrag, Handel, Diebstahl und Baukosten auf einmal.
+- Die Bauteilvorraete gehen auf — einschliesslich der Siedlung, die beim Ausbau
+  zur Stadt in den Vorrat zurueckwandert.
+- **Regel 2, belegt statt behauptet:** `replay(startzustand, aktionsfolge)`
+  ergibt exakt denselben Endzustand, Feld fuer Feld, samt Zufallszustand.
+
+### Getroffene Entscheidungen
+
+**Der Reducer wirft nicht, er antwortet.**
+`reduce(state, action) → { ok: true, state } | { ok: false, error }`. Ein
+abgelehnter Zug ist ein normaler Ausgang, kein Programmfehler. Der Server
+braucht ab Etappe 4 den Ablehnungsgrund fuer seine Fehlerantwort, die
+Oberflaeche ab Etappe 3 die Frage „darf ich das?", ohne den Zug probeweise
+auszufuehren.
+
+**Jede Regel gibt es als `can…` und als `apply…`** — und `apply…` ruft `can…`
+auf. `legalActions` benutzt dieselben `can…`-Funktionen. Damit existiert die
+Regelauslegung genau einmal; zwei Auslegungen waeren genau der Fehler, den die
+Aufteilung verhindert. Ein Test haelt die Kopplung fest: _was `legalActions`
+nennt, muss `reduce` annehmen_.
+
+**Der Zugablauf ist ein expliziter Zustandsautomat**
+(`setup → rollPending → main`, mit `discardPending` und `robberPending` als
+Zwischenstufen nach einer Sieben). `discardPending` merkt sich namentlich, wer
+noch abwerfen muss — genau der Punkt, an dem Etappe 5 auf mehrere Spieler
+gleichzeitig wartet. Eine Aktion zur falschen Zeit ist ein gewoehnlicher
+`RuleViolation`, kein Sonderfall im Code.
+
+**Der Zufall liegt im Zustand.** `rollDice` und der Diebstahl verbrauchen den
+RNG aus Etappe 1 und legen den Nachfolgezustand zurueck.
+**Merkposten fuer Etappe 5:** der RNG-Zustand gehoert zur geheimen Haelfte. Wer
+ihn kennt, rechnet jeden kuenftigen Wuerfelwurf voraus — er steht auf derselben
+Liste wie die Handkarten der Mitspieler und darf nie in eine `PlayerView`.
+
+**Keine Ereignisliste im Ergebnis.** Urspruenglich war `ReduceResult` mit einer
+`events`-Liste geplant. Beim Ausarbeiten war das Vorbau nach Regel 5: der Wurf
+steht als `lastRoll` im Zustand, die Ertraege sind ableitbar, und in der
+Hotseat-Partie aus Etappe 3 ist ohnehin alles sichtbar. Der konkrete Anlass
+entsteht in **Etappe 5** — ein Diebstahl ist fuer die Beteiligten eine andere
+Nachricht als fuer den Rest des Tisches. Dann mit Anlass statt auf Verdacht.
+
+**Siegpunkte werden gerechnet, nicht gespeichert.** Ein Feld im Spielerzustand
+waere eine zweite Wahrheit neben der Belegung des Bretts und liefe beim ersten
+vergessenen Nachziehen auseinander.
+
+**Die Laengste Handelsstrasse ist der laengste Kantenzug**, nicht der laengste
+Pfad: keine Strasse zweimal, Knoten schon. Der Unterschied ist im Spiel
+sichtbar — eine Schleife zaehlt ganz, eine Kreuzung mit drei Armen nur zwei
+davon. Erschoepfende Tiefensuche von jedem Endpunkt; bei hoechstens fuenfzehn
+Strassen schnell genug und offensichtlich richtig. Eine fremde Siedlung
+unterbricht die Strecke, enden darf sie dort.
+
+**Bank- und Hafenhandel sind dabei** (Spielerhandel bleibt Etappe 8). Ohne ihn
+koennte ein Spieler mit fuenfzehn Erz und ohne Holz nie wieder bauen, und
+Etappe 3 waere kein vollstaendiges Spiel. Der Kurs wird **abgeleitet, nicht
+mitgeschickt**: ein Client, der sich sein Verhaeltnis selbst aussucht, waere
+genau das Ergebnis statt der Absicht, die Regel 3 ausschliesst.
+
+**Das Brett wird gemerkt, nicht gespeichert.** `boardOf(scenario)` leitet die
+Topologie einmal je Szenario ab und haelt sie in einer `WeakMap`. Von aussen
+eine reine Funktion; im `GameState` steht sie nicht, weil sie dort von den
+Feldern abweichen koennte.
+
+### Aenderungen an Etappe-1-Dateien
+
+- **`ScenarioDefinition` kennt jetzt `minPlayers` / `maxPlayers`.** Fuer wie
+  viele Spieler ein Brett taugt, ist eine Eigenschaft des Bretts und nicht des
+  Regelwerks: 19 Felder tragen keine sechs Spieler. `createGame` prueft die
+  Tischgroesse dagegen. Die Werte kommen aus dem Blueprint (`classic34` 3–4,
+  `classic56` 5–6).
+- **Das RuleSet kennt `victoryPoints` und `longestRoadMinimum`.** Damit steht
+  auch in der Wertung keine Zahl im Code — eine Variante mit dreifach zaehlenden
+  Staedten ist ein zweites RuleSet und kein zweiter Codepfad.
+
+### Offene Punkte
+
+- **Kein `PlayerView`, kein State-Filtering.** Der `GameState` ist die volle
+  Serversicht. Die Aufteilung kommt in Etappe 5; der Zustand ist so gebaut, dass
+  sie eine reine Projektion sein kann (geheim sind `rng` und die `resources` der
+  Mitspieler).
+- **`legalActions` zaehlt das Abwerfen nicht auf.** Bei acht Handkarten gibt es
+  dutzende gueltige Kombinationen; sie alle aufzulisten waere nutzlos. Wie viele
+  Karten faellig sind, sagt `discardCountFor` — die Auswahl trifft der Spieler.
+  Die Oberflaeche in Etappe 3 braucht dafuer ein eigenes Bedienelement.
+- **`game/fixtures.ts` ist Testmaterial im Quellbaum.** Es steht nicht im
+  Barrel, wird aber mitkompiliert — dieselbe Unsauberkeit wie bei den
+  Testdateien im `dist`, mit derselben Begruendung aufgeschoben.
+- **Die Strategie im Integrationstest ist stumpf** (Stadt vor Siedlung vor
+  Strasse, sonst tauschen, sonst Zug beenden). Sie belegt, dass eine Partie
+  laeuft und endet, nicht dass das Spiel ausgewogen ist. Balance ist eine Frage
+  fuer Etappe 3, wenn man zusieht.
+- Die Erinnerungsposten aus Etappe 0 und 1 gelten unveraendert: kein ESLint,
+  keine React-Komponententests, kein CI, kompilierte Testdateien im `dist`, kein
+  Node-Version-Pin, Hafenpositionen gegen die Schachtel zu pruefen, Knoten- und
+  Kanten-Ids ohne Branded Types.
+
 ### Naechste Etappe
 
-**Etappe 2 — `shared`: GameState + Reducer, Basisregeln.** Damit wird die
-Purity-Regel zum ersten Mal auf den Spielzustand angewendet:
-`(state, action) => newState`, Actions als Discriminated Union, der
-Zufallszustand aus Etappe 1 als Teil des Zustands.
+**Etappe 3 — `client`: SVG-Board + Hotseat.** Erstmals sichtbar: das Brett aus
+Etappe 1 gerendert, die Regeln aus Etappe 2 bedienbar, ein vollstaendiges Spiel
+ohne Netzwerk. Dort entscheidet sich auch, ob die Felder spitz oder flach oben
+stehen — die Geometrie ist dazu bewusst orientierungsagnostisch geblieben.
 
 Wie gehabt: zuerst ein Plan zur Abnahme, dann Code.

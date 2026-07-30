@@ -17,6 +17,8 @@ export const CLASSIC_34: ScenarioBlueprint = {
   id: 'classic34',
   name: 'Basisspiel (3-4 Spieler)',
   rows: [3, 4, 5, 4, 3],
+  minPlayers: 3,
+  maxPlayers: 4,
 
   terrainCounts: {
     forest: 4,

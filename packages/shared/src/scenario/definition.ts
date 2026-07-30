@@ -39,6 +39,15 @@ const ScenarioShapeSchema = z.object({
   harbors: z.array(HarborSchema),
   /** Feld, auf dem der Raeuber beginnt. Muss zum Brett gehoeren. */
   robberStart: HexIdSchema,
+  /**
+   * Fuer wie viele Spieler das Brett gedacht ist.
+   *
+   * Gehoert zum Szenario und nicht zum RuleSet: 19 Felder tragen keine sechs
+   * Spieler, und das liegt am Brett, nicht an den Baukosten. `createGame`
+   * prueft die Tischgroesse dagegen.
+   */
+  minPlayers: z.number().int().min(2),
+  maxPlayers: z.number().int().min(2),
 });
 
 /**
@@ -69,6 +78,14 @@ function isConnected(hexIds: readonly HexId[]): boolean {
 }
 
 export const ScenarioDefinitionSchema = ScenarioShapeSchema.superRefine((scenario, ctx) => {
+  if (scenario.maxPlayers < scenario.minPlayers) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['maxPlayers'],
+      message: `maxPlayers (${scenario.maxPlayers}) liegt unter minPlayers (${scenario.minPlayers})`,
+    });
+  }
+
   const hexIds = scenario.hexes.map((placement) => placement.hex);
   const onBoard = new Set<HexId>();
 

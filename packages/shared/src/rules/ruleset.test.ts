@@ -44,6 +44,8 @@ describe('CLASSIC_RULES', () => {
 
   it('haelt die bekannten Werte des Basisspiels', () => {
     expect(CLASSIC_RULES.victoryPointGoal).toBe(10);
+    expect(CLASSIC_RULES.victoryPoints).toEqual({ settlement: 1, city: 2, longestRoad: 2 });
+    expect(CLASSIC_RULES.longestRoadMinimum).toBe(5);
     expect(CLASSIC_RULES.handLimitBeforeDiscard).toBe(7);
     expect(CLASSIC_RULES.pieceStock).toEqual({ road: 15, settlement: 5, city: 4 });
     expect(CLASSIC_RULES.buildCosts.settlement).toEqual({
@@ -102,6 +104,16 @@ describe('RuleSetSchema', () => {
     for (const goal of [0, 1, -5, 3.5]) {
       expect(RuleSetSchema.safeParse({ ...rules(), victoryPointGoal: goal }).success).toBe(false);
     }
+  });
+
+  it('lehnt eine Laengste Strasse ab null Strassen ab', () => {
+    expect(RuleSetSchema.safeParse({ ...rules(), longestRoadMinimum: 0 }).success).toBe(false);
+  });
+
+  it('lehnt unvollstaendige Siegpunktwerte ab', () => {
+    const broken = rules();
+    delete (broken['victoryPoints'] as Record<string, number>)['city'];
+    expect(RuleSetSchema.safeParse(broken).success).toBe(false);
   });
 
   it('lehnt ein Handkartenlimit unter eins ab', () => {
