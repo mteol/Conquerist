@@ -119,13 +119,168 @@ im Transport und nicht in der UI, weil es sich nachtraeglich nur durch Umbau von
   Etappe 4 (`users`, Gast-Identitaet) und Etappe 5 (State-Filtering) — bis dahin
   gibt es bewusst keine Sitzungs-ID im Protokoll, weil nichts dahintersteht.
 
+---
+
+## Etappe 1 — `shared`: Hex-Geometrie, kanonische Ids, Szenario-Generator ✅
+
+Stand: 2026-07-31, Branch `etappe-1-geometrie`.
+
+Erste Etappe mit echter Spiellogik und damit die erste, in der Regel 2 greift:
+alles reine Funktion, kein `Date.now()`, kein `Math.random()`, Zufall
+ausschliesslich ueber einen uebergebenen Seed. `apps/server` und `apps/client`
+sind unangetastet.
+
+### Abnahme
+
+| Pruefung                                      | Ergebnis                                                     |
+| --------------------------------------------- | ------------------------------------------------------------ |
+| `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                                        |
+| `pnpm test`                                   | 289 Tests gruen (shared 239, server 13, client 37)           |
+| `pnpm build`                                  | gruen, Client-Bundle 278 kB (84 kB gzip)                     |
+| `pnpm format:check`                           | gruen                                                        |
+| `pnpm --filter @conquerist/server acceptance` | 7/7 gruen — die Etappe-0-Kette traegt das groessere `shared` |
+
+Zusaetzlich belegt statt angenommen:
+
+- **Zwei unabhaengige Konstruktionen desselben Bretts stimmen ueberein.**
+  `hexRowLayout([3,4,5,4,3])` und `hexSpiral(origin, 2)` liefern dieselbe
+  Feldmenge. Waere eine von beiden falsch, koennten sie es nicht.
+- **Beide Layouts erfuellen die Eulersche Formel** (`V − E + H = 1`):
+  Basisspiel 54 − 72 + 19, Erweiterung 80 − 109 + 30. Fuer 3-4-5-6-5-4-3 steht
+  die Knotenzahl nicht vorab fest — der Test kommt trotzdem ohne abgeschriebene
+  Zahl aus und faellt bei jedem Adjazenzfehler durch.
+- **Kanonizitaet ueber jedes Feld des Bretts**, nicht an Stichproben: fuer alle
+  19 Felder und alle sechs Ecken liefert jeder der drei Zugaenge dieselbe
+  Knoten-Id, fuer jede Kante beide Zugaenge dieselbe Kanten-Id.
+- **500 Seeds je Blueprint** ergeben 500 verschiedene Bretter, und **alle 500
+  erfuellen die strengste Fairnessstufe** — keines faellt in eine Lockerung.
+
+### Zahlen zu den beiden Brettern
+
+| Blueprint   | Layout        | Felder | Knoten | Kanten | Kuestenkanten | Haefen |
+| ----------- | ------------- | -----: | -----: | -----: | ------------: | -----: |
+| `classic34` | 3-4-5-4-3     |     19 |     54 |     72 |            30 |      9 |
+| `classic56` | 3-4-5-6-5-4-3 |     30 |     80 |    109 |            38 |     11 |
+
+### Getroffene Entscheidungen
+
+**Knoten- und Kanten-Identitaet ist strukturell** (Entscheidung A des Plans,
+umgesetzt in `geometry/canonical.ts`). Die Id _ist_ die sortierte Menge der
+angrenzenden Felder: `v:0,0|1,-1|1,0`, `e:0,0|1,0`. Sie traegt damit ihren
+eigenen Beweis — man liest die Nachbarfelder direkt ab, was ab Etappe 6 im
+Action-Log und in SQLite mehr zaehlt als kurze Ids.
+
+Zwei Punkte, die beim Umsetzen wichtiger waren als erwartet:
+
+- **Sortiert wird numerisch, nicht als Text.** Textsortierung liefert dasselbe
+  Ergebnis, solange alle Koordinaten einstellig sind, und ordnet ab einem
+  groesseren Szenario `10,-1` vor `9,0` ein. Ein Test haelt genau diesen Fall
+  fest.
+- **Jede Id wird beim Einlesen gegengeprueft**: `decodeVertexId` baut die Id aus
+  den gelesenen Feldern neu und vergleicht. Was sich nicht selbst reproduziert,
+  ist nicht kanonisch und fliegt raus, bevor es zwei Namen fuer denselben Platz
+  gibt. Zusaetzlich muessen die Felder paarweise benachbart sein — sonst liesse
+  sich eine syntaktisch gueltige, geometrisch unmoegliche Id bauen, und die kaeme
+  ab Etappe 4 ueber das Netz.
+
+**Die Geometrie bleibt orientierungsagnostisch** (Entscheidung B): Richtungen
+sind Indizes 0–5 mit dokumentierten Deltas. Ob die Felder spitz oder flach oben
+stehen, entscheidet sich in Etappe 3 am SVG und beruehrt keine einzige Datei
+hier.
+
+**Der PRNG ist ein unveraenderlicher Wert** (Entscheidung C): `sfc32` mit
+`cyrb128` als Seed-Hash, `nextUint32(rng) → [wert, naechsterRng]`. Bitgleich in
+Node und Browser, weil ausschliesslich `Math.imul`, `|0`, `>>>` und `<<`
+verwendet werden — alle in ECMAScript exakt definiert, keine
+Fliesskommaschritte. Drei Ergaenzungen zum Plan:
+
+- **Fester Vorlauf von 12 verworfenen Ziehungen** nach dem Seeden. Ohne ihn
+  koennen aehnliche Seeds (`"seed-a"` / `"seed-b"`) in den ersten Werten
+  korrelieren. Der Vorlauf ist Teil des Verfahrens und darf sich nicht mehr
+  aendern.
+- **`nextInt` zieht ohne Modulo-Verzerrung** (Rejection Sampling). Bei einem
+  Wuerfel faellt die Verzerrung nicht auf, beim Mischen von 19 Plaettchen schon.
+- **Die Regressionssperre steht**: Startzustand und die ersten acht Werte zum
+  Seed `"conquerist"` sowie zehn Wuerfelwuerfe sind fest eingetragen. Wer am
+  PRNG schraubt, bricht jedes laufende Spiel — das soll ein roter Test sagen,
+  nicht ein Spieler.
+
+**Zugehoerigkeit zum Brett ist einheitlich definiert:** ein Knoten oder eine
+Kante gehoert dazu, sobald mindestens eines der angrenzenden Felder dazugehoert.
+Das ist genau die Kuestenregel — Siedlung am Rand erlaubt, Strasse entlang der
+Kueste auch. Die Nachbarschaftslisten werden anschliessend aus den _Brettkanten_
+abgeleitet und nicht aus der Geometrie, damit kein Knoten einen Nachbarn nennt,
+zu dem keine baubare Kante fuehrt.
+
+### Abweichung vom Plan: die Chipvergabe
+
+Der Plan sah fuer die Zahlenchips **Rejection Sampling** vor: mischen, die vier
+Bedingungen pruefen, bei Verstoss neu mischen. Nachgemessen an je 2000 rein
+gemischten Brettern:
+
+| Bedingung verletzt              | `classic34` | `classic56` |
+| ------------------------------- | ----------: | ----------: |
+| zwei gleiche Zahlen benachbart  |      90,3 % |      99,2 % |
+| zwei 6er/8er benachbart         |      86,2 % |      96,4 % |
+| Pip-Summe ausserhalb des Bandes |      24,5 % |      60,7 % |
+| zu grosser Gelaendecluster      |      22,5 % |      56,3 % |
+| **mindestens eine**             |  **98,7 %** | **100,0 %** |
+
+Blindes Mischen kann diese Bedingungen also nicht erfuellen. Beim grossen Brett
+haette der Generator in 2000 Versuchen kein einziges gueltiges Ergebnis
+geliefert, sondern immer nur die Lockerungsstufen durchlaufen — die Fairness
+waere auf dem Papier geblieben.
+
+**Umgesetzt ist deshalb eine konstruktive Vergabe:** die Chips werden in
+Spiralreihenfolge gelegt, an jedem Feld nur aus den Chips, die mit den bereits
+gelegten Nachbarn vertraeglich sind, mit Rueckschritt bei Sackgassen und einem
+Schrittbudget. Zufaellig bleibt es, weil die Probierreihenfolge aus dem
+gemischten Vorrat und damit aus dem Seed kommt.
+
+Was vom Plan unveraendert bleibt:
+
+- Die vier Bedingungen und **alle** Schwellen stehen im Blueprint, nicht im Code.
+- Rejection Sampling bleibt als aeussere Schleife — es verteilt das Gelaende
+  (dort reicht es: 78 % bzw. 44 % Annahmequote) und faengt ein aufgebrauchtes
+  Schrittbudget ab.
+- Die Lockerungsstufen bleiben, samt Auffangstufe, die jedes Brett annimmt.
+  `generateScenario` endet damit garantiert mit einem Ergebnis.
+- `checkFairness` prueft das fertige Brett noch einmal unabhaengig. Der Solver
+  ist nie die einzige Instanz, die ueber Fairness urteilt.
+
+Ergebnis: 500/500 Seeds erfuellen bei beiden Blueprints die strengste Stufe, bei
+rund 2,6 ms (`classic34`) bzw. 5,6 ms (`classic56`) je Brett.
+
+### Offene Punkte
+
+- **Hafenpositionen sind gegen die Schachtel zu pruefen.** Das war schon im Plan
+  der offene Punkt und ist es geblieben. Eingebaut ist eine dokumentierte,
+  symmetrische Anordnung: `classic34` neun Haefen im Abstandsmuster 3-3-4
+  (dreimal, schliesst den 30er-Ring genau), `classic56` elf Haefen im Muster 3-4
+  (sechs Dreier, fuenf Vierer, schliesst den 38er-Ring genau). Bei `classic56`
+  ist zusaetzlich die **Anzahl** der Haefen nicht belastbar bekannt. Weil es
+  reine Daten sind, ist die Korrektur ein Zahlentausch in
+  `blueprints/classic*.ts`.
+- **Die Hafenplaetze sind fest, nur die Arten werden gemischt.** Ob die Plaetze
+  ebenfalls variieren sollen, ist eine Spielentscheidung und noch nicht
+  getroffen.
+- **Knoten- und Kanten-Ids sind einfache String-Aliase**, keine Branded Types.
+  Ein `EdgeId` laesst sich also dort einsetzen, wo ein `VertexId` erwartet wird.
+  Zur Laufzeit faellt das sofort auf (Praefix `v:` / `e:`, jede Decode-Funktion
+  wirft), zur Compile-Zeit nicht. Nachziehen, falls es einmal wirklich passiert.
+- **Das Client-Bundle ist um 8 kB gewachsen** (269 → 278 kB), obwohl der Client
+  nichts aus Geometrie oder Szenario benutzt. Ursache ist vermutlich der
+  Barrel-Export in `shared/src/index.ts` zusammen mit den Zod-Schemas. Vor
+  Etappe 9 pruefen, ob feinere Einstiegspunkte noetig sind.
+- Die Erinnerungsposten aus Etappe 0 gelten unveraendert weiter: kein ESLint,
+  keine React-Komponententests, kein CI, kompilierte Testdateien im `dist`, kein
+  Node-Version-Pin.
+
 ### Naechste Etappe
 
-**Etappe 1 — `shared`: Hex-Geometrie, kanonische Vertex/Edge-IDs,
-Szenario-Generator.** Erste Etappe mit echter Spiellogik, damit auch die erste,
-in der die Purity-Regel greift: `(state, action) => newState`, kein `Date.now()`,
-kein `Math.random()`, Zufall nur ueber einen uebergebenen Seed.
+**Etappe 2 — `shared`: GameState + Reducer, Basisregeln.** Damit wird die
+Purity-Regel zum ersten Mal auf den Spielzustand angewendet:
+`(state, action) => newState`, Actions als Discriminated Union, der
+Zufallszustand aus Etappe 1 als Teil des Zustands.
 
-Der abgestimmte Plan liegt in [ETAPPE-1-PLAN.md](./ETAPPE-1-PLAN.md) —
-temporaere Datei, wird nach Abschluss von Etappe 1 geloescht und ihr Inhalt
-verdichtet hierher uebernommen.
+Wie gehabt: zuerst ein Plan zur Abnahme, dann Code.
