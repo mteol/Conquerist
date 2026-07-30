@@ -59,8 +59,8 @@ Paket-Scope: `@conquerist/shared`, `@conquerist/server`, `@conquerist/client`
 - Antworten auf Deutsch, Code und Bezeichner auf Englisch.
 
 ## Etappenplan
-0. Monorepo-Grundgerüst, WS-Ping/Pong
-1. shared: Hex-Geometrie, kanonische Vertex/Edge-IDs, Szenario-Generator
+0. ✅ Monorepo-Grundgerüst, WS-Ping/Pong
+1. ✅ shared: Hex-Geometrie, kanonische Vertex/Edge-IDs, Szenario-Generator
 2. shared: GameState + Reducer, Basisregeln
 3. client: SVG-Board + Hotseat (vollständiges Spiel ohne Netzwerk)
 4. server: WS-Infra, SQLite, Gast-Identität
@@ -72,4 +72,15 @@ Paket-Scope: `@conquerist/shared`, `@conquerist/server`, `@conquerist/client`
 10. Erweiterungen
 
 ## Aktueller Stand
-Etappe 0: Grundgerüst. Noch keine Spiellogik.
+Etappen 0 und 1 fertig, beide auf eigenen Branches, noch nichts in `main`.
+Als Nächstes Etappe 2: GameState + Reducer.
+
+Was in `shared` schon steht:
+- `protocol/` — Envelope, Registry, Ping (Etappe 0)
+- `random/` — Seed-basierter PRNG als unveränderlicher Wert, Shuffle
+- `geometry/` — Hex, Richtungen 0–5, kanonische Knoten-/Kanten-IDs, Topologie
+- `scenario/` — Gelände, Häfen, Zod-Definition, Fairness, Blueprints, Generator
+- `rules/` — RuleSet (Baukosten, Siegpunktziel, Vorräte, Handkartenlimit)
+
+Details, getroffene Entscheidungen und offene Punkte stehen in `PROGRESS.md` —
+das ist die maßgebliche Standsdatei, diese hier nennt nur die Landmarken.
