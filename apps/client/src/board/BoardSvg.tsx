@@ -134,7 +134,15 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
             y1={from.y}
             x2={to.x}
             y2={to.y}
-            stroke={owner === undefined ? undefined : colorOf(owner)}
+            /*
+             * Die Farbe steht im `style` und nicht als `stroke`-Attribut. Eine
+             * CSS-Regel schlaegt immer das gleichnamige Praesentationsattribut,
+             * und `.road` setzt `stroke: transparent`, damit freie Kanten
+             * unsichtbare Trefferflaechen sind. Als Attribut waere jede gebaute
+             * Strasse durchsichtig - genau der Fehler, den `roads.test.tsx`
+             * festhaelt.
+             */
+            style={owner === undefined ? undefined : { stroke: colorOf(owner) }}
             onClick={isTarget ? () => onPick({ kind: 'edge', id: edge }) : undefined}
           />
         );
