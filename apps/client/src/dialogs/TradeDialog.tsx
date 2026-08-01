@@ -58,7 +58,13 @@ export function TradeDialog({
         </fieldset>
 
         <p className="modal__rate" data-testid="rate">
-          {give === null ? 'Kurs: —' : `Kurs: ${rateFor(give)}:1`}
+          {give === null ? (
+            'Kurs: —'
+          ) : (
+            <>
+              Kurs: <b>{rateFor(give)}:1</b>
+            </>
+          )}
         </p>
 
         <fieldset className="cards">

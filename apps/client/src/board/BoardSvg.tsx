@@ -7,7 +7,7 @@ import {
   type VertexId,
 } from '@conquerist/shared';
 import { seatsById, type Seat } from '../seats';
-import { TERRAIN_COLORS, harborLabel } from '../game/labels';
+import { RESOURCE_COLORS, TERRAIN_COLORS, harborLabel } from '../game/labels';
 import type { ActionTargets } from '../game/targets';
 import { edgeMidpoint, edgeSegment, hexCenter, hexCorners, vertexPoint, viewBoxOf } from './layout';
 
@@ -98,19 +98,30 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
         );
       })}
 
+      {/*
+       * Haefen als Marke auf der Kuestenkante: der Ring traegt die Farbe der
+       * Ressource, in der Mitte steht nur das Verhaeltnis. Der ausgeschriebene
+       * Name („2:1 Erz") passt bei dieser Groesse nicht lesbar aufs Brett und
+       * steht deshalb im `title` - sichtbar beim Zeigen, vorhanden fuer
+       * Vorlesewerkzeuge.
+       */}
       {state.scenario.harbors.map((harbor) => {
         const middle = edgeMidpoint(harbor.edge);
+        const ring = harbor.resource === undefined ? '#16202a' : RESOURCE_COLORS[harbor.resource];
+
         return (
-          <text
+          <g
             key={harbor.edge}
             className="harbor"
-            x={middle.x}
-            y={middle.y}
             pointerEvents="none"
             data-testid={`harbor-${harbor.edge}`}
           >
-            {harborLabel(harbor)}
-          </text>
+            <title>{harborLabel(harbor)}</title>
+            <circle cx={middle.x} cy={middle.y} r={0.23} style={{ stroke: ring }} />
+            <text x={middle.x} y={middle.y}>
+              {harbor.ratio}:1
+            </text>
+          </g>
         );
       })}
 

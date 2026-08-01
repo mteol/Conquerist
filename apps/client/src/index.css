@@ -1,20 +1,57 @@
-/* Etappe 0: nur so viel, dass die Diagnoseseite lesbar ist. Kein Designsystem. */
+/*
+ * Conquerist - Oberflaeche.
+ *
+ * Die Farbwelt kommt aus dem Material des Spiels und nicht aus einer
+ * Designvorlage: Tiefsee-Tinte fuer die Flaeche, Pergament fuer alles
+ * Bedienbare, und als Akzente genau die Gelaendefarben, die auch auf dem Brett
+ * liegen (`game/labels.ts`). Wer eine Farbe hier aendert, aendert sie dort mit.
+ *
+ * Schrift: kein Webfont. Die Persoenlichkeit kommt aus der Setzung - grosser
+ * Gewichtssprung, sehr enge Laufweite in der Anzeige, weite Sperrung in den
+ * Kleinlabels, und ueberall Tabellenziffern. Ein Spiel, in dem staendig Zahlen
+ * verglichen werden, darf keine springenden Ziffernbreiten haben.
+ */
 
 :root {
-  color-scheme: light dark;
-  --bg: #12151a;
-  --surface: #1b1f27;
-  --border: #2b3240;
-  --text: #e6e9ef;
-  --muted: #8b93a3;
-  --accent: #5b9dff;
-  --ok: #3ecf8e;
-  --warn: #f0b429;
-  --bad: #f06a6a;
+  color-scheme: dark;
 
-  font-family: ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  /* Flaeche */
+  --sea-900: #0b1f2a;
+  --sea-800: #0f2c3b;
+  --sea-700: #14384a;
+  --sea-500: #1d5468;
+
+  /* Bedienbares */
+  --parchment: #f0e6d2;
+  --parchment-2: #e3d5b8;
+  --parchment-edge: #b9a684;
+
+  /* Schrift */
+  --ink: #16202a;
+  --ink-muted: #6a6558;
+  --on-sea: #e9e1cf;
+  --on-sea-muted: #94a7b0;
+
+  /* Gelaende, gleichlautend mit game/labels.ts */
+  --hills: #b4623a;
+  --forest: #2f6b3a;
+  --pasture: #7fb069;
+  --fields: #e0b34a;
+  --mountains: #8a8f98;
+  --desert: #ddc9a3;
+
+  --accent: var(--fields);
+  --ok: #3f8f5b;
+  --warn: #d99a2b;
+  --bad: #c0503f;
+
+  --radius: 10px;
+  --shadow: 0 12px 32px rgb(0 0 0 / 35%);
+
+  font-family: 'Segoe UI', system-ui, ui-sans-serif, sans-serif;
   font-size: 16px;
   line-height: 1.5;
+  font-variant-numeric: tabular-nums;
 }
 
 * {
@@ -24,165 +61,345 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--sea-900);
+  color: var(--on-sea);
 }
 
-.page {
-  max-width: 32rem;
-  margin: 0 auto;
-  padding: 3rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-.page__header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  letter-spacing: -0.01em;
-}
-
-.page__subtitle {
-  margin: 0.25rem 0 0;
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.card__title {
-  margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-
-.status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.status__label {
-  font-weight: 600;
-}
-
-.status__hint {
-  color: var(--muted);
-  font-size: 0.8125rem;
-}
-
-.status__dot {
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: 50%;
-  flex: none;
-  background: var(--muted);
-}
-
-.status__dot--open {
-  background: var(--ok);
-}
-
-.status__dot--connecting {
-  background: var(--warn);
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-.status__dot--reconnecting {
-  background: var(--warn);
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-.status__dot--closed {
-  background: var(--bad);
-}
-
-@keyframes pulse {
-  50% {
-    opacity: 0.3;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
+/* --- Wiederkehrende Bausteine -------------------------------------------- */
+
+.eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--on-sea-muted);
+}
+
 .button {
-  align-self: flex-start;
-  padding: 0.5rem 1rem;
+  padding: 0.55rem 1.1rem;
   border: 1px solid transparent;
-  border-radius: 0.5rem;
-  background: var(--accent);
-  color: #0b1020;
+  border-radius: 8px;
+  background: var(--parchment);
+  color: var(--ink);
   font: inherit;
-  font-weight: 600;
+  font-weight: 650;
   cursor: pointer;
+  transition:
+    transform 120ms ease,
+    filter 120ms ease;
+}
+
+.button:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+.button--go {
+  background: var(--accent);
+  color: #2a1f06;
 }
 
 .button--ghost {
   background: transparent;
-  border-color: var(--border);
-  color: var(--text);
+  border-color: rgb(233 225 207 / 30%);
+  color: var(--on-sea);
   font-weight: 500;
 }
 
-.metrics {
-  margin: 0;
+/* --- Startbildschirm ------------------------------------------------------ */
+
+/*
+ * Zweispaltig: links die Bedienung auf Pergament, rechts das Brett, das
+ * gleich gespielt wird. Das Brett ist keine Dekoration - es entsteht aus dem
+ * Seed im Formular und aendert sich beim Tippen. Deshalb steht es gross und
+ * nicht als Vorschaubildchen.
+ */
+.start {
+  display: grid;
+  grid-template-columns: minmax(20rem, 27rem) 1fr;
+  min-height: 100vh;
+  background:
+    radial-gradient(120% 90% at 85% 15%, var(--sea-700) 0%, transparent 60%), var(--sea-900);
+}
+
+.start__panel {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: 1.15rem;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  overflow-y: auto;
 }
 
-.metrics__row {
+.start__brand h1 {
+  margin: 0.15rem 0 0;
+  font-size: clamp(2.6rem, 5.5vw, 3.9rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.start__lead {
+  margin: 0.5rem 0 0;
+  max-width: 26ch;
+  color: var(--on-sea-muted);
+}
+
+.field-group {
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  font-size: 0.875rem;
-}
-
-.metrics__row dt {
-  color: var(--muted);
-}
-
-.metrics__row dd {
+  flex-direction: column;
+  gap: 0.5rem;
   margin: 0;
-  font-variant-numeric: tabular-nums;
+  padding: 0;
+  border: 0;
 }
 
-.hint {
+.field-group > legend,
+.field-label {
+  padding: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--on-sea-muted);
+}
+
+/* Sitzzahl als Spielsteine statt als Auswahlfeld. */
+.seatcount {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.seatcount input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.seatcount label {
+  display: grid;
+  place-items: center;
+  width: 2.9rem;
+  height: 3.3rem;
+  border: 1px solid rgb(233 225 207 / 22%);
+  background: rgb(233 225 207 / 6%);
+  color: var(--on-sea);
+  font-weight: 700;
+  font-size: 1.05rem;
+  cursor: pointer;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  transition: background 140ms ease;
+}
+
+.seatcount label:hover {
+  background: rgb(233 225 207 / 14%);
+}
+
+.seatcount input:checked + label {
+  background: var(--parchment);
+  color: var(--ink);
+}
+
+.seatcount input:focus-visible + label {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Eine Zeile je Sitz, mit dem Bauwerk in Spielerfarbe davor. */
+.seats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   margin: 0;
-  color: var(--muted);
-  font-size: 0.8125rem;
+  padding: 0;
+  list-style: none;
 }
 
-.error {
+.seats li {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.seats input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgb(233 225 207 / 18%);
+  border-radius: 7px;
+  background: rgb(11 31 42 / 60%);
+  color: var(--on-sea);
+  font: inherit;
+}
+
+.seats input:hover {
+  border-color: rgb(233 225 207 / 34%);
+}
+
+.piece {
+  flex: 0 0 auto;
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+/* Das Brett ist keine Wahl mehr, sondern eine Folge der Tischgroesse. */
+.boardfact {
+  display: flex;
+  gap: 0.55rem;
+  align-items: baseline;
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 7px 7px 0;
+  background: rgb(233 225 207 / 7%);
+}
+
+.boardfact__name {
+  font-weight: 650;
+}
+
+.boardfact__detail {
+  color: var(--on-sea-muted);
+  font-size: 0.85rem;
+}
+
+.seedrow {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.seedrow input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgb(233 225 207 / 18%);
+  border-radius: 7px;
+  background: rgb(11 31 42 / 60%);
+  color: var(--on-sea);
+  font: inherit;
+  font-family: ui-monospace, 'Cascadia Mono', monospace;
+  letter-spacing: 0.04em;
+}
+
+.start__start {
+  margin-top: 0.4rem;
+  padding: 0.8rem 1.2rem;
+  font-size: 1.05rem;
+}
+
+.start__note {
   margin: 0;
-  color: var(--bad);
-  font-size: 0.875rem;
+  color: var(--on-sea-muted);
+  font-size: 0.8rem;
 }
 
-/* --- Etappe 3: Spielbildschirm ------------------------------------------- */
+/* Die Etappe-0-Diagnose: vorhanden, aber leise. */
+.start__diagnostics {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid rgb(233 225 207 / 12%);
+}
+
+.start__diagnostics > summary {
+  cursor: pointer;
+  color: var(--on-sea-muted);
+  font-size: 0.8rem;
+}
+
+.start__diagnostics[open] > summary {
+  margin-bottom: 0.75rem;
+  color: var(--on-sea);
+}
+
+.start__diagnostics .metrics,
+.start__diagnostics .status,
+.start__diagnostics .button {
+  margin-top: 0.5rem;
+}
+
+/* Rechte Haelfte: das Brett zum eingestellten Seed. */
+.start__preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  overflow: hidden;
+}
+
+.start__preview .board {
+  width: 100%;
+  height: 100%;
+  max-height: 82vh;
+  filter: drop-shadow(0 18px 40px rgb(0 0 0 / 45%));
+}
+
+.start__caption {
+  position: absolute;
+  right: clamp(1rem, 3vw, 2.5rem);
+  bottom: clamp(1rem, 3vw, 2rem);
+  text-align: right;
+  color: var(--on-sea-muted);
+  font-size: 0.78rem;
+}
+
+.start__caption b {
+  display: block;
+  color: var(--on-sea);
+  font-family: ui-monospace, 'Cascadia Mono', monospace;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 62rem) {
+  .start {
+    grid-template-columns: 1fr;
+  }
+
+  .start__preview {
+    order: -1;
+    min-height: 44vh;
+    padding: 1rem;
+  }
+
+  .start__caption {
+    position: static;
+    margin-top: 0.5rem;
+    text-align: center;
+  }
+}
+
+/* --- Spielbildschirm ------------------------------------------------------ */
 
 .game {
   position: relative;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: #7fa9c8;
+  background:
+    radial-gradient(120% 80% at 50% 40%, var(--sea-500) 0%, transparent 70%), var(--sea-800);
 }
 
 /*
@@ -193,7 +410,7 @@ body {
  */
 .board-area {
   position: absolute;
-  inset: 0.5rem 15rem 5rem 15rem;
+  inset: 0.75rem 15.5rem 5.5rem 15.5rem;
 }
 
 .board {
@@ -203,42 +420,44 @@ body {
 
 .panel {
   position: absolute;
-  max-width: 14rem;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  backdrop-filter: blur(3px);
+  max-width: 14.5rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--radius);
+  background: var(--parchment);
+  color: var(--ink);
+  box-shadow: var(--shadow);
   font-size: 0.8rem;
 }
 
 .panel--table {
-  top: 0.5rem;
-  left: 0.5rem;
+  top: 0.75rem;
+  left: 0.75rem;
 }
 
 .panel--status {
-  top: 0.5rem;
-  right: 0.5rem;
+  top: 0.75rem;
+  right: 0.75rem;
   text-align: right;
 }
 
 .panel--actions {
-  bottom: 0.5rem;
-  left: 0.5rem;
+  bottom: 0.75rem;
+  left: 0.75rem;
 }
 
 .panel--log {
-  bottom: 0.5rem;
-  right: 0.5rem;
+  bottom: 0.75rem;
+  right: 0.75rem;
 }
 
 .panel__title {
-  margin: 0 0 0.4rem;
-  font-size: 0.65rem;
-  letter-spacing: 0.09em;
+  margin: 0 0 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
 .panel__buttons {
@@ -249,17 +468,19 @@ body {
 
 .panel__buttons .button {
   padding: 0.35rem 0.7rem;
+  border: 1px solid var(--parchment-edge);
+  background: var(--parchment-2);
   font-size: 0.8rem;
 }
 
-.button--go {
-  background: var(--ok);
+.panel__buttons .button--go {
+  border-color: transparent;
+  background: var(--accent);
 }
 
-.panel__hint,
-.panel__toggle {
-  margin: 0.4rem 0 0;
-  color: var(--muted);
+.panel__hint {
+  margin: 0.5rem 0 0;
+  color: var(--ink-muted);
   font-size: 0.75rem;
 }
 
@@ -267,11 +488,24 @@ body {
   display: flex;
   gap: 0.35rem;
   align-items: center;
+  margin-top: 0.5rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgb(22 32 42 / 12%);
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
 }
 
 .panel__error {
-  margin-top: 0.4rem;
-  color: var(--bad);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+  margin-top: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 7px;
+  background: rgb(192 80 63 / 14%);
+  color: #7d2b1d;
   font-size: 0.75rem;
 }
 
@@ -279,75 +513,92 @@ body {
   display: flex;
   gap: 0.4rem;
   align-items: baseline;
-  padding: 0.15rem 0.3rem;
-  border-left: 3px solid var(--muted);
-  border-radius: 4px;
+  padding: 0.22rem 0.35rem;
+  border-left: 3px solid var(--ink-muted);
+  border-radius: 0 5px 5px 0;
 }
 
 .seat--acting {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  background: rgb(224 179 74 / 26%);
 }
 
 .seat__name {
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .seat__points {
-  color: var(--muted);
+  color: var(--ink-muted);
+  font-size: 0.75rem;
 }
 
 .seat__hand {
   margin-left: auto;
-  font-family: ui-monospace, monospace;
-  font-size: 0.7rem;
-  color: var(--muted);
+  font-family: ui-monospace, 'Cascadia Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--ink-muted);
 }
 
 .seat__pending {
   width: 100%;
-  color: var(--warn);
+  color: #8a5a12;
   font-size: 0.7rem;
+}
+
+.status__phase {
+  font-weight: 650;
+}
+
+.status__turn {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
 }
 
 .status__dice {
   display: flex;
   gap: 0.3rem;
+  align-items: center;
   justify-content: flex-end;
-  margin-top: 0.3rem;
+  margin-top: 0.4rem;
 }
 
 .die {
   display: grid;
   place-items: center;
-  width: 1.3rem;
-  height: 1.3rem;
-  border-radius: 4px;
-  background: #f4efe2;
-  color: #23262c;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 5px;
+  background: #fbf6ea;
   font-weight: 700;
 }
 
 .status__sum {
-  align-self: center;
-  color: var(--muted);
+  color: var(--ink-muted);
+  font-size: 0.75rem;
 }
 
 .log {
   margin: 0;
   padding: 0;
-  list-style: none;
-  max-height: 8rem;
+  max-height: 8.5rem;
   overflow-y: auto;
+  list-style: none;
+  color: var(--ink-muted);
   font-size: 0.72rem;
-  line-height: 1.5;
-  color: var(--muted);
+  line-height: 1.55;
 }
 
-/* --- Das Brett ----------------------------------------------------------- */
+.log__entry + .log__entry {
+  margin-top: 0.15rem;
+  padding-top: 0.15rem;
+  border-top: 1px solid rgb(22 32 42 / 8%);
+}
+
+/* --- Das Brett ------------------------------------------------------------ */
 
 .hex {
-  stroke: #2b2b2b;
-  stroke-width: 0.02;
+  stroke: #16202a;
+  stroke-width: 0.024;
   stroke-linejoin: round;
 }
 
@@ -356,51 +607,72 @@ body {
 }
 
 .chip circle {
-  fill: #f4efe2;
-  stroke: #2b2b2b;
-  stroke-width: 0.015;
+  fill: #f6efdf;
+  stroke: #16202a;
+  stroke-width: 0.014;
 }
 
 .chip text {
-  font-size: 0.34px;
+  fill: #16202a;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.32px;
   font-weight: 700;
   text-anchor: middle;
   dominant-baseline: central;
-  fill: #2b2b2b;
 }
 
 .chip__hot {
-  fill: #b02a2a;
+  fill: #a52a1e;
 }
 
 .chip__pips {
-  font-size: 0.2px;
-  letter-spacing: 0.04px;
+  font-size: 0.19px;
+  letter-spacing: 0.035px;
 }
 
-.harbor {
-  font-size: 0.16px;
+.harbor circle {
+  fill: #f6efdf;
+  stroke-width: 0.055;
+}
+
+.harbor text {
+  fill: #16202a;
+  font-size: 0.15px;
+  font-weight: 700;
   text-anchor: middle;
   dominant-baseline: central;
-  fill: #16202b;
 }
 
 .robber circle {
-  fill: #33312e;
-  stroke: #11100f;
+  fill: #24211d;
+  stroke: #0c0b0a;
   stroke-width: 0.02;
 }
 
+/*
+ * `.road` haelt jede Kante als unsichtbare Trefferflaeche bereit. Die Farbe
+ * einer gebauten Strasse kommt deshalb als `style` vom Element und nicht als
+ * `stroke`-Attribut - eine Regel hier wuerde ein Attribut immer schlagen.
+ */
 .road {
   stroke: transparent;
-  stroke-width: 0.12;
+  stroke-width: 0.14;
   stroke-linecap: round;
 }
 
+.road--built {
+  stroke-width: 0.15;
+  paint-order: stroke;
+}
+
 .road--target {
-  stroke: rgb(255 255 255 / 55%);
-  stroke-dasharray: 0.14 0.1;
+  stroke: rgb(246 239 223 / 55%);
+  stroke-dasharray: 0.15 0.11;
   cursor: pointer;
+}
+
+.road--target:hover {
+  stroke: rgb(246 239 223 / 90%);
 }
 
 .vertex__hit {
@@ -408,129 +680,266 @@ body {
 }
 
 .vertex__target {
-  fill: rgb(255 255 255 / 60%);
-  stroke: #fff;
-  stroke-width: 0.03;
+  fill: rgb(246 239 223 / 62%);
+  stroke: #f6efdf;
+  stroke-width: 0.028;
   cursor: pointer;
 }
 
-.vertex__building {
-  stroke: #1a1a1a;
-  stroke-width: 0.03;
+.vertex__target:hover {
+  fill: #f6efdf;
 }
 
-/* --- Dialoge ------------------------------------------------------------- */
+.vertex__building {
+  stroke: #16202a;
+  stroke-width: 0.03;
+  stroke-linejoin: round;
+}
+
+/* --- Dialoge -------------------------------------------------------------- */
 
 .modal {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgb(10 13 18 / 55%);
+  padding: 1rem;
+  background: rgb(6 16 22 / 62%);
 }
 
 .modal__box {
-  min-width: 20rem;
-  max-width: min(90vw, 34rem);
-  padding: 1rem 1.2rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
+  min-width: min(22rem, 100%);
+  max-width: min(92vw, 34rem);
+  padding: 1.1rem 1.3rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--radius);
+  background: var(--parchment);
+  color: var(--ink);
+  box-shadow: var(--shadow);
   text-align: center;
 }
 
 .modal__box h2 {
-  margin: 0 0 0.3rem;
-  font-size: 1.1rem;
+  margin: 0 0 0.2rem;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
 }
 
 .modal__hint,
 .modal__rate {
-  color: var(--muted);
+  margin: 0.1rem 0 0;
+  color: var(--ink-muted);
   font-size: 0.85rem;
 }
 
+.modal__rate b {
+  color: var(--ink);
+}
+
 .modal__box .button {
-  align-self: center;
-  margin: 0.3rem;
+  margin: 0.35rem 0.2rem 0;
 }
 
 .cards {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.6rem;
   justify-content: center;
-  margin: 0.6rem 0;
-  border: 0;
+  margin: 0.9rem 0;
   padding: 0;
+  border: 0;
 }
 
 .cards legend {
-  color: var(--muted);
-  font-size: 0.75rem;
-}
-
-.cards__item,
-.cards__choice {
-  display: flex;
-  gap: 0.2rem;
-  align-items: center;
-  font-size: 0.8rem;
+  padding: 0;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .cards__item {
+  display: flex;
   flex-direction: column;
+  gap: 0.2rem;
+  align-items: center;
+  min-width: 4rem;
+  padding: 0.4rem 0.35rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 8px;
+  background: var(--parchment-2);
+}
+
+.cards__label {
+  font-size: 0.78rem;
+  font-weight: 650;
 }
 
 .cards__held {
-  color: var(--muted);
-  font-size: 0.7rem;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
 }
 
 .cards__stepper {
   display: flex;
-  gap: 0.3rem;
+  gap: 0.35rem;
   align-items: center;
+  font-weight: 700;
 }
 
 .cards__stepper button {
-  width: 1.5rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text);
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 5px;
+  background: #fbf6ea;
+  color: var(--ink);
   font: inherit;
+  line-height: 1;
   cursor: pointer;
 }
 
-.result {
-  margin: 0.6rem 0;
-  padding: 0;
-  list-style: none;
-  color: var(--muted);
+.cards__stepper button:hover {
+  background: #fff;
 }
 
-/* --- Startbildschirm ----------------------------------------------------- */
+.cards__choice {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 999px;
+  background: var(--parchment-2);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
 
-.field {
+.cards__choice:has(input:checked) {
+  border-color: transparent;
+  background: var(--accent);
+}
+
+.result {
+  margin: 0.7rem 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-muted);
+}
+
+.result li {
+  padding: 0.15rem 0;
+}
+
+/* --- Diagnose aus Etappe 0 ------------------------------------------------- */
+
+.page {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.page__header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.page__subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--on-sea-muted);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1rem;
+  border: 1px solid rgb(233 225 207 / 15%);
+  border-radius: var(--radius);
+  background: rgb(233 225 207 / 5%);
+}
+
+.card__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.status {
   display: flex;
   gap: 0.5rem;
   align-items: center;
-  font-size: 0.9rem;
 }
 
-.field input,
-.field select {
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
+.status__dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--on-sea-muted);
 }
 
-.swatch {
-  width: 0.9rem;
-  height: 0.9rem;
-  border-radius: 3px;
+.status__dot--open {
+  background: var(--ok);
+}
+
+.status__dot--connecting,
+.status__dot--reconnecting {
+  background: var(--warn);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.status__dot--closed {
+  background: var(--bad);
+}
+
+.status__hint {
+  color: var(--on-sea-muted);
+  font-size: 0.8125rem;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  width: 100%;
+}
+
+.metrics__row {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  font-size: 0.875rem;
+}
+
+.metrics__row dt {
+  color: var(--on-sea-muted);
+}
+
+.metrics__row dd {
+  margin: 0;
+}
+
+.hint {
+  margin: 0;
+  color: var(--on-sea-muted);
+  font-size: 0.8125rem;
+}
+
+.error {
+  margin: 0;
+  color: #f0a094;
+  font-size: 0.875rem;
 }

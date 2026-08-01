@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { RESOURCE_IDS, TERRAIN_IDS } from '@conquerist/shared';
+import { RESOURCE_IDS, TERRAIN_IDS, terrainYield } from '@conquerist/shared';
 import {
+  RESOURCE_COLORS,
   RESOURCE_LABELS,
   TERRAIN_COLORS,
   TERRAIN_LABELS,
@@ -16,6 +17,19 @@ describe('Bezeichner', () => {
     for (const terrain of TERRAIN_IDS) {
       expect(TERRAIN_LABELS[terrain]).toBeTruthy();
       expect(TERRAIN_COLORS[terrain]).toMatch(/^#[0-9a-f]{6}$/i);
+    }
+  });
+
+  it('faerbt jede Ressource wie das Gelaende, das sie abwirft', () => {
+    // Keine zweite Farbwelt: wer Lehm sucht, sucht die Farbe der Huegel.
+    for (const terrain of TERRAIN_IDS) {
+      const resource = terrainYield(terrain);
+      if (resource === null) continue;
+      expect(RESOURCE_COLORS[resource]).toBe(TERRAIN_COLORS[terrain]);
+    }
+
+    for (const resource of RESOURCE_IDS) {
+      expect(RESOURCE_COLORS[resource]).toMatch(/^#[0-9a-f]{6}$/i);
     }
   });
 

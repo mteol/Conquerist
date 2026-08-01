@@ -15,8 +15,39 @@ describe('Startbildschirm', () => {
 
     expect(screen.getAllByLabelText(/^Name von Spieler/)).toHaveLength(3);
 
-    await userEvent.selectOptions(screen.getByLabelText('Spieler'), '6');
+    await userEvent.click(screen.getByLabelText('6 Spieler'));
     expect(screen.getAllByLabelText(/^Name von Spieler/)).toHaveLength(6);
+  });
+
+  it('zeigt das Brett, das gespielt wird - und wechselt es mit der Tischgroesse', async () => {
+    render(<StartScreen onStart={vi.fn()} />);
+
+    // Basisbrett: 19 Felder. Die Vorschau ist kein Bild, sondern dasselbe
+    // Brett, das `createGame` gleich bekommt.
+    expect(screen.getAllByTestId(/^hex-/)).toHaveLength(19);
+
+    await userEvent.click(screen.getByLabelText('6 Spieler'));
+    expect(screen.getAllByTestId(/^hex-/)).toHaveLength(30);
+  });
+
+  it('zeichnet zu einem anderen Seed ein anderes Brett', async () => {
+    render(<StartScreen onStart={vi.fn()} />);
+
+    const terrainOf = (): string =>
+      screen
+        .getAllByTestId(/^hex-/)
+        .map((hex) => hex.getAttribute('fill'))
+        .join('');
+
+    const seed = screen.getByLabelText('Seed');
+    await userEvent.clear(seed);
+    await userEvent.type(seed, 'brett-eins');
+    const first = terrainOf();
+
+    await userEvent.clear(seed);
+    await userEvent.type(seed, 'brett-zwei');
+
+    expect(terrainOf()).not.toBe(first);
   });
 
   it('startet eine Partie mit den eingetragenen Namen', async () => {

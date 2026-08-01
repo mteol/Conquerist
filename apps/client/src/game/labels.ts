@@ -39,6 +39,20 @@ export const TERRAIN_COLORS: Readonly<Record<TerrainId, string>> = {
   desert: '#ddc9a3',
 };
 
+/**
+ * Die Farbe einer Ressource ist die Farbe des Gelaendes, das sie abwirft.
+ *
+ * Keine zweite Farbwelt: wer Lehm sucht, sucht die Farbe der Huegel. Genutzt
+ * fuer die Hafenmarken und die Kartenstapel in den Dialogen.
+ */
+export const RESOURCE_COLORS: Readonly<Record<ResourceId, string>> = {
+  brick: TERRAIN_COLORS.hills,
+  lumber: TERRAIN_COLORS.forest,
+  wool: TERRAIN_COLORS.pasture,
+  grain: TERRAIN_COLORS.fields,
+  ore: TERRAIN_COLORS.mountains,
+};
+
 /** „3:1 beliebig" oder „2:1 Erz". */
 export function harborLabel(harbor: HarborDefinition): string {
   return harbor.resource === undefined
