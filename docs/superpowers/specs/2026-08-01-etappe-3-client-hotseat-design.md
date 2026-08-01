@@ -125,9 +125,11 @@ sonst der Spieler am Zug. Die Projektion ist eine reine Funktion und damit die
 ehrliche Vorarbeit fuer `PlayerView` in Etappe 5.
 
 **Die Sieben.** `applyDiscard` nimmt jeden aus `phase.pending` in beliebiger
-Reihenfolge. Deshalb: unten links steht fuer alle sichtbar, worauf gewartet wird
-(„Anna wirft 4 ab, Ben wirft 4 ab"), die Namen sind anklickbar, und der
-Abwerf-Dialog gehoert immer genau einer Person. Ist die Liste leer, folgt der
+Reihenfolge. Deshalb: fuer alle sichtbar steht da, worauf gewartet wird („Anna
+und Ben muessen abwerfen"), und der Abwerf-Dialog gehoert immer genau einer
+Person — er geht die Liste der Reihe nach durch. Dass der Reducer auch jede
+andere Reihenfolge annimmt, bleibt Reserve: eine freie Wahl waere spaeter ohne
+Aenderung an `shared` moeglich, hat im Hotseat aber keinen Anlass. Ist die Liste leer, folgt der
 Raeuber; gibt es am Zielfeld mehrere Anlieger mit Karten, fragt derselbe
 Dialogplatz nach dem Opfer.
 
