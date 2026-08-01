@@ -62,7 +62,7 @@ Paket-Scope: `@conquerist/shared`, `@conquerist/server`, `@conquerist/client`
 0. ✅ Monorepo-Grundgerüst, WS-Ping/Pong
 1. ✅ shared: Hex-Geometrie, kanonische Vertex/Edge-IDs, Szenario-Generator
 2. ✅ shared: GameState + Reducer, Basisregeln
-3. client: SVG-Board + Hotseat (vollständiges Spiel ohne Netzwerk)
+3. ✅ client: SVG-Board + Hotseat (vollständiges Spiel ohne Netzwerk)
 4. server: WS-Infra, SQLite, Gast-Identität
 5. Client-Anbindung, State-Filtering, Reconnect
 6. Persistence: Action-Log + Snapshot, Lobby
@@ -72,8 +72,8 @@ Paket-Scope: `@conquerist/shared`, `@conquerist/server`, `@conquerist/client`
 10. Erweiterungen
 
 ## Aktueller Stand
-Etappen 0 bis 2 fertig, je auf eigenem Branch, noch nichts in `main`.
-Als Nächstes Etappe 3: SVG-Board + Hotseat im Client.
+Etappen 0 bis 3 fertig, je auf eigenem Branch, noch nichts in `main`.
+Als Nächstes Etappe 4: Server mit WS-Infra, SQLite und Gast-Identität.
 
 Was in `shared` schon steht:
 - `protocol/` — Envelope, Registry, Ping (Etappe 0)
@@ -88,6 +88,19 @@ Was in `shared` schon steht:
 Regeln liegen je in eigener Datei, jeweils als `can…` (nur prüfen) und
 `apply…` (prüfen und anwenden). `legalActions` benutzt dieselben `can…` —
 neue Regeln bitte genauso, damit es weiter nur eine Auslegung gibt.
+
+Was im Client steht (Etappe 3):
+- `seats.ts` — Name und Farbe je Spieler; `shared` kennt beides bewusst nicht
+- `board/` — Feld/Knoten/Kante zu Punkten (Spitze oben), das SVG-Brett
+- `game/` — Klickkarten, Anzeigemodell samt Verdecken, Verlaufssätze,
+  Hotseat-Zustand
+- `panels/`, `dialogs/`, `screens/`, `diagnostics/` — Oberfläche
+
+**Der Client kennt keine Regel.** Er fragt `legalActions`, sortiert die Antwort
+nach Ort (`game/targets.ts`), und ein Klick schickt die gefundene Aktion durch
+`reduce`. Kein `if (genug Holz)` im Client — sonst gäbe es zwei Auslegungen.
+Knoten- und Kantenpositionen kommen aus der Id (Schwerpunkt der angrenzenden
+Felder), nicht aus einer zweiten Winkelrechnung.
 
 Details, getroffene Entscheidungen und offene Punkte stehen in `PROGRESS.md` —
 das ist die maßgebliche Standsdatei, diese hier nennt nur die Landmarken.

@@ -174,3 +174,363 @@ body {
   color: var(--bad);
   font-size: 0.875rem;
 }
+
+/* --- Etappe 3: Spielbildschirm ------------------------------------------- */
+
+.game {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #7fa9c8;
+}
+
+/*
+ * Der Punkt, an dem die schwebenden Panels unschaedlich werden: das Brett wird
+ * nicht unter sie gerechnet, sondern in die freie Flaeche dazwischen eingepasst.
+ * Ohne diesen Einzug laegen genau die Randknoten unter den Panels, auf die man
+ * in der Gruendungsphase klickt.
+ */
+.board-area {
+  position: absolute;
+  inset: 0.5rem 15rem 5rem 15rem;
+}
+
+.board {
+  width: 100%;
+  height: 100%;
+}
+
+.panel {
+  position: absolute;
+  max-width: 14rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(3px);
+  font-size: 0.8rem;
+}
+
+.panel--table {
+  top: 0.5rem;
+  left: 0.5rem;
+}
+
+.panel--status {
+  top: 0.5rem;
+  right: 0.5rem;
+  text-align: right;
+}
+
+.panel--actions {
+  bottom: 0.5rem;
+  left: 0.5rem;
+}
+
+.panel--log {
+  bottom: 0.5rem;
+  right: 0.5rem;
+}
+
+.panel__title {
+  margin: 0 0 0.4rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.panel__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.panel__buttons .button {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+.button--go {
+  background: var(--ok);
+}
+
+.panel__hint,
+.panel__toggle {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.panel__toggle {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.panel__error {
+  margin-top: 0.4rem;
+  color: var(--bad);
+  font-size: 0.75rem;
+}
+
+.seat {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  padding: 0.15rem 0.3rem;
+  border-left: 3px solid var(--muted);
+  border-radius: 4px;
+}
+
+.seat--acting {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.seat__name {
+  font-weight: 600;
+}
+
+.seat__points {
+  color: var(--muted);
+}
+
+.seat__hand {
+  margin-left: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.seat__pending {
+  width: 100%;
+  color: var(--warn);
+  font-size: 0.7rem;
+}
+
+.status__dice {
+  display: flex;
+  gap: 0.3rem;
+  justify-content: flex-end;
+  margin-top: 0.3rem;
+}
+
+.die {
+  display: grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 4px;
+  background: #f4efe2;
+  color: #23262c;
+  font-weight: 700;
+}
+
+.status__sum {
+  align-self: center;
+  color: var(--muted);
+}
+
+.log {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 8rem;
+  overflow-y: auto;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* --- Das Brett ----------------------------------------------------------- */
+
+.hex {
+  stroke: #2b2b2b;
+  stroke-width: 0.02;
+  stroke-linejoin: round;
+}
+
+.hex--target {
+  cursor: pointer;
+}
+
+.chip circle {
+  fill: #f4efe2;
+  stroke: #2b2b2b;
+  stroke-width: 0.015;
+}
+
+.chip text {
+  font-size: 0.34px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  fill: #2b2b2b;
+}
+
+.chip__hot {
+  fill: #b02a2a;
+}
+
+.chip__pips {
+  font-size: 0.2px;
+  letter-spacing: 0.04px;
+}
+
+.harbor {
+  font-size: 0.16px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  fill: #16202b;
+}
+
+.robber circle {
+  fill: #33312e;
+  stroke: #11100f;
+  stroke-width: 0.02;
+}
+
+.road {
+  stroke: transparent;
+  stroke-width: 0.12;
+  stroke-linecap: round;
+}
+
+.road--target {
+  stroke: rgb(255 255 255 / 55%);
+  stroke-dasharray: 0.14 0.1;
+  cursor: pointer;
+}
+
+.vertex__hit {
+  fill: transparent;
+}
+
+.vertex__target {
+  fill: rgb(255 255 255 / 60%);
+  stroke: #fff;
+  stroke-width: 0.03;
+  cursor: pointer;
+}
+
+.vertex__building {
+  stroke: #1a1a1a;
+  stroke-width: 0.03;
+}
+
+/* --- Dialoge ------------------------------------------------------------- */
+
+.modal {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(10 13 18 / 55%);
+}
+
+.modal__box {
+  min-width: 20rem;
+  max-width: min(90vw, 34rem);
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  text-align: center;
+}
+
+.modal__box h2 {
+  margin: 0 0 0.3rem;
+  font-size: 1.1rem;
+}
+
+.modal__hint,
+.modal__rate {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.modal__box .button {
+  align-self: center;
+  margin: 0.3rem;
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin: 0.6rem 0;
+  border: 0;
+  padding: 0;
+}
+
+.cards legend {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.cards__item,
+.cards__choice {
+  display: flex;
+  gap: 0.2rem;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.cards__item {
+  flex-direction: column;
+}
+
+.cards__held {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.cards__stepper {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.cards__stepper button {
+  width: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.result {
+  margin: 0.6rem 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+}
+
+/* --- Startbildschirm ----------------------------------------------------- */
+
+.field {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.field input,
+.field select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.swatch {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 3px;
+}
