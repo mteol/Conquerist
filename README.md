@@ -13,8 +13,14 @@ pnpm install
 pnpm dev
 ```
 
-Dann <http://localhost:5173> oeffnen. Erwartet: Status **Verbunden**, und der
-Ping-Button liefert `pong` samt Round-Trip-Zeit.
+Dann <http://localhost:5173> oeffnen. Erwartet: der Startbildschirm mit Spielern,
+Brett und Seed. „Partie starten" fuehrt in eine vollstaendige Hotseat-Partie am
+selben Geraet — Gruendung, Wuerfeln, Bauen, Bankhandel, Raeuber, Sieg.
+
+Die Hotseat-Partie braucht **keinen Server**. Die Verbindung wird erst
+aufgebaut, wenn man auf dem Startbildschirm „Verbindung und Diagnose" aufklappt;
+dort liefert der Ping-Button `pong` samt Round-Trip-Zeit. Ueber das Netz gespielt
+wird ab Etappe 5.
 
 `predev` baut `packages/shared` einmal vor, damit Editor und Typpruefung auf
 einem frischen Clone sofort korrekte Typen sehen.
@@ -41,11 +47,16 @@ ungueltiger Payload.
 
 ## Pakete
 
-| Paket             | Scope                | Inhalt                                                                                  |
-| ----------------- | -------------------- | --------------------------------------------------------------------------------------- |
-| `packages/shared` | `@conquerist/shared` | Protokoll, spaeter Spiellogik. Reines TypeScript, einzige Runtime-Dependency ist `zod`. |
-| `apps/server`     | `@conquerist/server` | Fastify 5 plus rohes `ws`, Autoritaet ueber den Spielzustand.                           |
-| `apps/client`     | `@conquerist/client` | React 19 mit Vite.                                                                      |
+| Paket             | Scope                | Inhalt                                                                                                         |
+| ----------------- | -------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `packages/shared` | `@conquerist/shared` | Protokoll, Hex-Geometrie, Szenario-Generator, Spiellogik. Reines TypeScript, einzige Runtime-Dependency `zod`. |
+| `apps/server`     | `@conquerist/server` | Fastify 5 plus rohes `ws`, Autoritaet ueber den Spielzustand.                                                  |
+| `apps/client`     | `@conquerist/client` | React 19 mit Vite, SVG-Brett und Hotseat-Partie.                                                               |
+
+Der Client **kennt keine Spielregel**. Er fragt `legalActions`, sortiert die
+Antwort nach Ort (Knoten, Kante, Feld) und schickt beim Klick die gefundene
+Aktion durch `reduce`. Dadurch gibt es genau eine Regelauslegung, und sie liegt
+in `shared` — dort, wo ab Etappe 4 auch der Server sie benutzt.
 
 ## Ports und Netzwerkweg
 
