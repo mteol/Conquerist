@@ -413,3 +413,162 @@ ohne Netzwerk. Dort entscheidet sich auch, ob die Felder spitz oder flach oben
 stehen — die Geometrie ist dazu bewusst orientierungsagnostisch geblieben.
 
 Wie gehabt: zuerst ein Plan zur Abnahme, dann Code.
+
+---
+
+## Etappe 3 — `client`: SVG-Brett und Hotseat ✅
+
+Stand: 2026-08-01, Branch `etappe-3-client-hotseat`.
+
+Alles unter `apps/client/src/`. **`packages/shared` ist unangetastet** — keine
+Zeile, keine Datei. Das war die Probe aufs Exempel fuer Etappen 1 und 2: was
+dort gebaut wurde, hat fuer eine vollstaendige Oberflaeche gereicht, ohne
+Nachbesserung.
+
+Entwurf und Plan liegen unter `docs/superpowers/`.
+
+### Abnahme
+
+| Pruefung                                      | Ergebnis                                           |
+| --------------------------------------------- | -------------------------------------------------- |
+| `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                              |
+| `pnpm test`                                   | 548 Tests gruen (shared 442, server 13, client 93) |
+| `pnpm build`                                  | gruen, Client-Bundle 328 kB (99 kB gzip), CSS 6 kB |
+| `pnpm format:check`                           | gruen                                              |
+| `pnpm --filter @conquerist/server acceptance` | 7/7 gruen, gegen laufende Server                   |
+
+Der Client waechst damit von 37 auf 93 Tests. Der Erinnerungsposten „keine
+React-Komponententests" aus Etappe 0 ist erledigt.
+
+### Was die Tests belegen
+
+- **Die Zeichnung kann nicht von der Geometrie abweichen.** Die Ecken eines
+  Feldes werden nicht aus Winkeln gerechnet, sondern aus den Knoten-Ids
+  abgeleitet: eine Id _ist_ die Menge ihrer drei Felder, und der Schwerpunkt
+  dieser drei Mittelpunkte ist genau die Ecke. Der Test prueft das ueber **alle**
+  19 Felder und alle sechs Ecken gegen `vertexId` — dieselbe Idee wie der
+  Kanonizitaetstest aus Etappe 1.
+- **Die Ausrichtung ist festgeschrieben**: die oberste Ecke liegt senkrecht ueber
+  dem Mittelpunkt, im Abstand eines Umkreisradius. Bei Kante oben laegen dort
+  zwei Ecken; der Test faellt dann durch.
+- **Die Klickkarte ist vollstaendig und eindeutig.** Was `legalActions` nennt,
+  steht in genau einer Karte und genau einmal — als Mengenvergleich geprueft,
+  nicht als Stichprobe. Zwei Aktionen auf demselben Knoten waeren ein
+  Widerspruch in den Regeln, deshalb wirft der Aufbau dort.
+- **Eine ganze Partie laeuft ueber die Klickkarten** (`fullGame.test.ts`), auf
+  beiden Brettern, bis `phase === 'finished'`. Gezaehlt wird dabei, dass die
+  Sonderwege wirklich vorkommen und nicht nur moeglich sind: Abwerfen nach einer
+  Sieben, Raeuber versetzen, Bankhandel. Und: **`replay` baut aus der im Client
+  gesammelten Folge denselben Endzustand** — Regel 2 gilt damit auch ueber die
+  Oberflaeche, und Etappe 6 kann die Folge unveraendert uebernehmen.
+- **Verdecken ist eine Projektion**, kein Ausblenden: fremde Haende werden zu
+  `null`, die eigene nie, die Kartenzahl bleibt sichtbar.
+- Mit jsdom: Klick auf einen leuchtenden Knoten setzt die Siedlung und schaltet
+  auf die Strasse weiter; nach der Gruendung ist nichts baubar, bevor gewuerfelt
+  ist; der Abwerf-Dialog gehoert genau einer Person.
+
+### Getroffene Entscheidungen
+
+**Der Client kennt keine einzige Regel.** Kein `if (genug Holz)`, kein „ist der
+Knoten frei". Die Oberflaeche ruft `legalActions(state, player)` und sortiert
+die Antwort nach Ort (`game/targets.ts`): Knoten, Kante, Feld. Ein Klick
+schlaegt darin nach und schickt die gefundene Aktion durch `reduce`. Damit
+existiert die Regelauslegung weiterhin genau einmal — dieselbe Kopplung, die
+`legalActions` und `reduce` sich seit Etappe 2 teilen, reicht jetzt bis in den
+Knopf.
+
+**Gebaut wird „Brett zuerst", ohne Baumodus.** Klick auf einen leuchtenden
+Knoten setzt eine Siedlung, auf die eigene Siedlung eine Stadt, auf eine
+leuchtende Kante eine Strasse. Das geht, weil die Zielart am Ort eindeutig ist —
+und der Test auf Eindeutigkeit haelt genau diese Voraussetzung fest.
+
+**Ausrichtung: Spitze oben.** Die Reihen 3-4-5-4-3 liegen damit waagerecht, wie
+im Blueprint und wie auf dem Tisch. Die Entscheidung faellt ausschliesslich in
+`board/layout.ts`; `shared` bleibt orientierungsagnostisch.
+
+**Nichts am Brett ist hartkodiert.** Gezeichnet wird die Feldliste des
+Szenarios, der `viewBox` folgt aus den tatsaechlichen Ausmassen. `classic56` mit
+3-4-5-6-5-4-3 faellt ohne eine Zeile Sonderfall an — belegt durch die
+Sechserpartie im Test.
+
+**Die Panels schweben, das Brett wird dazwischen eingepasst.** Der naheliegende
+Fehler waere, das Brett unter die Panels zu rechnen; dann laegen genau die
+Randknoten darunter, auf die man in der Gruendungsphase klickt. Stattdessen hat
+`.board-area` einen Einzug in Panelbreite, und das SVG passt sich per
+`preserveAspectRatio` hinein — ohne Messung zur Laufzeit.
+
+**Trefferflaechen statt Pixelrechnung.** Knoten sind `<circle>`, Kanten `<line>`
+mit unsichtbarer breiter Fassung. Der Browser trifft, nicht eine eigene
+Abstandsrechnung — und damit gibt es keine zweite Geometrie neben Etappe 1.
+
+**Namen und Farben gehoeren in den Client** (`seats.ts`). `PlayerState` kennt
+`id`, `resources`, `piecesLeft` — mehr nicht, und das ist richtig: wie jemand
+heisst, ist keine Regelfrage. Ab Etappe 4 wird aus der Sitz-Id eine `user_id`
+(Regel 7), ohne Aenderung an der Logik.
+
+**Verdecken ist die Vorarbeit fuer `PlayerView`.** Der Schalter im Tisch-Panel
+zeigt fremde Haende nur als Anzahl. Die Projektion ist eine reine Funktion
+(`game/view.ts`) — in Etappe 5 wird daraus dieselbe Projektion, nur
+serverseitig und nicht mehr abschaltbar.
+
+**Der Kurs im Handelsfenster wird abgeleitet, nicht gewaehlt.** `tradeRateFor`
+liefert ihn, hinaus gehen nur `give` und `receive`. Ein Client, der sich sein
+Verhaeltnis aussucht, waere genau das Ergebnis statt der Absicht, die Regel 3
+ausschliesst.
+
+**Die Etappe-0-Diagnose ist umgezogen, nicht weggeworfen** — in ein
+zugeklapptes Feld auf dem Startbildschirm. Dabei ist ein echter Fehler
+aufgefallen und behoben: `<details>` rendert seinen Inhalt auch zugeklappt und
+versteckt ihn nur optisch. `useConnection` waere also gelaufen, und eine
+Hotseat-Partie haette eine WebSocket-Verbindung aufgebaut, die sie nicht
+braucht. Jetzt entsteht der Inhalt erst beim Aufklappen; ein Test haelt das
+fest.
+
+**Der Seed steht im Startbildschirm.** Vorbelegt aus `crypto` — die einzige
+Stelle im Projekt mit echtem Zufall, und die Grenze zwischen Welt und Logik.
+Ab dem Eingabefeld ist alles wieder reproduzierbar: ein Brett, das komisch
+aussieht, ist damit ein Fehlerbericht statt einer Erinnerung.
+
+### Abweichungen vom Plan
+
+- **Ein Test mehr als geplant.** `fullGame.test.ts` war nicht vorgesehen. Er ist
+  entstanden, weil das Durchspielen von Hand im Browser nicht automatisierbar
+  ist — er geht dieselben Wege wie die Oberflaeche und faengt eine Sackgasse ab,
+  bevor sie jemand in der Brettmitte findet. Er ersetzt das Zuschauen nicht.
+- **Zwei Testerwartungen im Plan waren falsch** und wurden beim Umsetzen
+  korrigiert: `replay` liefert ein `ReduceResult` und keinen Zustand, und
+  „Gruendungssiedlung" enthaelt kein grossgeschriebenes „Siedlung".
+- **Die Sechserpartie im Test bekommt eine ausgeschriebene Frist** (30 s statt
+  der voreingestellten 5 s). Sie ist wirklich so lang: `actionTargets` fragt in
+  jedem Schritt `legalActions`, und das laeuft ueber alle Knoten, Kanten und
+  Kurse. Im Spiel geschieht das einmal je Bild und faellt nicht auf.
+
+### Offene Punkte
+
+- **Von Hand gespielt wurde noch nicht.** Die Kette laeuft, die Partie laeuft
+  automatisch durch, aber niemand hat zugesehen. Was dabei zu pruefen ist:
+  Lesbarkeit der Zahlenchips und Hafenmarken, ob das Brett bei schmalem Fenster
+  noch unter ein Panel geraet, und ob die Partie sich gut anfuehlt. Das ist der
+  erste Punkt fuer die naechste Sitzung.
+- **Keine Sitzverwaltung ueber die Partie hinaus.** „Zurueck zum Start" wirft
+  die Partie weg. Ohne Persistenz (Etappe 6) waere alles andere Vorbau.
+- **Kein Rueckgaengig.** Bewusst: mit verdeckter Information ab Etappe 5 waere es
+  nicht haltbar.
+- **Keine Animationen.** Ein Wurf erscheint, er rollt nicht.
+- **Der Verlauf haelt Saetze, keine Ereignisse.** Abgeleitet aus dem
+  Zustandsuebergang. Ereignisse bekommen ihren Anlass in Etappe 5.
+- **Das Client-Bundle waechst von 283 auf 328 kB** (86 → 99 kB gzip). Erwartbar:
+  Etappe 3 ist die erste, die `shared` wirklich benutzt. Der Hinweis aus Etappe 1
+  auf feinere Einstiegspunkte bleibt fuer Etappe 9 stehen.
+- Die Erinnerungsposten aus Etappe 0 bis 2 gelten weiter: kein ESLint, kein CI,
+  kompilierte Testdateien im `dist`, kein Node-Version-Pin, Hafenpositionen
+  gegen die Schachtel zu pruefen, Knoten- und Kanten-Ids ohne Branded Types.
+
+### Naechste Etappe
+
+**Etappe 4 — `server`: WS-Infra, SQLite, Gast-Identitaet.** Aus dem Hotseat wird
+ein Tisch mit mehreren Geraeten. Der Client hat dafuer schon die richtige Form:
+`useHotseatGame` haelt Zustand und Aktionsfolge an einer Stelle, und die
+verdeckte Ansicht ist bereits eine Projektion.
+
+Wie gehabt: zuerst ein Plan zur Abnahme, dann Code.

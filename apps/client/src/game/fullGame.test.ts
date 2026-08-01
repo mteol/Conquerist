@@ -42,6 +42,17 @@ import { actingPlayers } from './view';
  */
 const STEP_BUDGET = 40_000;
 
+/**
+ * Frist je Partie.
+ *
+ * Eine ganze Partie kostet ein paar Sekunden - `actionTargets` fragt in jedem
+ * Schritt `legalActions`, und das laeuft ueber alle Knoten, Kanten und Kurse.
+ * Im Spiel geschieht das einmal je Bild und faellt nicht auf; hier tausendfach.
+ * Die Voreinstellung von 5 s reicht dafuer im Gesamtlauf nicht, deshalb steht
+ * die Frist hier ausgeschrieben statt als stille Verkuerzung der Partie.
+ */
+const GAME_TIMEOUT_MS = 30_000;
+
 interface Outcome {
   readonly state: HotseatState;
   readonly discards: number;
@@ -146,41 +157,53 @@ function play(blueprint: ScenarioBlueprint, playerCount: number, seed: string): 
 }
 
 describe('Eine ganze Partie ueber die Klickkarten', () => {
-  it('endet auf dem Basisbrett mit einem Sieger', () => {
-    const { state, discards, robberMoves, trades } = play(CLASSIC_34, 3, 'partie-34');
+  it(
+    'endet auf dem Basisbrett mit einem Sieger',
+    () => {
+      const { state, discards, robberMoves, trades } = play(CLASSIC_34, 3, 'partie-34');
 
-    expect(state.game.phase.kind).toBe('finished');
-    expect(state.log.length).toBe(state.actions.length);
+      expect(state.game.phase.kind).toBe('finished');
+      expect(state.log.length).toBe(state.actions.length);
 
-    // Alle drei Sonderwege sind wirklich vorgekommen, nicht nur moeglich
-    // gewesen.
-    expect(robberMoves).toBeGreaterThan(0);
-    expect(discards).toBeGreaterThan(0);
-    expect(trades).toBeGreaterThan(0);
-  });
+      // Alle drei Sonderwege sind wirklich vorgekommen, nicht nur moeglich
+      // gewesen.
+      expect(robberMoves).toBeGreaterThan(0);
+      expect(discards).toBeGreaterThan(0);
+      expect(trades).toBeGreaterThan(0);
+    },
+    GAME_TIMEOUT_MS,
+  );
 
-  it('endet auch auf dem grossen Brett mit sechs Spielern', () => {
-    const { state } = play(CLASSIC_56, 6, 'partie-56');
+  it(
+    'endet auch auf dem grossen Brett mit sechs Spielern',
+    () => {
+      const { state } = play(CLASSIC_56, 6, 'partie-56');
 
-    expect(state.game.phase.kind).toBe('finished');
-    expect(state.game.players).toHaveLength(6);
-  });
+      expect(state.game.phase.kind).toBe('finished');
+      expect(state.game.players).toHaveLength(6);
+    },
+    GAME_TIMEOUT_MS,
+  );
 
-  it('baut aus der gesammelten Folge denselben Endzustand', () => {
-    const seed = 'partie-34';
-    const scenario = generateScenario(CLASSIC_34, seed);
-    const seats = defaultSeats(3);
-    const start = createGame(
-      scenario,
-      CLASSIC_RULES,
-      seats.map((seat) => seat.id),
-      seed,
-    );
+  it(
+    'baut aus der gesammelten Folge denselben Endzustand',
+    () => {
+      const seed = 'partie-34';
+      const scenario = generateScenario(CLASSIC_34, seed);
+      const seats = defaultSeats(3);
+      const start = createGame(
+        scenario,
+        CLASSIC_RULES,
+        seats.map((seat) => seat.id),
+        seed,
+      );
 
-    const { state } = play(CLASSIC_34, 3, seed);
-    const replayed = replay(start, state.actions);
+      const { state } = play(CLASSIC_34, 3, seed);
+      const replayed = replay(start, state.actions);
 
-    if (!replayed.ok) throw new Error(replayed.error.message);
-    expect(replayed.state).toEqual(state.game);
-  });
+      if (!replayed.ok) throw new Error(replayed.error.message);
+      expect(replayed.state).toEqual(state.game);
+    },
+    GAME_TIMEOUT_MS,
+  );
 });
