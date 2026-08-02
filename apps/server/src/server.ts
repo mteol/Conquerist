@@ -8,6 +8,7 @@ import { attachWebSocketServer } from './ws/attach.js';
 import { openDatabase } from './db/database.js';
 import { Users } from './identity/users.js';
 import { RoomRegistry } from './rooms/registry.js';
+import { SqliteRoomStore } from './rooms/sqliteStore.js';
 import { SinkHub } from './ws/sinks.js';
 
 async function main(): Promise<void> {
@@ -15,11 +16,24 @@ async function main(): Promise<void> {
   const app = buildApp(config);
 
   const database = openDatabase(config.databaseFile);
+  const store = new SqliteRoomStore(database, (message, detail) => {
+    app.log.error(detail as object, message);
+  });
+
   const deps = {
-    registry: new RoomRegistry(),
+    // Aus dem, was auf der Platte liegt: ein Neustart kostet keine Partie.
+    registry: RoomRegistry.load(store, {
+      onWriteError: (code, error) => {
+        // Der Zug ist bereits angenommen - hier wird protokolliert, nicht
+        // zurueckgenommen.
+        app.log.error({ code, err: error }, 'Raum liess sich nicht schreiben');
+      },
+    }),
     users: new Users(database),
     sinks: new SinkHub(),
   };
+
+  app.log.info({ rooms: deps.registry.all.length }, 'Raeume von der Platte geladen');
 
   const router = new MessageRouter({
     onHandlerError: (type, error, context) => {

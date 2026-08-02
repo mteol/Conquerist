@@ -148,7 +148,9 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     const acted = applyAction(room, user.id, payload.action);
     if (!acted.ok) throw new Error(acted.error);
 
-    registry.update(acted.room.code, acted.room);
+    // Die Aktion geht mit ins Log - aus ihr und dem Startzustand entsteht die
+    // Partie nach einem Neustart wieder.
+    registry.update(acted.room.code, acted.room, payload.action);
 
     // Der Verlaufssatz entsteht aus vorher/nachher und nicht aus der Absicht -
     // er kann damit nicht von dem abweichen, was wirklich geschehen ist.
