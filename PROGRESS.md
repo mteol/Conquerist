@@ -572,3 +572,186 @@ ein Tisch mit mehreren Geraeten. Der Client hat dafuer schon die richtige Form:
 verdeckte Ansicht ist bereits eine Projektion.
 
 Wie gehabt: zuerst ein Plan zur Abnahme, dann Code.
+
+---
+
+## Etappe 4+5 — Online-Partie: Server als Autoritaet ✅
+
+Stand: 2026-08-02, Branch `etappe-4-online`.
+
+Beide Etappen zusammen, weil sie eine Sache sind: ein Server, der den Zustand
+haelt, ist ohne Client, der ihn liest, nicht abnehmbar. Aus dem Hotseat ist ein
+Tisch auf sechs Geraeten geworden.
+
+Entwurf und Plan liegen unter `docs/superpowers/`.
+
+### Abnahme
+
+| Pruefung                                      | Ergebnis                                             |
+| --------------------------------------------- | ---------------------------------------------------- |
+| `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                                |
+| `pnpm test`                                   | 611 Tests gruen (shared 462, server 41, client 108)  |
+| `pnpm build`                                  | gruen, Client-Bundle 340 kB (102 kB gzip), CSS 14 kB |
+| `pnpm format:check`                           | gruen                                                |
+| `pnpm --filter @conquerist/server acceptance` | 19/19 gruen, gegen laufende Server                   |
+
+Die Abnahme ist von 7 auf 19 Pruefungen gewachsen. Die zwoelf neuen spielen
+eine echte Dreierpartie ueber drei getrennte WebSocket-Verbindungen: anmelden,
+Raum erstellen, beitreten, starten, die Gruendungsphase durchspielen, und dabei
+pruefen, was diese Etappe ausmacht — jeder bekommt seine eigene Sicht, fremde
+Handkarten sind `null`, `rng` steht in keiner Nachricht, nur einer hat Zuege,
+ein Zug fuer einen anderen wird abgelehnt, ein Abriss macht den Platz nicht
+frei, und das Sitzungsgeheimnis bringt dieselbe Person mit ihrem Stand zurueck.
+
+### Was die Tests belegen
+
+- **Die Geheimhaltungsgrenze haelt, und zwar rekursiv geprueft.** Der Test
+  sammelt alle Schluessel des Sichtbaums ein und sucht `rng` darin — nicht nur
+  auf der obersten Ebene. Wer den Zufallszustand kennt, rechnet jeden kuenftigen
+  Wurf voraus.
+- **Ein Ereignis, das sein Schema verletzt, geht nicht hinaus.** Der Test
+  schickt eine `view`, die keine `PlayerView` ist, und prueft, dass **nichts**
+  gesendet wird. Lieber ein Spieler ohne Aktualisierung als ein `rng` auf der
+  Leitung.
+- **Der Raum ist ohne Netz und ohne Datenbank pruefbar.** Neun Tests fuer
+  Beitritt, Farbvergabe, vollen Tisch, Start nur durch den Host, Fremdzug,
+  Abriss und Verlassen — alle gegen reine Funktionen.
+- **Beide Seiten rechnen das Abwerfen gleich.** Der Client hat mit
+  `discardCountForView` zum ersten Mal eine Rechnung, die es auch in `shared`
+  gibt; ein Test vergleicht beide ueber alle Spieler.
+
+### Getroffene Entscheidungen
+
+**Der Raum ist ein Wert, kein Objekt mit Methoden.** Jeder Uebergang gibt einen
+neuen Raum zurueck — dieselbe Denkweise wie beim `GameState` aus Etappe 2, und
+aus demselben Grund: so ist jeder Schritt ohne Socket pruefbar. Codes erfinden
+und Nachrichten verschicken passiert deshalb ausdruecklich woanders.
+
+**Zwei Protokoll-Registries statt einer mit leeren Feldern.** Die bestehende
+bildet Anfrage auf Antwort ab. Ein Ereignis hat keine Anfrage und damit weder
+`responseType` noch Request-Schema. Zwei leere Felder mit Erklaerung waeren
+schlechter als zwei Registries mit klarem Zweck.
+
+**Zugestellt wird je Empfaenger, nicht je Raum.** Ein gemeinsamer Broadcast
+waere bequemer und wuerde jedem die Handkarten aller schicken. Stattdessen
+entsteht fuer jeden eine eigene `PlayerView` — und die erlaubten Zuege gleich
+mit, denn `legalActions` braucht den vollen Zustand und laeuft deshalb auf dem
+Server.
+
+**Das Gast-Geheimnis liegt gehasht in der Datenbank.** Es ist faktisch ein
+Passwort: wer es hat, ist diese Person. Und in Etappe 7 wird aus genau dieser
+Zeile per UPDATE ein richtiges Konto — wer jetzt Klartext speichert, hat das
+Datenleck dann schon eingebaut. Ein unbekanntes Geheimnis wird abgelehnt statt
+still durch einen neuen Gast ersetzt; sonst waere ein Tippfehler im
+`localStorage` nicht von einem Angriff zu unterscheiden.
+
+**Gleicher Ursprung ist erlaubt.** Bis Etappe 3 stand dort eine feste
+Origin-Liste. Eine Tunneladresse wechselt bei jedem Start, und eine Liste, die
+man vor jedem Spieleabend pflegt, pflegt niemand. Der Server liefert den Client
+jetzt selbst aus; damit ist jede Verbindung gleichen Ursprungs, und die
+Ablehnung fremder Origins bleibt trotzdem in Kraft.
+
+**Der Reconnect hat keinen eigenen Zweig.** Beim Verbindungsaufbau laeuft immer
+dieselbe Folge: `hello` mit dem gespeicherten Geheimnis, danach `joinRoom`,
+falls ein Code bekannt ist. Findet der Server die Person an einem Tisch,
+schickt er Raum und Partie von sich aus. Das ist der ganze Reconnect.
+
+**Ein Stand mit kleinerer `version` wird verworfen** — und zwar so, dass
+dasselbe Objekt zurueckkommt, damit React gar nicht erst neu rendert. Nach
+einem Reconnect treffen Raum- und Spielstand dicht hintereinander ein, und
+dazwischen kann ein Zug liegen.
+
+**Die Woerter sind nach `shared` gewandert, die Farben nicht.** Der Server baut
+seit dieser Etappe den Verlaufssatz — er ist der einzige, der beide Zustaende
+kennt. Also brauchen beide Seiten dieselben deutschen Bezeichnungen. Die
+Gelaendefarben blieben im Client, direkt neben den Variablen in `index.css`,
+mit denen sie uebereinstimmen muessen. Der Server hat fuer eine Farbe keine
+Verwendung.
+
+**Der Schalter „Fremde Haende verdecken" ist verschwunden.** Verdeckt ist keine
+Ansichtssache mehr, sondern der Zustand. `resources === null` heisst jetzt
+„gehoert jemand anderem" und nicht „ausgeblendet" — ein Unterschied, den man
+der Oberflaeche nicht mehr abgewoehnen kann. Auch die lokale Partie zeigt nur
+noch die Hand dessen, der handeln darf: der Bildschirm wandert weiter, die
+Handkarten sollen es nicht.
+
+**Die Dialoge lesen ihre Auswahl aus der Aktionsliste.** Wer als Opfer eines
+Raeuberzugs in Frage kommt, stand bisher in einer Client-Rechnung ueber fremde
+Handkarten — die es jetzt nicht mehr gibt. Die moeglichen Opfer stehen in den
+Zuegen, die erlaubt sind. Dasselbe beim Banktausch. Das ist kein Umweg, sondern
+die konsequente Fassung von „der Client kennt keine Regel".
+
+### Design
+
+Der Abschnitt „Design" in `CLAUDE.md` ist mit dieser Etappe entstanden und ab
+jetzt Abnahmekriterium. Drei Sachen sind daraus konkret geworden:
+
+- **Der Wartebereich zeigt leere Plaetze als Spielsteine.** Jeder noch freie
+  Platz steht als gestrichelter Umriss in genau der Farbe, die er bekommen
+  wird. Wie viele fehlen, sieht man, ohne eine Zahl zu lesen — die Zahl steht
+  trotzdem daneben, weil Farbe und Form nie allein etwas tragen duerfen.
+- **Die Verben trennen die beiden Wege.** Online wird eine Partie _erstellt_
+  (danach wartet man), an einem Geraet wird sie _gestartet_ (sie laeuft
+  sofort). Der Unterschied steht im Wort und nicht in einer Hervorhebung.
+- **Bewegt wird nur, wo sich der Zustand aendert:** der Raeuber gleitet (man
+  soll sehen, woher er kam), ein neues Bauwerk waechst kurz auf, und ein
+  Kartenzuwachs erscheint als `+2` am Sitz. Der Zuwachs kommt aus der Differenz
+  zweier `cardCount` — nicht aus einer Ertragsrechnung, denn die waere die
+  Regel ein zweites Mal. Er verblasst ausserdem nicht von selbst: eine
+  abgeschaltete Animation steht sofort an ihrem Ende, ein ausblendender Chip
+  waere fuer alle mit `prefers-reduced-motion` von Anfang an unsichtbar.
+
+### Abweichungen vom Plan
+
+- **Aufgabe 13 und 14 sind ein Commit geworden.** Die Weiche in `App.tsx`
+  gehoerte laut Plan zu 13, kann aber erst stehen, wenn der Spielbildschirm
+  eine Sicht liest — das ist 14. Ein Zwischenstand, in dem eine gestartete
+  Online-Partie nirgends hinfuehrt, waere ein wissentlich kaputter Commit
+  gewesen.
+- **Kein Ertrag steigt ueber dem Feld auf.** Der Plan sah „+1 Erz" ueber dem
+  ausschuettenden Feld vor. Dafuer muesste der Client wissen, welches Feld bei
+  einer Acht liefert und ob der Raeuber es blockiert — das ist die Ertragsregel,
+  ein zweites Mal ausgelegt. Stattdessen der Zuwachs je Spieler aus der
+  Differenz; das _warum_ steht im Verlaufssatz, den der Server baut.
+- **Der Wurf zaehlt sich nicht ein.** Vier Sekundenzehntel hochzaehlende
+  Ziffern sind Dekoration, die sich als Information ausgibt. Der Wurf steht da,
+  sobald er da ist.
+- **Zwei Testerwartungen aus dem Plan waren falsch** und wurden beim Umsetzen
+  korrigiert: ein Array-Literal aus Konstanten weitet seine Literaltypen zu
+  `string` (`as const` noetig), und der Startknopf im Wartebereich heisst
+  „Partie starten" wie auf dem Startbildschirm — nicht „Starten", wie der
+  Testfilter es erwartete. Design-Regel 8 (ein Wort bleibt durch den ganzen
+  Ablauf gleich) schlaegt hier den Plan.
+- **`tradeRateFor` in `shared` nimmt jetzt einen Strukturtyp** statt eines
+  vollen `GameState`. Es braucht nur Brett und Belegung; so kann auch eine
+  `PlayerView` den Kurs ausrechnen, ohne dass eine Regel doppelt ausgelegt
+  wird — es ist dieselbe Funktion.
+
+### Offene Punkte
+
+- **Von Hand gespielt wurde immer noch nicht.** Die Abnahme spielt eine Partie
+  ueber das Protokoll durch, aber niemand hat zu sechst an sechs Geraeten
+  gesessen. Der Punkt aus Etappe 3 bleibt damit offen und waechst: dazu kommt
+  jetzt, ob der Wartebereich auf einem Handy taugt und ob der Zuwachs-Chip
+  auffaellt, ohne zu stoeren.
+- **Kein Tunnel ausprobiert.** Die Origin-Regel ist dafuer gebaut und getestet,
+  aber es lief noch kein `cloudflared` dagegen.
+- **Ein Neustart wirft laufende Partien weg.** Die Raeume liegen im Speicher;
+  Persistenz ist Etappe 6. Beim Entwickeln faellt das auf, weil `tsx watch` bei
+  jedem Speichern neu startet.
+- **Kein Rundenwechsel-Hinweis fuer den, der nicht dran ist.** Online sieht man
+  am Tisch, wer handelt, aber es holt einen nichts an den Bildschirm zurueck.
+- **Kein Schutz gegen einen Host, der einfach geht.** Verlaesst er den
+  Wartebereich, rueckt der naechste Sitz nach — in einer laufenden Partie
+  passiert nichts, der Platz bleibt getrennt stehen.
+- Die Erinnerungsposten aus Etappe 0 bis 3 gelten weiter: kein ESLint, kein CI,
+  kein Node-Version-Pin, Hafenpositionen gegen die Schachtel zu pruefen,
+  Knoten- und Kanten-Ids ohne Branded Types.
+
+### Naechste Etappe
+
+**Etappe 6 — Persistenz: Action-Log und Snapshot, Lobby.** Der Raum ist bereits
+ein Wert und damit das, was sich ablegen laesst; die Aktionsfolge ist seit
+Etappe 3 genau die Eingabe fuer `replay`. Beides trifft sich hier.
+
+Wie gehabt: zuerst ein Plan zur Abnahme, dann Code.

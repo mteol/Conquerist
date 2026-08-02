@@ -124,8 +124,8 @@ stand. Farben am SVG deshalb per `style`.
 1. ✅ shared: Hex-Geometrie, kanonische Vertex/Edge-IDs, Szenario-Generator
 2. ✅ shared: GameState + Reducer, Basisregeln
 3. ✅ client: SVG-Board + Hotseat (vollständiges Spiel ohne Netzwerk)
-4. server: WS-Infra, SQLite, Gast-Identität
-5. Client-Anbindung, State-Filtering, Reconnect
+4. ✅ server: WS-Infra, SQLite, Gast-Identität
+5. ✅ Client-Anbindung, State-Filtering, Reconnect
 6. Persistence: Action-Log + Snapshot, Lobby
 7. Auth: Registrierung, Login, Gast-Account beanspruchen
 8. Handel, Entwicklungskarten
@@ -133,8 +133,8 @@ stand. Farben am SVG deshalb per `style`.
 10. Erweiterungen
 
 ## Aktueller Stand
-Etappen 0 bis 3 fertig, je auf eigenem Branch, noch nichts in `main`.
-Als Nächstes Etappe 4: Server mit WS-Infra, SQLite und Gast-Identität.
+Etappen 0 bis 5 fertig. 0–3 liegen in `main`, 4+5 auf `etappe-4-online`.
+Als Nächstes Etappe 6: Action-Log, Snapshot, Lobby über die Partie hinaus.
 
 Was in `shared` schon steht:
 - `protocol/` — Envelope, Registry, Ping (Etappe 0)
@@ -142,24 +142,43 @@ Was in `shared` schon steht:
 - `geometry/` — Hex, Richtungen 0–5, kanonische Knoten-/Kanten-IDs, Topologie
 - `scenario/` — Gelände, Häfen, Zod-Definition, Fairness, Blueprints, Generator
 - `rules/` — RuleSet (Baukosten, Siegpunkte, Vorräte, Handkartenlimit)
+- `seats.ts` — Sitz-Typ und Farbpalette (Etappe 4; der Server vergibt Farben)
 - `game/` — GameState, Actions, Reducer, Basisregeln. Einstiegspunkte:
   `createGame`, `reduce`, `legalActions`, `replay`. Der Reducer wirft nicht,
   er gibt `{ ok, state }` oder `{ ok: false, error }` zurück.
+  Dazu seit Etappe 4: `playerView.ts` (die Geheimhaltungsgrenze), `log.ts`
+  (Verlaufssätze — der Server baut sie), `labels.ts` (die deutschen Wörter;
+  die **Farben** blieben im Client neben `index.css`)
 
 Regeln liegen je in eigener Datei, jeweils als `can…` (nur prüfen) und
 `apply…` (prüfen und anwenden). `legalActions` benutzt dieselben `can…` —
 neue Regeln bitte genauso, damit es weiter nur eine Auslegung gibt.
 
-Was im Client steht (Etappe 3):
-- `seats.ts` — Name und Farbe je Spieler; `shared` kennt beides bewusst nicht
+Was im Server steht (Etappe 4/5):
+- `db/`, `identity/` — SQLite, Gäste; das Sitzungsgeheimnis liegt **nur gehasht**
+- `rooms/` — der Raum als Wert (`room.ts`), Codevergabe (`registry.ts`),
+  Zustellung je Empfänger (`broadcast.ts`)
+- `ws/` — Router, Sitzung je Verbindung, geprüftes Senden ohne Anfrage,
+  Origin-Regel (gleicher Ursprung ist erlaubt — dafür Tunnel ohne Konfiguration)
+
+Was im Client steht:
+- `seats.ts` — reicht Typ und Palette aus `shared` durch, plus lokale Besetzung
 - `board/` — Feld/Knoten/Kante zu Punkten (Spitze oben), das SVG-Brett
-- `game/` — Klickkarten, Anzeigemodell samt Verdecken, Verlaufssätze,
-  Hotseat-Zustand
+- `game/` — Klickkarten, Anzeigemodell, Hotseat- und Online-Zustand
+- `net/` — Transport, Sitzungsgeheimnis, Einladungslink
 - `panels/`, `dialogs/`, `screens/`, `diagnostics/` — Oberfläche
 
-**Der Client kennt keine Regel.** Er fragt `legalActions`, sortiert die Antwort
-nach Ort (`game/targets.ts`), und ein Klick schickt die gefundene Aktion durch
-`reduce`. Kein `if (genug Holz)` im Client — sonst gäbe es zwei Auslegungen.
+**Der Client kennt keine Regel.** Er bekommt eine Aktionsliste, sortiert sie
+nach Ort (`game/targets.ts`), und ein Klick schickt die gefundene Aktion
+hinaus. Lokal holt er die Liste selbst über `legalActions`, online kommt sie
+vom Server. Kein `if (genug Holz)` im Client — sonst gäbe es zwei Auslegungen.
+Auch die Dialoge lesen ihre Auswahl aus der Aktionsliste (welches Opfer, welcher
+Tausch), nicht aus einer eigenen Rechnung über fremde Handkarten: die sieht der
+Client seit Etappe 5 gar nicht mehr.
+
+**Ein Satz Bildschirme für beide Quellen.** `GameScreen` bekommt eine
+`PlayerView` und eine Aktionsliste. Die lokale Partie baut beides mit denselben
+Funktionen selbst (`useLocalGame`), die Online-Partie bekommt beides geschickt.
 Knoten- und Kantenpositionen kommen aus der Id (Schwerpunkt der angrenzenden
 Felder), nicht aus einer zweiten Winkelrechnung.
 
