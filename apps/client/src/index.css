@@ -130,6 +130,106 @@ body {
   font-weight: 500;
 }
 
+/* --- Hauptmenue ----------------------------------------------------------- *
+ *
+ * Die erste Flaeche. Sie traegt einen Titel, drei Wege und sonst nichts.
+ *
+ * Der Hintergrund ist das Hexfeld aus `HexField.tsx` - gezeichnet mit den
+ * Funktionen des Bretts, nicht als Muster. Darueber liegt derselbe
+ * Tiefsee-Verlauf wie auf den anderen Bildschirmen, damit die Mitte traegt und
+ * die Raender sich verlieren.
+ */
+
+.menu {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 70% at 50% 45%, var(--sea-700) 0%, transparent 65%), var(--sea-900);
+}
+
+.hexfield {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--on-sea);
+  stroke-width: 0.012;
+}
+
+.menu__inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2rem, 6vh, 3.5rem);
+  align-items: center;
+  padding: 2rem 1.25rem;
+  text-align: center;
+}
+
+/*
+ * Der Titel in derselben Setzung wie auf dem Startbildschirm, nur groesser:
+ * hoher Gewichtssprung, sehr enge Laufweite, Versalien. Kein Webfont - die
+ * Persoenlichkeit kommt aus der Setzung (Regel 3).
+ */
+.menu__brand h1 {
+  margin: 0;
+  font-size: clamp(3.2rem, 11vw, 7rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 0.9;
+  text-transform: uppercase;
+  color: var(--parchment);
+}
+
+.menu__lead {
+  margin: 0.9rem 0 0;
+  color: var(--on-sea-muted);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+}
+
+.menu__entries {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(100%, 22rem);
+}
+
+/*
+ * Drei gleichwertige Zeilen. Keine wird hervorgehoben - welcher Weg der
+ * richtige ist, weiss der Spieler und nicht der Bildschirm.
+ */
+.menu__entry {
+  padding: 0.85rem 1.2rem;
+  border: 1px solid rgb(233 225 207 / 22%);
+  border-radius: var(--radius);
+  background: rgb(233 225 207 / 7%);
+  color: var(--on-sea);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease;
+}
+
+.menu__entry:hover {
+  border-color: rgb(233 225 207 / 45%);
+  background: rgb(233 225 207 / 14%);
+}
+
+/* Weiterspielen steht oben und traegt als einziges den Akzent - es ist kein
+   vierter Weg, sondern die Rueckkehr in etwas Angefangenes. */
+.menu__entry--resume {
+  border-color: var(--accent);
+  background: rgb(224 179 74 / 14%);
+}
+
 /* --- Startbildschirm ------------------------------------------------------ */
 
 /*
@@ -152,6 +252,23 @@ body {
   gap: 1.15rem;
   padding: clamp(1.5rem, 4vw, 3rem);
   overflow-y: auto;
+}
+
+/* Zurueck ins Menue: leise, aber immer an derselben Stelle. */
+.start__back {
+  display: block;
+  margin-bottom: 0.6rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-sea-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.start__back:hover {
+  color: var(--on-sea);
 }
 
 .start__brand h1 {

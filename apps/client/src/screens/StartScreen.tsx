@@ -42,6 +42,17 @@ export interface StartScreenProps {
   /** Partien, an denen dieser Spieler sitzt. Leer heisst: der Bereich fehlt. */
   readonly myRooms?: readonly RoomSummary[];
   readonly onResume?: (code: string) => void;
+  /**
+   * Welcher Weg gemeint ist - kommt aus dem Hauptmenue.
+   *
+   * Ohne Angabe stehen wie bisher alle nebeneinander. Mit Angabe zeigt der
+   * Bildschirm nur den gewaehlten: wer im Menue „Lokal spielen" gedrueckt hat,
+   * hat die Entscheidung schon getroffen und soll sie hier nicht noch einmal
+   * vorgelegt bekommen.
+   */
+  readonly mode?: 'online' | 'local' | 'join' | 'all';
+  /** Zurueck ins Hauptmenue. Fehlt, wenn es keines gibt. */
+  readonly onBack?: () => void;
 }
 
 const BLUEPRINTS: readonly ScenarioBlueprint[] = [CLASSIC_34, CLASSIC_56];
@@ -99,6 +110,8 @@ export function StartScreen({
   initialName = '',
   myRooms = [],
   onResume,
+  mode = 'all',
+  onBack,
 }: StartScreenProps): JSX.Element {
   const [seats, setSeats] = useState<Seat[]>(() => defaultSeats(MIN_SEATS));
   const [seed, setSeed] = useState(randomSeed);
@@ -166,64 +179,84 @@ export function StartScreen({
 
   const shown = problem ?? localProblem;
 
+  const showsOnline = mode === 'all' || mode === 'online';
+  const showsLocal = mode === 'all' || mode === 'local';
+  const showsJoin = mode === 'all' || mode === 'join';
+  /* Wer nur beitritt, waehlt weder Tischgroesse noch Brett - beides bestimmt
+     der, der die Partie erstellt hat. */
+  const showsBoard = showsOnline || showsLocal;
+
+  const heading =
+    mode === 'local' ? 'Lokal spielen' : mode === 'join' ? 'Spiel beitreten' : 'Spiel starten';
+
   return (
     <main className="start">
       <section className="start__panel">
         <header className="start__brand">
-          <span className="eyebrow">Etappe 4 · Online</span>
-          <h1>Conquerist</h1>
+          {onBack === undefined ? null : (
+            <button type="button" className="start__back" onClick={onBack}>
+              ← Hauptmenü
+            </button>
+          )}
+          <h1>{mode === 'all' ? 'Conquerist' : heading}</h1>
           <p className="start__lead">Drei bis sechs Spieler — an sechs Geräten oder an einem.</p>
         </header>
 
-        <fieldset className="field-group">
-          <legend>Spieler</legend>
-          <div className="seatcount">
-            {SEAT_COUNTS.map((count) => (
-              <span key={count}>
-                <input
-                  id={`seatcount-${count}`}
-                  type="radio"
-                  name="seatcount"
-                  aria-label={`${count} Spieler`}
-                  checked={seats.length === count}
-                  onChange={() => resize(count)}
-                />
-                <label htmlFor={`seatcount-${count}`}>{count}</label>
-              </span>
-            ))}
-          </div>
-        </fieldset>
+        {showsBoard ? (
+          <fieldset className="field-group">
+            <legend>Spieler</legend>
+            <div className="seatcount">
+              {SEAT_COUNTS.map((count) => (
+                <span key={count}>
+                  <input
+                    id={`seatcount-${count}`}
+                    type="radio"
+                    name="seatcount"
+                    aria-label={`${count} Spieler`}
+                    checked={seats.length === count}
+                    onChange={() => resize(count)}
+                  />
+                  <label htmlFor={`seatcount-${count}`}>{count}</label>
+                </span>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
 
-        <fieldset className="field-group">
-          <legend>Seed</legend>
-          <div className="seedrow">
-            <input
-              aria-label="Seed"
-              value={seed}
-              maxLength={24}
-              onChange={(event) => setSeed(event.currentTarget.value)}
-            />
-            <button
-              type="button"
-              className="button button--ghost"
-              onClick={() => setSeed(randomSeed())}
-            >
-              Neu würfeln
-            </button>
-          </div>
-          <p className="start__note">
-            Gleicher Seed, gleiches Brett — bei euch und bei allen anderen.
-          </p>
-        </fieldset>
+        {showsBoard ? (
+          <fieldset className="field-group">
+            <legend>Seed</legend>
+            <div className="seedrow">
+              <input
+                aria-label="Seed"
+                value={seed}
+                maxLength={24}
+                onChange={(event) => setSeed(event.currentTarget.value)}
+              />
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => setSeed(randomSeed())}
+              >
+                Neu würfeln
+              </button>
+            </div>
+            <p className="start__note">
+              Gleicher Seed, gleiches Brett — bei euch und bei allen anderen.
+            </p>
+          </fieldset>
+        ) : null}
 
-        <div className="boardfact">
-          <span className="boardfact__name">{blueprint?.name ?? 'Kein passendes Brett'}</span>
-          <span className="boardfact__detail">
-            {blueprint === undefined
-              ? `${seats.length} Spieler`
-              : `${blueprint.rows.reduce((sum, row) => sum + row, 0)} Felder`}
-          </span>
-        </div>
+        {showsBoard ? (
+          <div className="boardfact">
+            <span className="boardfact__name">{blueprint?.name ?? 'Kein passendes Brett'}</span>
+            <span className="boardfact__detail">
+              {blueprint === undefined
+                ? `${seats.length} Spieler`
+                : `${blueprint.rows.reduce((sum, row) => sum + row, 0)} Felder`}
+            </span>
+          </div>
+        ) : null}
 
         {shown === null ? null : <p className="error">{shown}</p>}
 
@@ -267,100 +300,117 @@ export function StartScreen({
           </section>
         )}
 
-        <section className="way">
-          <span className="eyebrow">Online spielen</span>
-          <p className="way__lead">Jeder an seinem Gerät. Beitritt über Code oder Link.</p>
-
-          <label className="field-label" htmlFor="displayname">
-            Dein Name
-          </label>
-          <input
-            id="displayname"
-            value={name}
-            maxLength={16}
-            placeholder="Anna"
-            onChange={(event) => setName(event.currentTarget.value)}
-          />
-
-          <button
-            type="button"
-            className="button button--go"
-            disabled={name.trim() === ''}
-            onClick={() => onCreateRoom(seats.length, seed, name.trim())}
-          >
-            Partie erstellen
-          </button>
-
-          <p className="way__or">oder</p>
-
-          <div className="seedrow">
+        {/*
+         * Der Name steht bei beiden Online-Wegen, deshalb einmal davor. Wer
+         * erstellt und wer beitritt, braucht ihn gleichermassen - zweimal
+         * dasselbe Feld waeren zwei Orte fuer eine Angabe.
+         */}
+        {showsOnline || showsJoin ? (
+          <fieldset className="field-group">
+            <legend>Dein Name</legend>
             <input
-              aria-label="Raumcode"
-              value={code}
-              maxLength={4}
-              placeholder="K7X2"
-              onChange={(event) => setCode(event.currentTarget.value.toUpperCase())}
+              id="displayname"
+              aria-label="Dein Name"
+              value={name}
+              maxLength={16}
+              placeholder="Anna"
+              onChange={(event) => setName(event.currentTarget.value)}
             />
+          </fieldset>
+        ) : null}
+
+        {showsOnline ? (
+          <section className="way">
+            <span className="eyebrow">Online spielen</span>
+            <p className="way__lead">Jeder an seinem Gerät. Beitritt über Code oder Link.</p>
+
             <button
               type="button"
-              className="button"
-              // Aus dem Einladungslink gekommen: der Code steht schon da, es
-              // fehlt nur noch der Griff zur Maus.
-              autoFocus={initialCode !== null}
-              disabled={code.trim().length !== 4 || name.trim() === ''}
-              onClick={() => onJoinRoom(code.trim(), name.trim())}
+              className="button button--go"
+              disabled={name.trim() === ''}
+              onClick={() => onCreateRoom(seats.length, seed, name.trim())}
             >
-              Beitreten
+              Partie erstellen
             </button>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
-        <section className="way">
-          <span className="eyebrow">An einem Gerät</span>
-          <p className="way__lead">Alle am selben Bildschirm, reihum.</p>
+        {showsJoin ? (
+          <section className="way">
+            <span className="eyebrow">Spiel beitreten</span>
+            <p className="way__lead">Vier Zeichen, vorgelesen oder aus dem Einladungslink.</p>
 
-          <ol className="seats">
-            {seats.map((seat, index) => (
-              <li key={seat.id}>
-                <PieceMark color={SEAT_COLORS[index] ?? seat.color} />
+            <div className="seedrow">
+              <input
+                aria-label="Raumcode"
+                value={code}
+                maxLength={4}
+                placeholder="K7X2"
+                onChange={(event) => setCode(event.currentTarget.value.toUpperCase())}
+              />
+              <button
+                type="button"
+                className="button"
+                // Aus dem Einladungslink gekommen: der Code steht schon da, es
+                // fehlt nur noch der Griff zur Maus.
+                autoFocus={initialCode !== null}
+                disabled={code.trim().length !== 4 || name.trim() === ''}
+                onClick={() => onJoinRoom(code.trim(), name.trim())}
+              >
+                Beitreten
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {showsLocal ? (
+          <section className="way">
+            <span className="eyebrow">An einem Gerät</span>
+            <p className="way__lead">Alle am selben Bildschirm, reihum.</p>
+
+            <ol className="seats">
+              {seats.map((seat, index) => (
+                <li key={seat.id}>
+                  <PieceMark color={SEAT_COLORS[index] ?? seat.color} />
+                  <input
+                    aria-label={`Name von Spieler ${index + 1}`}
+                    value={seat.name}
+                    maxLength={16}
+                    onChange={(event) => rename(index, event.currentTarget.value)}
+                  />
+                </li>
+              ))}
+            </ol>
+
+            <fieldset className="field-group way__hand">
+              <legend>Handkarten</legend>
+              <label htmlFor="hand-conceal">
                 <input
-                  aria-label={`Name von Spieler ${index + 1}`}
-                  value={seat.name}
-                  maxLength={16}
-                  onChange={(event) => rename(index, event.currentTarget.value)}
+                  id="hand-conceal"
+                  type="radio"
+                  name="hand"
+                  checked={conceal}
+                  onChange={() => setConceal(true)}
                 />
-              </li>
-            ))}
-          </ol>
+                Beim Zugwechsel zudecken
+              </label>
+              <label htmlFor="hand-open">
+                <input
+                  id="hand-open"
+                  type="radio"
+                  name="hand"
+                  checked={!conceal}
+                  onChange={() => setConceal(false)}
+                />
+                Offen liegen lassen
+              </label>
+            </fieldset>
 
-          <fieldset className="field-group way__hand">
-            <legend>Handkarten</legend>
-            <label htmlFor="hand-conceal">
-              <input
-                id="hand-conceal"
-                type="radio"
-                name="hand"
-                checked={conceal}
-                onChange={() => setConceal(true)}
-              />
-              Beim Zugwechsel zudecken
-            </label>
-            <label htmlFor="hand-open">
-              <input
-                id="hand-open"
-                type="radio"
-                name="hand"
-                checked={!conceal}
-                onChange={() => setConceal(false)}
-              />
-              Offen liegen lassen
-            </label>
-          </fieldset>
-
-          <button type="button" className="button" onClick={startLocal}>
-            Lokale Partie starten
-          </button>
-        </section>
+            <button type="button" className="button" onClick={startLocal}>
+              Lokale Partie starten
+            </button>
+          </section>
+        ) : null}
 
         {/*
          * Der Inhalt wird erst erzeugt, wenn das Feld offen ist - und nicht
@@ -380,7 +430,7 @@ export function StartScreen({
       </section>
 
       <div className="start__preview">
-        {preview === null ? null : (
+        {preview === null || !showsBoard ? null : (
           <BoardSvg
             state={preview}
             targets={EMPTY_TARGETS}

@@ -4,6 +4,7 @@ import type { Seat } from './seats';
 import { GameScreen } from './screens/GameScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
 import { StartScreen, type LocalOptions } from './screens/StartScreen';
+import { MenuScreen, type MenuChoice } from './screens/MenuScreen';
 import { useLocalGame } from './game/useLocalGame';
 import { useOnlineGame } from './game/useOnlineGame';
 import { loadName, roomFromLocation } from './net/session';
@@ -75,9 +76,35 @@ function Online({
   const online = useOnlineGame(roomFromLocation());
   const { room, view } = online.state;
 
+  /*
+   * Welcher Weg gewaehlt wurde. `null` heisst: das Hauptmenue steht.
+   *
+   * Ein Einladungslink ueberspringt es - wer ihm gefolgt ist, hat seine
+   * Entscheidung schon getroffen, und ein Menue davor waere eine Huerde
+   * zwischen Klick und Tisch.
+   */
+  const [choice, setChoice] = useState<Exclude<MenuChoice, 'resume'> | null>(
+    roomFromLocation() === null ? null : 'join',
+  );
+
+  if (room === null && choice === null) {
+    return (
+      <MenuScreen
+        openGames={online.myRooms.length}
+        onChoose={(next) => {
+          // „Weiterspielen" ist kein eigener Bildschirm: die Liste steht auf
+          // dem Startbildschirm, und dorthin fuehrt sie.
+          setChoice(next === 'resume' ? 'online' : next);
+        }}
+      />
+    );
+  }
+
   if (room === null) {
     return (
       <StartScreen
+        mode={choice ?? 'all'}
+        onBack={() => setChoice(null)}
         onStartLocal={onStartLocal}
         onCreateRoom={(seatCount, seed, name) => {
           void online.createRoom(seatCount, seed, name);
