@@ -101,6 +101,9 @@ function Online({
         onLeave={() => {
           void online.leaveRoom();
         }}
+        onConfigure={(seatCount, seed) => {
+          void online.configureRoom(seatCount, seed);
+        }}
       />
     );
   }

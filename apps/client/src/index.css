@@ -559,6 +559,42 @@ body {
   height: 1.6rem;
 }
 
+/*
+ * Die Tischgroesse wird am Tisch eingestellt, nicht daneben.
+ *
+ * Deshalb stehen die beiden Knoepfe direkt unter der Sitzliste und nicht in
+ * einem eigenen Kasten: was sie veraendern, steht unmittelbar darueber, und der
+ * gestrichelte Umriss ist das Ergebnis.
+ */
+.lobby__resize {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.lobby__setting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: center;
+  width: min(100%, 34rem);
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid rgb(233 225 207 / 12%);
+  border-radius: var(--radius);
+  background: rgb(0 0 0 / 16%);
+  text-align: center;
+}
+
+.lobby__seed {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--parchment);
+  overflow-wrap: anywhere;
+}
+
 .lobby__foot {
   display: flex;
   flex-direction: column;

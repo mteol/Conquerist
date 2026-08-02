@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { legalActions, setupPlayer } from '@conquerist/shared';
 import {
   applyAction,
+  configureRoom,
   createRoom,
   joinRoom,
   leaveRoom,
@@ -86,6 +87,40 @@ describe('Raum', () => {
     const accepted = applyAction(running, setupPlayer(game)!, first);
     expect(accepted.ok).toBe(true);
     if (accepted.ok) expect(accepted.room.version).toBe(running.version + 1);
+  });
+
+  it('laesst den Host die Partie im Wartebereich noch umstellen', () => {
+    const changed = configureRoom(room(), 'u1', 5, 'anderer-seed');
+
+    expect(changed.ok).toBe(true);
+    if (changed.ok) {
+      expect(changed.room.seatCount).toBe(5);
+      expect(changed.room.seed).toBe('anderer-seed');
+      expect(changed.room.version).toBeGreaterThan(room().version);
+    }
+  });
+
+  it('laesst nur den Host umstellen', () => {
+    expect(configureRoom(withThree(), 'u2', 6, 'egal').ok).toBe(false);
+  });
+
+  it('macht den Tisch nicht kleiner als die Zahl derer, die schon sitzen', () => {
+    // Sonst muesste jemand seinen Platz raeumen, den er schon hat - und der
+    // Wartebereich waere der falsche Ort, das zu entscheiden.
+    expect(configureRoom(withThree(), 'u1', 3, 'raum-probe').ok).toBe(true);
+    const shrunk = configureRoom(withThree(), 'u1', 2, 'raum-probe');
+    expect(shrunk.ok).toBe(false);
+  });
+
+  it('weist eine Tischgroesse ohne passendes Brett zurueck', () => {
+    expect(configureRoom(room(), 'u1', 7, 'raum-probe').ok).toBe(false);
+  });
+
+  it('stellt eine laufende Partie nicht mehr um', () => {
+    const started = startGame(withThree(), 'u1');
+    if (!started.ok) throw new Error(started.error);
+
+    expect(configureRoom(started.room, 'u1', 4, 'zu-spaet').ok).toBe(false);
   });
 
   it('behaelt den Platz, wenn die Verbindung abbricht', () => {

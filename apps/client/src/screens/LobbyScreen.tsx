@@ -1,6 +1,7 @@
 import { useState, type JSX } from 'react';
-import { seatColorAt, type RoomEvent } from '@conquerist/shared';
+import { MAX_SEATS, MIN_SEATS, seatColorAt, type RoomEvent } from '@conquerist/shared';
 import { invitationLink } from '../net/session';
+import { randomSeed } from './StartScreen';
 
 /**
  * Der Wartebereich.
@@ -11,7 +12,16 @@ import { invitationLink } from '../net/session';
  *
  * **Aufbau:** Der Raumcode ist das groesste Element der ganzen Anwendung - vier
  * Zeichen auf Pergament, weit gesperrt, damit er sich vorlesen laesst. Darunter
- * der Einladungslink zum Kopieren, dann der Tisch, unten die eine Handlung.
+ * der Einladungslink zum Kopieren, dann der Tisch samt Einstellungen, unten die
+ * eine Handlung.
+ *
+ * **Die Partie bleibt formbar, solange niemand gestartet hat.** Tischgroesse
+ * und Seed lassen sich hier noch aendern - eine Runde soll nicht deshalb neu
+ * gegruendet werden muessen, weil doch einer mehr mitspielt. Die Tischgroesse
+ * wird dabei **am Tisch selbst** eingestellt: der Host legt einen Platz dazu
+ * oder nimmt ihn weg, und derselbe gestrichelte Umriss, der den freien Platz
+ * anzeigt, ist das Ergebnis. Steuerelement und Anzeige sind dasselbe, und alle
+ * am Tisch sehen die Aenderung sofort.
  *
  * **Das eine Element, an das man sich erinnert:** der Tisch mit den leeren
  * Plaetzen. Jeder noch freie Platz steht als blasser, gestrichelter Spielstein
@@ -26,15 +36,34 @@ export interface LobbyScreenProps {
   readonly youId: string;
   readonly onStart: () => void;
   readonly onLeave: () => void;
+  /** Tischgroesse und Seed umstellen. Der Server prueft beides noch einmal. */
+  readonly onConfigure: (seatCount: number, seed: string) => void;
 }
 
-export function LobbyScreen({ room, youId, onStart, onLeave }: LobbyScreenProps): JSX.Element {
+export function LobbyScreen({
+  room,
+  youId,
+  onStart,
+  onLeave,
+  onConfigure,
+}: LobbyScreenProps): JSX.Element {
   const [copied, setCopied] = useState(false);
 
   const host = room.seats.find((seat) => seat.userId === room.hostId);
   const youAreHost = room.hostId === youId;
   const missing = room.seatCount - room.seats.length;
   const open = Array.from({ length: Math.max(missing, 0) }, (_unused, index) => index);
+
+  /*
+   * Wer einstellen darf. Der Server prueft dasselbe noch einmal - hier geht es
+   * nur darum, keinen Knopf anzubieten, der ohnehin abgelehnt wuerde.
+   *
+   * Kleiner als die Zahl der Sitzenden geht nicht: sonst muesste jemand seinen
+   * Platz raeumen, und das ist im Wartebereich nicht zu entscheiden.
+   */
+  const canConfigure = youAreHost && !room.started;
+  const canGrow = canConfigure && room.seatCount < MAX_SEATS;
+  const canShrink = canConfigure && room.seatCount > Math.max(MIN_SEATS, room.seats.length);
 
   const copyLink = (): void => {
     void navigator.clipboard.writeText(invitationLink(room.code)).then(
@@ -91,6 +120,44 @@ export function LobbyScreen({ room, youId, onStart, onLeave }: LobbyScreenProps)
             </li>
           ))}
         </ol>
+
+        {canConfigure ? (
+          <div className="lobby__resize">
+            <button
+              type="button"
+              className="button button--ghost"
+              disabled={!canShrink}
+              onClick={() => onConfigure(room.seatCount - 1, room.seed)}
+            >
+              Platz entfernen
+            </button>
+            <button
+              type="button"
+              className="button button--ghost"
+              disabled={!canGrow}
+              onClick={() => onConfigure(room.seatCount + 1, room.seed)}
+            >
+              Platz hinzufügen
+            </button>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="lobby__setting" aria-label="Brett">
+        <span className="eyebrow">Seed</span>
+        <p className="lobby__seed">{room.seed}</p>
+        <p className="lobby__hint">
+          Gleicher Seed, gleiches Brett — bei euch und bei allen anderen.
+        </p>
+        {canConfigure ? (
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => onConfigure(room.seatCount, randomSeed())}
+          >
+            Neu würfeln
+          </button>
+        ) : null}
       </section>
 
       <footer className="lobby__foot">

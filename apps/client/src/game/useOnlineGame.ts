@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   ACT,
+  CONFIGURE_ROOM,
   CREATE_ROOM,
   GAME_EVENT,
   HELLO,
@@ -43,6 +44,7 @@ export interface OnlineGame {
   readonly createRoom: (seatCount: number, seed: string, name: string) => Promise<string>;
   readonly joinRoom: (code: string, name: string) => Promise<void>;
   readonly leaveRoom: () => Promise<void>;
+  readonly configureRoom: (seatCount: number, seed: string) => Promise<void>;
   readonly startGame: () => Promise<void>;
   readonly act: (action: GameAction) => Promise<void>;
   readonly dismissError: () => void;
@@ -172,6 +174,20 @@ export function useOnlineGame(
     dispatch({ type: 'left' });
   }, [send]);
 
+  const configureRoom = useCallback(
+    async (seatCount: number, seed: string): Promise<void> => {
+      try {
+        await send(CONFIGURE_ROOM, { seatCount, seed });
+      } catch (error) {
+        // Der Server prueft die Grenzen noch einmal. Wird es abgelehnt, bleibt
+        // der alte Stand stehen und der Grund sichtbar - der Wartebereich darf
+        // daran nicht zerbrechen.
+        dispatch({ type: 'error', message: messageOf(error) });
+      }
+    },
+    [send],
+  );
+
   const startGame = useCallback(async (): Promise<void> => {
     await send(START_GAME, {});
   }, [send]);
@@ -201,11 +217,23 @@ export function useOnlineGame(
       createRoom,
       joinRoom,
       leaveRoom,
+      configureRoom,
       startGame,
       act,
       dismissError,
     }),
-    [state, connection, userId, createRoom, joinRoom, leaveRoom, startGame, act, dismissError],
+    [
+      state,
+      connection,
+      userId,
+      createRoom,
+      joinRoom,
+      leaveRoom,
+      configureRoom,
+      startGame,
+      act,
+      dismissError,
+    ],
   );
 }
 

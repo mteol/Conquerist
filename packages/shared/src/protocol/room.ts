@@ -20,6 +20,8 @@ export const JOIN_ROOM = 'room.join';
 export const ROOM_JOINED = 'room.joined';
 export const LEAVE_ROOM = 'room.leave';
 export const ROOM_LEFT = 'room.left';
+export const CONFIGURE_ROOM = 'room.configure';
+export const ROOM_CONFIGURED = 'room.configured';
 export const START_GAME = 'room.start';
 export const GAME_STARTED = 'room.started';
 export const ACT = 'game.act';
@@ -67,6 +69,16 @@ export const CreateRoomRequestSchema = z.object({
   seed: z.string().trim().min(1).max(24),
 });
 
+/**
+ * Die Partie im offenen Wartebereich umstellen.
+ *
+ * Dieselben zwei Werte wie beim Erstellen, und mit Absicht dasselbe Schema:
+ * ein Raum, der sich einstellen laesst, hat keine anderen Angaben als einer,
+ * der gerade entsteht. Wer das darf und bis wann, entscheidet der Server -
+ * nicht dieses Schema.
+ */
+export const ConfigureRoomRequestSchema = CreateRoomRequestSchema;
+
 export const RoomCodeResponseSchema = z.object({ code: RoomCodeSchema });
 
 export const JoinRoomRequestSchema = z.object({ code: RoomCodeSchema });
@@ -79,6 +91,7 @@ export const ActRequestSchema = z.object({ action: GameActionSchema });
 export type HelloRequest = z.infer<typeof HelloRequestSchema>;
 export type HelloResponse = z.infer<typeof HelloResponseSchema>;
 export type CreateRoomRequest = z.infer<typeof CreateRoomRequestSchema>;
+export type ConfigureRoomRequest = z.infer<typeof ConfigureRoomRequestSchema>;
 export type JoinRoomRequest = z.infer<typeof JoinRoomRequestSchema>;
 export type ActRequest = z.infer<typeof ActRequestSchema>;
 export type RoomCode = z.infer<typeof RoomCodeSchema>;

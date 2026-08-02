@@ -1,5 +1,6 @@
 import {
   ACT,
+  CONFIGURE_ROOM,
   CREATE_ROOM,
   HELLO,
   JOIN_ROOM,
@@ -9,7 +10,14 @@ import {
   type Seat,
 } from '@conquerist/shared';
 import { broadcastGame, broadcastRoom } from '../../rooms/broadcast.js';
-import { applyAction, joinRoom, leaveRoom, setConnected, startGame } from '../../rooms/room.js';
+import {
+  applyAction,
+  configureRoom,
+  joinRoom,
+  leaveRoom,
+  setConnected,
+  startGame,
+} from '../../rooms/room.js';
 import type { Room } from '../../rooms/room.js';
 import type { RoomRegistry } from '../../rooms/registry.js';
 import type { Users } from '../../identity/users.js';
@@ -18,7 +26,7 @@ import type { MessageRouter, RequestContext, Session } from '../router.js';
 import type { SinkHub } from '../sinks.js';
 
 /**
- * Die sechs Handler, in denen Identitaet, Raum und Zustellung zusammenlaufen.
+ * Die Handler, in denen Identitaet, Raum und Zustellung zusammenlaufen.
  *
  * Jeder folgt derselben Form: Sitzung pruefen, Raum holen, Uebergang aus
  * `rooms/room.ts` aufrufen, bei Erfolg im Verzeichnis ablegen und verteilen,
@@ -102,6 +110,19 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     }
 
     context.session.roomCode = null;
+    return {};
+  });
+
+  router.register(CONFIGURE_ROOM, (payload, context) => {
+    const user = requireUser(context, users);
+    const room = requireRoom(registry.get(context.session.roomCode ?? ''));
+
+    const changed = configureRoom(room, user.id, payload.seatCount, payload.seed);
+    if (!changed.ok) throw new Error(changed.error);
+
+    registry.update(changed.room.code, changed.room);
+    broadcastRoom(changed.room, sinks.map);
+
     return {};
   });
 

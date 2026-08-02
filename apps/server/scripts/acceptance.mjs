@@ -233,6 +233,27 @@ async function onlineGame() {
       `Raum ${code}`,
     );
 
+    // Der Wartebereich bleibt formbar, solange niemand gestartet hat.
+    await anna.send('room.configure', { seatCount: 4, seed: 'umgestellt' });
+    await settle();
+    record(
+      'Der Host stellt die Partie im Wartebereich um',
+      cem.room?.seatCount === 4 && cem.room?.seed === 'umgestellt',
+      `${cem.room?.seatCount} Plaetze, Seed ${cem.room?.seed}`,
+    );
+
+    let configureRefused = false;
+    try {
+      await ben.send('room.configure', { seatCount: 6, seed: 'fremd' });
+    } catch {
+      configureRefused = true;
+    }
+    record('Nur der Host darf umstellen', configureRefused, 'abgelehnt');
+
+    // Zurueck auf drei, damit der Tisch fuer den Start wieder voll ist.
+    await anna.send('room.configure', { seatCount: 3, seed: 'abnahme' });
+    await settle();
+
     await anna.send('room.start', {});
     await settle(400);
 

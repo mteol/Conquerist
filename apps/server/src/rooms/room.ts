@@ -128,6 +128,40 @@ export function setConnected(room: Room, userId: string, connected: boolean): Ro
   return withSeats(room, replaceAt(room.seats, index, { connected }));
 }
 
+/**
+ * Die Partie umstellen, solange der Wartebereich offen ist.
+ *
+ * Dieselben zwei Werte wie beim Erstellen - eine Partie soll nicht deshalb
+ * neu gegruendet werden muessen, weil doch einer mehr mitspielt oder das Brett
+ * bloed aussieht. Drei Grenzen, und jede hat einen Grund:
+ *
+ *   - **Nur der Host.** Sonst zieht einer den anderen den Tisch unter den
+ *     Fuessen weg, waehrend sie beitreten.
+ *   - **Nicht kleiner als die Zahl derer, die schon sitzen.** Sonst muesste
+ *     jemand seinen Platz raeumen, und der Wartebereich ist der falsche Ort,
+ *     das zu entscheiden.
+ *   - **Nicht mehr, wenn die Partie laeuft.** Der Seed steckt dann bereits im
+ *     Brett und im Zufallszustand; ihn zu aendern hiesse, mitten im Spiel ein
+ *     anderes zu spielen.
+ */
+export function configureRoom(
+  room: Room,
+  byUserId: string,
+  seatCount: number,
+  seed: string,
+): RoomResult {
+  if (byUserId !== room.hostId) return fail('Nur wer die Partie erstellt hat, kann sie umstellen');
+  if (room.game !== null) return fail('Die Partie laeuft bereits');
+  if (blueprintFor(seatCount) === undefined) {
+    return fail(`Fuer ${seatCount} Spieler gibt es kein passendes Brett`);
+  }
+  if (seatCount < room.seats.length) {
+    return fail(`Es sitzen schon ${room.seats.length} am Tisch`);
+  }
+
+  return ok({ ...room, seatCount, seed, version: room.version + 1 });
+}
+
 export function startGame(room: Room, byUserId: string): RoomResult {
   if (byUserId !== room.hostId) return fail('Nur wer die Partie erstellt hat, kann sie starten');
   if (room.game !== null) return fail('Die Partie laeuft bereits');

@@ -4,8 +4,11 @@ import {
   ACT,
   ACT_OK,
   ActRequestSchema,
+  CONFIGURE_ROOM,
   CREATE_ROOM,
+  ConfigureRoomRequestSchema,
   CreateRoomRequestSchema,
+  ROOM_CONFIGURED,
   EmptyRequestSchema,
   EmptyResponseSchema,
   GAME_STARTED,
@@ -66,6 +69,11 @@ export const protocol = {
   [LEAVE_ROOM]: {
     responseType: ROOM_LEFT,
     request: EmptyRequestSchema,
+    response: EmptyResponseSchema,
+  },
+  [CONFIGURE_ROOM]: {
+    responseType: ROOM_CONFIGURED,
+    request: ConfigureRoomRequestSchema,
     response: EmptyResponseSchema,
   },
   [START_GAME]: {
