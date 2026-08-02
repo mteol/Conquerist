@@ -14,6 +14,7 @@ import {
   type GameAction,
 } from '@conquerist/shared';
 import { loadName, loadSecret, storeName, storeSecret } from '../net/session';
+import type { TransportOptions } from '../net/transport';
 import { useConnection } from '../net/useConnection';
 import { emptyOnlineState, onlineReducer } from './onlineState';
 import type { OnlineState } from './onlineState';
@@ -47,8 +48,12 @@ export interface OnlineGame {
   readonly dismissError: () => void;
 }
 
-export function useOnlineGame(initialCode: string | null = null): OnlineGame {
-  const { state: connection, send, onEvent } = useConnection();
+export function useOnlineGame(
+  initialCode: string | null = null,
+  /** Nur fuer Tests: eine Socket-Attrappe statt eines echten WebSockets. */
+  options: TransportOptions = {},
+): OnlineGame {
+  const { state: connection, send, onEvent } = useConnection(options);
   const [state, dispatch] = useReducer(onlineReducer, emptyOnlineState);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -162,6 +167,9 @@ export function useOnlineGame(initialCode: string | null = null): OnlineGame {
   const leaveRoom = useCallback(async (): Promise<void> => {
     await send(LEAVE_ROOM, {});
     codeRef.current = null;
+    // Erst nach der Bestaetigung, und selbst: ein Raumstand kommt hier nicht
+    // mehr an, weil zugestellt wird, wer am Tisch sitzt.
+    dispatch({ type: 'left' });
   }, [send]);
 
   const startGame = useCallback(async (): Promise<void> => {

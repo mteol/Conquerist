@@ -32,6 +32,20 @@ describe('Online-Zustand', () => {
     expect(older).toBe(newer);
   });
 
+  it('raeumt beim Verlassen alles weg, was zum Tisch gehoerte', () => {
+    const running = onlineReducer(emptyOnlineState, {
+      type: 'game',
+      payload: { version: 2, view: view(2), actions: [], entry: 'Anna wuerfelt 8' },
+    });
+
+    const left = onlineReducer(running, { type: 'left' });
+
+    expect(left.room).toBeNull();
+    expect(left.view).toBeNull();
+    expect(left.actions).toHaveLength(0);
+    expect(left.log).toHaveLength(0);
+  });
+
   it('haengt Verlaufssaetze an, wenn sie mitkommen', () => {
     const first = onlineReducer(emptyOnlineState, {
       type: 'game',

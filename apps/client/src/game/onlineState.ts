@@ -43,7 +43,16 @@ export type OnlineEvent =
   | { readonly type: 'error'; readonly message: string }
   | { readonly type: 'dismissError' }
   /** Verbindung weg: der Stand bleibt stehen, aber nichts ist mehr anklickbar. */
-  | { readonly type: 'disconnected' };
+  | { readonly type: 'disconnected' }
+  /**
+   * Tisch verlassen - und zwar auf eigenen Wunsch.
+   *
+   * Der einzige Uebergang, den der Client selbst ausloest. Er muss es auch:
+   * wer nicht mehr in `seats` steht, bekommt kein `room.state` mehr, weil
+   * zugestellt wird, wer am Tisch sitzt. Ohne diesen Fall bliebe der
+   * Wartebereich stehen, obwohl der Server den Platz laengst freigegeben hat.
+   */
+  | { readonly type: 'left' };
 
 export function onlineReducer(state: OnlineState, event: OnlineEvent): OnlineState {
   switch (event.type) {
@@ -78,5 +87,10 @@ export function onlineReducer(state: OnlineState, event: OnlineEvent): OnlineSta
 
     case 'disconnected':
       return state.actions.length === 0 ? state : { ...state, actions: [] };
+
+    case 'left':
+      // Vollstaendig zurueck auf Anfang: Raum, Sicht, Zuege und Verlauf
+      // gehoerten alle zu einem Tisch, an dem man nicht mehr sitzt.
+      return emptyOnlineState;
   }
 }
