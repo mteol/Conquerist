@@ -105,16 +105,25 @@ anfangen, ignorierte jeder noch offene Browser den frischen Stand.
 ```ts
 export interface RoomStore {
   save(room: Room): void;
-  appendAction(code: string, ordinal: number, action: GameAction): void;
+  appendAction(code: string, action: GameAction): void;
   remove(code: string): void;
   loadAll(): Room[];
-  roomsOf(userId: string): readonly string[];
 }
 ```
 
 Zwei Umsetzungen: `SqliteRoomStore` fuer den Betrieb und `MemoryRoomStore` fuer
 Tests, die keine Datei wollen. Die Schnittstelle ist der Grund, warum der Rest
 der Tests so bleiben kann, wie er ist.
+
+Zwei Dinge stehen bewusst **nicht** darin:
+
+- **Kein `ordinal` von aussen.** Die laufende Nummer im Log ist eine
+  Speicherfrage; der Store weiss sie besser als sein Aufrufer, und ein von
+  aussen gereichter Zaehler waere eine Gelegenheit, ihn falsch zu fuehren.
+- **Kein `roomsOf`.** Nach `loadAll` liegen alle Raeume ohnehin im Speicher -
+  wer in welchem sitzt, beantwortet die Registry aus dem, was sie hat. Eine
+  Abfrage an die Datenbank waere ein zweiter Weg zu einer Auskunft, die schon
+  da ist.
 
 ### `RoomRegistry` bekommt den Store
 
