@@ -7,6 +7,7 @@ import type { ServerConfig } from '../config.js';
 import { Connection, ConnectionHub } from './connection.js';
 import { startHeartbeat } from './heartbeat.js';
 import type { EventSink } from './events.js';
+import { isAllowedOrigin } from './origin.js';
 import type { MessageRouter, Session } from './router.js';
 
 /** Board-Nachrichten sind klein. Ein Limit verhindert, dass jemand Speicher belegt. */
@@ -75,9 +76,13 @@ export function attachWebSocketServer(options: AttachOptions): WebSocketRuntime 
 
     const origin = request.headers.origin;
 
-    if (origin === undefined || !config.clientOrigins.includes(origin)) {
+    if (!isAllowedOrigin(origin, request.headers.host, config.clientOrigins)) {
       log.warn(
-        { origin: origin ?? '(fehlt)', allowed: config.clientOrigins },
+        {
+          origin: origin ?? '(fehlt)',
+          host: request.headers.host ?? '(fehlt)',
+          allowed: config.clientOrigins,
+        },
         'WebSocket-Upgrade abgelehnt: Origin nicht erlaubt',
       );
       rejectUpgrade(socket, 403, 'Forbidden');
