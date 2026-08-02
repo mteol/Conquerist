@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MessageType, RequestOf, ResponseOf } from '@conquerist/shared';
 import { NotConnectedError, Transport } from './transport';
 import type { TransportOptions } from './transport';
-import type { ConnectionState } from './types';
+import type { ConnectionState, ServerEventListener } from './types';
 
 /**
  * React-Hook um `transport.ts`.
@@ -28,6 +28,8 @@ export interface UseConnectionResult {
   readonly serverNow: () => number | null;
   /** Wartet nicht auf den Backoff, sondern versucht es sofort. */
   readonly reconnectNow: () => void;
+  /** Meldet einen Empfaenger fuer Nachrichten ohne Anfrage an. */
+  readonly onEvent: (listener: ServerEventListener) => () => void;
 }
 
 export function useConnection(options: TransportOptions = {}): UseConnectionResult {
@@ -73,5 +75,16 @@ export function useConnection(options: TransportOptions = {}): UseConnectionResu
     transport?.connect();
   }, [transport]);
 
-  return { state, send, serverNow, reconnectNow };
+  const onEvent = useCallback(
+    (listener: ServerEventListener): (() => void) => {
+      // Bevor der Transport steht, gibt es nichts abzumelden. Der Aufrufer
+      // bekommt trotzdem eine Funktion zurueck - ein `undefined` im Effect
+      // waere eine Fallunterscheidung an jeder Aufrufstelle.
+      if (transport === null) return () => undefined;
+      return transport.subscribeEvents(listener);
+    },
+    [transport],
+  );
+
+  return { state, send, serverNow, reconnectNow, onEvent };
 }

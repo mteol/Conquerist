@@ -33,6 +33,15 @@ export interface ConnectionState {
 export type ConnectionListener = (state: ConnectionState) => void;
 
 /**
+ * Empfaenger fuer Nachrichten ohne Anfrage.
+ *
+ * Die Payload bleibt `unknown`: welches Schema fuer welchen Typ gilt, weiss die
+ * Ereignis-Registry in `shared`. Der Transport reicht durch und deutet nicht -
+ * sonst muesste er das Spiel kennen.
+ */
+export type ServerEventListener = (type: string, payload: unknown) => void;
+
+/**
  * Minimale Form eines WebSockets.
  *
  * Der Transport programmiert gegen dieses Interface statt gegen den globalen
