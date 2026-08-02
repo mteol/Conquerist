@@ -11,3 +11,4 @@ export * from './protocol/index.js';
 export * from './random/index.js';
 export * from './rules/index.js';
 export * from './scenario/index.js';
+export * from './seats.js';
