@@ -31,6 +31,10 @@ export interface ActionTargets {
   readonly trades: readonly GameAction[];
   readonly roll: GameAction | null;
   readonly endTurn: GameAction | null;
+  /** Eine Entwicklungskarte kaufen - `null`, wenn es gerade nicht geht. */
+  readonly buyCard: GameAction | null;
+  /** Ritter ausspielen. Die drei Karten mit Auswahl stehen nicht hier. */
+  readonly playKnight: GameAction | null;
 }
 
 /** Nichts anklickbar - fuer Spieler, die gerade nicht handeln duerfen. */
@@ -41,6 +45,8 @@ export const EMPTY_TARGETS: ActionTargets = {
   trades: [],
   roll: null,
   endTurn: null,
+  buyCard: null,
+  playKnight: null,
 };
 
 /**
@@ -58,6 +64,8 @@ export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
   const trades: GameAction[] = [];
   let roll: GameAction | null = null;
   let endTurn: GameAction | null = null;
+  let buyCard: GameAction | null = null;
+  let playKnight: GameAction | null = null;
 
   const claim = <K, V>(map: Map<K, V>, key: K, value: V, what: string): void => {
     if (map.has(key)) {
@@ -98,6 +106,22 @@ export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
         endTurn = action;
         break;
 
+      case 'buyDevelopmentCard':
+        buyCard = action;
+        break;
+
+      case 'playKnight':
+        playKnight = action;
+        break;
+
+      case 'playRoadBuilding':
+      case 'playYearOfPlenty':
+      case 'playMonopoly':
+        // Wie beim Abwerfen: die Auswahl trifft der Spieler, deshalb zaehlt
+        // `legalActions` diese Zuege gar nicht erst auf. Was spielbar ist,
+        // steht in `view.playableCards`.
+        break;
+
       case 'discard':
         // `legalActions` zaehlt das Abwerfen bewusst nicht auf - bei acht
         // Handkarten gaebe es dutzende gueltige Kombinationen. Der Dialog
@@ -106,7 +130,7 @@ export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
     }
   }
 
-  return { vertices, edges, hexes, trades, roll, endTurn };
+  return { vertices, edges, hexes, trades, roll, endTurn, buyCard, playKnight };
 }
 
 /**

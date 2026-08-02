@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import {
   tradeRateFor,
+  type DevelopmentCardId,
+  type EdgeId,
   type GameAction,
   type PlayerId,
   type PlayerView,
@@ -8,10 +10,12 @@ import {
   type ResourceId,
 } from '@conquerist/shared';
 import { BoardSvg, type Place } from '../board/BoardSvg';
-import { targetsFrom } from '../game/targets';
+import { EMPTY_TARGETS, targetsFrom } from '../game/targets';
 import { discardCountForView, gameViewOf, type PlayerRow } from '../game/view';
 import { ActionPanel } from '../panels/ActionPanel';
 import { HandPanel } from '../panels/HandPanel';
+import { DevelopmentCards } from '../panels/DevelopmentCards';
+import { ResourcePickDialog } from '../dialogs/ResourcePickDialog';
 import { LogPanel } from '../panels/LogPanel';
 import { StatusPanel } from '../panels/StatusPanel';
 import { TablePanel } from '../panels/TablePanel';
@@ -74,6 +78,14 @@ export function GameScreen({
 }: GameScreenProps): JSX.Element {
   const [tradeOpen, setTradeOpen] = useState(false);
   const [robberHex, setRobberHex] = useState<string | null>(null);
+  /** Welche Karte gerade eine Auswahl braucht - `null`, wenn keine. */
+  const [picking, setPicking] = useState<'yearOfPlenty' | 'monopoly' | null>(null);
+  /**
+   * Strassenbau laeuft ueber das Brett, nicht ueber ein Fenster: wo eine
+   * Strasse hinkann, sieht man dort und nirgends besser. `null` heisst, der
+   * Modus ist aus; ein leeres Feld heisst, die erste Kante fehlt noch.
+   */
+  const [buildingRoads, setBuildingRoads] = useState<readonly EdgeId[] | null>(null);
   const [revealed, setRevealed] = useState(!concealBetweenTurns);
 
   /*
@@ -102,7 +114,45 @@ export function GameScreen({
     previous.current = view;
   }, [view]);
 
+  /*
+   * Jeder neue Stand raeumt die halbfertige Auswahl weg. Sonst klebte ein
+   * angefangener Strassenbau am Bildschirm, obwohl die Karte laengst gespielt
+   * oder der Zug vorbei ist.
+   */
+  useEffect(() => {
+    setBuildingRoads(null);
+    setPicking(null);
+  }, [view.version]);
+
   const targets = useMemo(() => targetsFrom(actions), [actions]);
+
+  /**
+   * Was auf dem Brett leuchtet.
+   *
+   * Im Strassenbau-Modus nicht die gewoehnlichen Ziele, sondern die, die der
+   * Server fuer diese Karte ausgerechnet hat - und nach der ersten Kante nur
+   * noch die, die danach ueberhaupt noch gehen. Der Anschluss ist eine Regel,
+   * und die steht nicht im Browser.
+   */
+  const boardTargets = useMemo(() => {
+    if (buildingRoads === null) return targets;
+
+    const first = buildingRoads[0];
+    const legal =
+      first === undefined
+        ? Object.keys(view.roadBuildingTargets)
+        : (view.roadBuildingTargets[first] ?? []);
+
+    return {
+      ...EMPTY_TARGETS,
+      edges: new Map(
+        legal.map((edge) => [
+          edge,
+          { type: 'playRoadBuilding', player: view.you, edges: [edge] } as GameAction,
+        ]),
+      ),
+    };
+  }, [targets, buildingRoads, view.roadBuildingTargets, view.you]);
 
   const pick = useCallback(
     (place: Place) => {
@@ -112,6 +162,18 @@ export function GameScreen({
         return;
       }
       if (place.kind === 'edge') {
+        if (buildingRoads !== null) {
+          const picked = [...buildingRoads, place.id];
+          // Zwei Strassen sind die Karte; nach der zweiten geht sie hinaus.
+          if (picked.length === 2) {
+            onAct({ type: 'playRoadBuilding', player: view.you, edges: picked });
+            setBuildingRoads(null);
+          } else {
+            setBuildingRoads(picked);
+          }
+          return;
+        }
+
         const action = targets.edges.get(place.id);
         if (action !== undefined) onAct(action);
         return;
@@ -121,7 +183,7 @@ export function GameScreen({
       if (options.length === 1) onAct(options[0]!);
       else if (options.length > 1) setRobberHex(place.id);
     },
-    [targets, onAct],
+    [targets, onAct, buildingRoads, view.you],
   );
 
   const playerOf = (id: PlayerId): PlayerRow | undefined =>
@@ -139,6 +201,25 @@ export function GameScreen({
       ? discardCountForView(view, view.you)
       : 0;
 
+  /**
+   * Eine Karte spielen.
+   *
+   * Der Ritter geht sofort hinaus - er braucht keine Auswahl, das Versetzen
+   * kommt als eigener Zug in der Raeuberphase. Die drei anderen fragen erst:
+   * Strassenbau ueber das Brett, Erfindung und Monopol im Fenster.
+   */
+  const playCard = (card: DevelopmentCardId): void => {
+    if (card === 'knight') {
+      if (targets.playKnight !== null) onAct(targets.playKnight);
+      return;
+    }
+    if (card === 'roadBuilding') {
+      setBuildingRoads([]);
+      return;
+    }
+    if (card === 'yearOfPlenty' || card === 'monopoly') setPicking(card);
+  };
+
   /** Die moeglichen Opfer stehen in den Zuegen, nicht in einer eigenen Rechnung. */
   const victims: readonly PlayerRow[] =
     robberHex === null
@@ -154,7 +235,7 @@ export function GameScreen({
       <div className="board-area">
         <BoardSvg
           state={view}
-          targets={targets}
+          targets={boardTargets}
           seats={display.players.map((player) => ({
             id: player.id,
             name: player.name,
@@ -183,6 +264,14 @@ export function GameScreen({
           {...(concealBetweenTurns && you !== undefined ? { owner: you.name } : {})}
         />
 
+        {revealed && you?.developmentCards != null ? (
+          <DevelopmentCards
+            cards={you.developmentCards}
+            playable={view.playableCards}
+            onPlay={playCard}
+          />
+        ) : null}
+
         <ActionPanel
           view={display}
           targets={targets}
@@ -194,6 +283,9 @@ export function GameScreen({
             if (targets.endTurn !== null) onAct(targets.endTurn);
           }}
           onOpenTrade={() => setTradeOpen(true)}
+          onBuyCard={() => {
+            if (targets.buyCard !== null) onAct(targets.buyCard);
+          }}
           onDismissError={onDismissError}
         />
       </div>
@@ -248,6 +340,43 @@ export function GameScreen({
           onClose={() => setRobberHex(null)}
         />
       ) : null}
+
+      {picking === null ? null : (
+        <ResourcePickDialog
+          title={picking === 'monopoly' ? 'Monopol' : 'Erfindung'}
+          hint={
+            picking === 'monopoly'
+              ? 'Alle geben dir ab, was sie von dieser Sorte haben.'
+              : 'Zwei Rohstoffe aus der Bank — auch zweimal derselbe.'
+          }
+          count={picking === 'monopoly' ? 1 : 2}
+          onConfirm={(picks) => {
+            if (picking === 'monopoly') {
+              onAct({ type: 'playMonopoly', player: view.you, resource: picks[0]! });
+            } else {
+              onAct({ type: 'playYearOfPlenty', player: view.you, picks: [...picks] });
+            }
+            setPicking(null);
+          }}
+          onClose={() => setPicking(null)}
+        />
+      )}
+
+      {buildingRoads === null ? null : (
+        <div className="mode" role="status">
+          <span>
+            Straßenbau: {buildingRoads.length === 0 ? 'erste' : 'zweite'} Straße auf dem Brett
+            wählen
+          </span>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => setBuildingRoads(null)}
+          >
+            Abbrechen
+          </button>
+        </div>
+      )}
 
       {view.phase.kind === 'finished' ? (
         <div className="modal" role="dialog" aria-label="Partie beendet">

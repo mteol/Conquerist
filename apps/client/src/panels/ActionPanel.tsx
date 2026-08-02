@@ -16,6 +16,7 @@ export interface ActionPanelProps {
   readonly onRoll: () => void;
   readonly onEndTurn: () => void;
   readonly onOpenTrade: () => void;
+  readonly onBuyCard: () => void;
   readonly onDismissError: () => void;
 }
 
@@ -26,6 +27,7 @@ export function ActionPanel({
   onRoll,
   onEndTurn,
   onOpenTrade,
+  onBuyCard,
   onDismissError,
 }: ActionPanelProps): JSX.Element {
   return (
@@ -41,6 +43,15 @@ export function ActionPanel({
           onClick={onOpenTrade}
         >
           Handel
+        </button>
+        <button
+          type="button"
+          className="button"
+          disabled={targets.buyCard === null}
+          title={`Noch ${view.deckLeft} Karten im Stapel`}
+          onClick={onBuyCard}
+        >
+          Karte kaufen
         </button>
         <button
           type="button"

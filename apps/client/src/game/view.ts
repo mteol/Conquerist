@@ -33,6 +33,12 @@ export interface PlayerRow {
   readonly isCurrent: boolean;
   /** Ob dieser Spieler gerade eine offene Verbindung hat. */
   readonly connected: boolean;
+  /** Eigene Entwicklungskarten; `null` heisst: gehoert jemand anderem. */
+  readonly developmentCards: PlayerView['players'][number]['developmentCards'];
+  /** Wie viele Karten jemand haelt - das ist am Tisch abzaehlbar. */
+  readonly developmentCount: number;
+  /** Ausgespielte Ritter. Oeffentlich, sie liegen offen. */
+  readonly playedKnights: number;
   /** Wie viele Karten dieser Spieler gerade abwerfen muss; 0, wenn keine. */
   readonly mustDiscard: number;
 }
@@ -46,6 +52,9 @@ export interface GameView {
   readonly lastRoll: readonly [number, number] | null;
   readonly turn: number;
   readonly longestRoad: GameState['longestRoad'];
+  readonly largestArmy: PlayerView['largestArmy'];
+  /** Wie viele Entwicklungskarten der Stapel noch hergibt. */
+  readonly deckLeft: number;
   /** Wer zusieht. Seine Karten sind die einzigen, die offen liegen. */
   readonly you: PlayerId;
   /**
@@ -72,16 +81,6 @@ export interface GameView {
 }
 
 /**
- * Wer handeln darf.
- *
- * In der Gruendung folgt der Zug der Schlange und nicht `currentPlayerIndex`;
- * nach einer Sieben sind es alle, die noch abwerfen muessen - `applyDiscard`
- * nimmt sie in beliebiger Reihenfolge.
- *
- * Liest ausschliesslich `phase`, `players` und `currentPlayerIndex` - alle drei
- * stehen unveraendert in der Sicht, deshalb genuegt sie hier.
- */
-/**
  * Das gemeinsame Stueck von `GameState` und `PlayerView`.
  *
  * Beide tragen Phase, Spielerreihenfolge und den Index des Spielers am Zug -
@@ -102,6 +101,16 @@ function setupPlayerOf(view: PhaseSource): PlayerId | null {
   return view.players[index]?.id ?? null;
 }
 
+/**
+ * Wer handeln darf.
+ *
+ * In der Gruendung folgt der Zug der Schlange und nicht `currentPlayerIndex`;
+ * nach einer Sieben sind es alle, die noch abwerfen muessen - `applyDiscard`
+ * nimmt sie in beliebiger Reihenfolge.
+ *
+ * Liest ausschliesslich `phase`, `players` und `currentPlayerIndex` - alle drei
+ * stehen unveraendert in der Sicht, deshalb genuegt sie hier.
+ */
 export function actingPlayers(view: PhaseSource): readonly PlayerId[] {
   switch (view.phase.kind) {
     case 'setup': {
@@ -175,6 +184,9 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     resources: player.resources,
     piecesLeft: player.piecesLeft,
     connected: player.connected,
+    developmentCards: player.developmentCards,
+    developmentCount: player.developmentCount,
+    playedKnights: player.playedKnights,
     isCurrent: player.id === current?.id,
     mustDiscard:
       view.phase.kind === 'discardPending' && view.phase.pending.includes(player.id)
@@ -192,6 +204,8 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     lastRoll: view.lastRoll,
     turn: view.turn,
     longestRoad: view.longestRoad,
+    largestArmy: view.largestArmy,
+    deckLeft: view.deckLeft,
     you: view.you,
     gains,
   };

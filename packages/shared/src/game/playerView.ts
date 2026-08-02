@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { ResourceAmountsSchema, RuleSetSchema } from '../rules/index.js';
 import { ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { Seat } from '../seats.js';
-import { DevelopmentCardSchema } from './development.js';
+import { DevelopmentCardIdSchema, DevelopmentCardSchema } from './development.js';
+import { playableDevelopmentCards, roadBuildingTargets } from './legal.js';
 import { PhaseSchema } from './phase.js';
 import { PlayerIdSchema } from './player.js';
 import { countResources } from './resources.js';
@@ -79,6 +80,20 @@ export const PlayerViewSchema = z.object({
   deckLeft: z.number().int().min(0),
   /** Ob in diesem Zug schon eine Entwicklungskarte gespielt wurde. */
   developmentPlayed: z.boolean(),
+  /**
+   * Welche Entwicklungskarten der Empfaenger jetzt ausspielen koennte.
+   *
+   * Steht hier und nicht in der Aktionsliste, weil drei der fuenf Karten eine
+   * Auswahl brauchen, die der Spieler trifft - wie beim Abwerfen. Die Liste
+   * sagt der Oberflaeche nur, welchen Knopf sie anbieten darf; ob die Auswahl
+   * zulaessig war, prueft trotzdem der Reducer.
+   */
+  playableCards: z.array(DevelopmentCardIdSchema),
+  /**
+   * Wo der Strassenbau hinkoennte: je moeglicher erster Kante die Kanten, die
+   * danach noch gingen. Gerechnet auf dem Server - Anschluss ist eine Regel.
+   */
+  roadBuildingTargets: z.record(z.string(), z.array(z.string())),
   lastRoll: z.tuple([z.number().int(), z.number().int()]).nullable(),
   turn: z.number().int().min(0),
 });
@@ -147,6 +162,8 @@ export function playerViewOf(
     // Nur die Anzahl: wer den Stapel kennt, weiss vor dem Kauf, was er bekommt.
     deckLeft: state.deck.length,
     developmentPlayed: state.developmentPlayed,
+    playableCards: playableDevelopmentCards(state, viewer),
+    roadBuildingTargets: roadBuildingTargets(state, viewer),
     lastRoll: state.lastRoll,
     turn: state.turn,
   };

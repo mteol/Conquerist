@@ -651,6 +651,104 @@ body {
   align-items: center;
 }
 
+/*
+ * Entwicklungskarten.
+ *
+ * **Pergament statt Gelaendefarbe.** Rohstoffe kommen vom Brett,
+ * Entwicklungskarten von der Bank - man soll am Material sehen, woher etwas
+ * stammt, ohne die Beschriftung zu lesen. Was dieser Zug nicht hergibt, liegt
+ * blass da: die Regel wird sichtbar, statt erst beim Klick als Absage
+ * aufzutauchen.
+ */
+.devcards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.devcard {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 5px;
+  background: var(--parchment-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.devcard--ready {
+  opacity: 1;
+  cursor: pointer;
+  /* Der einzige Unterschied, den man von weitem sieht. */
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.devcard__count {
+  margin-left: 0.3rem;
+  color: var(--ink-muted);
+}
+
+/* Rohstoffe waehlen - Erfindung und Monopol. */
+.pick {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0.4rem;
+}
+
+.pick__card {
+  display: grid;
+  place-items: center;
+  gap: 0.15rem;
+  width: 3.1rem;
+  padding: 0.4rem 0.2rem;
+  border: 1px solid rgb(22 32 42 / 55%);
+  border-radius: 6px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.62rem;
+  cursor: pointer;
+}
+
+.pick__card:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pick__chosen {
+  margin: 0 0 0.6rem;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+
+/*
+ * Ein Modus, der ueber dem Brett laeuft.
+ *
+ * Oben statt unten: unten liegt die Ablage, und was gerade zu tun ist, soll
+ * nicht dorthin, wo man ohnehin schon hinsieht.
+ */
+.mode {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  z-index: 6;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--sea-800);
+  box-shadow: var(--shadow);
+  font-size: 0.85rem;
+  transform: translateX(-50%);
+}
+
 /* --- Wartebereich --------------------------------------------------------- *
  *
  * Der Code ist das groesste Element der Anwendung - groesser als der Titel auf

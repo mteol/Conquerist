@@ -1,3 +1,4 @@
+import type { EdgeId } from '../geometry/index.js';
 import { RESOURCE_IDS } from '../scenario/index.js';
 import type { GameAction } from './actions.js';
 import { boardOf } from './board.js';
@@ -13,7 +14,11 @@ import { canMoveRobber, victimsAt } from './robber.js';
 import { setupPlayer } from './setup.js';
 import type { GameState } from './state.js';
 import { canTradeWithBank } from './trade.js';
-import { canBuyDevelopmentCard, canPlayDevelopmentCard } from './developmentRules.js';
+import {
+  applyPlayRoadBuilding,
+  canBuyDevelopmentCard,
+  canPlayDevelopmentCard,
+} from './developmentRules.js';
 import { DEVELOPMENT_CARD_IDS, type DevelopmentCardId } from './development.js';
 
 /**
@@ -143,4 +148,54 @@ export function playableDevelopmentCards(state: GameState, player: PlayerId): De
   return DEVELOPMENT_CARD_IDS.filter(
     (card) => canPlayDevelopmentCard(state, player, card) === null,
   );
+}
+
+/**
+ * Wo der Strassenbau seine zwei Strassen hinlegen koennte.
+ *
+ * Eine Karte je moeglicher **erster** Kante, und dazu die Kanten, die danach
+ * noch gingen. Die zweite haengt von der ersten ab - sie darf an sie
+ * anschliessen -, und genau deshalb steht hier eine Zuordnung und keine flache
+ * Liste.
+ *
+ * Gerechnet wird das hier und nicht im Browser: die Anschlussregel ist eine
+ * Regel, und der Client kennt keine. Er liest die Zuordnung ab und klickt.
+ * Teuer ist es nicht - ein Spieler hat selten mehr als ein Dutzend
+ * anschlussfaehige Kanten.
+ */
+export function roadBuildingTargets(state: GameState, player: PlayerId): Record<EdgeId, EdgeId[]> {
+  if (canPlayDevelopmentCard(state, player, 'roadBuilding') !== null) return {};
+
+  const board = boardOf(state.scenario);
+  const targets: Record<EdgeId, EdgeId[]> = {};
+
+  for (const first of board.topology.edges) {
+    const placed = applyPlayRoadBuilding(state, player, [first]);
+    if (!placed.ok) continue;
+
+    // Die zweite Kante wird gegen den Zustand NACH der ersten geprueft - sonst
+    // fehlte genau der Anschluss, den die erste gerade geschaffen hat.
+    const after = placed.state;
+    targets[first] = board.topology.edges.filter(
+      (second) => second !== first && canPlaceFreeRoad(after, player, second),
+    );
+  }
+
+  return targets;
+}
+
+/** Ob dort eine kostenlose Strasse liegen koennte - ohne sie zu legen. */
+function canPlaceFreeRoad(state: GameState, player: PlayerId, edge: EdgeId): boolean {
+  if (canPlaceRoadAt(state, edge) !== null) return false;
+
+  const owner = state.players.find((entry) => entry.id === player);
+  if (owner === undefined || (owner.piecesLeft.road ?? 0) <= 0) return false;
+
+  const board = boardOf(state.scenario);
+  return (board.topology.edgeVertices.get(edge) ?? []).some((vertex) => {
+    if (state.buildings[vertex]?.owner === player) return true;
+    return (board.topology.vertexEdges.get(vertex) ?? []).some(
+      (other) => other !== edge && state.roads[other] === player,
+    );
+  });
 }

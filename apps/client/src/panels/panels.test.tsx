@@ -71,6 +71,7 @@ describe('ActionPanel', () => {
         onRoll={vi.fn()}
         onEndTurn={vi.fn()}
         onOpenTrade={vi.fn()}
+        onBuyCard={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );
@@ -93,6 +94,7 @@ describe('ActionPanel', () => {
         onRoll={vi.fn()}
         onEndTurn={vi.fn()}
         onOpenTrade={vi.fn()}
+        onBuyCard={vi.fn()}
         onDismissError={onDismissError}
       />,
     );
