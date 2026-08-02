@@ -109,4 +109,63 @@ describe('PlayerView', () => {
   it('weist einen Zuschauer ab, der nicht am Tisch sitzt', () => {
     expect(() => playerViewOf(afterSetup(), 'fremder', seats, 1)).toThrow(RangeError);
   });
+
+  it('zeigt von fremden Entwicklungskarten nur die Anzahl', () => {
+    const state = afterSetup();
+    const withCards: GameState = {
+      ...state,
+      players: state.players.map((entry, index) => ({
+        ...entry,
+        developmentCards:
+          index === 0
+            ? [{ id: 'knight' as const, boughtOnTurn: 0 }]
+            : [
+                { id: 'victoryPoint' as const, boughtOnTurn: 0 },
+                { id: 'monopoly' as const, boughtOnTurn: 0 },
+              ],
+      })),
+    };
+
+    const view = playerViewOf(withCards, 'p1', seats, 1);
+
+    // Wer sieht, dass jemand einen Ritter haelt, weiss, dass sein Raeuber
+    // gleich weiterzieht.
+    expect(view.players[0]!.developmentCards).toHaveLength(1);
+    expect(view.players[1]!.developmentCards).toBeNull();
+    // Abzaehlbar ist die Anzahl trotzdem - sie liegen sichtbar verdeckt da.
+    expect(view.players[1]!.developmentCount).toBe(2);
+  });
+
+  it('verraet verdeckte Siegpunktkarten nicht ueber den Punktestand', () => {
+    const state = afterSetup();
+    const withCards: GameState = {
+      ...state,
+      players: state.players.map((entry, index) => ({
+        ...entry,
+        developmentCards: index === 1 ? [{ id: 'victoryPoint' as const, boughtOnTurn: 0 }] : [],
+      })),
+    };
+
+    const own = playerViewOf(withCards, 'p2', seats, 1);
+    const foreign = playerViewOf(withCards, 'p1', seats, 1);
+
+    // p2 sieht seinen eigenen Punkt, p1 sieht ihn nicht - sonst waere die
+    // Karte ueber die Differenz verraten.
+    expect(own.players[1]!.victoryPoints).toBeGreaterThan(foreign.players[1]!.victoryPoints);
+  });
+
+  it('gibt den Entwicklungsstapel nicht heraus, nur seine Groesse', () => {
+    const state = afterSetup();
+    const view = playerViewOf({ ...state, deck: ['knight', 'monopoly'] }, 'p1', seats, 1);
+
+    // Nur die Groesse. Die Reihenfolge ist das Geheimnis: wer sie kennt, weiss
+    // vor dem Kauf, was er zieht.
+    expect(view.deckLeft).toBe(2);
+    expect(allKeys(view).has('deck')).toBe(false);
+
+    // Dass „monopoly" im JSON vorkommt, ist dagegen in Ordnung: das RuleSet
+    // nennt die Stapelgroessen, und wie viele Karten es je Art gibt, steht in
+    // der Anleitung.
+    expect(view.rules.developmentDeck.monopoly).toBe(2);
+  });
 });

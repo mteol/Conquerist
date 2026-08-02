@@ -52,6 +52,35 @@ export const GameActionSchema = z.discriminatedUnion('type', [
    * den erreichbaren Haefen abgeleitet - der beste verfuegbare Kurs gilt
    * automatisch. Sonst koennte ein Client sich selbst einen Kurs ausdenken.
    */
+  /** Eine Entwicklungskarte kaufen. Was man zieht, entscheidet der Stapel. */
+  z.object({ ...Base, type: z.literal('buyDevelopmentCard') }),
+
+  /**
+   * Ritter ausspielen: der Raeuber zieht weiter.
+   *
+   * Ohne Feld und ohne Opfer - das kommt als eigener `moveRobber`, sobald die
+   * Phase auf `robberPending` steht. Eine Aktion, die zwei Dinge auf einmal
+   * tut, muesste beide Regeln in sich tragen.
+   */
+  z.object({ ...Base, type: z.literal('playKnight') }),
+
+  /** Strassenbau: eine oder zwei Strassen umsonst. */
+  z.object({
+    ...Base,
+    type: z.literal('playRoadBuilding'),
+    edges: z.array(z.string()).min(1).max(2),
+  }),
+
+  /** Erfindung: genau zwei Rohstoffe aus der Bank. */
+  z.object({
+    ...Base,
+    type: z.literal('playYearOfPlenty'),
+    picks: z.array(ResourceIdSchema).length(2),
+  }),
+
+  /** Monopol: alle geben diesen Rohstoff ab. */
+  z.object({ ...Base, type: z.literal('playMonopoly'), resource: ResourceIdSchema }),
+
   z.object({
     ...Base,
     type: z.literal('tradeWithBank'),

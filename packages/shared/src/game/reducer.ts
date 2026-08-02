@@ -9,6 +9,13 @@ import { hasWon } from './scoring.js';
 import { applySetupRoad, applySetupSettlement, setupPlayer } from './setup.js';
 import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './state.js';
 import { applyTradeWithBank } from './trade.js';
+import {
+  applyBuyDevelopmentCard,
+  applyPlayKnight,
+  applyPlayMonopoly,
+  applyPlayRoadBuilding,
+  applyPlayYearOfPlenty,
+} from './developmentRules.js';
 import { distributeYield } from './yield.js';
 
 /**
@@ -31,7 +38,18 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
   rollPending: ['rollDice'],
   discardPending: ['discard'],
   robberPending: ['moveRobber'],
-  main: ['buildRoad', 'buildSettlement', 'buildCity', 'tradeWithBank', 'endTurn'],
+  main: [
+    'buildRoad',
+    'buildSettlement',
+    'buildCity',
+    'tradeWithBank',
+    'buyDevelopmentCard',
+    'playKnight',
+    'playRoadBuilding',
+    'playYearOfPlenty',
+    'playMonopoly',
+    'endTurn',
+  ],
   finished: [],
 };
 
@@ -77,6 +95,9 @@ function endTurn(state: GameState): ReduceResult {
     currentPlayerIndex: next,
     phase: { kind: 'rollPending' },
     turn: next === 0 ? state.turn + 1 : state.turn,
+    // Die Sperre gilt je Zug, nicht je Runde: der Naechste darf wieder eine
+    // Karte spielen.
+    developmentPlayed: false,
   });
 }
 
@@ -154,6 +175,16 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
       return applyBuildCity(state, action.player, action.vertex);
     case 'tradeWithBank':
       return applyTradeWithBank(state, action.player, action.give, action.receive);
+    case 'buyDevelopmentCard':
+      return applyBuyDevelopmentCard(state, action.player);
+    case 'playKnight':
+      return applyPlayKnight(state, action.player);
+    case 'playRoadBuilding':
+      return applyPlayRoadBuilding(state, action.player, action.edges);
+    case 'playYearOfPlenty':
+      return applyPlayYearOfPlenty(state, action.player, action.picks);
+    case 'playMonopoly':
+      return applyPlayMonopoly(state, action.player, action.resource);
     case 'endTurn':
       return endTurn(state);
   }

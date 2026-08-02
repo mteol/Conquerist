@@ -3,10 +3,11 @@ import { z } from 'zod';
 import { ResourceAmountsSchema, RuleSetSchema } from '../rules/index.js';
 import { ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { Seat } from '../seats.js';
+import { DevelopmentCardSchema } from './development.js';
 import { PhaseSchema } from './phase.js';
 import { PlayerIdSchema } from './player.js';
 import { countResources } from './resources.js';
-import { victoryPointsOf } from './scoring.js';
+import { publicVictoryPointsOf, victoryPointsOf } from './scoring.js';
 import { BuildingSchema } from './state.js';
 import type { GameState } from './state.js';
 
@@ -33,6 +34,18 @@ export const PlayerInViewSchema = z.object({
   cardCount: z.number().int().min(0),
   /** Nur beim Empfaenger gefuellt, bei allen anderen `null`. */
   resources: ResourceAmountsSchema.nullable(),
+  /**
+   * Entwicklungskarten auf der Hand - **nur beim Empfaenger**, sonst `null`.
+   *
+   * Sie sind die zweite geheime Haelfte: wer sieht, dass jemand einen Ritter
+   * haelt, weiss, dass sein Raeuber gleich weiterzieht. Was jeder sehen darf,
+   * ist die Anzahl (`developmentCount`) - am Tisch liegen sie abzaehlbar
+   * verdeckt vor ihm.
+   */
+  developmentCards: z.array(DevelopmentCardSchema).nullable(),
+  developmentCount: z.number().int().min(0),
+  /** Ausgespielte Ritter. Oeffentlich - sie liegen offen. */
+  playedKnights: z.number().int().min(0),
   piecesLeft: z.record(z.string(), z.number().int().min(0)),
   victoryPoints: z.number().int().min(0),
 });
@@ -58,6 +71,14 @@ export const PlayerViewSchema = z.object({
     holder: PlayerIdSchema.nullable(),
     length: z.number().int().min(0),
   }),
+  largestArmy: z.object({
+    holder: PlayerIdSchema.nullable(),
+    size: z.number().int().min(0),
+  }),
+  /** Wie viele Karten der Stapel noch hergibt. Der Inhalt bleibt geheim. */
+  deckLeft: z.number().int().min(0),
+  /** Ob in diesem Zug schon eine Entwicklungskarte gespielt wurde. */
+  developmentPlayed: z.boolean(),
   lastRoll: z.tuple([z.number().int(), z.number().int()]).nullable(),
   turn: z.number().int().min(0),
 });
@@ -100,8 +121,19 @@ export function playerViewOf(
         connected: connected.get(player.id) ?? true,
         cardCount: countResources(player.resources),
         resources: player.id === viewer ? player.resources : null,
+        developmentCards: player.id === viewer ? player.developmentCards : null,
+        developmentCount: player.developmentCards.length,
+        playedKnights: player.playedKnights,
         piecesLeft: player.piecesLeft,
-        victoryPoints: victoryPointsOf(state, player.id),
+        /*
+         * Bei sich selbst die volle Zahl, bei den anderen nur die oeffentliche.
+         * Sonst verriete der Punktestand die verdeckten Siegpunktkarten - und
+         * das ist genau die Information, um die am Ende gespielt wird.
+         */
+        victoryPoints:
+          player.id === viewer
+            ? victoryPointsOf(state, player.id)
+            : publicVictoryPointsOf(state, player.id),
       };
     }),
     currentPlayerIndex: state.currentPlayerIndex,
@@ -111,6 +143,10 @@ export function playerViewOf(
     robber: state.robber,
     bank: state.bank,
     longestRoad: state.longestRoad,
+    largestArmy: state.largestArmy,
+    // Nur die Anzahl: wer den Stapel kennt, weiss vor dem Kauf, was er bekommt.
+    deckLeft: state.deck.length,
+    developmentPlayed: state.developmentPlayed,
     lastRoll: state.lastRoll,
     turn: state.turn,
   };

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { RuleSetSchema, ResourceAmountsSchema } from '../rules/index.js';
 import { ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { RuleViolation } from './errors.js';
+import { DevelopmentCardIdSchema } from './development.js';
 import { PhaseSchema } from './phase.js';
 import { PlayerIdSchema, PlayerStateSchema } from './player.js';
 
@@ -68,6 +69,25 @@ export const GameStateSchema = z.object({
     holder: PlayerIdSchema.nullable(),
     length: z.number().int().min(0),
   }),
+  /** Wer die Groesste Rittermacht haelt und mit wie vielen Rittern. */
+  largestArmy: z.object({
+    holder: PlayerIdSchema.nullable(),
+    size: z.number().int().min(0),
+  }),
+  /**
+   * Der Entwicklungskartenstapel, von oben nach unten. **Geheim.**
+   *
+   * Wer ihn kennt, weiss vor dem Kauf, was er bekommt - derselbe Bruch wie ein
+   * bekannter Wuerfelzustand. Er verlaesst den Server nie.
+   */
+  deck: z.array(DevelopmentCardIdSchema),
+  /**
+   * Ob in dieser Runde schon eine Entwicklungskarte gespielt wurde.
+   *
+   * Eine je Zug ist die Regel. Der Vermerk steht am Zustand und nicht am
+   * Spieler, weil immer nur einer am Zug ist - und `endTurn` setzt ihn zurueck.
+   */
+  developmentPlayed: z.boolean(),
   /** Der Zufallszustand. Geheim - siehe Kopf dieser Datei. */
   rng: RngSchema,
   /** Der letzte Wurf, damit die Oberflaeche ihn zeigen kann. `null` vor dem ersten. */

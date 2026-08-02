@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { DevelopmentDeckSchema } from '../game/development.js';
 import { ResourceIdSchema } from '../scenario/terrain.js';
 
 /**
@@ -61,9 +62,16 @@ export const RuleSetSchema = z.object({
     settlement: z.number().int().min(0),
     city: z.number().int().min(0),
     longestRoad: z.number().int().min(0),
+    largestArmy: z.number().int().min(0),
+    /** Was eine Siegpunktkarte auf der Hand zaehlt. */
+    developmentCard: z.number().int().min(0),
   }),
   /** Ab wie vielen zusammenhaengenden Strassen die Laengste Handelsstrasse vergeben wird. */
   longestRoadMinimum: z.number().int().min(1),
+  /** Ab wie vielen ausgespielten Rittern die Groesste Rittermacht vergeben wird. */
+  largestArmyMinimum: z.number().int().min(1),
+  /** Wie viele Entwicklungskarten je Art im Stapel liegen. */
+  developmentDeck: DevelopmentDeckSchema,
   /** Ab wie vielen Handkarten bei einer Sieben abgeworfen wird. */
   handLimitBeforeDiscard: z.number().int().min(1),
 });
@@ -90,7 +98,27 @@ export const CLASSIC_RULES: RuleSet = {
   resourceBank: { brick: 19, lumber: 19, wool: 19, grain: 19, ore: 19 },
 
   victoryPointGoal: 10,
-  victoryPoints: { settlement: 1, city: 2, longestRoad: 2 },
+  victoryPoints: {
+    settlement: 1,
+    city: 2,
+    longestRoad: 2,
+    largestArmy: 2,
+    developmentCard: 1,
+  },
   longestRoadMinimum: 5,
+  largestArmyMinimum: 3,
+
+  /*
+   * 25 Karten wie in der Schachtel. Die Ritter sind mit Abstand die haeufigsten
+   * - sie sind der Grund, warum sich der Kauf ueberhaupt lohnt, und die einzige
+   * Antwort auf einen Raeuber, der auf dem eigenen Erz sitzt.
+   */
+  developmentDeck: {
+    knight: 14,
+    victoryPoint: 5,
+    roadBuilding: 2,
+    yearOfPlenty: 2,
+    monopoly: 2,
+  },
   handLimitBeforeDiscard: 7,
 };

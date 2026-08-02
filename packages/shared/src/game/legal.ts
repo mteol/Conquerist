@@ -13,6 +13,8 @@ import { canMoveRobber, victimsAt } from './robber.js';
 import { setupPlayer } from './setup.js';
 import type { GameState } from './state.js';
 import { canTradeWithBank } from './trade.js';
+import { canBuyDevelopmentCard, canPlayDevelopmentCard } from './developmentRules.js';
+import { DEVELOPMENT_CARD_IDS, type DevelopmentCardId } from './development.js';
 
 /**
  * Was dieser Spieler gerade tun darf.
@@ -107,8 +109,38 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
         }
       }
 
+      if (canBuyDevelopmentCard(state, player) === null) {
+        actions.push({ type: 'buyDevelopmentCard', player });
+      }
+      if (canPlayDevelopmentCard(state, player, 'knight') === null) {
+        actions.push({ type: 'playKnight', player });
+      }
+
+      /*
+       * Strassenbau, Erfindung und Monopol stehen hier bewusst NICHT als
+       * fertige Zuege - wie bei `discard` waeren es dutzende Kombinationen
+       * (jedes Kantenpaar, jedes Rohstoffpaar, jede Sorte). Die Auswahl trifft
+       * der Spieler im Dialog; ob sie zulaessig war, prueft trotzdem der
+       * Reducer. Damit die Oberflaeche die Karten ueberhaupt anbieten kann,
+       * sagt `playableDevelopmentCards`, welche jetzt gingen.
+       */
+
       actions.push({ type: 'endTurn', player });
       return actions;
     }
   }
+}
+
+/**
+ * Welche Entwicklungskarten dieser Spieler jetzt ausspielen koennte.
+ *
+ * Getrennt von `legalActions`, weil drei der fuenf Karten eine Auswahl
+ * brauchen, die der Spieler trifft - genau wie beim Abwerfen. Die Liste sagt
+ * der Oberflaeche, welchen Knopf sie ueberhaupt anbieten darf; die Regel
+ * dahinter ist dieselbe `canPlayDevelopmentCard`, die auch der Reducer nimmt.
+ */
+export function playableDevelopmentCards(state: GameState, player: PlayerId): DevelopmentCardId[] {
+  return DEVELOPMENT_CARD_IDS.filter(
+    (card) => canPlayDevelopmentCard(state, player, card) === null,
+  );
 }

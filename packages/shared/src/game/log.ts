@@ -54,6 +54,19 @@ export function describeTransition(
     case 'buildCity':
       return `${who} baut eine Stadt`;
 
+    case 'buyDevelopmentCard':
+      // Was gezogen wurde, steht bewusst nicht da: der Verlauf ist oeffentlich,
+      // die Karte ist es nicht.
+      return `${who} kauft eine Entwicklungskarte`;
+    case 'playKnight':
+      return `${who} spielt einen Ritter`;
+    case 'playRoadBuilding':
+      return `${who} spielt Strassenbau und setzt ${action.edges.length === 1 ? 'eine Strasse' : 'zwei Strassen'}`;
+    case 'playYearOfPlenty':
+      return `${who} spielt Erfindung und nimmt ${action.picks.map((pick) => RESOURCE_LABELS[pick]).join(' und ')}`;
+    case 'playMonopoly':
+      return `${who} spielt Monopol auf ${RESOURCE_LABELS[action.resource]}`;
+
     case 'tradeWithBank':
       return `${who} tauscht ${RESOURCE_LABELS[action.give]} gegen ${RESOURCE_LABELS[action.receive]}`;
 

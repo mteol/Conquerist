@@ -54,7 +54,12 @@ describe('victoryPointsOf', () => {
     const state = testGame({
       rules: {
         ...CLASSIC_RULES,
-        victoryPoints: { settlement: 3, city: 7, longestRoad: 5 },
+        victoryPoints: {
+          ...CLASSIC_RULES.victoryPoints,
+          settlement: 3,
+          city: 7,
+          longestRoad: 5,
+        },
       },
       buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city' } },
       longestRoad: { holder: 'p1', length: 5 },
