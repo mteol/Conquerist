@@ -10,7 +10,7 @@ import {
   type GameAction,
   type GameState,
 } from '@conquerist/shared';
-import { actionTargets } from './targets';
+import { actionTargets, targetsFrom } from './targets';
 
 const scenario = generateScenario(CLASSIC_34, 'targets-probe');
 const ids = ['p1', 'p2', 'p3'];
@@ -114,5 +114,18 @@ describe('Klickkarten', () => {
     expect(new Set(collected.map((action) => JSON.stringify(action)))).toEqual(
       new Set(expected.map((action) => JSON.stringify(action))),
     );
+  });
+
+  it('nimmt eine fertige Aktionsliste - so kommt sie ab Etappe 4 vom Server', () => {
+    const actions: GameAction[] = [
+      { type: 'buildRoad', player: 'p1', edge: 'e:0,0|1,0' },
+      { type: 'endTurn', player: 'p1' },
+    ];
+
+    const targets = targetsFrom(actions);
+
+    expect(targets.edges.get('e:0,0|1,0')).toEqual(actions[0]);
+    expect(targets.endTurn).toEqual(actions[1]);
+    expect(targets.vertices.size).toBe(0);
   });
 });

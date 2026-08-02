@@ -43,7 +43,15 @@ export const EMPTY_TARGETS: ActionTargets = {
   endTurn: null,
 };
 
-export function actionTargets(state: GameState, player: PlayerId): ActionTargets {
+/**
+ * Sortiert eine fertige Aktionsliste nach Ort.
+ *
+ * Nimmt die Liste entgegen, statt sie selbst zu holen: online kommt sie vom
+ * Server mit, weil `legalActions` den vollen Zustand braucht und der Client ihn
+ * seit Etappe 4 nicht mehr hat. Lokal wie entfernt landet danach dieselbe
+ * Sortierung in denselben Bildschirmen.
+ */
+export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
   const vertices = new Map<VertexId, GameAction>();
   const edges = new Map<EdgeId, GameAction>();
   const hexes = new Map<HexId, GameAction[]>();
@@ -53,12 +61,12 @@ export function actionTargets(state: GameState, player: PlayerId): ActionTargets
 
   const claim = <K, V>(map: Map<K, V>, key: K, value: V, what: string): void => {
     if (map.has(key)) {
-      throw new RangeError(`actionTargets: ${what} ${String(key)} ist doppelt belegt`);
+      throw new RangeError(`targetsFrom: ${what} ${String(key)} ist doppelt belegt`);
     }
     map.set(key, value);
   };
 
-  for (const action of legalActions(state, player)) {
+  for (const action of actions) {
     switch (action.type) {
       case 'placeSetupSettlement':
       case 'buildSettlement':
@@ -99,4 +107,15 @@ export function actionTargets(state: GameState, player: PlayerId): ActionTargets
   }
 
   return { vertices, edges, hexes, trades, roll, endTurn };
+}
+
+/**
+ * Bequemlichkeit fuer die lokale Partie.
+ *
+ * Online kommt die Liste vom Server (`legalActions` braucht den vollen
+ * Zustand und laeuft deshalb dort). Hier wird sie selbst geholt - dieselbe
+ * Funktion, dieselben Regeln, nur ohne Netz.
+ */
+export function actionTargets(state: GameState, player: PlayerId): ActionTargets {
+  return targetsFrom(legalActions(state, player));
 }
