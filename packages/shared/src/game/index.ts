@@ -11,6 +11,7 @@ export * from './errors.js';
 export * from './legal.js';
 export * from './phase.js';
 export * from './player.js';
+export * from './playerView.js';
 export * from './reducer.js';
 export * from './replay.js';
 export * from './resources.js';
