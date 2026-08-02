@@ -10,15 +10,28 @@ import {
 import type { MessageType, RequestOf, ResponseOf, ServerMessage } from '@conquerist/shared';
 
 /**
+ * Was an dieser Verbindung bekannt ist.
+ *
+ * Absichtlich veraenderbar: `hello` traegt hier die Nutzer-Id ein, `joinRoom`
+ * den Raum. Die Alternative waere, bei jeder Nachricht erneut zu ermitteln, wer
+ * da schreibt - und genau das soll ein Angreifer nicht beeinflussen koennen.
+ */
+export interface Session {
+  userId: string | null;
+  roomCode: string | null;
+}
+
+/**
  * Kontext, den jeder Handler bekommt.
  *
  * Absichtlich frei von ws-Typen: dadurch sind Router und Handler ohne Server,
- * ohne Socket und ohne offenen Port testbar. Ab Etappe 4 kommen hier `userId`
- * und `gameId` dazu.
+ * ohne Socket und ohne offenen Port testbar. Die Sitzung ist ab Etappe 4 das
+ * Stueck Zustand, das die einzelne Nachricht ueberdauert.
  */
 export interface RequestContext {
   readonly connectionId: string;
   readonly receivedAt: number;
+  readonly session: Session;
 }
 
 export type MessageHandler<K extends MessageType> = (

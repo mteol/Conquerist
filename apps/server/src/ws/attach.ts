@@ -84,7 +84,11 @@ export function attachWebSocketServer(options: AttachOptions): WebSocketRuntime 
   };
 
   function handleConnection(ws: WebSocket, origin: string): void {
-    const connection = new Connection(ws, origin);
+    const connection = new Connection(ws, origin, (type, message) => {
+      // Zurueckgehalten statt verschickt: ein Ereignis, das sein Schema
+      // verletzt, koennte Verdecktes tragen (Regel 4).
+      log.error({ connectionId: connection.id, type, message }, 'Ereignis verletzt sein Schema');
+    });
     hub.add(connection);
     log.info({ connectionId: connection.id, origin, open: hub.size }, 'WebSocket verbunden');
 
@@ -105,6 +109,7 @@ export function attachWebSocketServer(options: AttachOptions): WebSocketRuntime 
         const response = await router.dispatch(data.toString(), {
           connectionId: connection.id,
           receivedAt: Date.now(),
+          session: connection.session,
         });
 
         connection.send(response);
