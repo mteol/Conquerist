@@ -103,4 +103,70 @@ describe('Startbildschirm', () => {
     expect(screen.queryByRole('button', { name: /Ping/ })).toBeNull();
     expect(screen.getByText(/Verbindung und Diagnose/)).toBeDefined();
   });
+
+  it('zeigt die eigenen Partien und fuehrt mit einem Klick zurueck', async () => {
+    const onResume = vi.fn();
+    render(
+      <StartScreen
+        onStartLocal={vi.fn()}
+        onCreateRoom={vi.fn()}
+        onJoinRoom={vi.fn()}
+        onResume={onResume}
+        myRooms={[
+          {
+            code: 'K7X2',
+            seatCount: 3,
+            started: true,
+            turn: 4,
+            yourTurn: true,
+            seats: [
+              { name: 'Anna', color: '#c0392b', connected: true },
+              { name: 'Ben', color: '#2c6fbb', connected: false },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('K7X2')).toBeDefined();
+    expect(screen.getByText(/du bist dran/i)).toBeDefined();
+
+    await userEvent.click(screen.getByRole('button', { name: /Zurück/ }));
+    expect(onResume).toHaveBeenCalledWith('K7X2');
+  });
+
+  it('nennt bei einem Wartebereich, wie viele noch fehlen', () => {
+    render(
+      <StartScreen
+        onStartLocal={vi.fn()}
+        onCreateRoom={vi.fn()}
+        onJoinRoom={vi.fn()}
+        onResume={vi.fn()}
+        myRooms={[
+          {
+            code: 'M8Y3',
+            seatCount: 4,
+            started: false,
+            seats: [{ name: 'Dana', color: '#c0392b', connected: true }],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText(/1 von 4/)).toBeDefined();
+  });
+
+  it('laesst den Bereich ganz weg, wenn es keine eigenen Partien gibt', () => {
+    render(
+      <StartScreen
+        onStartLocal={vi.fn()}
+        onCreateRoom={vi.fn()}
+        onJoinRoom={vi.fn()}
+        onResume={vi.fn()}
+        myRooms={[]}
+      />,
+    );
+
+    expect(screen.queryByText(/Deine Partien/i)).toBeNull();
+  });
 });

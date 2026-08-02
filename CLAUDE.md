@@ -129,15 +129,17 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
 3. ✅ client: SVG-Board + Hotseat (vollständiges Spiel ohne Netzwerk)
 4. ✅ server: WS-Infra, SQLite, Gast-Identität
 5. ✅ Client-Anbindung, State-Filtering, Reconnect
-6. Persistence: Action-Log + Snapshot, Lobby
+6. ✅ Persistence: Action-Log, „Deine Partien"
 7. Auth: Registrierung, Login, Gast-Account beanspruchen
 8. Handel, Entwicklungskarten
 9. Docker + Coolify
 10. Erweiterungen
 
 ## Aktueller Stand
-Etappen 0 bis 5 fertig. 0–3 liegen in `main`, 4+5 auf `etappe-4-online`.
-Als Nächstes Etappe 6: Action-Log, Snapshot, Lobby über die Partie hinaus.
+Etappen 0 bis 6 fertig. 0–3 liegen in `main`, 4–6 auf `etappe-4-online`.
+Ein Serverneustart kostet keine Partie mehr: gespeichert wird der Startzustand
+plus das Action-Log, wiederhergestellt per `replay` — **kein Snapshot**, das ist
+gemessen (4000 Züge = 19 ms).
 
 Was in `shared` schon steht:
 - `protocol/` — Envelope, Registry, Ping (Etappe 0)
@@ -159,8 +161,9 @@ neue Regeln bitte genauso, damit es weiter nur eine Auslegung gibt.
 
 Was im Server steht (Etappe 4/5):
 - `db/`, `identity/` — SQLite, Gäste; das Sitzungsgeheimnis liegt **nur gehasht**
-- `rooms/` — der Raum als Wert (`room.ts`), Codevergabe (`registry.ts`),
-  Zustellung je Empfänger (`broadcast.ts`)
+- `rooms/` — der Raum als Wert (`room.ts`), Codevergabe und Persistenz
+  (`registry.ts`), Zustellung je Empfänger (`broadcast.ts`), Ablage hinter einer
+  Schnittstelle (`store.ts`, `sqliteStore.ts`), Übersicht (`summary.ts`)
 - `ws/` — Router, Sitzung je Verbindung, geprüftes Senden ohne Anfrage,
   Origin-Regel (gleicher Ursprung ist erlaubt — dafür Tunnel ohne Konfiguration)
 

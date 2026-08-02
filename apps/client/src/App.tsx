@@ -88,6 +88,13 @@ function Online({
         initialCode={roomFromLocation()}
         initialName={loadName() ?? ''}
         problem={online.state.lastError}
+        myRooms={online.myRooms}
+        onResume={(code) => {
+          // Kein eigener Einstiegsweg: `room.join` erkennt einen bekannten Sitz
+          // seit Etappe 4 wieder. Ein zweiter waere ein zweiter Weg fuer
+          // dieselbe Sache.
+          void online.joinRoom(code, loadName() ?? '');
+        }}
       />
     );
   }

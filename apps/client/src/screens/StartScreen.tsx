@@ -6,12 +6,14 @@ import {
   createGame,
   generateScenario,
   type GameState,
+  type RoomSummary,
   type ScenarioBlueprint,
 } from '@conquerist/shared';
 import { MAX_SEATS, MIN_SEATS, SEAT_COLORS, defaultSeats, type Seat } from '../seats';
 import { BoardSvg } from '../board/BoardSvg';
 import { EMPTY_TARGETS } from '../game/targets';
 import { ConnectionPanel } from '../diagnostics/ConnectionPanel';
+import { SeatPiece } from './LobbyScreen';
 
 /** Was nur die lokale Partie betrifft - online gibt es diese Fragen nicht. */
 export interface LocalOptions {
@@ -37,6 +39,9 @@ export interface StartScreenProps {
   readonly problem?: string | null;
   /** Zuletzt benutzter Anzeigename. */
   readonly initialName?: string;
+  /** Partien, an denen dieser Spieler sitzt. Leer heisst: der Bereich fehlt. */
+  readonly myRooms?: readonly RoomSummary[];
+  readonly onResume?: (code: string) => void;
 }
 
 const BLUEPRINTS: readonly ScenarioBlueprint[] = [CLASSIC_34, CLASSIC_56];
@@ -92,6 +97,8 @@ export function StartScreen({
   initialCode = null,
   problem = null,
   initialName = '',
+  myRooms = [],
+  onResume,
 }: StartScreenProps): JSX.Element {
   const [seats, setSeats] = useState<Seat[]>(() => defaultSeats(MIN_SEATS));
   const [seed, setSeed] = useState(randomSeed);
@@ -219,6 +226,46 @@ export function StartScreen({
         </div>
 
         {shown === null ? null : <p className="error">{shown}</p>}
+
+        {/*
+         * Weitermachen steht ueber Neuanfangen: wer schon irgendwo sitzt, will
+         * meistens dorthin zurueck. Gibt es keine Partie, faellt der Bereich
+         * ganz weg - eine leere Ueberschrift ist eine Auskunft ueber nichts.
+         */}
+        {myRooms.length === 0 ? null : (
+          <section className="way">
+            <span className="eyebrow">Deine Partien</span>
+            <ol className="resume">
+              {myRooms.map((entry) => (
+                <li key={entry.code} className="resume__card">
+                  <div className="resume__head">
+                    <span className="resume__code">{entry.code}</span>
+                    <span className="resume__state">
+                      {!entry.started
+                        ? `wartet · ${entry.seats.length} von ${entry.seatCount}`
+                        : entry.yourTurn === true
+                          ? `Runde ${entry.turn ?? 0} · du bist dran`
+                          : `Runde ${entry.turn ?? 0}`}
+                    </span>
+                  </div>
+
+                  <div className="resume__seats">
+                    {entry.seats.map((seat) => (
+                      <span key={seat.name} className="resume__seat">
+                        <SeatPiece color={seat.color} open={!seat.connected} />
+                        {seat.name}
+                      </span>
+                    ))}
+                  </div>
+
+                  <button type="button" className="button" onClick={() => onResume?.(entry.code)}>
+                    Zurück in die Partie
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
 
         <section className="way">
           <span className="eyebrow">Online spielen</span>

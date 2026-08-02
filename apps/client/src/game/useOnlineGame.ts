@@ -7,12 +7,14 @@ import {
   HELLO,
   JOIN_ROOM,
   LEAVE_ROOM,
+  MY_ROOMS,
   OVER_EVENT,
   ROOM_EVENT,
   eventSchema,
   isEventType,
   START_GAME,
   type GameAction,
+  type RoomSummary,
 } from '@conquerist/shared';
 import { loadName, loadSecret, storeName, storeSecret } from '../net/session';
 import type { TransportOptions } from '../net/transport';
@@ -41,6 +43,9 @@ export interface OnlineGame {
   readonly state: OnlineState;
   readonly connection: ReturnType<typeof useConnection>['state'];
   readonly userId: string | null;
+  /** Partien, an denen dieser Spieler sitzt. */
+  readonly myRooms: readonly RoomSummary[];
+  readonly refreshMyRooms: () => Promise<void>;
   readonly createRoom: (seatCount: number, seed: string, name: string) => Promise<string>;
   readonly joinRoom: (code: string, name: string) => Promise<void>;
   readonly leaveRoom: () => Promise<void>;
@@ -58,6 +63,7 @@ export function useOnlineGame(
   const { state: connection, send, onEvent } = useConnection(options);
   const [state, dispatch] = useReducer(onlineReducer, emptyOnlineState);
   const [userId, setUserId] = useState<string | null>(null);
+  const [myRooms, setMyRooms] = useState<readonly RoomSummary[]>([]);
 
   /**
    * Raumcode und Name in Refs, nicht im State: sie steuern nur, was beim
@@ -102,6 +108,17 @@ export function useOnlineGame(
     });
   }, [onEvent]);
 
+  const refreshMyRooms = useCallback(async (): Promise<void> => {
+    try {
+      const { rooms } = await send(MY_ROOMS, {});
+      setMyRooms(rooms);
+    } catch {
+      // Ohne Liste faellt der Bereich weg. Das ist eine Einbusse, kein Fehler -
+      // erstellen und beitreten gehen weiterhin.
+      setMyRooms([]);
+    }
+  }, [send]);
+
   // Anmelden, sobald die Verbindung steht - und nach jedem Wiederaufbau erneut.
   useEffect(() => {
     if (connection.status !== 'open') {
@@ -130,6 +147,7 @@ export function useOnlineGame(
         // Code kennen, an dem wir noch nicht sitzen - der Einladungslink.
         const code = codeRef.current;
         if (code !== null && !cancelled) await send(JOIN_ROOM, { code });
+        if (!cancelled) await refreshMyRooms();
       } catch (error) {
         if (!cancelled) dispatch({ type: 'error', message: messageOf(error) });
       }
@@ -138,7 +156,7 @@ export function useOnlineGame(
     return () => {
       cancelled = true;
     };
-  }, [connection.status, send]);
+  }, [connection.status, send, refreshMyRooms]);
 
   const remember = useCallback((name: string): void => {
     nameRef.current = name;
@@ -214,6 +232,8 @@ export function useOnlineGame(
       state,
       connection,
       userId,
+      myRooms,
+      refreshMyRooms,
       createRoom,
       joinRoom,
       leaveRoom,
@@ -226,6 +246,8 @@ export function useOnlineGame(
       state,
       connection,
       userId,
+      myRooms,
+      refreshMyRooms,
       createRoom,
       joinRoom,
       leaveRoom,

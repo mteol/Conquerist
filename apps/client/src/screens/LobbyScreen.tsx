@@ -204,7 +204,7 @@ export function LobbyScreen({
  * gleichnamige SVG-Praesentationsattribut, und genau daran ist in Etappe 3
  * jede gebaute Strasse unsichtbar geworden.
  */
-function SeatPiece({
+export function SeatPiece({
   color,
   open = false,
 }: {

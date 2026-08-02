@@ -275,6 +275,18 @@ async function onlineGame() {
       'kein rng in der Sicht',
     );
 
+    const mine = await anna.send('room.mine', {});
+    record(
+      'Die eigenen Partien lassen sich abfragen',
+      mine.rooms.length === 1 && mine.rooms[0].code === code && mine.rooms[0].started === true,
+      `${mine.rooms.length} Partie(n)`,
+    );
+    record(
+      'Die Liste traegt nichts Verdecktes hinaus',
+      !JSON.stringify(mine).includes('resources') && !JSON.stringify(mine).includes('rng'),
+      'keine Handkarten, kein Zufallszustand',
+    );
+
     const acting = [anna, ben, cem].filter((who) => (who.game?.actions.length ?? 0) > 0);
     record(
       'Nur einer hat in der Gruendung Zuege',

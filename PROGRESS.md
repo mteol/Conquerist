@@ -833,3 +833,125 @@ ein Wert und damit das, was sich ablegen laesst; die Aktionsfolge ist seit
 Etappe 3 genau die Eingabe fuer `replay`. Beides trifft sich hier.
 
 Wie gehabt: zuerst ein Plan zur Abnahme, dann Code.
+
+---
+
+## Etappe 6 — Persistenz und „Deine Partien" ✅
+
+Stand: 2026-08-02, Branch `etappe-4-online`.
+
+Entwurf und Plan liegen unter `docs/superpowers/`.
+
+### Abnahme
+
+| Pruefung                                      | Ergebnis                                              |
+| --------------------------------------------- | ----------------------------------------------------- |
+| `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                                 |
+| `pnpm test`                                   | 665 Tests gruen (shared 462, server 72, client 131)   |
+| `pnpm build`                                  | gruen, Client-Bundle 348 kB (105 kB gzip), CSS 17 kB  |
+| `pnpm format:check`                           | gruen                                                 |
+| `pnpm --filter @conquerist/server acceptance` | 23/23 gruen, gegen laufende Server                    |
+| Kaltstart von Hand                            | Server abgewuergt, neu gestartet, Partie unveraendert |
+
+Der Kaltstart ist die Pruefung, die kein Test abdeckt: eine Dreierpartie bis in
+die Gruendungsphase gespielt, den Serverprozess hart beendet, aus derselben
+Datei neu gestartet — im Log `"rooms":1, Raeume von der Platte geladen` — und
+mit dem Sitzungsgeheimnis zurueck in dieselbe Partie. Gleicher Raum, gleiche
+Phase, dieselben vier Bauwerke.
+
+### Was die Tests belegen
+
+- **Ein Raum ueberlebt den Weg durch die Datenbank, samt Zufallszustand.**
+  `roundtrip.test.ts` legt eine Partie ueber eine echte Datei an, spielt sechs
+  Zuege, wirft die Registry weg und baut sie neu — `expect(loaded.game).toEqual(
+room.game)` schliesst `rng` ein. Ohne ihn wuerfelte die Partie nach einem
+  Neustart anders weiter, und das faellt erst Runden spaeter auf.
+- **Der Wartebereich ueberlebt genauso.** Eine Partie, die noch nicht begonnen
+  hat, ist auch eine.
+- **Ein kaputter Raum nimmt die anderen nicht mit.** Ein Zug, den es in der
+  gespeicherten Lage nicht geben kann, laesst `replay` scheitern; der Raum wird
+  uebersprungen und laut protokolliert, die uebrigen stehen.
+- **Ein Plattenfehler wirft den Betrieb nicht um.** Ein Store, der beim
+  Schreiben wirft, laesst den Raum trotzdem entstehen — er ist regelgerecht,
+  nur ungesichert.
+- **Die Uebersicht traegt nichts Verdecktes hinaus.** Weder `resources` noch
+  `rng` stehen in einer Zusammenfassung, geprueft im Test und in der Abnahme.
+
+### Getroffene Entscheidungen
+
+**Kein Snapshot, und das ist gemessen.** Eine kuenstlich auf 4000 Zuege
+verlaengerte Partie stellt sich in 19 ms wieder her, ihr Log ist 152 kB gross;
+eine echte Partie liegt bei rund 3 ms und 25 kB. Ein Snapshot kauft dafuer
+nichts und kostet eine zweite Darstellung desselben Sachverhalts — eine, die
+von der ersten abweichen kann, ohne dass es jemand merkt. Das Action-Log war
+seit Etappe 2 das Versprechen von Regel 2; hier wird es eingeloest.
+
+**Der Startzustand geht als Ganzes auf die Platte, nicht nur der Seed.** Ein
+`GameState` traegt Szenario und RuleSet als Kopie in sich (Entscheidung aus
+Etappe 2). Damit spielt eine alte Partie nach einer Aenderung an
+`CLASSIC_RULES` unter den Regeln weiter, unter denen sie begonnen hat. Wuerde
+nur der Seed gespeichert und der Startzustand neu gebaut, waere jede
+Regelanpassung ein stiller Bruch aller laufenden Partien.
+
+**`rooms/room.ts` ist unangetastet geblieben.** Der Raum ist ein Wert und
+rechnet nicht mit Datenbanken — die Entscheidung aus Etappe 4 hat sich hier
+ausgezahlt: alle Raumtests laufen unveraendert weiter, und die Persistenz sitzt
+vollstaendig in der Registry hinter einer Schnittstelle.
+
+**Die Schnittstelle hat zwei Umsetzungen, nicht eine.** `MemoryRoomStore` ist
+kein Zierrat: eine Schnittstelle mit genau einem Implementierer ist meist nur
+ein umbenannter Aufruf. Und die Registry-Tests laufen weiter ohne Datei.
+
+**Drei Dinge stehen bewusst nicht in der Datenbank.** Kein `name` und kein
+`color` je Sitz (der Name steht in `users`, die Farbe folgt aus der Position),
+kein `connected` (verbunden zu sein gehoert diesem Serverlauf, nicht der
+Partie — nach einem Neustart ist niemand verbunden), und kein abgeleiteter
+Spielzustand. `version` dagegen **muss** gespeichert werden: der Client
+verwirft kleinere Versionen, und finge sie nach einem Neustart wieder bei 1 an,
+ignorierte jeder noch offene Browser den frischen Stand.
+
+**Ein Schreibfehler nimmt einen angenommenen Zug nicht zurueck.** Der Zug ist
+bereits regelgerecht; ihn nachtraeglich am Plattenzustand scheitern zu lassen
+hiesse, dass dieselbe Aktion mal gilt und mal nicht. Der Speicher ist die
+Wahrheit des Betriebs, die Platte die Absicherung.
+
+**Wer in mehreren Raeumen sitzt, wird nicht mehr automatisch in einen
+geschoben.** `hello` oeffnet nur noch dann von sich aus einen Raum, wenn es
+genau einer ist. Bei mehreren entscheidet die Liste — welcher gemeint ist,
+weiss nur der Spieler. Umgekehrt gilt eine Trennung jetzt in **allen** seinen
+Raeumen: eine Verbindung gehoert der Person, nicht einem Raum.
+
+### Abweichungen vom Plan
+
+- **`RoomStore` ist duenner geworden als im Entwurf.** Kein `ordinal` von
+  aussen (die laufende Nummer ist eine Speicherfrage, und ein von aussen
+  gereichter Zaehler waere eine Gelegenheit, ihn falsch zu fuehren) und kein
+  `roomsOf` (nach `loadAll` liegt alles im Speicher; eine Datenbankabfrage
+  waere ein zweiter Weg zu einer Auskunft, die schon da ist). Der Entwurf wurde
+  entsprechend nachgezogen.
+- **Beim Pruefen von Hand war die erste Erwartung falsch, nicht der Code.** Die
+  Versionsnummer war nach dem Neustart 16 statt 12 — richtig so: jedes Trennen
+  und Anmelden zaehlt sie hoch. Die Anforderung ist „faellt nicht zurueck", und
+  genau das prueft sie jetzt.
+
+### Offene Punkte
+
+- **Ein Umbau am Reducer kann alte Logs unbrauchbar machen.** Keine Vorkehrung,
+  bewusst: jede (Versionsnummern, Migrationen) kostet in einem Projekt dieser
+  Groesse mehr als sie bringt. Ein Snapshot waere davor uebrigens genauso wenig
+  sicher.
+- **Keine Frist fuer verwaiste Partien.** Leere Raeume verschwinden nach fuenf
+  Minuten, beendete bleiben liegen und fallen nur aus der Liste. Eine Partie,
+  an die seit Wochen niemand zurueckkommt, bleibt.
+- **Kein Rauswerfen und keine Hostuebergabe** in laufenden Partien.
+- **Keine oeffentliche Partieliste.** Beitritt bleibt ueber Code und Link — eine
+  eigene Frage, falls sie je gestellt wird.
+- Die Erinnerungsposten aus Etappe 0 bis 5 gelten weiter: kein ESLint, kein CI,
+  kein Node-Version-Pin, nie zu sechst auf sechs Geraeten gespielt, kein Tunnel
+  ausprobiert.
+
+### Naechste Etappe
+
+**Entwicklungskarten** — vorgezogen aus Etappe 8. Der Platz dafuer steht seit
+Etappe 2: `developmentCard` hat einen Preis in `BUILDABLE_IDS`, und `PIECE_IDS`
+schliesst sie ausdruecklich aus, weil sie der Bank gehoeren.
