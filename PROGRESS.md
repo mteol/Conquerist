@@ -590,10 +590,14 @@ Entwurf und Plan liegen unter `docs/superpowers/`.
 | Pruefung                                      | Ergebnis                                             |
 | --------------------------------------------- | ---------------------------------------------------- |
 | `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                                |
-| `pnpm test`                                   | 611 Tests gruen (shared 462, server 41, client 108)  |
-| `pnpm build`                                  | gruen, Client-Bundle 340 kB (102 kB gzip), CSS 14 kB |
+| `pnpm test`                                   | 640 Tests gruen (shared 462, server 50, client 128)  |
+| `pnpm build`                                  | gruen, Client-Bundle 346 kB (104 kB gzip), CSS 17 kB |
 | `pnpm format:check`                           | gruen                                                |
-| `pnpm --filter @conquerist/server acceptance` | 19/19 gruen, gegen laufende Server                   |
+| `pnpm --filter @conquerist/server acceptance` | 21/21 gruen, gegen laufende Server                   |
+
+Die Zahlen sind der Stand **nach** dem Nachtrag weiter unten. Bei der Abnahme
+selbst waren es 611 Tests und 19 Pruefungen; die Differenz kam beim ersten
+Ausprobieren von Hand dazu.
 
 Die Abnahme ist von 7 auf 19 Pruefungen gewachsen. Die zwoelf neuen spielen
 eine echte Dreierpartie ueber drei getrennte WebSocket-Verbindungen: anmelden,
@@ -747,6 +751,80 @@ jetzt Abnahmekriterium. Drei Sachen sind daraus konkret geworden:
 - Die Erinnerungsposten aus Etappe 0 bis 3 gelten weiter: kein ESLint, kein CI,
   kein Node-Version-Pin, Hafenpositionen gegen die Schachtel zu pruefen,
   Knoten- und Kanten-Ids ohne Branded Types.
+
+### Nachtrag: was das erste Ausprobieren von Hand gebracht hat
+
+Der offene Punkt „von Hand gespielt wurde noch nicht" ist angegangen worden,
+und er hat sofort geliefert. Vier Dinge in derselben Sitzung:
+
+**Der Server kam mit seinem eigenen Standardwert nie hoch.** `better-sqlite3`
+legt den Ordner einer Datenbankdatei nicht an, sondern wirft „directory does
+not exist" - und `data/` steht in `.gitignore`, existiert auf einem frischen
+Clone also nicht. Aufgefallen ist es erst beim Start ohne `DATABASE_FILE`; die
+Abnahme hatte es nie getroffen, weil sie gegen `:memory:` laeuft. **Die
+Lehre:** ein Standardwert, den kein Test benutzt, ist ungetestet - auch wenn
+alles drumherum gruen ist. `openDatabase` legt den Ordner jetzt an, mit Test.
+
+**„Tisch verlassen" wirkte nicht.** Ursache war nicht der Knopf, sondern eine
+Luecke zwischen zwei richtigen Entscheidungen: der Server nimmt den Platz weg
+und schickt den neuen Raumstand an alle, **die am Tisch sitzen** - den
+Verlassenden also nicht mehr. Der Client hatte aber keinen Weg, seinen Raum
+selbst loszuwerden, und blieb im Wartebereich stehen. Nachgemessen statt
+geraten:
+
+```
+Ereignisse bei Ben nach dem Verlassen: []
+Ereignisse bei Anna (bleibt sitzen):   ["room.state"]
+```
+
+Behoben auf der Client-Seite (`{ type: 'left' }` raeumt den Zustand nach der
+Bestaetigung), nicht durch eine Sonderzustellung an Leute, die nicht mehr
+mitspielen. Dazu der erste Test mit einer Socket-Attrappe fuer `useOnlineGame`
+
+- der Transport war seit Etappe 0 gegen `SocketLike` gebaut, jetzt zahlt es
+  sich aus.
+
+**Die Partie laesst sich im offenen Wartebereich umstellen.** Tischgroesse und
+Seed, solange niemand gestartet hat - eine Runde soll nicht neu gegruendet
+werden muessen, weil doch einer mehr mitspielt. Drei Grenzen im Server: nur der
+Host, nicht kleiner als die Zahl der Sitzenden, und nicht mehr nach dem Start.
+Die Tischgroesse wird dabei **am Tisch selbst** eingestellt - der Host legt
+einen Platz dazu, und derselbe gestrichelte Umriss, der den freien Platz
+anzeigt, ist das Ergebnis. Steuerelement und Anzeige sind dasselbe.
+
+**Handkarten und Trennungen sind sichtbar geworden.** Unten links liegt die
+eigene Hand: ein Stapel je Ressource, Kartenfarbe gleich Gelaendefarbe vom
+Brett, Motiv als zweiter Traeger, Anzahl als Plakette. Kein Stapel fuer eine
+Ressource ohne Karten - eine Null kostet dieselbe Flaeche wie eine Karte und
+sagt weniger.
+
+Beim Trennen war die wichtigere Erkenntnis, dass **nichts zu bauen war**: die
+Partie steht von selbst, weil es Zuege nur fuer den gibt, der handeln darf, und
+der sie ohne Verbindung nicht schicken kann. Gefehlt hat nur die Auskunft. Ein
+Test haelt die Invariante jetzt fest (getrennter Spieler am Zug -> niemand
+sonst bekommt Zuege), und das Statuspanel sagt es in zwei Staerken: wer nur weg
+ist, steht klein und grau da; wartet die Partie auf ihn, bekommt der Satz eine
+Kante und erklaert, warum nichts passiert.
+
+**Lokal ist das Zudecken eine Einstellung geworden**, keine Vorschrift. Am
+selben Geraet wandert der Bildschirm weiter; wer nebeneinander sitzt und
+ohnehin alles sieht, will den Zwischenschritt nicht. Voreingestellt ist
+zugedeckt - die vorsichtigere Annahme.
+
+### Noch offen nach dem ersten Ausprobieren
+
+- **Eine ganze Partie zu sechst auf sechs Geraeten** ist weiterhin nicht
+  gespielt worden. Was bisher lief, war eine Sitzung mit mehreren Fenstern.
+- **Kein Tunnel ausprobiert.** Die Origin-Regel ist dafuer gebaut und getestet,
+  aber es lief noch kein `cloudflared` dagegen.
+- **Im Wartebereich fehlt das Brett zum Seed.** Der Host wuerfelt neu und sieht
+  nur eine Zeichenkette; auf dem Startbildschirm ist das Brett zum Seed der
+  Held.
+- **Die Kartenmotive sind ungeprueft.** Fuenf von Hand gezeichnete SVG-Pfade,
+  nie in Originalgroesse angesehen - Schaf und Aehre koennen auf 26 px daneben
+  liegen.
+- **Das Brett ist kleiner geworden**, weil die Ablage unten links Platz
+  braucht (Einzug von 5,5 auf 11 rem).
 
 ### Naechste Etappe
 

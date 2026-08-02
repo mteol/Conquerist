@@ -114,10 +114,13 @@ Fast-Schwarz mit einem grellen Grün, Glaskarten mit Farbverlauf. Das sind die
 drei Voreinstellungen, die jede generierte Oberfläche gerade trägt, und sie
 kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
 
-**Falle, die schon zugeschnappt ist:** Eine CSS-Regel schlägt immer das
-gleichnamige SVG-Präsentationsattribut. `.road { stroke: transparent }` hat
-jede gebaute Straße unsichtbar gemacht, obwohl `stroke={farbe}` am Element
-stand. Farben am SVG deshalb per `style`.
+**Fallen, die schon zugeschnappt sind:**
+- Eine CSS-Regel schlägt immer das gleichnamige SVG-Präsentationsattribut.
+  `.road { stroke: transparent }` hat jede gebaute Straße unsichtbar gemacht,
+  obwohl `stroke={farbe}` am Element stand. Farben am SVG deshalb per `style`.
+- Eine Animation, die etwas ausblendet, ist bei `prefers-reduced-motion` von
+  Anfang an unsichtbar — die abgeschaltete Animation steht sofort an ihrem
+  Ende. Für Information deshalb nur Eingangs-, nie Ausgangsanimationen.
 
 ## Etappenplan
 0. ✅ Monorepo-Grundgerüst, WS-Ping/Pong
@@ -166,7 +169,10 @@ Was im Client steht:
 - `board/` — Feld/Knoten/Kante zu Punkten (Spitze oben), das SVG-Brett
 - `game/` — Klickkarten, Anzeigemodell, Hotseat- und Online-Zustand
 - `net/` — Transport, Sitzungsgeheimnis, Einladungslink
-- `panels/`, `dialogs/`, `screens/`, `diagnostics/` — Oberfläche
+- `panels/`, `dialogs/`, `screens/`, `diagnostics/` — Oberfläche.
+  `HandPanel` liegt unten links: ein Stapel je Ressource, Kartenfarbe gleich
+  Geländefarbe, Motiv als zweiter Träger. Lokal ist das Zudecken beim
+  Zugwechsel eine Einstellung (`LocalOptions`), online greift es nie.
 
 **Der Client kennt keine Regel.** Er bekommt eine Aktionsliste, sortiert sie
 nach Ort (`game/targets.ts`), und ein Klick schickt die gefundene Aktion
