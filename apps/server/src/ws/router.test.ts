@@ -8,6 +8,7 @@ const context: RequestContext = {
   connectionId: 'conn-test',
   receivedAt: 1_700_000_000_000,
   session: { userId: null, roomCode: null },
+  events: { send: () => undefined },
 };
 
 function buildRouter(now: () => number = () => 1_700_000_000_000): MessageRouter {

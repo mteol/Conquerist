@@ -1,6 +1,5 @@
-import { reduce, type GameAction, type GameState } from '@conquerist/shared';
+import { describeTransition, reduce, type GameAction, type GameState } from '@conquerist/shared';
 import type { Seat } from '../seats';
-import { describeTransition } from './log';
 
 /**
  * Der Zustand einer Hotseat-Partie: das Spiel, die Folge, der Verlauf.

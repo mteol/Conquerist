@@ -8,6 +8,7 @@ import {
   successMessage,
 } from '@conquerist/shared';
 import type { MessageType, RequestOf, ResponseOf, ServerMessage } from '@conquerist/shared';
+import type { EventSink } from './events.js';
 
 /**
  * Was an dieser Verbindung bekannt ist.
@@ -32,6 +33,11 @@ export interface RequestContext {
   readonly connectionId: string;
   readonly receivedAt: number;
   readonly session: Session;
+  /**
+   * Der Rueckkanal dieser Verbindung. Ein Handler braucht ihn, um die Senke
+   * unter der Nutzer-Id einzutragen - vorher weiss niemand, wer da schreibt.
+   */
+  readonly events: EventSink;
 }
 
 export type MessageHandler<K extends MessageType> = (

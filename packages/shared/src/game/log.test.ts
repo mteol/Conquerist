@@ -1,20 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import {
-  CLASSIC_34,
-  CLASSIC_RULES,
-  createGame,
-  generateScenario,
-  legalActions,
-  reduce,
-  setupPlayer,
-  type GameAction,
-  type GameState,
-} from '@conquerist/shared';
-import { defaultSeats } from '../seats';
-import { describeTransition } from './log';
+import { CLASSIC_34 } from '../scenario/blueprints/classic34.js';
+import { generateScenario } from '../scenario/generator.js';
+import { CLASSIC_RULES } from '../rules/ruleset.js';
+import { seatColorAt, type Seat } from '../seats.js';
+import { createGame, setupPlayer } from './setup.js';
+import { legalActions } from './legal.js';
+import { reduce } from './reducer.js';
+import { describeTransition } from './log.js';
+import type { GameAction } from './actions.js';
+import type { GameState } from './state.js';
 
 const scenario = generateScenario(CLASSIC_34, 'log-probe');
-const seats = defaultSeats(3);
+const seats: Seat[] = ['p1', 'p2', 'p3'].map((id, index) => ({
+  id,
+  name: `Spieler ${index + 1}`,
+  color: seatColorAt(index),
+}));
 const ids = seats.map((seat) => seat.id);
 
 function apply(state: GameState, action: GameAction): GameState {

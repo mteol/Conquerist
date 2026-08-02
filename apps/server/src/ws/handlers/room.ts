@@ -1,0 +1,185 @@
+import {
+  ACT,
+  CREATE_ROOM,
+  HELLO,
+  JOIN_ROOM,
+  LEAVE_ROOM,
+  START_GAME,
+  describeTransition,
+  type Seat,
+} from '@conquerist/shared';
+import { broadcastGame, broadcastRoom } from '../../rooms/broadcast.js';
+import { applyAction, joinRoom, leaveRoom, setConnected, startGame } from '../../rooms/room.js';
+import type { Room } from '../../rooms/room.js';
+import type { RoomRegistry } from '../../rooms/registry.js';
+import type { Users } from '../../identity/users.js';
+import type { EventSink } from '../events.js';
+import type { MessageRouter, RequestContext, Session } from '../router.js';
+import type { SinkHub } from '../sinks.js';
+
+/**
+ * Die sechs Handler, in denen Identitaet, Raum und Zustellung zusammenlaufen.
+ *
+ * Jeder folgt derselben Form: Sitzung pruefen, Raum holen, Uebergang aus
+ * `rooms/room.ts` aufrufen, bei Erfolg im Verzeichnis ablegen und verteilen,
+ * dann leer antworten. Die Antwort traegt absichtlich nichts: der Stand kommt
+ * als Ereignis, und zwar fuer jeden Empfaenger einzeln gefiltert. Eine Antwort
+ * mit Zustand waere ein zweiter Weg fuer dieselbe Sache - und der zweite Weg
+ * ist der, den man beim naechsten Mal zu filtern vergisst.
+ *
+ * Ein werfender Handler wird vom Router zu `INTERNAL` - deshalb wird hier
+ * geworfen, wo der Aufrufer etwas falsch macht, und nicht still weitergemacht.
+ */
+export interface RoomHandlerDeps {
+  readonly registry: RoomRegistry;
+  readonly users: Users;
+  readonly sinks: SinkHub;
+}
+
+export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDeps): void {
+  const { registry, users, sinks } = deps;
+
+  router.register(HELLO, (payload, context) => {
+    const result = users.hello(payload.secret, payload.name);
+
+    context.session.userId = result.user.id;
+    sinks.add(result.user.id, context.events);
+
+    // Der Reconnect, und er kostet genau diese Zeilen: wer schon irgendwo
+    // sitzt, wird dort wieder als verbunden gefuehrt und bekommt sofort den
+    // Stand - Raum und, falls sie laeuft, die Partie.
+    const existing = registry.roomOf(result.user.id);
+    if (existing !== undefined) {
+      context.session.roomCode = existing.code;
+      const reconnected = setConnected(existing, result.user.id, true);
+      registry.update(reconnected.code, reconnected);
+      broadcastRoom(reconnected, sinks.map);
+      broadcastGame(reconnected, sinks.map);
+    }
+
+    return result.secret === undefined
+      ? { userId: result.user.id, name: result.user.name }
+      : { userId: result.user.id, secret: result.secret, name: result.user.name };
+  });
+
+  router.register(CREATE_ROOM, (payload, context) => {
+    const user = requireUser(context, users);
+
+    const created = registry.create(user.id, user.name, payload.seatCount, payload.seed);
+    if (!created.ok) throw new Error(created.error);
+
+    context.session.roomCode = created.room.code;
+    broadcastRoom(created.room, sinks.map);
+
+    return { code: created.room.code };
+  });
+
+  router.register(JOIN_ROOM, (payload, context) => {
+    const user = requireUser(context, users);
+    const room = requireRoom(registry.get(payload.code));
+
+    const joined = joinRoom(room, user.id, user.name);
+    if (!joined.ok) throw new Error(joined.error);
+
+    registry.update(joined.room.code, joined.room);
+    context.session.roomCode = joined.room.code;
+
+    broadcastRoom(joined.room, sinks.map);
+    // Wer einer laufenden Partie wieder beitritt, braucht auch den Spielstand.
+    broadcastGame(joined.room, sinks.map);
+
+    return { code: joined.room.code };
+  });
+
+  router.register(LEAVE_ROOM, (_payload, context) => {
+    const user = requireUser(context, users);
+    const room = registry.get(context.session.roomCode ?? '');
+
+    if (room !== undefined) {
+      const next = leaveRoom(room, user.id);
+      registry.update(next.code, next);
+      broadcastRoom(next, sinks.map);
+    }
+
+    context.session.roomCode = null;
+    return {};
+  });
+
+  router.register(START_GAME, (_payload, context) => {
+    const user = requireUser(context, users);
+    const room = requireRoom(registry.get(context.session.roomCode ?? ''));
+
+    const started = startGame(room, user.id);
+    if (!started.ok) throw new Error(started.error);
+
+    registry.update(started.room.code, started.room);
+    broadcastRoom(started.room, sinks.map);
+    broadcastGame(started.room, sinks.map);
+
+    return {};
+  });
+
+  router.register(ACT, (payload, context) => {
+    const user = requireUser(context, users);
+    const room = requireRoom(registry.get(context.session.roomCode ?? ''));
+    const before = room.game;
+
+    const acted = applyAction(room, user.id, payload.action);
+    if (!acted.ok) throw new Error(acted.error);
+
+    registry.update(acted.room.code, acted.room);
+
+    // Der Verlaufssatz entsteht aus vorher/nachher und nicht aus der Absicht -
+    // er kann damit nicht von dem abweichen, was wirklich geschehen ist.
+    const entry =
+      before === null || acted.room.game === null
+        ? undefined
+        : describeTransition(before, payload.action, acted.room.game, seatsOf(room));
+
+    broadcastGame(acted.room, sinks.map, entry);
+    return {};
+  });
+}
+
+/**
+ * Was beim Wegfallen einer Verbindung zu tun ist.
+ *
+ * Nicht im Router, weil kein Client danach fragt. Der Platz bleibt belegt -
+ * ihn zu raeumen hiesse, eine laufende Partie zu zerstoeren, nur weil jemandem
+ * das WLAN ausgeht.
+ */
+export function handleDisconnect(deps: RoomHandlerDeps, session: Session, sink: EventSink): void {
+  const { registry, sinks } = deps;
+  const userId = session.userId;
+  if (userId === null) return;
+
+  sinks.remove(userId, sink);
+  if (sinks.has(userId)) return; // Noch ein Tab offen: nichts zu melden.
+
+  const room = registry.roomOf(userId);
+  if (room === undefined) return;
+
+  const next = setConnected(room, userId, false);
+  registry.update(next.code, next);
+  broadcastRoom(next, sinks.map);
+}
+
+/** Die Sitze eines Raums in der Form, die `shared` kennt. */
+function seatsOf(room: Room): readonly Seat[] {
+  return room.seats.map((seat) => ({ id: seat.userId, name: seat.name, color: seat.color }));
+}
+
+function requireUser(context: RequestContext, users: Users): { id: string; name: string } {
+  const userId = context.session.userId;
+  if (userId === null) throw new Error('Erst anmelden - hello fehlt');
+
+  const user = users.byId(userId);
+  if (user === undefined) throw new Error('Angemeldete Person gibt es nicht mehr');
+
+  return { id: user.id, name: user.name };
+}
+
+function requireRoom(room: Room | undefined): Room {
+  if (room === undefined) throw new Error('Diesen Raum gibt es nicht');
+  return room;
+}

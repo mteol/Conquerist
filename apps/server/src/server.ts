@@ -3,11 +3,23 @@ import { ConfigError, loadConfig } from './config.js';
 import { buildApp } from './app.js';
 import { MessageRouter } from './ws/router.js';
 import { registerPingHandler } from './ws/handlers/ping.js';
+import { handleDisconnect, registerRoomHandlers } from './ws/handlers/room.js';
 import { attachWebSocketServer } from './ws/attach.js';
+import { openDatabase } from './db/database.js';
+import { Users } from './identity/users.js';
+import { RoomRegistry } from './rooms/registry.js';
+import { SinkHub } from './ws/sinks.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
   const app = buildApp(config);
+
+  const database = openDatabase(config.databaseFile);
+  const deps = {
+    registry: new RoomRegistry(),
+    users: new Users(database),
+    sinks: new SinkHub(),
+  };
 
   const router = new MessageRouter({
     onHandlerError: (type, error, context) => {
@@ -16,6 +28,7 @@ async function main(): Promise<void> {
   });
 
   registerPingHandler(router);
+  registerRoomHandlers(router, deps);
 
   // Reihenfolge: den upgrade-Listener registrieren, BEVOR gelauscht wird.
   const ws = attachWebSocketServer({
@@ -23,6 +36,9 @@ async function main(): Promise<void> {
     config,
     router,
     log: app.log,
+    onClosed: (session, events) => {
+      handleDisconnect(deps, session, events);
+    },
   });
 
   let shuttingDown = false;

@@ -1,6 +1,9 @@
-import { countResources, type GameAction, type GameState, type PlayerId } from '@conquerist/shared';
-import { seatsById, type Seat } from '../seats';
-import { RESOURCE_LABELS, resourceList } from './labels';
+import type { Seat } from '../seats.js';
+import { RESOURCE_LABELS, resourceList } from './labels.js';
+import type { GameAction } from './actions.js';
+import type { PlayerId } from './player.js';
+import { countResources } from './resources.js';
+import type { GameState } from './state.js';
 
 /**
  * Ein Satz je Zug, abgeleitet aus dem Zustandsuebergang.
@@ -17,7 +20,9 @@ export function describeTransition(
   after: GameState,
   seats: readonly Seat[],
 ): string {
-  const byId = seatsById(seats);
+  // Nachschlagetabelle hier statt aus dem Client: `seatsById` bleibt dort, weil
+  // nur die Oberflaeche sie sonst noch braucht.
+  const byId = new Map<PlayerId, Seat>(seats.map((seat) => [seat.id, seat]));
   const nameOf = (id: PlayerId): string => byId.get(id)?.name ?? id;
   const who = nameOf(action.player);
 
