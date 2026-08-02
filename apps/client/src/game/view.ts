@@ -58,6 +58,17 @@ export interface GameView {
    * nicht.
    */
   readonly gains: ReadonlyMap<PlayerId, number>;
+  /** Wer gerade keine offene Verbindung hat - fuer den kleinen Hinweis. */
+  readonly disconnected: readonly PlayerRow[];
+  /**
+   * Auf wen die Partie wartet, obwohl er nicht da ist.
+   *
+   * Das Spiel bleibt in diesem Fall von selbst stehen: Zuege gibt es nur fuer
+   * den, der handeln darf, und der kann sie nicht schicken. Das ist kein
+   * Zustand, den jemand herstellen muss - er ergibt sich. Was fehlt, ist zu
+   * sagen, dass genau das der Grund ist, warum nichts passiert.
+   */
+  readonly waitingFor: readonly PlayerRow[];
 }
 
 /**
@@ -144,6 +155,7 @@ export function discardCountForView(view: PlayerView, player: PlayerId): number 
 
 export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
   const current = view.players[view.currentPlayerIndex];
+  const acting = actingPlayers(view);
   const before = new Map((previous ?? view).players.map((player) => [player.id, player.cardCount]));
 
   const gains = new Map<PlayerId, number>();
@@ -154,23 +166,27 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     }
   }
 
+  const players: PlayerRow[] = view.players.map((player) => ({
+    id: player.id,
+    name: player.name,
+    color: player.color,
+    victoryPoints: player.victoryPoints,
+    cardCount: player.cardCount,
+    resources: player.resources,
+    piecesLeft: player.piecesLeft,
+    connected: player.connected,
+    isCurrent: player.id === current?.id,
+    mustDiscard:
+      view.phase.kind === 'discardPending' && view.phase.pending.includes(player.id)
+        ? discardCountForView(view, player.id)
+        : 0,
+  }));
+
   return {
-    players: view.players.map((player) => ({
-      id: player.id,
-      name: player.name,
-      color: player.color,
-      victoryPoints: player.victoryPoints,
-      cardCount: player.cardCount,
-      resources: player.resources,
-      piecesLeft: player.piecesLeft,
-      connected: player.connected,
-      isCurrent: player.id === current?.id,
-      mustDiscard:
-        view.phase.kind === 'discardPending' && view.phase.pending.includes(player.id)
-          ? discardCountForView(view, player.id)
-          : 0,
-    })),
-    actingPlayers: actingPlayers(view),
+    players,
+    disconnected: players.filter((player) => !player.connected),
+    waitingFor: players.filter((player) => acting.includes(player.id) && !player.connected),
+    actingPlayers: acting,
     currentPlayerId: current?.id ?? view.you,
     phaseText: phaseTextOf(view),
     lastRoll: view.lastRoll,

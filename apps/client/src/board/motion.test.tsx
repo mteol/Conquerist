@@ -39,6 +39,8 @@ function tableView(gains: ReadonlyMap<string, number>): GameView {
     longestRoad: { holder: null, length: 0 },
     you: seats[0]!.id,
     gains,
+    disconnected: [],
+    waitingFor: [],
   };
 }
 

@@ -444,6 +444,152 @@ body {
   background: rgb(233 225 207 / 14%);
 }
 
+/* --- Handkarten ----------------------------------------------------------- *
+ *
+ * Ein Stapel je Ressource. Die Kartenfarbe ist die Gelaendefarbe vom Brett -
+ * wer Lehm sucht, sucht die Farbe der Huegel. Die Zahl steht als Plakette in
+ * der Ecke, statt gezaehlt zu werden; die Stapeltiefe darunter gibt trotzdem
+ * den schnellen Eindruck.
+ */
+
+.hand {
+  width: 14.5rem;
+  padding: 0.6rem 0.7rem 0.7rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--radius);
+  background: var(--parchment);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.hand__head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.hand__head .panel__title {
+  margin: 0;
+}
+
+.hand__total {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.hand__empty {
+  margin: 0.35rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+
+.hand__stacks {
+  display: flex;
+  gap: 0.25rem;
+  /* Oben Luft fuer die Stapeltiefe, die nach oben aus der Karte herausragt. */
+  margin: 0.65rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Fuenf Stapel muessen nebeneinander passen, auch bei voller Hand:
+ * 5 x 2.3rem + 4 x 0.25rem = 12.5rem, plus 1.4rem Innenabstand.
+ */
+.card {
+  position: relative;
+  width: 2.3rem;
+}
+
+/*
+ * Die Karten dahinter: nur Andeutung, nie Traeger einer Information.
+ *
+ * Versatz ausschliesslich nach oben. Seitlich waere er huebscher, wuerde aber
+ * bei fuenf Stapeln aus dem Panel herauslaufen - und ein Stapel, der seinen
+ * Nachbarn ueberlappt, sagt etwas, das nicht stimmt.
+ */
+.card__behind {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2.9rem;
+  border: 1px solid rgb(22 32 42 / 45%);
+  border-radius: 5px;
+  opacity: 0.5;
+}
+
+.card__face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 2.9rem;
+  border: 1px solid rgb(22 32 42 / 65%);
+  border-radius: 5px;
+}
+
+.card__glyph {
+  width: 1.6rem;
+  height: 1.6rem;
+  fill: rgb(22 32 42 / 82%);
+}
+
+/* Bruchkanten im Erz: Linien, keine Flaechen. */
+.card__glyph-cut {
+  fill: none;
+  stroke: rgb(240 230 210 / 55%);
+  stroke-width: 1.1;
+}
+
+.card__count {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  min-width: 1.15rem;
+  padding: 0 0.2rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--parchment);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.card__name {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+/* Zugedeckt: drei Rueckseiten und die Einladung, hinzusehen. */
+.hand__cover {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 0.45rem;
+}
+
+.hand__backs {
+  display: flex;
+}
+
+.hand__backs span {
+  width: 1.5rem;
+  height: 2.2rem;
+  border: 1px solid rgb(22 32 42 / 65%);
+  border-radius: 4px;
+  background: repeating-linear-gradient(45deg, var(--sea-700) 0 3px, var(--sea-800) 3px 6px);
+}
+
+.hand__backs span + span {
+  margin-left: -0.9rem;
+}
+
 /* --- Wartebereich --------------------------------------------------------- *
  *
  * Der Code ist das groesste Element der Anwendung - groesser als der Titel auf
@@ -627,7 +773,7 @@ body {
  */
 .board-area {
   position: absolute;
-  inset: 0.75rem 15.5rem 5.5rem 15.5rem;
+  inset: 0.75rem 15.5rem 11rem 15.5rem;
 }
 
 .board {
@@ -658,9 +804,25 @@ body {
   text-align: right;
 }
 
-.panel--actions {
+/*
+ * Unten links stapeln sich Hand und Aktionen.
+ *
+ * Beide gehoeren zusammen: was man tun kann, haengt daran, was man hat. Sie
+ * teilen sich deshalb eine Spalte, statt getrennt in zwei Ecken zu schweben -
+ * der Blick springt sonst zwischen ihnen hin und her.
+ */
+.tray {
+  position: absolute;
   bottom: 0.75rem;
   left: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.tray .panel--actions {
+  position: static;
 }
 
 .panel--log {
@@ -846,6 +1008,29 @@ body {
 .status__sum {
   color: var(--ink-muted);
   font-size: 0.75rem;
+}
+
+/*
+ * Zwei Staerken fuer dieselbe Sache.
+ *
+ * Wer nur weg ist, steht klein und grau da. Wartet die Partie auf ihn, bekommt
+ * der Satz eine Kante - er erklaert dann, warum nichts passiert, und das ist
+ * eine andere Nachricht als „ist gerade nicht da".
+ */
+.status__waiting {
+  margin: 0.45rem 0 0;
+  padding-left: 0.5rem;
+  border-left: 3px solid var(--warn);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.status__away {
+  margin: 0.35rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+  text-align: right;
 }
 
 .log {

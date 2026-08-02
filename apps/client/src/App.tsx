@@ -3,7 +3,7 @@ import type { GameState } from '@conquerist/shared';
 import type { Seat } from './seats';
 import { GameScreen } from './screens/GameScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
-import { StartScreen } from './screens/StartScreen';
+import { StartScreen, type LocalOptions } from './screens/StartScreen';
 import { useLocalGame } from './game/useLocalGame';
 import { useOnlineGame } from './game/useOnlineGame';
 import { loadName, roomFromLocation } from './net/session';
@@ -23,13 +23,14 @@ import { loadName, roomFromLocation } from './net/session';
 interface LocalSession {
   readonly game: GameState;
   readonly seats: readonly Seat[];
+  readonly options: LocalOptions;
 }
 
 export function App(): JSX.Element {
   const [local, setLocal] = useState<LocalSession | null>(null);
 
   return local === null ? (
-    <Online onStartLocal={(game, seats) => setLocal({ game, seats })} />
+    <Online onStartLocal={(game, seats, options) => setLocal({ game, seats, options })} />
   ) : (
     <Local session={local} onLeave={() => setLocal(null)} />
   );
@@ -60,6 +61,7 @@ function Local({
       error={game.error}
       onAct={game.act}
       onDismissError={game.dismissError}
+      concealBetweenTurns={session.options.concealBetweenTurns}
       onLeave={onLeave}
     />
   );
@@ -68,7 +70,7 @@ function Local({
 function Online({
   onStartLocal,
 }: {
-  readonly onStartLocal: (game: GameState, seats: readonly Seat[]) => void;
+  readonly onStartLocal: (game: GameState, seats: readonly Seat[], options: LocalOptions) => void;
 }): JSX.Element {
   const online = useOnlineGame(roomFromLocation());
   const { room, view } = online.state;

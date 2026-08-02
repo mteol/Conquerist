@@ -81,6 +81,20 @@ describe('Startbildschirm', () => {
     expect(first.scenario).toEqual(second.scenario);
   });
 
+  it('laesst waehlen, ob die Hand zwischen den Zuegen zugedeckt wird', async () => {
+    const onStart = vi.fn();
+    render(<StartScreen onStartLocal={onStart} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
+
+    // Voreingestellt zugedeckt: am selben Geraet ist das die vorsichtigere
+    // Annahme, und wer offen spielen will, sagt es einmal.
+    await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
+    expect(onStart.mock.calls[0]![2]).toEqual({ concealBetweenTurns: true });
+
+    await userEvent.click(screen.getByLabelText(/offen liegen lassen/i));
+    await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
+    expect(onStart.mock.calls[1]![2]).toEqual({ concealBetweenTurns: false });
+  });
+
   it('haelt die Diagnose aus Etappe 0 zugeklappt bereit', () => {
     render(<StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
 

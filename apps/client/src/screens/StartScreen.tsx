@@ -13,28 +13,21 @@ import { BoardSvg } from '../board/BoardSvg';
 import { EMPTY_TARGETS } from '../game/targets';
 import { ConnectionPanel } from '../diagnostics/ConnectionPanel';
 
-/**
- * Wo eine Partie anfaengt.
- *
- * Der Bildschirm zeigt **das Brett, das gleich gespielt wird** - erzeugt aus
- * dem Seed im Formular, neu bei jedem Tastendruck. Das ist keine Zierde: der
- * Seed ist sonst eine kryptische Zeichenkette, und so wird er zu etwas
- * Sichtbarem. Der Generator aus Etappe 1 braucht dafuer rund drei Millisekunden
- * je Brett; das traegt eine Vorschau, die am Tippen haengt.
- *
- * Der Vorschlag fuer den Seed kommt aus `crypto` - echter Zufall, und die
- * einzige Stelle im Projekt, an der das erlaubt ist. Regel 2 gilt fuer die
- * Logik; die Grenze zwischen Welt und Logik ist genau dieses Eingabefeld.
- *
- * **Seit Etappe 4 zwei Wege, und die Verben sagen den Unterschied:** online
- * wird eine Partie *erstellt* - danach wartet man im Wartebereich auf die
- * anderen. An einem Geraet wird sie *gestartet* und laeuft sofort. Tischgroesse
- * und Seed gelten fuer beide Wege, deshalb stehen sie oben und nicht in einem
- * der beiden Kaesten.
- */
+/** Was nur die lokale Partie betrifft - online gibt es diese Fragen nicht. */
+export interface LocalOptions {
+  /**
+   * Handkarten beim Zugwechsel zudecken.
+   *
+   * Am selben Geraet ist das eine echte Frage: der Bildschirm wandert weiter.
+   * Wer zu zweit nebeneinander sitzt und ohnehin alles sieht, will den
+   * Zwischenschritt nicht - deshalb eine Wahl und keine Vorschrift.
+   */
+  readonly concealBetweenTurns: boolean;
+}
+
 export interface StartScreenProps {
   /** An einem Geraet: die Partie beginnt sofort. */
-  readonly onStartLocal: (game: GameState, seats: readonly Seat[]) => void;
+  readonly onStartLocal: (game: GameState, seats: readonly Seat[], options: LocalOptions) => void;
   /** Online: es entsteht ein Raum, gespielt wird spaeter. */
   readonly onCreateRoom: (seatCount: number, seed: string, name: string) => void;
   readonly onJoinRoom: (code: string, name: string) => void;
@@ -73,6 +66,25 @@ const SEAT_COUNTS = Array.from(
   (_unused, index) => MIN_SEATS + index,
 );
 
+/**
+ * Wo eine Partie anfaengt.
+ *
+ * Der Bildschirm zeigt **das Brett, das gleich gespielt wird** - erzeugt aus
+ * dem Seed im Formular, neu bei jedem Tastendruck. Das ist keine Zierde: der
+ * Seed ist sonst eine kryptische Zeichenkette, und so wird er zu etwas
+ * Sichtbarem. Der Generator aus Etappe 1 braucht dafuer rund drei Millisekunden
+ * je Brett; das traegt eine Vorschau, die am Tippen haengt.
+ *
+ * Der Vorschlag fuer den Seed kommt aus `crypto` - echter Zufall, und die
+ * einzige Stelle im Projekt, an der das erlaubt ist. Regel 2 gilt fuer die
+ * Logik; die Grenze zwischen Welt und Logik ist genau dieses Eingabefeld.
+ *
+ * **Seit Etappe 4 zwei Wege, und die Verben sagen den Unterschied:** online
+ * wird eine Partie *erstellt* - danach wartet man im Wartebereich auf die
+ * anderen. An einem Geraet wird sie *gestartet* und laeuft sofort. Tischgroesse
+ * und Seed gelten fuer beide Wege, deshalb stehen sie oben und nicht in einem
+ * der beiden Kaesten.
+ */
 export function StartScreen({
   onStartLocal,
   onCreateRoom,
@@ -87,6 +99,7 @@ export function StartScreen({
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [name, setName] = useState(initialName);
   const [code, setCode] = useState(initialCode ?? '');
+  const [conceal, setConceal] = useState(true);
 
   /*
    * Bei drei bis vier Spielern passt nur `classic34`, bei fuenf bis sechs nur
@@ -141,7 +154,7 @@ export function StartScreen({
     }
 
     setLocalProblem(null);
-    onStartLocal(preview, seats);
+    onStartLocal(preview, seats, { concealBetweenTurns: conceal });
   };
 
   const shown = problem ?? localProblem;
@@ -272,6 +285,30 @@ export function StartScreen({
               </li>
             ))}
           </ol>
+
+          <fieldset className="field-group way__hand">
+            <legend>Handkarten</legend>
+            <label htmlFor="hand-conceal">
+              <input
+                id="hand-conceal"
+                type="radio"
+                name="hand"
+                checked={conceal}
+                onChange={() => setConceal(true)}
+              />
+              Beim Zugwechsel zudecken
+            </label>
+            <label htmlFor="hand-open">
+              <input
+                id="hand-open"
+                type="radio"
+                name="hand"
+                checked={!conceal}
+                onChange={() => setConceal(false)}
+              />
+              Offen liegen lassen
+            </label>
+          </fieldset>
 
           <button type="button" className="button" onClick={startLocal}>
             Lokale Partie starten

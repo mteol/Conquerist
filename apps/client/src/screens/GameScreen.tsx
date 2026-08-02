@@ -11,6 +11,7 @@ import { BoardSvg, type Place } from '../board/BoardSvg';
 import { targetsFrom } from '../game/targets';
 import { discardCountForView, gameViewOf, type PlayerRow } from '../game/view';
 import { ActionPanel } from '../panels/ActionPanel';
+import { HandPanel } from '../panels/HandPanel';
 import { LogPanel } from '../panels/LogPanel';
 import { StatusPanel } from '../panels/StatusPanel';
 import { TablePanel } from '../panels/TablePanel';
@@ -49,6 +50,15 @@ export interface GameScreenProps {
   readonly onLeave: () => void;
   /** Verbindung weg. Die lokale Partie laesst das aus - sie hat keine. */
   readonly offline?: boolean;
+  /**
+   * Handkarten beim Zugwechsel zudecken.
+   *
+   * Online sinnlos: jeder sitzt vor seinem eigenen Bildschirm, und dort ist
+   * die eigene Hand nie ein Geheimnis. Lokal ist es eine echte Frage - der
+   * Bildschirm wandert weiter, und wer als Naechstes hinsieht, soll nicht die
+   * Hand seines Vorgaengers vorfinden. Deshalb einstellbar und nicht gesetzt.
+   */
+  readonly concealBetweenTurns?: boolean;
 }
 
 export function GameScreen({
@@ -60,9 +70,22 @@ export function GameScreen({
   onDismissError,
   onLeave,
   offline = false,
+  concealBetweenTurns = false,
 }: GameScreenProps): JSX.Element {
   const [tradeOpen, setTradeOpen] = useState(false);
   const [robberHex, setRobberHex] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(!concealBetweenTurns);
+
+  /*
+   * Beim Wechsel wieder zudecken.
+   *
+   * Der Schluessel ist `view.you` und nicht der Spieler am Zug: lokal baut
+   * `useLocalGame` die Sicht fuer den, der handeln darf - wechselt der, wechselt
+   * `you`. Online aendert sich `you` nie, und dann deckt hier auch nie etwas zu.
+   */
+  useEffect(() => {
+    setRevealed(!concealBetweenTurns);
+  }, [view.you, concealBetweenTurns]);
 
   /*
    * Der vorige Stand, nur um die Differenz zu bilden.
@@ -151,19 +174,29 @@ export function GameScreen({
       <StatusPanel view={display} />
       <LogPanel entries={log} />
 
-      <ActionPanel
-        view={display}
-        targets={targets}
-        error={error}
-        onRoll={() => {
-          if (targets.roll !== null) onAct(targets.roll);
-        }}
-        onEndTurn={() => {
-          if (targets.endTurn !== null) onAct(targets.endTurn);
-        }}
-        onOpenTrade={() => setTradeOpen(true)}
-        onDismissError={onDismissError}
-      />
+      <div className="tray">
+        <HandPanel
+          resources={you?.resources ?? null}
+          cardCount={you?.cardCount ?? 0}
+          covered={!revealed}
+          onReveal={() => setRevealed(true)}
+          {...(concealBetweenTurns && you !== undefined ? { owner: you.name } : {})}
+        />
+
+        <ActionPanel
+          view={display}
+          targets={targets}
+          error={error}
+          onRoll={() => {
+            if (targets.roll !== null) onAct(targets.roll);
+          }}
+          onEndTurn={() => {
+            if (targets.endTurn !== null) onAct(targets.endTurn);
+          }}
+          onOpenTrade={() => setTradeOpen(true)}
+          onDismissError={onDismissError}
+        />
+      </div>
 
       {mustDiscard > 0 && you !== undefined ? (
         <DiscardDialog

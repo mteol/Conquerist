@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GAME_EVENT, ROOM_EVENT } from '@conquerist/shared';
+import { GAME_EVENT, ROOM_EVENT, setupPlayer } from '@conquerist/shared';
 import { broadcastGame, broadcastRoom } from './broadcast.js';
-import { createRoom, joinRoom, startGame, type Room } from './room.js';
+import { createRoom, joinRoom, setConnected, startGame, type Room } from './room.js';
 import type { EventSink } from '../ws/events.js';
 
 function runningRoom(): Room {
@@ -73,6 +73,41 @@ describe('Zustellung', () => {
 
     // In der Gruendungsphase darf genau einer setzen.
     expect(withActions).toHaveLength(1);
+  });
+
+  it('gibt die Zuege eines Getrennten an niemand anderen weiter', () => {
+    const running = runningRoom();
+    const game = running.game!;
+    const acting = setupPlayer(game)!;
+
+    // Der, der dran ist, faellt aus der Verbindung.
+    const room = setConnected(running, acting, false);
+    const targets = sinks(['u1', 'u2', 'u3']);
+
+    broadcastGame(room, targets);
+
+    // Genau hier steht die Partie: Zuege gibt es nur fuer den, der handeln
+    // darf, und sein Ausfall macht daraus keine Zuege fuer die anderen. Es
+    // haelt also niemand das Spiel an - es kann schlicht keiner weiterspielen.
+    for (const [userId, list] of targets) {
+      const send = list[0]!.send as unknown as ReturnType<typeof vi.fn>;
+      const payload = send.mock.calls[0]![1];
+      expect(payload.actions.length > 0).toBe(userId === acting);
+    }
+  });
+
+  it('meldet den Getrennten in jeder Sicht als getrennt', () => {
+    const running = runningRoom();
+    const room = setConnected(running, 'u2', false);
+    const targets = sinks(['u1', 'u2', 'u3']);
+
+    broadcastGame(room, targets);
+
+    const send = targets.get('u1')![0]!.send as unknown as ReturnType<typeof vi.fn>;
+    const players = send.mock.calls[0]![1].view.players;
+
+    expect(players.find((entry: { id: string }) => entry.id === 'u2').connected).toBe(false);
+    expect(players.find((entry: { id: string }) => entry.id === 'u3').connected).toBe(true);
   });
 
   it('schickt den Raumzustand an alle gleich', () => {
