@@ -1,3 +1,5 @@
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import Database from 'better-sqlite3';
 
 /**
@@ -12,7 +14,18 @@ import Database from 'better-sqlite3';
  */
 export type AppDatabase = Database.Database;
 
+/** Der Sonderwert, bei dem nichts auf der Platte landet. */
+const IN_MEMORY = ':memory:';
+
 export function openDatabase(file: string): AppDatabase {
+  // better-sqlite3 legt den Ordner nicht an und wirft stattdessen „directory
+  // does not exist". Der Default liegt unter `data/`, das gitignored ist und
+  // auf einem frischen Clone nicht existiert - ohne diese Zeile startet der
+  // Server also genau einmal nicht, naemlich beim allerersten Mal.
+  if (file !== IN_MEMORY) {
+    mkdirSync(dirname(file), { recursive: true });
+  }
+
   const database = new Database(file);
   database.pragma('journal_mode = WAL');
   database.pragma('foreign_keys = ON');
