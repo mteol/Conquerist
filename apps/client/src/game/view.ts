@@ -1,9 +1,12 @@
 import {
   setupPlayerIndex,
+  yieldTotal,
+  type DiceSpec,
   type GameState,
   type PlayerId,
   type PlayerView,
   type ResourceAmounts,
+  type Roll,
   type RuleSet,
 } from '@conquerist/shared';
 
@@ -49,7 +52,21 @@ export interface GameView {
   readonly actingPlayers: readonly PlayerId[];
   readonly currentPlayerId: PlayerId;
   readonly phaseText: string;
-  readonly lastRoll: readonly [number, number] | null;
+  /** Womit an diesem Tisch gewuerfelt wird - die Schale aus dem RuleSet. */
+  readonly dice: DiceSpec;
+  /** Was zuletzt gefallen ist; `null`, solange in dieser Partie kein Wurf war. */
+  readonly lastRoll: Roll | null;
+  /** Die Zahl, die den Ertrag ausgeloest hat. `null` ohne Wurf. */
+  readonly rollTotal: number | null;
+  /**
+   * Ob dieser Stand aus einem Wurf hervorgegangen ist - dann fallen die Wuerfel.
+   *
+   * Gelesen aus dem Phasenwechsel und nicht aus veraenderten Augenzahlen: aus
+   * `rollPending` fuehrt genau ein Zug heraus, und zweimal dieselbe Augenzahl
+   * hintereinander ist trotzdem ein zweiter Wurf. Ein Zaehler im Zustand waere
+   * die Alternative gewesen - er waere eine zweite Wahrheit neben der Phase.
+   */
+  readonly rolled: boolean;
   readonly turn: number;
   readonly longestRoad: GameState['longestRoad'];
   readonly largestArmy: PlayerView['largestArmy'];
@@ -201,7 +218,13 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     actingPlayers: acting,
     currentPlayerId: current?.id ?? view.you,
     phaseText: phaseTextOf(view),
+    dice: view.rules.dice,
     lastRoll: view.lastRoll,
+    rollTotal: view.lastRoll === null ? null : yieldTotal(view.rules.dice, view.lastRoll),
+    rolled:
+      previous !== undefined &&
+      previous.phase.kind === 'rollPending' &&
+      view.phase.kind !== 'rollPending',
     turn: view.turn,
     longestRoad: view.longestRoad,
     largestArmy: view.largestArmy,

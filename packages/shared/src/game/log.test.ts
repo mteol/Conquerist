@@ -7,6 +7,8 @@ import { createGame, setupPlayer } from './setup.js';
 import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
 import { describeTransition } from './log.js';
+import { yieldTotal } from './dice.js';
+import { CENTER_VERTEX, giving, testGame } from './fixtures.js';
 import type { GameAction } from './actions.js';
 import type { GameState } from './state.js';
 
@@ -17,6 +19,13 @@ const seats: Seat[] = ['p1', 'p2', 'p3'].map((id, index) => ({
   color: seatColorAt(index),
 }));
 const ids = seats.map((seat) => seat.id);
+
+/** Das handgelegte Brett aus `fixtures.ts` benutzt eigene Spieler-Ids. */
+const testSeats: Seat[] = ['p1', 'p2', 'p3'].map((id, index) => ({
+  id,
+  name: id,
+  color: seatColorAt(index),
+}));
 
 function apply(state: GameState, action: GameAction): GameState {
   const result = reduce(state, action);
@@ -43,9 +52,32 @@ describe('Verlaufssaetze', () => {
     const player = state.players[state.currentPlayerIndex]!.id;
     const action: GameAction = { type: 'rollDice', player };
     const after = apply(state, action);
-    const sum = after.lastRoll![0] + after.lastRoll![1];
+    const sum = yieldTotal(after.rules.dice, after.lastRoll!);
 
     expect(describeTransition(state, action, after, seats)).toContain(String(sum));
+  });
+
+  it('meldet den Sieg an dem Zug, mit dem er faellt', () => {
+    /*
+     * Der Sieg stand einmal nur beim Zugende - und konnte dort gar nicht
+     * auftreten, weil `reduce` ihn nur fuer den Spieler am Zug prueft und das
+     * beim Zugende schon der naechste ist. Gewonnen wird mit einer Stadt, einer
+     * Karte, einem Ritter; der Verlauf meldete davon nur den Zug.
+     */
+    const base = testGame({
+      rules: { ...CLASSIC_RULES, victoryPointGoal: 2 },
+      phase: { kind: 'main' },
+      currentPlayerIndex: 0,
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement' } },
+    });
+    const before = giving(base, 'p1', { grain: 2, ore: 3 });
+    const action: GameAction = { type: 'buildCity', player: 'p1', vertex: CENTER_VERTEX };
+    const after = apply(before, action);
+
+    expect(after.phase.kind).toBe('finished');
+    expect(describeTransition(before, action, after, testSeats)).toBe(
+      'p1 baut eine Stadt - und gewinnt die Partie',
+    );
   });
 
   it('faellt fuer unbekannte Sitze auf die Id zurueck statt zu werfen', () => {

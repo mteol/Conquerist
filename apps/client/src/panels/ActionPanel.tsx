@@ -1,13 +1,19 @@
 import type { JSX } from 'react';
 import type { ActionTargets } from '../game/targets';
 import type { GameView } from '../game/view';
+import { DiceTray } from './DiceTray';
 
 /**
- * Die Knoepfe, die nicht auf dem Brett liegen.
+ * Die Bedienung, die nicht auf dem Brett liegt.
  *
  * Gesperrt wird nicht nach eigenem Wissen, sondern nach der Klickkarte: was
  * `legalActions` nicht genannt hat, ist grau. Der Handelsknopf oeffnet ein
  * Fenster - der Kurs wird dort abgeleitet und nicht gewaehlt (Regel 3).
+ *
+ * Oben stehen die Wuerfel, und sie sind kein Beiwerk: sie haben den Knopf
+ * „Wuerfeln" ersetzt. Er stand daneben und tat, was sie darstellen - jetzt
+ * wirft man sie. Damit liest sich die Leiste in der Reihenfolge eines Zuges:
+ * werfen, handeln und kaufen, beenden.
  */
 export interface ActionPanelProps {
   readonly view: GameView;
@@ -32,10 +38,16 @@ export function ActionPanel({
 }: ActionPanelProps): JSX.Element {
   return (
     <section className="panel panel--actions">
+      <DiceTray
+        spec={view.dice}
+        roll={view.lastRoll}
+        total={view.rollTotal}
+        canRoll={targets.roll !== null}
+        fell={view.rolled}
+        onRoll={onRoll}
+      />
+
       <div className="panel__buttons">
-        <button type="button" className="button" disabled={targets.roll === null} onClick={onRoll}>
-          Wuerfeln
-        </button>
         <button
           type="button"
           className="button"

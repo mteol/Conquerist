@@ -105,7 +105,8 @@ describe('GameScreen', () => {
       await userEvent.click(target);
     }
 
-    expect(screen.getByRole('button', { name: 'Wuerfeln' })).toHaveProperty('disabled', false);
+    // Gewuerfelt wird an den Wuerfeln - einen eigenen Knopf dafuer gibt es nicht.
+    expect(screen.getByRole('button', { name: 'Würfeln' })).toHaveProperty('disabled', false);
     expect(screen.getByRole('button', { name: 'Zug beenden' })).toHaveProperty('disabled', true);
     expect(
       screen.getAllByTestId(/^(vertex|edge)-/).filter((node) => node.dataset['target'] === 'true'),

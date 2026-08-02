@@ -164,8 +164,20 @@ export function GameScreen({
       if (place.kind === 'edge') {
         if (buildingRoads !== null) {
           const picked = [...buildingRoads, place.id];
-          // Zwei Strassen sind die Karte; nach der zweiten geht sie hinaus.
-          if (picked.length === 2) {
+          /*
+           * Zwei Strassen sind die Karte - aber nicht immer gehen zwei.
+           *
+           * Wer die letzte Strasse aus dem Vorrat legt oder danach nirgends
+           * mehr anschliesst, bekam bisher eine Sackgasse: der Server hatte zu
+           * dieser ersten Kante keine zweite mehr, auf dem Brett leuchtete
+           * nichts, und die Karte liess sich nur noch abbrechen - unspielbar,
+           * obwohl `playRoadBuilding` eine einzelne Strasse ausdruecklich
+           * annimmt. Gibt es keine zweite, geht sie deshalb jetzt mit einer
+           * hinaus.
+           */
+          const secondPossible = (view.roadBuildingTargets[place.id] ?? []).length > 0;
+
+          if (picked.length === 2 || !secondPossible) {
             onAct({ type: 'playRoadBuilding', player: view.you, edges: picked });
             setBuildingRoads(null);
           } else {
@@ -183,7 +195,7 @@ export function GameScreen({
       if (options.length === 1) onAct(options[0]!);
       else if (options.length > 1) setRobberHex(place.id);
     },
-    [targets, onAct, buildingRoads, view.you],
+    [targets, onAct, buildingRoads, view.you, view.roadBuildingTargets],
   );
 
   const playerOf = (id: PlayerId): PlayerRow | undefined =>

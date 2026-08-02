@@ -1,6 +1,6 @@
-import { nextInt } from '../random/index.js';
 import type { GameAction } from './actions.js';
 import { applyBuildCity, applyBuildRoad, applyBuildSettlement } from './build.js';
+import { rollAll, yieldTotal } from './dice.js';
 import { RuleViolationCode, violation } from './errors.js';
 import type { PlayerId } from './player.js';
 import { applyDiscard, applyMoveRobber, playersMustDiscard } from './robber.js';
@@ -63,19 +63,17 @@ function actorFor(state: GameState): PlayerId | null {
 /**
  * Wuerfelt und schaltet weiter.
  *
- * Zwei Wuerfel einzeln zu ziehen ist kein Zierat: die Summe allein haette eine
- * andere Verteilung, und der Wurf soll in Etappe 3 als zwei Wuerfel auf dem
- * Tisch liegen.
+ * Womit gewuerfelt wird und welche Summe den Raeuber ruft, steht im RuleSet und
+ * nicht hier - hier steht nur, was danach passiert. Das ist die Grenze, an der
+ * eine Erweiterung mit einem dritten Wuerfel keinen Codepfad mehr braucht.
  */
 function rollDice(state: GameState): ReduceResult {
-  const [first, afterFirst] = nextInt(state.rng, 6);
-  const [second, afterSecond] = nextInt(afterFirst, 6);
+  const [roll, rng] = rollAll(state.rules.dice, state.rng);
 
-  const dice: [number, number] = [first + 1, second + 1];
-  const total = dice[0] + dice[1];
-  const rolled: GameState = { ...state, rng: afterSecond, lastRoll: dice };
+  const total = yieldTotal(state.rules.dice, roll);
+  const rolled: GameState = { ...state, rng, lastRoll: roll };
 
-  if (total !== 7) {
+  if (total !== state.rules.robberRoll) {
     return ok({ ...distributeYield(rolled, total), phase: { kind: 'main' } });
   }
 

@@ -4,6 +4,7 @@ import { RuleSetSchema, ResourceAmountsSchema } from '../rules/index.js';
 import { ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { RuleViolation } from './errors.js';
 import { DevelopmentCardIdSchema } from './development.js';
+import { RollSchema } from './dice.js';
 import { PhaseSchema } from './phase.js';
 import { PlayerIdSchema, PlayerStateSchema } from './player.js';
 
@@ -42,9 +43,6 @@ export const BuildingSchema = z.object({
 });
 
 export type Building = z.infer<typeof BuildingSchema>;
-
-/** Ein einzelner Wuerfel. */
-const DieSchema = z.number().int().min(1).max(6);
 
 export const GameStateSchema = z.object({
   /** Das Brett, aus dem Topologie und Ertraege folgen. */
@@ -90,8 +88,14 @@ export const GameStateSchema = z.object({
   developmentPlayed: z.boolean(),
   /** Der Zufallszustand. Geheim - siehe Kopf dieser Datei. */
   rng: RngSchema,
-  /** Der letzte Wurf, damit die Oberflaeche ihn zeigen kann. `null` vor dem ersten. */
-  lastRoll: z.tuple([DieSchema, DieSchema]).nullable(),
+  /**
+   * Der letzte Wurf, damit die Oberflaeche ihn zeigen kann. `null` vor dem ersten.
+   *
+   * Die gefallenen Wuerfel und nicht ihre Summe: die Summe steht in
+   * `yieldTotal` und laesst sich jederzeit nachrechnen, die einzelnen Augen
+   * waeren danach nicht wiederherstellbar - und genau sie liegen auf dem Tisch.
+   */
+  lastRoll: RollSchema.nullable(),
   /** Vollstaendige Runden seit Ende der Gruendungsphase. */
   turn: z.number().int().min(0),
 });

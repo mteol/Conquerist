@@ -1262,28 +1262,146 @@ body {
   font-size: 0.75rem;
 }
 
-.status__dice {
+/*
+ * Der Wuerfelbecher.
+ *
+ * Er hat den Knopf „Wuerfeln" ersetzt und steht deshalb dort, wo der Knopf
+ * stand: oben in der Aktionsleiste, als erstes im Ablauf eines Zuges. Die
+ * Wuerfel selbst sind heller als das Pergament ringsum - sie sind das eine
+ * Stueck Spielmaterial in dieser Leiste, alles andere ist Bedienung.
+ */
+.dice-tray {
   display: flex;
-  gap: 0.3rem;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: flex-start;
+  margin-bottom: 0.55rem;
+}
+
+.dice {
+  display: flex;
+  gap: 0.4rem;
   align-items: center;
-  justify-content: flex-end;
-  margin-top: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: default;
+}
+
+.dice__faces {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.dice__total {
+  min-width: 1.4rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Die Aufforderung in Worten - und nicht nur in Bewegung.
+ *
+ * Die Zeile steht auch leer da: sonst waechst die Leiste um ihre Hoehe, sobald
+ * jemand am Zug ist, und schiebt Hand und Karten darunter weg.
+ */
+.dice__call {
+  min-height: 1rem;
+  padding-left: 0.55rem;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Wer werfen darf, hat einen Knopf vor sich - alle anderen eine Anzeige. */
+.dice--waiting {
+  border-color: var(--parchment-edge);
+  background: rgb(255 255 255 / 45%);
+  cursor: pointer;
 }
 
 .die {
   display: grid;
+  grid-template-columns: repeat(3, 1fr);
   place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0.22rem;
   border: 1px solid var(--parchment-edge);
-  border-radius: 5px;
+  border-radius: 6px;
   background: #fbf6ea;
+  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 8%);
   font-weight: 700;
 }
 
-.status__sum {
-  color: var(--ink-muted);
-  font-size: 0.75rem;
+.die--numeral {
+  display: grid;
+  place-items: center;
+  font-size: 1.05rem;
+}
+
+/* Vor dem ersten Wurf: ein Wuerfel, der noch nichts zeigt. */
+.die--blank {
+  opacity: 0.45;
+}
+
+.die__pip {
+  width: 0.32rem;
+  height: 0.32rem;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.die__pip--empty {
+  background: transparent;
+}
+
+/*
+ * Zwei Bewegungen, und jede erklaert einen Zustandswechsel (Regel 5).
+ *
+ * Das Atmen haengt genau an „du musst werfen" und hoert auf, sobald das nicht
+ * mehr gilt. Das Fallen zeigt, dass ein neuer Wurf liegt; es laeuft an, weil
+ * die Klasse dazukommt, und ist nach einem Zug wieder weg.
+ *
+ * Beide enden in ihrer Ruhelage. Das ist bei `prefers-reduced-motion` der
+ * ganze Punkt: die globale Regel oben schaltet Animationen auf einen
+ * Augenblick, sie stehen dann sofort an ihrem Ende - und das muss der normale
+ * Wuerfel sein, nicht ein aufgeblasener oder halb gedrehter.
+ */
+@keyframes dice-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.07);
+  }
+}
+
+.dice--waiting .dice__faces {
+  animation: dice-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes dice-fall {
+  from {
+    transform: scale(0.72) rotate(-9deg);
+  }
+
+  to {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.dice--fell .die {
+  animation: dice-fall 260ms ease-out;
 }
 
 /*

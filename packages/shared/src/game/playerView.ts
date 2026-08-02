@@ -4,6 +4,7 @@ import { ResourceAmountsSchema, RuleSetSchema } from '../rules/index.js';
 import { ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { Seat } from '../seats.js';
 import { DevelopmentCardIdSchema, DevelopmentCardSchema } from './development.js';
+import { RollSchema } from './dice.js';
 import { playableDevelopmentCards, roadBuildingTargets } from './legal.js';
 import { PhaseSchema } from './phase.js';
 import { PlayerIdSchema } from './player.js';
@@ -94,7 +95,8 @@ export const PlayerViewSchema = z.object({
    * danach noch gingen. Gerechnet auf dem Server - Anschluss ist eine Regel.
    */
   roadBuildingTargets: z.record(z.string(), z.array(z.string())),
-  lastRoll: z.tuple([z.number().int(), z.number().int()]).nullable(),
+  /** Der letzte Wurf, so wie er im Zustand steht - er ist oeffentlich. */
+  lastRoll: RollSchema.nullable(),
   turn: z.number().int().min(0),
 });
 
@@ -122,6 +124,18 @@ export function playerViewOf(
 
   const seatOf = new Map(seats.map((seat) => [seat.id, seat]));
 
+  /*
+   * Am Spielende faellt die Geheimhaltung der Siegpunkte.
+   *
+   * Solange gespielt wird, sieht man bei den anderen nur die oeffentlichen
+   * Punkte - sonst verriete der Punktestand die verdeckten Siegpunktkarten.
+   * Danach ist es umgekehrt: der Endstand zeigte einen Sieger mit 8 von 10
+   * Punkten, weil genau die beiden Karten fehlten, mit denen er gewonnen hat.
+   * Eine Abrechnung, die sich selbst widerspricht, ist schlimmer als ein
+   * fruehes Aufdecken - und aufgedeckt wird beim Sieg ohnehin.
+   */
+  const settled = state.phase.kind === 'finished';
+
   return {
     you: viewer,
     version,
@@ -141,12 +155,11 @@ export function playerViewOf(
         playedKnights: player.playedKnights,
         piecesLeft: player.piecesLeft,
         /*
-         * Bei sich selbst die volle Zahl, bei den anderen nur die oeffentliche.
-         * Sonst verriete der Punktestand die verdeckten Siegpunktkarten - und
-         * das ist genau die Information, um die am Ende gespielt wird.
+         * Bei sich selbst die volle Zahl, bei den anderen nur die oeffentliche -
+         * bis die Partie vorbei ist, siehe `settled` oben.
          */
         victoryPoints:
-          player.id === viewer
+          settled || player.id === viewer
             ? victoryPointsOf(state, player.id)
             : publicVictoryPointsOf(state, player.id),
       };

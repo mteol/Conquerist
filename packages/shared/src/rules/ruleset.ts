@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { DevelopmentDeckSchema } from '../game/development.js';
 import { ResourceIdSchema } from '../scenario/terrain.js';
+import { CLASSIC_DICE, DiceSpecSchema } from './dice.js';
 
 /**
  * Das Regelwerk: Baukosten, Siegpunktziel, Vorraete, Handkartenlimit.
@@ -74,6 +75,26 @@ export const RuleSetSchema = z.object({
   developmentDeck: DevelopmentDeckSchema,
   /** Ab wie vielen Handkarten bei einer Sieben abgeworfen wird. */
   handLimitBeforeDiscard: z.number().int().min(1),
+
+  /*
+   * Die beiden Wuerfelfelder tragen einen Vorgabewert, und der ist keine
+   * Bequemlichkeit: seit Etappe 6 liegt der Startzustand einer Partie samt
+   * RuleSet als JSON in der Datenbank. Ohne Vorgabe faenden die Felder in einer
+   * dort abgelegten Partie kein Gegenstueck, `GameStateSchema.safeParse`
+   * schluege fehl, und jede laufende Partie waere beim naechsten Serverstart
+   * weg. Neue Regelwerke schreiben beides aus - siehe `CLASSIC_RULES`.
+   */
+
+  /** Womit gewuerfelt wird. Siehe `dice.ts`. */
+  dice: DiceSpecSchema.default(CLASSIC_DICE),
+  /**
+   * Welche Wurfsumme den Raeuber ruft statt Ertrag zu bringen.
+   *
+   * Steht hier, weil die Sieben nur bei zwei Sechsseitigen die Mitte der
+   * Verteilung ist. Wer die Wuerfelschale aendert, muss diese Zahl mitaendern -
+   * beide zusammen an einer Stelle statt die eine im Code.
+   */
+  robberRoll: z.number().int().min(2).default(7),
 });
 
 export type RuleSet = z.infer<typeof RuleSetSchema>;
@@ -121,4 +142,7 @@ export const CLASSIC_RULES: RuleSet = {
     monopoly: 2,
   },
   handLimitBeforeDiscard: 7,
+
+  dice: CLASSIC_DICE,
+  robberRoll: 7,
 };

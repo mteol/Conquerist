@@ -8,6 +8,7 @@ export * from './actions.js';
 export * from './board.js';
 export * from './build.js';
 export * from './development.js';
+export * from './dice.js';
 export * from './developmentRules.js';
 export * from './errors.js';
 export * from './labels.js';

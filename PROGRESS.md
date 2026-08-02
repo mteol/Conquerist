@@ -955,3 +955,221 @@ Raeumen: eine Verbindung gehoert der Person, nicht einem Raum.
 **Entwicklungskarten** — vorgezogen aus Etappe 8. Der Platz dafuer steht seit
 Etappe 2: `developmentCard` hat einen Preis in `BUILDABLE_IDS`, und `PIECE_IDS`
 schliesst sie ausdruecklich aus, weil sie der Bank gehoeren.
+
+## Entwicklungskarten — vorgezogen aus Etappe 8 ✅
+
+Stand: 2026-08-02, Branch `etappe-4-online`. Commits `8245f13` (Regeln) und
+`327c73c` (Oberflaeche).
+
+**Nachgetragen.** Dieser Abschnitt und der naechste sind nach den Commits
+geschrieben worden, nicht mit ihnen. Die Zahlen in der Abnahme sind am Stand
+`5203d96` gemessen und gelten fuer beide Abschnitte zusammen.
+
+### Abnahme
+
+| Pruefung                                      | Ergebnis                                               |
+| --------------------------------------------- | ------------------------------------------------------ |
+| `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                                  |
+| `pnpm test`                                   | 701 Tests gruen (shared 483, server 74, client 144)    |
+| `pnpm build`                                  | gruen, Client-Bundle 361 kB (108 kB gzip), CSS 19,8 kB |
+| `pnpm format:check`                           | gruen                                                  |
+
+### Getroffene Entscheidungen
+
+**Die zweite geheime Haelfte des Zustands.** Bis hierher waren es `rng` und die
+Handkarten der Mitspieler; jetzt auch, wer welche Entwicklungskarte haelt und
+was noch im Stapel liegt. Wer den Stapel kennt, weiss vor dem Kauf, was er
+zieht — derselbe Bruch wie ein bekannter Wuerfelzustand. `deck` verlaesst den
+Server nie, `PlayerView` traegt nur `deckLeft`.
+
+**Oeffentlich ist dagegen, was offen liegt.** Ausgespielte Ritter
+(`playedKnights`) und die Anzahl der Karten auf einer fremden Hand
+(`developmentCount`) — beides waere am Tisch abzaehlbar, und was abzaehlbar
+ist, darf kein Geheimnis der Oberflaeche sein.
+
+**Siegpunktkarten werden nie gespielt, sie zaehlen.** Deshalb stehen sie in
+`victoryPointsOf` und nicht in `legalActions`. Und deshalb gibt es
+`publicVictoryPointsOf` daneben: der Punktestand eines Mitspielers darf die
+verdeckten Karten nicht ueber die Differenz verraten.
+
+**`boughtOnTurn` an der Karte, nicht am Spieler.** Eine Karte darf nicht in der
+Runde gespielt werden, in der sie gekauft wurde. Steht der Vermerk an der
+Karte, ist die Regel eine Eigenschaft der Karte und keine Buchfuehrung
+nebenher; `spend` nimmt ausserdem die **aelteste** spielbare Karte einer Art —
+sonst waere bei zwei Rittern nach dem Ausspielen des frischen der alte
+weiterhin gesperrt.
+
+**Drei der fuenf Karten stehen nicht in `legalActions`.** Strassenbau,
+Erfindung und Monopol brauchen eine Auswahl, die der Spieler trifft; sie alle
+aufzuzaehlen waere jedes Kantenpaar, jedes Rohstoffpaar, jede Sorte — derselbe
+Grund, aus dem das Abwerfen dort fehlt. Was spielbar **waere**, sagt
+`playableCards` in der Sicht; ob die Auswahl zulaessig war, prueft trotzdem der
+Reducer.
+
+**Der Strassenbau laeuft ueber das Brett, nicht ueber ein Fenster.** Wo eine
+Strasse hinkann, sieht man dort und nirgends besser. Die Anschlussregel bleibt
+dabei auf dem Server: `roadBuildingTargets` liefert je moeglicher **erster**
+Kante die Kanten, die danach noch gingen — eine Zuordnung und keine flache
+Liste, weil die zweite von der ersten abhaengt.
+
+**Der Ritter zieht den Raeuber nicht selbst.** `playKnight` gibt die Karte ab
+und stellt die Phase auf `robberPending`; versetzt wird mit einem eigenen
+`moveRobber`. Eine Aktion, die zwei Dinge auf einmal tut, muesste beide Regeln
+in sich tragen — und die zweite Auslegung ist immer die mit dem Fehler.
+
+### Offene Punkte
+
+- **Der Ritter darf nicht vor dem Wuerfeln.** In der Schachtel darf er; hier
+  kostet die Ausnahme eine Sonderregel in jeder Phasenpruefung. Bewusste
+  Abweichung, und die spuerbarste im Spiel.
+- **Kein Handel zwischen Spielern.** Bleibt in Etappe 8.
+
+## Zwischenstuecke — Hauptmenue und eine ehrliche Ablehnung ✅
+
+Stand: 2026-08-02, Branch `etappe-4-online`. Commits `76b2adc` und `5203d96`.
+Ebenfalls nachgetragen, Zahlen siehe oben.
+
+### Getroffene Entscheidungen
+
+**Das Menue fragt nichts.** Titel, drei Wege, sonst nichts — Name, Seed und
+Tischgroesse gehoeren auf den Bildschirm dahinter, hier waeren sie drei Fragen
+vor der ersten Entscheidung. Drei gleichwertige Zeilen ohne Hervorhebung:
+welcher Weg der richtige ist, weiss der Spieler und nicht der Bildschirm.
+„Weiterspielen" erscheint nur, wenn es etwas fortzusetzen gibt, und traegt als
+einziges den Akzent — es ist kein vierter Weg, sondern die Rueckkehr in etwas
+Angefangenes.
+
+**Der Hintergrund ist das Hexfeld selbst**, gezeichnet mit den Funktionen des
+Bretts und nicht als Muster oder Textur. Ohne Bewegung, mit Absicht: ein
+driftendes Raster erklaert keinen Zustandswechsel (Regel 5).
+
+**Eine Ablehnung ist kein Serverfehler.** Ein werfender Handler wurde bis dahin
+ausnahmslos zu `INTERNAL` mit einer nichtssagenden Meldung. Richtig, solange
+niemand weiss, was schiefging — aber wo der Handler es weiss und die Meldung
+fuer Spieler geschrieben ist, waere „Interner Serverfehler" zweimal falsch: sie
+stimmt nicht, und sie hilft nicht. `RejectedError` traegt ihren Text jetzt als
+`REJECTED` hinaus und laeuft nicht durch `onHandlerError` — sie ist ein
+normaler Ausgang und kein Vorfall.
+
+**Ein Geheimnis, das der Server nicht kennt, wird weggeworfen.** Genau das
+passiert nach einem Datenbankwechsel. Es weiter mitzuschicken sperrt einen
+dauerhaft aus; der Client vergisst es und meldet sich ohne an.
+
+## Wuerfel als Spielmaterial — und ein Durchgang durch den Spielfluss ✅
+
+Stand: 2026-08-02, Branch `etappe-4-online`.
+
+Zwei Dinge in einem Zug: die Wuerfel werden zu dem, was sie im Spiel sind — und
+weil dafuer der halbe Wurfweg angefasst wurde, gleich ein Durchgang durch den
+Spielfluss. Drei Fehler dabei gefunden, alle reproduziert, alle behoben.
+
+### Abnahme
+
+| Pruefung                                      | Ergebnis                                               |
+| --------------------------------------------- | ------------------------------------------------------ |
+| `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                                  |
+| `pnpm test`                                   | 719 Tests gruen (shared 492, server 74, client 153)    |
+| `pnpm build`                                  | gruen, Client-Bundle 361 kB (108 kB gzip), CSS 20,9 kB |
+| `pnpm format:check`                           | gruen                                                  |
+
+### Getroffene Entscheidungen
+
+**Die Wuerfelschale steht im RuleSet.** `rules/dice.ts` beschreibt je Wuerfel
+`id`, `faces` und `countsTowardYield`; `robberRoll` sagt, welche Summe den
+Raeuber ruft. Bis dahin stand „zwei Sechsseitige" an drei Stellen gleichzeitig
+— als Tupel im Zustand, als zwei Ziehungen im Reducer, als zwei Kaestchen im
+Browser —, und die Sieben stand als Zahl im Code. Eine Erweiterung mit einem
+Ereigniswuerfel haette alle vier finden muessen. Jetzt ist sie ein zweites
+RuleSet und kein zweiter Codepfad (Regel 5).
+
+**Der Wurf ist eine Liste, und jedes Ergebnis nennt seinen Wuerfel.** Nicht die
+Summe: die liesse sich nicht in die einzelnen Augen zurueckrechnen, und genau
+die liegen auf dem Tisch. Nicht die blosse Reihenfolge: der erste Wuerfel, den
+eine Erweiterung dazwischenschiebt, verschoebe sonst stillschweigend die
+Bedeutung aller gespeicherten Wuerfe. Die Ertragszahl kommt aus `yieldTotal`
+und wird gerechnet, nicht gespeichert — dieselbe Haltung wie bei den
+Siegpunkten.
+
+**`dice` und `robberRoll` tragen einen Zod-Vorgabewert.** Das ist keine
+Bequemlichkeit: seit Etappe 6 liegt der Startzustand samt RuleSet als JSON auf
+der Platte. Ohne Vorgabe faenden die neuen Felder dort kein Gegenstueck,
+`GameStateSchema.safeParse` schluege fehl, und jede laufende Partie waere beim
+naechsten Serverstart weg. Die Wurffolge selbst bleibt bitgleich — alte
+Action-Logs replayen unveraendert.
+
+**Die Wuerfel sind der Knopf.** „Wuerfeln" stand neben ihnen und tat, was sie
+darstellen; zwei Dinge fuer eine Sache sind eine Erklaerung zu viel. Der
+`DiceTray` sitzt jetzt oben in der Aktionsleiste, an der Stelle des Knopfes,
+und die Leiste liest sich in der Reihenfolge eines Zuges: werfen, handeln und
+kaufen, beenden. Aus dem `StatusPanel` sind die Wuerfel verschwunden — zweimal
+dieselben Augen an zwei Ecken waeren eine Verdopplung.
+
+**Gewuerfelt werden darf, was die Aktionsliste hergibt.** Ob die Wuerfel atmen,
+haengt an `targets.roll !== null` und an keiner Rechnung im Browser. Der Client
+kennt weiterhin keine Regel.
+
+**Bewegung endet in Ruhelage und traegt nie allein.** Das Atmen haengt an „du
+musst werfen" und hoert auf, sobald das nicht mehr gilt; das Fallen zeigt, dass
+ein neuer Wurf liegt. Beide Keyframes enden beim normalen Wuerfel — die globale
+`prefers-reduced-motion`-Regel schaltet Animationen auf einen Augenblick, sie
+stehen dann sofort an ihrem Ende, und das darf kein aufgeblasener oder halb
+gedrehter Wuerfel sein. Weil dann gar nichts mehr zappelt, tragen die
+Aufforderung ein Wort und der Wurf seine Zahl.
+
+**Dass gewuerfelt wurde, wird aus dem Phasenwechsel gelesen.** `rolled` in der
+`GameView` ist wahr, wenn der vorige Stand `rollPending` war und dieser nicht
+mehr — aus `rollPending` fuehrt genau ein Zug heraus. Ein Vergleich der
+Augenzahlen haette zweimal dieselbe Sechs als „kein neuer Wurf" verschluckt,
+ein Zaehler im Zustand waere eine zweite Wahrheit neben der Phase gewesen.
+
+**Augenbilder statt Ziffern, bis es keine mehr gibt.** Eine Ziffer im Kaestchen
+ist eine Zahlenanzeige, ein Muster ist ein Wuerfel. Ueber sechs Seiten hinaus
+gibt es kein gewohntes Muster — dann steht die Zahl da, und eine Erweiterung
+mit achtseitigen Wuerfeln bleibt lesbar, ohne dass jemand Punkte erfindet.
+
+### Drei Fehler im Spielfluss
+
+**Die Endabrechnung widersprach sich selbst.** `playerViewOf` haelt die
+verdeckten Siegpunktkarten aus fremden Punktestaenden heraus — waehrend des
+Spiels richtig, danach falsch: der Endstand listete den Sieger bei allen
+anderen mit zwei von drei noetigen Punkten, es fehlten genau die Karten, mit
+denen er gewonnen hat. Bei `phase.kind === 'finished'` faellt die Geheimhaltung
+jetzt. `scoring.ts` sagte es die ganze Zeit — „erst der Sieg deckt sie auf" —,
+nur tat es niemand.
+
+**Der Verlauf hat den Sieg nie gemeldet.** Der Zweig dafuer stand in `log.ts`
+beim Zugende, und dort kann er gar nicht auftreten: `finalize` prueft den Sieg
+nur fuer den Spieler am Zug, und beim Zugende ist das schon der naechste.
+Gewonnen wird immer _mit_ einem Zug — mit einer Stadt, einer Karte, einem
+Ritter —, und der Verlauf meldete davon nur den Zug. Der Uebergang von „laeuft"
+auf „vorbei" ist unabhaengig von der Zugart lesbar und haengt jetzt hinten an.
+
+**Die Strassenbaukarte war unspielbar, wenn nur eine Strasse ging.** Der
+Bildschirm schickte die Aktion erst bei zwei Kanten. Wer die letzte Strasse aus
+dem Vorrat legte oder danach nirgends mehr anschloss, bekam eine Sackgasse: auf
+dem Brett leuchtete nichts mehr, und die Karte liess sich nur abbrechen —
+obwohl `playRoadBuilding` eine einzelne Strasse ausdruecklich annimmt. Gibt es
+keine zweite, geht sie jetzt mit einer hinaus.
+
+### Was der Durchgang sonst ergeben hat
+
+- **Ein Sieg im fremden Zug wird erst beim naechsten eigenen Zug bemerkt.** Wer
+  durch den Zug eines anderen die Laengste Handelsstrasse und damit das Ziel
+  erreicht, gewinnt, sobald er selbst wieder handelt — in der Praxis
+  unmittelbar nach seinem Wurf. Ein Test haelt das seit Etappe 2 als gewollt
+  fest, und es endet auf dem eigenen Zug, wie es die Regel verlangt. Nur eine
+  Sieben kann noch einen Abwurf dazwischenschieben.
+- **`piecesLeft` wird mal mit `?? 0` gelesen und mal ohne** (`build.ts` gegen
+  `developmentRules.ts` und `legal.ts`). Der Typ ist vollstaendig, das `?? 0`
+  ist tot. Kosmetisch, aber ein Hinweis darauf, dass beim Lesen nicht klar ist,
+  welcher Fall gemeint war.
+- **`discardPending` mit einem getrennten Spieler steht still**, ohne Frist und
+  ohne Ersatzzug. Das `StatusPanel` sagt wenigstens, dass das der Grund ist.
+  Bleibt offen — dieselbe Frage wie das Rauswerfen aus Etappe 6.
+
+### Naechste Etappe
+
+Unveraendert **Etappe 7: Auth** — Registrierung, Login, Gast-Account
+beanspruchen. Die Wuerfel waren ein Vorgriff auf Etappe 10 nur insoweit, als
+sie ihn billiger machen: die Schale ist Daten, die Erweiterung braucht keinen
+Codepfad.

@@ -1,6 +1,7 @@
 import type { Seat } from '../seats.js';
 import { RESOURCE_LABELS, resourceList } from './labels.js';
 import type { GameAction } from './actions.js';
+import { yieldTotal } from './dice.js';
 import type { PlayerId } from './player.js';
 import { countResources } from './resources.js';
 import type { GameState } from './state.js';
@@ -13,6 +14,15 @@ import type { GameState } from './state.js';
  * Beteiligten eine andere Nachricht ist als fuer den Rest des Tisches. Bis
  * dahin genuegt der Vergleich von vorher und nachher, und er hat einen Vorzug:
  * er kann nicht von dem abweichen, was wirklich passiert ist.
+ *
+ * Der Sieg haengt hinten an und steht nicht in einem Zweig.
+ *
+ * Das war ein Fehler und ist die Lehre daraus: er stand einmal beim Zugende,
+ * und dort kann er gar nicht auftreten - `reduce` prueft den Sieg nur fuer den
+ * Spieler am Zug, und beim Zugende ist der schon der naechste. Gewonnen wird
+ * immer *mit* einem Zug, mit einer Stadt, einer Karte, einem Ritter, und der
+ * Verlauf meldete davon nur den Zug. Ein Uebergang von "laeuft" auf "vorbei"
+ * ist aber unabhaengig von der Zugart lesbar - und genau so steht er jetzt da.
  */
 export function describeTransition(
   before: GameState,
@@ -24,6 +34,21 @@ export function describeTransition(
   // nur die Oberflaeche sie sonst noch braucht.
   const byId = new Map<PlayerId, Seat>(seats.map((seat) => [seat.id, seat]));
   const nameOf = (id: PlayerId): string => byId.get(id)?.name ?? id;
+
+  const sentence = describeAction(action, before, after, nameOf);
+
+  return before.phase.kind !== 'finished' && after.phase.kind === 'finished'
+    ? `${sentence} - und gewinnt die Partie`
+    : sentence;
+}
+
+/** Der Satz zum Zug selbst, ohne den Ausgang der Partie. */
+function describeAction(
+  action: GameAction,
+  before: GameState,
+  after: GameState,
+  nameOf: (id: PlayerId) => string,
+): string {
   const who = nameOf(action.player);
 
   switch (action.type) {
@@ -35,8 +60,9 @@ export function describeTransition(
     case 'rollDice': {
       const roll = after.lastRoll;
       if (roll === null) return `${who} wuerfelt`;
-      const gains = describeGains(before, after, byId);
-      return `${who} wuerfelt ${roll[0] + roll[1]}${gains === '' ? '' : ` - ${gains}`}`;
+      const gains = describeGains(before, after, nameOf);
+      const total = yieldTotal(after.rules.dice, roll);
+      return `${who} wuerfelt ${total}${gains === '' ? '' : ` - ${gains}`}`;
     }
 
     case 'discard':
@@ -71,9 +97,7 @@ export function describeTransition(
       return `${who} tauscht ${RESOURCE_LABELS[action.give]} gegen ${RESOURCE_LABELS[action.receive]}`;
 
     case 'endTurn':
-      return after.phase.kind === 'finished'
-        ? `${nameOf(after.phase.winner)} gewinnt die Partie`
-        : `${who} beendet den Zug`;
+      return `${who} beendet den Zug`;
   }
 }
 
@@ -81,7 +105,7 @@ export function describeTransition(
 function describeGains(
   before: GameState,
   after: GameState,
-  names: ReadonlyMap<PlayerId, Seat>,
+  nameOf: (id: PlayerId) => string,
 ): string {
   const parts: string[] = [];
 
@@ -90,9 +114,7 @@ function describeGains(
     if (previous === undefined) return;
 
     const gained = countResources(player.resources) - countResources(previous.resources);
-    if (gained > 0) {
-      parts.push(`${names.get(player.id)?.name ?? player.id} +${gained}`);
-    }
+    if (gained > 0) parts.push(`${nameOf(player.id)} +${gained}`);
   });
 
   return parts.join(', ');

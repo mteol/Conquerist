@@ -154,6 +154,28 @@ describe('PlayerView', () => {
     expect(own.players[1]!.victoryPoints).toBeGreaterThan(foreign.players[1]!.victoryPoints);
   });
 
+  it('deckt die Siegpunkte auf, sobald die Partie vorbei ist', () => {
+    const state = afterSetup();
+    const withCards: GameState = {
+      ...state,
+      phase: { kind: 'finished', winner: 'p2' },
+      players: state.players.map((entry, index) => ({
+        ...entry,
+        developmentCards: index === 1 ? [{ id: 'victoryPoint' as const, boughtOnTurn: 0 }] : [],
+      })),
+    };
+
+    const own = playerViewOf(withCards, 'p2', seats, 1);
+    const foreign = playerViewOf(withCards, 'p1', seats, 1);
+
+    /*
+     * Vorher waere die Endabrechnung in sich widerspruechlich gewesen: der
+     * Sieger stand bei den anderen mit weniger Punkten da, als das Ziel
+     * verlangt - es fehlten genau die Karten, mit denen er gewonnen hat.
+     */
+    expect(foreign.players[1]!.victoryPoints).toBe(own.players[1]!.victoryPoints);
+  });
+
   it('gibt den Entwicklungsstapel nicht heraus, nur seine Groesse', () => {
     const state = afterSetup();
     const view = playerViewOf({ ...state, deck: ['knight', 'monopoly'] }, 'p1', seats, 1);

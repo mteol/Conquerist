@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { CLASSIC_34, CLASSIC_RULES, createGame, generateScenario } from '@conquerist/shared';
+import {
+  CLASSIC_34,
+  CLASSIC_DICE,
+  CLASSIC_RULES,
+  createGame,
+  generateScenario,
+} from '@conquerist/shared';
 import { render, screen } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { EMPTY_TARGETS } from '../game/targets';
@@ -37,7 +43,13 @@ function tableView(gains: ReadonlyMap<string, number>): GameView {
     actingPlayers: [seats[0]!.id],
     currentPlayerId: seats[0]!.id,
     phaseText: 'Spieler 1 ist am Zug',
-    lastRoll: [4, 4],
+    dice: CLASSIC_DICE,
+    lastRoll: [
+      { die: 'first', value: 4 },
+      { die: 'second', value: 4 },
+    ],
+    rollTotal: 8,
+    rolled: false,
     turn: 1,
     longestRoad: { holder: null, length: 0 },
     largestArmy: { holder: null, size: 0 },

@@ -205,6 +205,45 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     expect(onAct).not.toHaveBeenCalled();
   });
 
+  it('spielt den Strassenbau auch aus, wenn nur eine Strasse moeglich ist', async () => {
+    const onAct = vi.fn();
+    const state = playable({
+      turn: 4,
+      players: afterSetup().players.map((entry, index) =>
+        index === 0
+          ? {
+              ...entry,
+              developmentCards: [{ id: 'roadBuilding', boughtOnTurn: 1 }],
+              // Die letzte Strasse im Vorrat: nach ihr geht keine zweite mehr.
+              piecesLeft: { ...entry.piecesLeft, road: 1 },
+            }
+          : entry,
+      ),
+    });
+
+    render(screenFor(state, ids[0]!, onAct));
+    await userEvent.click(screen.getByTestId('devcard-roadBuilding'));
+
+    const leuchtend = screen
+      .getAllByTestId(/^edge-/)
+      .filter((node) => node.dataset['target'] === 'true');
+    expect(leuchtend.length).toBeGreaterThan(0);
+
+    /*
+     * Vorher war das eine Sackgasse: nach der ersten Kante leuchtete nichts
+     * mehr, und die Karte liess sich nur abbrechen - obwohl der Reducer eine
+     * einzelne Strasse ausdruecklich annimmt.
+     */
+    await userEvent.click(leuchtend[0]!);
+
+    expect(onAct).toHaveBeenCalledTimes(1);
+    expect(onAct.mock.calls[0]![0]).toMatchObject({
+      type: 'playRoadBuilding',
+      player: ids[0],
+    });
+    expect(onAct.mock.calls[0]![0].edges).toHaveLength(1);
+  });
+
   it('zeigt fremde Entwicklungskarten nirgends', () => {
     const state = playable({
       turn: 4,

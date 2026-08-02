@@ -58,6 +58,7 @@ Paket-Scope: `@conquerist/shared`, `@conquerist/server`, `@conquerist/client`
 - Neue Logik in shared bekommt Tests.
 - Antworten auf Deutsch, Code und Bezeichner auf Englisch.
 - **Design ist Abnahmekriterium, nicht Nacharbeit.** Siehe unten.
+- **`PROGRESS.md` wird ohne Aufforderung fortgeschrieben.** Siehe unten.
 
 ## Design
 
@@ -193,3 +194,29 @@ Felder), nicht aus einer zweiten Winkelrechnung.
 
 Details, getroffene Entscheidungen und offene Punkte stehen in `PROGRESS.md` —
 das ist die maßgebliche Standsdatei, diese hier nennt nur die Landmarken.
+
+## Die Standsdatei wird mitgeschrieben, nicht nachgereicht
+
+**`PROGRESS.md` gehört zu jeder Arbeit, die etwas verändert — ohne dass jemand
+danach fragt.** Wer eine Etappe, ein Stück davon oder eine Korrektur abliefert,
+schreibt den Abschnitt dazu und committet ihn mit. Nachträglich ist er
+schlechter: die Begründung, warum es so und nicht anders gebaut wurde, ist im
+Moment der Entscheidung noch da und eine Woche später rekonstruiert.
+
+Der Abschnitt folgt der Form, die schon dasteht:
+
+- **Überschrift und Stand** — was, wann, welcher Branch, welche Commits.
+- **Abnahme** als Tabelle: `pnpm typecheck`, `pnpm test` (mit den Zahlen je
+  Paket), `pnpm build` (mit Bundlegröße), `pnpm format:check`. **Zahlen werden
+  gemessen, nicht geschätzt** — eine erfundene Testzahl macht die ganze Tabelle
+  wertlos.
+- **Getroffene Entscheidungen** — je Absatz eine, fett angeführt, mit dem
+  Grund. Das ist der eigentliche Wert der Datei: was gebaut wurde, steht im
+  Code, warum es so gebaut wurde, nur hier.
+- **Abweichungen vom Plan**, falls es welche gab.
+- **Offene Punkte** — auch die bewussten. Eine Abweichung von den Spielregeln,
+  die niemand aufgeschrieben hat, ist beim nächsten Lesen ein Fehler.
+- **Nächste Etappe**.
+
+Wer die Datei nachträgt statt sie mitzuschreiben, sagt das im Abschnitt dazu
+und kennzeichnet, welche Zahlen an welchem Stand gemessen wurden.

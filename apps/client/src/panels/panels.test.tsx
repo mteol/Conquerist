@@ -76,7 +76,9 @@ describe('ActionPanel', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Wuerfeln' })).toHaveProperty('disabled', false);
+    // Der Knopf „Wuerfeln" ist weg: geworfen wird an den Wuerfeln selbst.
+    expect(screen.queryByRole('button', { name: 'Wuerfeln' })).toBeNull();
+    expect(screen.getByTestId('dice')).toHaveProperty('disabled', false);
     expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', true);
     expect(screen.getByRole('button', { name: 'Zug beenden' })).toHaveProperty('disabled', true);
   });
