@@ -1,5 +1,27 @@
 import type { z } from 'zod';
 import { PING, PONG, PingRequestSchema, PongResponseSchema } from './ping.js';
+import {
+  ACT,
+  ACT_OK,
+  ActRequestSchema,
+  CREATE_ROOM,
+  CreateRoomRequestSchema,
+  EmptyRequestSchema,
+  EmptyResponseSchema,
+  GAME_STARTED,
+  HELLO,
+  HELLO_OK,
+  HelloRequestSchema,
+  HelloResponseSchema,
+  JOIN_ROOM,
+  JoinRoomRequestSchema,
+  LEAVE_ROOM,
+  ROOM_CREATED,
+  ROOM_JOINED,
+  ROOM_LEFT,
+  RoomCodeResponseSchema,
+  START_GAME,
+} from './room.js';
 
 /**
  * Protokoll-Registry: die einzige Quelle fuer Request- und Response-Typen.
@@ -25,6 +47,36 @@ export const protocol = {
     responseType: PONG,
     request: PingRequestSchema,
     response: PongResponseSchema,
+  },
+  [HELLO]: {
+    responseType: HELLO_OK,
+    request: HelloRequestSchema,
+    response: HelloResponseSchema,
+  },
+  [CREATE_ROOM]: {
+    responseType: ROOM_CREATED,
+    request: CreateRoomRequestSchema,
+    response: RoomCodeResponseSchema,
+  },
+  [JOIN_ROOM]: {
+    responseType: ROOM_JOINED,
+    request: JoinRoomRequestSchema,
+    response: RoomCodeResponseSchema,
+  },
+  [LEAVE_ROOM]: {
+    responseType: ROOM_LEFT,
+    request: EmptyRequestSchema,
+    response: EmptyResponseSchema,
+  },
+  [START_GAME]: {
+    responseType: GAME_STARTED,
+    request: EmptyRequestSchema,
+    response: EmptyResponseSchema,
+  },
+  [ACT]: {
+    responseType: ACT_OK,
+    request: ActRequestSchema,
+    response: EmptyResponseSchema,
   },
 } as const satisfies ProtocolMap;
 
