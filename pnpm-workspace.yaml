@@ -3,5 +3,10 @@ packages:
   - 'apps/*'
 # esbuild braucht seinen postinstall-Schritt, um die passende Plattform-Binary
 # zu entpacken. Ohne Freigabe laufen Vite und Vitest nicht.
+#
+# better-sqlite3 ist ein natives Modul: sein install-Skript laedt die passende
+# vorgebaute Binary (oder uebersetzt sie). Ohne Freigabe fehlt sie, und jeder
+# Zugriff auf die Datenbank scheitert erst zur Laufzeit.
 allowBuilds:
+  better-sqlite3: true
   esbuild: true

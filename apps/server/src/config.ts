@@ -28,6 +28,12 @@ const EnvSchema = z.object({
 
   /** Kommaseparierte Origin-Liste. Wird in `parseOrigins` geprueft, nicht hier. */
   CLIENT_ORIGIN: z.string().min(1).optional(),
+
+  /**
+   * Wo die SQLite-Datei liegt. `:memory:` ist erlaubt und in Tests der Normalfall.
+   * Der Default liegt unter `data/`, und `data/` steht in `.gitignore`.
+   */
+  DATABASE_FILE: z.string().min(1).default('./data/conquerist.db'),
 });
 
 export interface ServerConfig {
@@ -35,6 +41,7 @@ export interface ServerConfig {
   readonly port: number;
   readonly host: string;
   readonly clientOrigins: readonly string[];
+  readonly databaseFile: string;
   readonly isProduction: boolean;
 }
 
@@ -98,6 +105,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     port: parsed.PORT,
     host: parsed.HOST,
     clientOrigins: parseOrigins(parsed.CLIENT_ORIGIN ?? DEFAULT_CLIENT_ORIGIN),
+    databaseFile: parsed.DATABASE_FILE,
     isProduction: parsed.NODE_ENV === 'production',
   };
 }
