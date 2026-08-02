@@ -5,11 +5,13 @@ import {
   HELLO,
   JOIN_ROOM,
   LEAVE_ROOM,
+  MY_ROOMS,
   START_GAME,
   describeTransition,
   type Seat,
 } from '@conquerist/shared';
 import { broadcastGame, broadcastRoom } from '../../rooms/broadcast.js';
+import { summaryOf } from '../../rooms/summary.js';
 import {
   applyAction,
   configureRoom,
@@ -53,10 +55,17 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     context.session.userId = result.user.id;
     sinks.add(result.user.id, context.events);
 
-    // Der Reconnect, und er kostet genau diese Zeilen: wer schon irgendwo
-    // sitzt, wird dort wieder als verbunden gefuehrt und bekommt sofort den
-    // Stand - Raum und, falls sie laeuft, die Partie.
-    const existing = registry.roomOf(result.user.id);
+    /*
+     * Der Reconnect: wer schon sitzt, wird wieder als verbunden gefuehrt und
+     * bekommt sofort den Stand - Raum und, falls sie laeuft, die Partie.
+     *
+     * Sitzt der Nutzer in genau einem Raum, wird der geoeffnet - das ist der
+     * haeufige Fall und der Reconnect aus Etappe 5. Sitzt er seit Etappe 6 in
+     * mehreren, oeffnet der Server KEINEN: welcher gemeint ist, weiss nur er
+     * selbst, und die Liste auf dem Startbildschirm fragt ihn.
+     */
+    const mine = registry.roomsOf(result.user.id);
+    const existing = mine.length === 1 ? mine[0] : undefined;
     if (existing !== undefined) {
       context.session.roomCode = existing.code;
       const reconnected = setConnected(existing, result.user.id, true);
@@ -111,6 +120,19 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
 
     context.session.roomCode = null;
     return {};
+  });
+
+  router.register(MY_ROOMS, (_payload, context) => {
+    const user = requireUser(context, users);
+
+    return {
+      rooms: registry
+        .roomsOf(user.id)
+        // Beendete Partien fallen aus der Liste - sie bleiben in der Datenbank,
+        // aber niemand kann dort weitermachen.
+        .filter((room) => room.game?.phase.kind !== 'finished')
+        .map((room) => summaryOf(room, user.id)),
+    };
   });
 
   router.register(CONFIGURE_ROOM, (payload, context) => {
@@ -179,12 +201,14 @@ export function handleDisconnect(deps: RoomHandlerDeps, session: Session, sink: 
   sinks.remove(userId, sink);
   if (sinks.has(userId)) return; // Noch ein Tab offen: nichts zu melden.
 
-  const room = registry.roomOf(userId);
-  if (room === undefined) return;
-
-  const next = setConnected(room, userId, false);
-  registry.update(next.code, next);
-  broadcastRoom(next, sinks.map);
+  // Seit Etappe 6 kann jemand in mehreren Raeumen sitzen - einem Wartebereich
+  // und einer laufenden Partie etwa. Eine Verbindung gehoert der Person, nicht
+  // einem Raum: faellt sie weg, ist er ueberall getrennt.
+  for (const room of registry.roomsOf(userId)) {
+    const next = setConnected(room, userId, false);
+    registry.update(next.code, next);
+    broadcastRoom(next, sinks.map);
+  }
 }
 
 /** Die Sitze eines Raums in der Form, die `shared` kennt. */

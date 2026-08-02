@@ -20,6 +20,8 @@ export const JOIN_ROOM = 'room.join';
 export const ROOM_JOINED = 'room.joined';
 export const LEAVE_ROOM = 'room.leave';
 export const ROOM_LEFT = 'room.left';
+export const MY_ROOMS = 'room.mine';
+export const MY_ROOMS_OK = 'room.mine.ok';
 export const CONFIGURE_ROOM = 'room.configure';
 export const ROOM_CONFIGURED = 'room.configured';
 export const START_GAME = 'room.start';
@@ -79,6 +81,32 @@ export const CreateRoomRequestSchema = z.object({
  */
 export const ConfigureRoomRequestSchema = CreateRoomRequestSchema;
 
+/**
+ * Eine Partie, wie sie auf einer Karte am Startbildschirm steht.
+ *
+ * Bewusst kein Spielzustand: die Liste soll zeigen, wo man weitermachen kann,
+ * nicht die Partie vorwegnehmen. Wer hineingeht, bekommt seine `PlayerView`
+ * wie immer - gefiltert, und nicht aus dieser Zusammenfassung. Regel 4 gilt
+ * auch fuer eine Uebersicht.
+ */
+export const RoomSummarySchema = z.object({
+  code: RoomCodeSchema,
+  seatCount: z.number().int().min(MIN_SEATS).max(MAX_SEATS),
+  started: z.boolean(),
+  seats: z.array(
+    z.object({
+      name: DisplayNameSchema,
+      color: z.string().min(1),
+      connected: z.boolean(),
+    }),
+  ),
+  /** Nur bei laufenden Partien. */
+  turn: z.number().int().min(0).optional(),
+  yourTurn: z.boolean().optional(),
+});
+
+export const MyRoomsResponseSchema = z.object({ rooms: z.array(RoomSummarySchema) });
+
 export const RoomCodeResponseSchema = z.object({ code: RoomCodeSchema });
 
 export const JoinRoomRequestSchema = z.object({ code: RoomCodeSchema });
@@ -95,3 +123,4 @@ export type ConfigureRoomRequest = z.infer<typeof ConfigureRoomRequestSchema>;
 export type JoinRoomRequest = z.infer<typeof JoinRoomRequestSchema>;
 export type ActRequest = z.infer<typeof ActRequestSchema>;
 export type RoomCode = z.infer<typeof RoomCodeSchema>;
+export type RoomSummary = z.infer<typeof RoomSummarySchema>;

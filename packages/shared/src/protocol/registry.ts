@@ -19,6 +19,9 @@ import {
   JOIN_ROOM,
   JoinRoomRequestSchema,
   LEAVE_ROOM,
+  MY_ROOMS,
+  MY_ROOMS_OK,
+  MyRoomsResponseSchema,
   ROOM_CREATED,
   ROOM_JOINED,
   ROOM_LEFT,
@@ -70,6 +73,11 @@ export const protocol = {
     responseType: ROOM_LEFT,
     request: EmptyRequestSchema,
     response: EmptyResponseSchema,
+  },
+  [MY_ROOMS]: {
+    responseType: MY_ROOMS_OK,
+    request: EmptyRequestSchema,
+    response: MyRoomsResponseSchema,
   },
   [CONFIGURE_ROOM]: {
     responseType: ROOM_CONFIGURED,
