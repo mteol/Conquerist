@@ -11,6 +11,21 @@ import type { MessageType, RequestOf, ResponseOf, ServerMessage } from '@conquer
 import type { EventSink } from './events.js';
 
 /**
+ * Eine Ablehnung, die der Aufrufer lesen darf.
+ *
+ * Jeder andere Wurf wird zu `INTERNAL` mit einer nichtssagenden Meldung - das
+ * ist richtig, solange niemand weiss, was schiefging. Wo der Handler es aber
+ * weiss und die Meldung fuer Spieler geschrieben ist, waere „Interner
+ * Serverfehler" zweimal falsch: sie stimmt nicht, und sie hilft nicht.
+ */
+export class RejectedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RejectedError';
+  }
+}
+
+/**
  * Was an dieser Verbindung bekannt ist.
  *
  * Absichtlich veraenderbar: `hello` traegt hier die Nutzer-Id ein, `joinRoom`
@@ -56,7 +71,11 @@ type ParseResult =
   { readonly ok: true; readonly data: unknown } | { readonly ok: false; readonly message: string };
 
 export interface RouterOptions {
-  /** Wird bei einem werfenden Handler aufgerufen. Der Client sieht nur INTERNAL. */
+  /**
+   * Wird bei einem **unerwartet** werfenden Handler aufgerufen; der Client
+   * sieht dann nur INTERNAL. Eine `RejectedError` laeuft hier nicht durch -
+   * sie ist ein normaler Ausgang und kein Vorfall.
+   */
   readonly onHandlerError?: (type: string, error: unknown, context: RequestContext) => void;
 }
 
@@ -157,6 +176,12 @@ export class MessageRouter {
       // Schema nicht stehen.
       result = await handler.run(request.data, context);
     } catch (error) {
+      // Eine Ablehnung ist kein Absturz: ihr Text ist fuer den Spieler
+      // geschrieben und geht deshalb mit hinaus.
+      if (error instanceof RejectedError) {
+        return errorMessage(ProtocolErrorCode.REJECTED, error.message, message.id);
+      }
+
       this.options.onHandlerError?.(message.type, error, context);
       return errorMessage(
         ProtocolErrorCode.INTERNAL,

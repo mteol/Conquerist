@@ -38,6 +38,23 @@ class FakeSocket implements SocketLike {
     this.deliver({ type: `${type}.ok`, ok: true, replyTo: request.id, payload });
   }
 
+  /** Lehnt die n-te Anfrage dieses Typs ab, so wie der Server es taete. */
+  refuse(type: string, message: string, index = 0): void {
+    const request = this.sent.filter((entry) => entry.type === type)[index];
+    if (request === undefined) throw new Error(`Keine ${index + 1}. Anfrage vom Typ ${type}`);
+    this.deliver({
+      type: 'error',
+      ok: false,
+      replyTo: request.id,
+      error: { code: 'REJECTED', message },
+    });
+  }
+
+  /** Wie oft dieser Typ geschickt wurde. */
+  countOf(type: string): number {
+    return this.sent.filter((entry) => entry.type === type).length;
+  }
+
   /** Eine Nachricht ohne Anfrage - so kommt der Raumstand herein. */
   event(type: string, payload: unknown): void {
     this.deliver({ type, ok: true, payload });
@@ -118,5 +135,33 @@ describe('Online-Partie', () => {
     });
 
     expect(screen.getByTestId('raum').textContent).toBe('kein Raum');
+  });
+
+  it('wirft ein Geheimnis weg, das der Server nicht kennt, und meldet sich neu an', async () => {
+    // Genau der Fall nach einem Datenbankwechsel: der Browser haelt ein
+    // Geheimnis, das es serverseitig nicht mehr gibt.
+    window.localStorage.setItem('conquerist.secret', 'aus-einer-alten-datenbank');
+
+    render(<Probe />);
+    await act(async () => {
+      socket.onopen?.({});
+    });
+
+    await act(async () => {
+      socket.refuse('hello', 'Dieses Sitzungsgeheimnis kennt der Server nicht');
+    });
+
+    // Ohne diesen zweiten Versuch bliebe der Browser dauerhaft ausgesperrt.
+    expect(socket.countOf('hello')).toBe(2);
+    expect(window.localStorage.getItem('conquerist.secret')).toBeNull();
+
+    await act(async () => {
+      socket.reply('hello', { userId: 'u1', secret: 'frisch', name: 'Anna' });
+    });
+    await act(async () => {
+      socket.reply('room.mine', { rooms: [] });
+    });
+
+    expect(window.localStorage.getItem('conquerist.secret')).toBe('frisch');
   });
 });

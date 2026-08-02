@@ -20,7 +20,16 @@ export const ProtocolErrorCode = {
   UNKNOWN_TYPE: 'UNKNOWN_TYPE',
   /** Handler existiert, aber die Payload hat sein Schema nicht bestanden. */
   INVALID_PAYLOAD: 'INVALID_PAYLOAD',
-  /** Der Handler hat geworfen. */
+  /**
+   * Der Handler hat abgelehnt, und der Aufrufer darf wissen warum.
+   *
+   * Der Unterschied zu `INTERNAL` ist der Adressat: „Der Tisch ist voll" ist
+   * eine Auskunft an den Spieler, „Datenbank weg" eine an den Betreiber. Beides
+   * als Serverfehler auszugeben, macht das eine unbrauchbar und das andere
+   * gespraechig.
+   */
+  REJECTED: 'REJECTED',
+  /** Der Handler hat unerwartet geworfen. Der Grund bleibt im Log. */
   INTERNAL: 'INTERNAL',
 } as const;
 

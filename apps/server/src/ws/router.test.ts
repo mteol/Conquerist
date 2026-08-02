@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PING, PONG, ServerMessageSchema } from '@conquerist/shared';
-import { MessageRouter } from './router.js';
+import { MessageRouter, RejectedError } from './router.js';
 import type { RequestContext } from './router.js';
 import { registerPingHandler } from './handlers/ping.js';
 
@@ -166,5 +166,35 @@ describe('MessageRouter - Registrierung', () => {
     const response = await router.dispatch(envelope('req-8', PING, {}), context);
 
     expect(response.payload).toEqual({ serverTime: 99 });
+  });
+
+  it('unterscheidet eine Ablehnung von einem Absturz', async () => {
+    const router = new MessageRouter();
+    router.register(PING, () => {
+      // Der Aufrufer hat etwas falsch gemacht - kein Serverfehler.
+      throw new RejectedError('Der Tisch ist voll');
+    });
+
+    const answer = await router.dispatch(envelope('r1', PING, {}), context);
+
+    // Der Grund muss den Spieler erreichen: „Interner Serverfehler" waere hier
+    // sowohl falsch als auch nutzlos.
+    expect(answer.ok).toBe(false);
+    expect(answer.error?.code).toBe('REJECTED');
+    expect(answer.error?.message).toBe('Der Tisch ist voll');
+  });
+
+  it('haelt einen echten Absturz weiterhin zurueck', async () => {
+    const router = new MessageRouter();
+    router.register(PING, () => {
+      throw new Error('Verbindung zur Datenbank verloren, Passwort war hunter2');
+    });
+
+    const answer = await router.dispatch(envelope('r2', PING, {}), context);
+
+    expect(answer.ok).toBe(false);
+    // Ein unerwarteter Fehler darf nichts ueber das Innere verraten.
+    expect(answer.error?.code).toBe('INTERNAL');
+    expect(answer.error?.message).not.toContain('hunter2');
   });
 });

@@ -16,7 +16,7 @@ import {
   type GameAction,
   type RoomSummary,
 } from '@conquerist/shared';
-import { loadName, loadSecret, storeName, storeSecret } from '../net/session';
+import { forgetSecret, loadName, loadSecret, storeName, storeSecret } from '../net/session';
 import type { TransportOptions } from '../net/transport';
 import { useConnection } from '../net/useConnection';
 import { emptyOnlineState, onlineReducer } from './onlineState';
@@ -130,13 +130,25 @@ export function useOnlineGame(
 
     void (async () => {
       try {
-        const secret = loadSecret();
         const name = nameRef.current;
+        const named = name === '' ? {} : { name };
+        const secret = loadSecret();
 
-        const hello = await send(HELLO, {
-          ...(secret === null ? {} : { secret }),
-          ...(name === '' ? {} : { name }),
-        });
+        /*
+         * Kennt der Server das Geheimnis nicht, ist es wertlos - dann weg damit
+         * und einmal ohne versuchen. Ohne diesen Zweig sperrt ein
+         * Datenbankwechsel jeden Browser dauerhaft aus, der noch ein altes
+         * Geheimnis haelt: er schickt es bei jedem Verbindungsaufbau wieder mit
+         * und bekommt jedes Mal dieselbe Absage.
+         */
+        let hello;
+        try {
+          hello = await send(HELLO, { ...(secret === null ? {} : { secret }), ...named });
+        } catch (error) {
+          if (secret === null || cancelled) throw error;
+          forgetSecret();
+          hello = await send(HELLO, named);
+        }
         if (cancelled) return;
 
         if (hello.secret !== undefined) storeSecret(hello.secret);

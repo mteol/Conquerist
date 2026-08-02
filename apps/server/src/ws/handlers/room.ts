@@ -24,6 +24,7 @@ import type { Room } from '../../rooms/room.js';
 import type { RoomRegistry } from '../../rooms/registry.js';
 import type { Users } from '../../identity/users.js';
 import type { EventSink } from '../events.js';
+import { RejectedError } from '../router.js';
 import type { MessageRouter, RequestContext, Session } from '../router.js';
 import type { SinkHub } from '../sinks.js';
 
@@ -50,7 +51,18 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
   const { registry, users, sinks } = deps;
 
   router.register(HELLO, (payload, context) => {
-    const result = users.hello(payload.secret, payload.name);
+    /*
+     * Ein Geheimnis, das der Server nicht kennt, ist kein Serverfehler,
+     * sondern eine Auskunft: „damit komme ich hier nicht rein". Genau das
+     * passiert nach einem Datenbankwechsel, und der Client kann daraufhin sein
+     * totes Geheimnis wegwerfen und es ohne versuchen.
+     */
+    let result;
+    try {
+      result = users.hello(payload.secret, payload.name);
+    } catch {
+      throw new RejectedError('Dieses Sitzungsgeheimnis kennt der Server nicht');
+    }
 
     context.session.userId = result.user.id;
     sinks.add(result.user.id, context.events);
@@ -83,7 +95,7 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     const user = requireUser(context, users);
 
     const created = registry.create(user.id, user.name, payload.seatCount, payload.seed);
-    if (!created.ok) throw new Error(created.error);
+    if (!created.ok) throw new RejectedError(created.error);
 
     context.session.roomCode = created.room.code;
     broadcastRoom(created.room, sinks.map);
@@ -96,7 +108,7 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     const room = requireRoom(registry.get(payload.code));
 
     const joined = joinRoom(room, user.id, user.name);
-    if (!joined.ok) throw new Error(joined.error);
+    if (!joined.ok) throw new RejectedError(joined.error);
 
     registry.update(joined.room.code, joined.room);
     context.session.roomCode = joined.room.code;
@@ -140,7 +152,7 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     const room = requireRoom(registry.get(context.session.roomCode ?? ''));
 
     const changed = configureRoom(room, user.id, payload.seatCount, payload.seed);
-    if (!changed.ok) throw new Error(changed.error);
+    if (!changed.ok) throw new RejectedError(changed.error);
 
     registry.update(changed.room.code, changed.room);
     broadcastRoom(changed.room, sinks.map);
@@ -153,7 +165,7 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     const room = requireRoom(registry.get(context.session.roomCode ?? ''));
 
     const started = startGame(room, user.id);
-    if (!started.ok) throw new Error(started.error);
+    if (!started.ok) throw new RejectedError(started.error);
 
     registry.update(started.room.code, started.room);
     broadcastRoom(started.room, sinks.map);
@@ -168,7 +180,7 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     const before = room.game;
 
     const acted = applyAction(room, user.id, payload.action);
-    if (!acted.ok) throw new Error(acted.error);
+    if (!acted.ok) throw new RejectedError(acted.error);
 
     // Die Aktion geht mit ins Log - aus ihr und dem Startzustand entsteht die
     // Partie nach einem Neustart wieder.
@@ -218,15 +230,15 @@ function seatsOf(room: Room): readonly Seat[] {
 
 function requireUser(context: RequestContext, users: Users): { id: string; name: string } {
   const userId = context.session.userId;
-  if (userId === null) throw new Error('Erst anmelden - hello fehlt');
+  if (userId === null) throw new RejectedError('Erst anmelden - hello fehlt');
 
   const user = users.byId(userId);
-  if (user === undefined) throw new Error('Angemeldete Person gibt es nicht mehr');
+  if (user === undefined) throw new RejectedError('Angemeldete Person gibt es nicht mehr');
 
   return { id: user.id, name: user.name };
 }
 
 function requireRoom(room: Room | undefined): Room {
-  if (room === undefined) throw new Error('Diesen Raum gibt es nicht');
+  if (room === undefined) throw new RejectedError('Diesen Raum gibt es nicht');
   return room;
 }

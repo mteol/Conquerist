@@ -37,6 +37,21 @@ export function storeSecret(secret: string): void {
   write(SECRET_KEY, secret);
 }
 
+/**
+ * Das Geheimnis wegwerfen.
+ *
+ * Noetig, wenn der Server es nicht kennt - nach einem Datenbankwechsel etwa.
+ * Ein Geheimnis, das niemand mehr kennt, ist keins mehr; es weiter
+ * mitzuschicken sperrt einen dauerhaft aus.
+ */
+export function forgetSecret(): void {
+  try {
+    window.localStorage.removeItem(SECRET_KEY);
+  } catch {
+    // Kein Speicher, nichts zu vergessen.
+  }
+}
+
 /** Der zuletzt benutzte Anzeigename, damit ihn niemand zweimal tippen muss. */
 export function loadName(): string | null {
   return read(NAME_KEY);
