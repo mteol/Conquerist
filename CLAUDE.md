@@ -57,6 +57,67 @@ Paket-Scope: `@conquerist/shared`, `@conquerist/server`, `@conquerist/client`
 - Bei Unklarheit nachfragen statt raten.
 - Neue Logik in shared bekommt Tests.
 - Antworten auf Deutsch, Code und Bezeichner auf Englisch.
+- **Design ist Abnahmekriterium, nicht Nacharbeit.** Siehe unten.
+
+## Design
+
+Das Spiel wird angeschaut, bevor es verstanden wird. Ein Bildschirm, der
+funktioniert und billig aussieht, ist nicht fertig. Diese Regeln gelten ab
+Etappe 4 für jede Oberfläche.
+
+**1. Erst der Entwurf, dann das Markup.** Vor jedem neuen Bildschirm drei Sätze
+festhalten: welche Rolle die Fläche hat, wie sie aufgebaut ist, und was das eine
+Element ist, an das man sich erinnert. Ohne diesen Satz entsteht die Vorlage,
+die überall passt und nirgends gemeint ist.
+
+**2. Die Farbwelt steht und wird nicht neu erfunden.** Tiefsee-Tinte für die
+Fläche, Pergament für alles Bedienbare, Geländefarben als Akzente — und die
+Geländefarben sind dieselben wie in `game/labels.ts` und `shared/seats.ts`.
+Neue Elemente leiten sich aus den Variablen in `index.css` ab. **Kein Hex-Wert
+in einer Komponente**; wer eine Farbe braucht, die es nicht gibt, legt sie als
+Variable an und begründet sie.
+
+**3. Die Schrift trägt die Persönlichkeit, nicht ein Webfont.** Kein
+Font-Download. Der Charakter kommt aus der Setzung: großer Gewichtssprung, enge
+Laufweite in der Anzeige, weite Sperrung in Kleinlabels, **überall
+Tabellenziffern**. In einem Spiel, in dem dauernd Zahlen verglichen werden,
+darf keine Ziffer springen.
+
+**4. Das Brett ist der Held.** Es bekommt den Platz und die Sättigung; Panels,
+Leisten und Dialoge sind ruhig und ordnen sich unter. Boldness wird an einer
+Stelle ausgegeben, nicht auf jeder Fläche.
+
+**5. Bewegung erklärt einen Zustandswechsel oder entfällt.** Würfeln, Bauen,
+Räuber, Zugwechsel, eintreffende Ressourcen — dort hilft Animation beim
+Verstehen, wer gerade was getan hat. Dekoratives Schweben, Dauer-Glow und
+Verlaufsflächen ohne Anlass fliegen raus. `prefers-reduced-motion` wird
+respektiert; es steht bereits in `index.css`.
+
+**6. Struktur codiert Inhalt.** Nummerierung, Trennlinien und Eyebrows nur da,
+wo die Reihenfolge oder die Gruppe wirklich etwas bedeutet. Ein `01 / 02 / 03`
+über Dingen, die keine Folge sind, ist Dekoration.
+
+**7. Qualitätsboden, ohne ihn zu erwähnen.** Bedienbar bis zum schmalen
+Handy-Fenster, sichtbarer Tastaturfokus, ausreichender Kontrast auf der
+Tiefsee-Fläche, keine springenden Layouts beim Nachladen. Farbe ist nie der
+einzige Träger einer Information — Spielerfarben brauchen zusätzlich Namen oder
+Form.
+
+**8. Texte sind Designmaterial.** Aktiv, Satzanfang groß, sonst klein. Benannt
+wird, was der Spieler tut, nicht wie es im Code heißt. Ein Wort bleibt durch
+den ganzen Ablauf gleich: Wer „Straße bauen" drückt, liest im Verlauf „hat eine
+Straße gebaut". Fehler sagen, was passiert ist und was jetzt hilft; leere
+Flächen laden zu einer Handlung ein statt sich zu entschuldigen.
+
+**Was es nicht wird:** Creme-Fläche mit Serifen-Display und Terrakotta-Akzent,
+Fast-Schwarz mit einem grellen Grün, Glaskarten mit Farbverlauf. Das sind die
+drei Voreinstellungen, die jede generierte Oberfläche gerade trägt, und sie
+kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
+
+**Falle, die schon zugeschnappt ist:** Eine CSS-Regel schlägt immer das
+gleichnamige SVG-Präsentationsattribut. `.road { stroke: transparent }` hat
+jede gebaute Straße unsichtbar gemacht, obwohl `stroke={farbe}` am Element
+stand. Farben am SVG deshalb per `style`.
 
 ## Etappenplan
 0. ✅ Monorepo-Grundgerüst, WS-Ping/Pong

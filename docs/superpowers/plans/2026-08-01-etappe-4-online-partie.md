@@ -17,6 +17,7 @@
 - **Jede eingehende Nachricht wird per Zod validiert, bevor sie Logik erreicht** — und jede ausgehende ebenfalls, Ereignisse eingeschlossen.
 - **TypeScript strict** mit `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noUnusedLocals`, `noUnusedParameters`.
 - **Texte auf Deutsch, Code und Bezeichner auf Englisch.** Kommentare erklaeren das Warum.
+- **Der Abschnitt „Design" in `CLAUDE.md` ist bindend** — er ist ab jetzt Abnahmekriterium, nicht Nacharbeit. Betrifft vor allem Aufgabe 13 (Wartebereich), 14 (Spielbildschirm) und 15 (Bewegung): dort erst der Entwurf in drei Saetzen, dann das Markup. Farben nur aus den Variablen in `index.css`, keine Hex-Werte in Komponenten.
 - **Commit-Nachrichten auf Deutsch, ohne `Co-Authored-By`-Zeile.**
 - Nach jeder Aufgabe muessen die Tests des betroffenen Pakets gruen sein; am Ende `pnpm typecheck && pnpm test && pnpm build && pnpm format:check` plus die Abnahme.
 - Formatierung vor jedem Commit: `pnpm prettier --write <geaenderte Dateien>`.
