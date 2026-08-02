@@ -31,7 +31,8 @@ import {
  *   3. **Nur in der Hauptphase**, also nach dem Wurf. In der Schachtel darf der
  *      Ritter auch davor - hier bewusst nicht: die Ausnahme kostet eine
  *      Sonderregel in jeder Phasenpruefung und bringt fuers Basisspiel wenig.
- *      Steht als offener Punkt in `PROGRESS.md`.
+ *      **Entschieden und nicht mehr offen** (2026-08-02); wer sie doch will,
+ *      baut sie als Regelwert und nicht als zweiten Zweig.
  *   4. **Siegpunktkarten werden nie gespielt.** Sie zaehlen, und zwar still.
  */
 

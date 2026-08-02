@@ -186,8 +186,17 @@ export function StartScreen({
      der, der die Partie erstellt hat. */
   const showsBoard = showsOnline || showsLocal;
 
+  /*
+   * Wortgleich mit dem Menueeintrag, ueber den man hergekommen ist: wer
+   * „Partie beitreten" gedrueckt hat, liest hier dasselbe und nicht ein zweites
+   * Wort fuer dieselbe Sache (Regel 8).
+   */
   const heading =
-    mode === 'local' ? 'Lokal spielen' : mode === 'join' ? 'Spiel beitreten' : 'Spiel starten';
+    mode === 'local'
+      ? 'Partie starten — lokal'
+      : mode === 'join'
+        ? 'Partie beitreten'
+        : 'Partie starten — online';
 
   return (
     <main className="start">
@@ -337,7 +346,7 @@ export function StartScreen({
 
         {showsJoin ? (
           <section className="way">
-            <span className="eyebrow">Spiel beitreten</span>
+            <span className="eyebrow">Partie beitreten</span>
             <p className="way__lead">Vier Zeichen, vorgelesen oder aus dem Einladungslink.</p>
 
             <div className="seedrow">

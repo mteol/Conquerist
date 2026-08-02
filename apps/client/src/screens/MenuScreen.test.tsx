@@ -9,21 +9,26 @@ describe('Hauptmenue', () => {
 
     expect(screen.getByRole('heading', { name: 'Conquerist' })).toBeDefined();
 
+    // Ein Wort durch den ganzen Ablauf: „Partie", wie ueberall sonst (Regel 8).
     const entries = screen.getAllByRole('button').map((node) => node.textContent);
-    expect(entries).toEqual(['Spiel starten — online', 'Lokal spielen', 'Spiel beitreten']);
+    expect(entries).toEqual([
+      'Partie starten — online',
+      'Partie starten — lokal',
+      'Partie beitreten',
+    ]);
   });
 
   it('meldet, welchen Weg jemand gewaehlt hat', async () => {
     const onChoose = vi.fn();
     render(<MenuScreen onChoose={onChoose} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Lokal spielen' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Partie starten — lokal' }));
     expect(onChoose).toHaveBeenCalledWith('local');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Spiel beitreten' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Partie beitreten' }));
     expect(onChoose).toHaveBeenCalledWith('join');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Spiel starten — online' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Partie starten — online' }));
     expect(onChoose).toHaveBeenCalledWith('online');
   });
 

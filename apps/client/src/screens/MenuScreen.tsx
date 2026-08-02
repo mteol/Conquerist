@@ -32,10 +32,19 @@ export interface MenuScreenProps {
   readonly openGames?: number;
 }
 
+/*
+ * Dreimal dasselbe Wort, dreimal derselbe Bau.
+ *
+ * „Partie" und nicht „Spiel": im Rest der Anwendung heisst es durchgaengig so -
+ * „Deine Partien", „Die Partie laeuft bereits", „Lokale Partie starten". Zwei
+ * Woerter fuer dieselbe Sache liest man als zwei Sachen (Regel 8). Und weil die
+ * drei Zeilen untereinander stehen, sind sie auch gleich gebaut: Was zuerst,
+ * das Wie danach.
+ */
 const ENTRIES: readonly { readonly choice: MenuChoice; readonly label: string }[] = [
-  { choice: 'online', label: 'Spiel starten — online' },
-  { choice: 'local', label: 'Lokal spielen' },
-  { choice: 'join', label: 'Spiel beitreten' },
+  { choice: 'online', label: 'Partie starten — online' },
+  { choice: 'local', label: 'Partie starten — lokal' },
+  { choice: 'join', label: 'Partie beitreten' },
 ];
 
 export function MenuScreen({ onChoose, openGames = 0 }: MenuScreenProps): JSX.Element {

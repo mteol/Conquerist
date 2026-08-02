@@ -118,7 +118,7 @@ export function reduce(state: GameState, action: GameAction): ReduceResult {
     return rejected(
       violation(
         RuleViolationCode.GAME_OVER,
-        `${state.phase.winner} hat gewonnen - das Spiel nimmt keine Zuege mehr an`,
+        `${state.phase.winner} hat gewonnen - die Partie nimmt keine Zuege mehr an`,
       ),
     );
   }

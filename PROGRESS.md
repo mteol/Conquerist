@@ -1019,10 +1019,13 @@ in sich tragen — und die zweite Auslegung ist immer die mit dem Fehler.
 
 ### Offene Punkte
 
-- **Der Ritter darf nicht vor dem Wuerfeln.** In der Schachtel darf er; hier
-  kostet die Ausnahme eine Sonderregel in jeder Phasenpruefung. Bewusste
-  Abweichung, und die spuerbarste im Spiel.
 - **Kein Handel zwischen Spielern.** Bleibt in Etappe 8.
+
+**Nicht mehr offen: der Ritter bleibt hinter dem Wurf.** In der Schachtel darf
+er davor, hier nicht — die Ausnahme kostet eine Sonderregel in jeder
+Phasenpruefung und bringt fuers Basisspiel wenig. Am 2026-08-02 vom Nutzer
+bestaetigt, damit eine getroffene Entscheidung und kein Versaeumnis. Wer sie
+spaeter doch will, baut sie als Regelwert und nicht als zweiten Zweig.
 
 ## Zwischenstuecke — Hauptmenue und eine ehrliche Ablehnung ✅
 
@@ -1173,3 +1176,47 @@ Unveraendert **Etappe 7: Auth** — Registrierung, Login, Gast-Account
 beanspruchen. Die Wuerfel waren ein Vorgriff auf Etappe 10 nur insoweit, als
 sie ihn billiger machen: die Schale ist Daten, die Erweiterung braucht keinen
 Codepfad.
+
+## Ein Wort fuer eine Sache: „Partie" ✅
+
+Stand: 2026-08-02, Branch `etappe-4-online`. Zwei Entscheidungen des Nutzers,
+beide klein und beide vorher als offene Punkte notiert.
+
+### Abnahme
+
+| Pruefung                                      | Ergebnis                                               |
+| --------------------------------------------- | ------------------------------------------------------ |
+| `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                                  |
+| `pnpm test`                                   | 719 Tests gruen (shared 492, server 74, client 153)    |
+| `pnpm build`                                  | gruen, Client-Bundle 361 kB (108 kB gzip), CSS 20,9 kB |
+| `pnpm format:check`                           | gruen                                                  |
+
+### Getroffene Entscheidungen
+
+**„Partie" ueberall, „Spiel" nirgends.** Das Menue sagte „Spiel starten" und
+„Spiel beitreten", der Rest der Anwendung durchgaengig „Partie" — „Deine
+Partien", „Die Partie laeuft bereits", „Lokale Partie starten". Zwei Woerter
+fuer dieselbe Sache liest man als zwei Sachen (Regel 8). Geaendert an vier
+Stellen: die drei Menueeintraege, die Ueberschrift des Startbildschirms, sein
+Eyebrow „Partie beitreten" und die Ablehnung `GAME_OVER` in `reducer.ts` — die
+sieht der Spieler, sie ist Bildschirmtext wie jeder andere.
+
+**Und gleich gebaut, nicht nur gleich benannt.** Aus „Spiel starten — online",
+„Lokal spielen", „Spiel beitreten" ist „Partie starten — online", „Partie
+starten — lokal", „Partie beitreten" geworden. Drei Zeilen untereinander sind
+eine Liste, und eine Liste, deren Eintraege verschieden gebaut sind, laesst
+einen nach dem Unterschied suchen, den es nicht gibt: erst das Was, dann das
+Wie. Der Startbildschirm traegt danach wortgleich dieselbe Ueberschrift wie der
+Eintrag, ueber den man hergekommen ist.
+
+**Der Ritter bleibt hinter dem Wurf.** Bestaetigt statt beibehalten: die
+Abweichung von der Schachtel war seit den Entwicklungskarten notiert, und sie
+ist jetzt entschieden. `developmentRules.ts` sagt das im Kopfkommentar, damit
+beim naechsten Lesen niemand einen vergessenen Punkt darin sieht. Wer sie
+spaeter doch will, baut sie als Regelwert und nicht als zweiten Zweig — dieselbe
+Form wie bei der Wuerfelschale.
+
+### Offene Punkte
+
+Keine neuen. Der Nutzer hat weitere Menuearbeit angekuendigt; was genau, steht
+noch nicht fest.
