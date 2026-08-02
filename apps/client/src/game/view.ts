@@ -1,39 +1,44 @@
 import {
-  countResources,
-  discardCountFor,
-  setupPlayer,
-  victoryPointsOf,
+  setupPlayerIndex,
   type GameState,
   type PlayerId,
+  type PlayerView,
   type ResourceAmounts,
   type RuleSet,
 } from '@conquerist/shared';
-import { seatsById, type Seat } from '../seats';
 
 /**
- * Die Projektion vom Zustand auf das, was am Bildschirm steht.
+ * Vom Protokoll auf den Bildschirm.
  *
- * Zwei Gruende, das als reine Funktion zu bauen: es laesst sich ohne DOM in
- * vielen Faellen pruefen, und es ist die ehrliche Vorarbeit fuer Etappe 5 -
- * `PlayerView` wird genau so eine Projektion sein, nur serverseitig und dann
- * nicht mehr abschaltbar.
+ * Bis Etappe 3 hat diese Datei aus dem vollen Zustand gerechnet: Siegpunkte
+ * ermittelt, Namen aus den Sitzen geholt, fremde Haende auf Wunsch verdeckt.
+ * All das ist jetzt schon geschehen - auf dem Server, verbindlich. Was bleibt,
+ * ist Anordnen. `resources === null` heisst nicht mehr „ausgeblendet", sondern
+ * **„darf ich nicht sehen"**; das ist ein Unterschied, den man der Oberflaeche
+ * nicht mehr abgewoehnen kann.
+ *
+ * Damit gibt es einen Weg durch die Oberflaeche, egal woher der Zustand kommt:
+ * die lokale Partie baut ihre Sicht mit `playerViewOf` selbst, die Online-Partie
+ * bekommt sie geschickt. Beide landen hier.
  */
-export interface PlayerView {
+export interface PlayerRow {
   readonly id: PlayerId;
   readonly name: string;
   readonly color: string;
   readonly victoryPoints: number;
   readonly cardCount: number;
-  /** `null`, wenn verdeckt. Die Anzahl bleibt trotzdem sichtbar. */
+  /** `null` heisst: gehoert jemand anderem. Die Anzahl bleibt sichtbar. */
   readonly resources: ResourceAmounts | null;
   readonly piecesLeft: RuleSet['pieceStock'];
   readonly isCurrent: boolean;
+  /** Ob dieser Spieler gerade eine offene Verbindung hat. */
+  readonly connected: boolean;
   /** Wie viele Karten dieser Spieler gerade abwerfen muss; 0, wenn keine. */
   readonly mustDiscard: number;
 }
 
 export interface GameView {
-  readonly players: readonly PlayerView[];
+  readonly players: readonly PlayerRow[];
   /** Wer jetzt handeln darf - in der Gruendung aus der Schlange, nach einer Sieben mehrere. */
   readonly actingPlayers: readonly PlayerId[];
   readonly currentPlayerId: PlayerId;
@@ -41,12 +46,8 @@ export interface GameView {
   readonly lastRoll: readonly [number, number] | null;
   readonly turn: number;
   readonly longestRoad: GameState['longestRoad'];
-}
-
-export interface ViewOptions {
-  /** Wessen Karten offen bleiben, wenn verdeckt wird. */
-  readonly viewer: PlayerId | null;
-  readonly conceal: boolean;
+  /** Wer zusieht. Seine Karten sind die einzigen, die offen liegen. */
+  readonly you: PlayerId;
 }
 
 /**
@@ -55,76 +56,107 @@ export interface ViewOptions {
  * In der Gruendung folgt der Zug der Schlange und nicht `currentPlayerIndex`;
  * nach einer Sieben sind es alle, die noch abwerfen muessen - `applyDiscard`
  * nimmt sie in beliebiger Reihenfolge.
+ *
+ * Liest ausschliesslich `phase`, `players` und `currentPlayerIndex` - alle drei
+ * stehen unveraendert in der Sicht, deshalb genuegt sie hier.
  */
-export function actingPlayers(state: GameState): readonly PlayerId[] {
-  switch (state.phase.kind) {
+/**
+ * Das gemeinsame Stueck von `GameState` und `PlayerView`.
+ *
+ * Beide tragen Phase, Spielerreihenfolge und den Index des Spielers am Zug -
+ * und mehr braucht weder `actingPlayers` noch der Phasensatz. Ein eigener Typ
+ * dafuer ist ehrlicher als ein Cast von der Sicht auf den Zustand: die Sicht
+ * IST kein Zustand, sie hat nur diese Felder gemeinsam mit ihm.
+ */
+export interface PhaseSource {
+  readonly phase: GameState['phase'];
+  readonly players: readonly { readonly id: PlayerId }[];
+  readonly currentPlayerIndex: number;
+}
+
+/** Wer in der Gruendungsphase gerade setzen muss - dieselbe Schlange wie in `shared`. */
+function setupPlayerOf(view: PhaseSource): PlayerId | null {
+  if (view.phase.kind !== 'setup') return null;
+  const index = setupPlayerIndex(view.phase.placement, view.players.length);
+  return view.players[index]?.id ?? null;
+}
+
+export function actingPlayers(view: PhaseSource): readonly PlayerId[] {
+  switch (view.phase.kind) {
     case 'setup': {
-      const player = setupPlayer(state);
+      const player = setupPlayerOf(view);
       return player === null ? [] : [player];
     }
     case 'discardPending':
-      return state.phase.pending;
+      return view.phase.pending;
     case 'finished':
       return [];
     default:
-      return [state.players[state.currentPlayerIndex]!.id];
+      return [view.players[view.currentPlayerIndex]!.id];
   }
 }
 
-function phaseText(state: GameState, names: ReadonlyMap<PlayerId, Seat>): string {
-  const nameOf = (id: PlayerId | null): string =>
-    id === null ? 'niemand' : (names.get(id)?.name ?? id);
-  const currentName = (): string => nameOf(state.players[state.currentPlayerIndex]!.id);
+function phaseTextOf(view: PlayerView): string {
+  const names = new Map(view.players.map((player) => [player.id, player.name]));
+  const nameOf = (id: PlayerId | null): string => (id === null ? 'niemand' : (names.get(id) ?? id));
+  const currentName = (): string => nameOf(view.players[view.currentPlayerIndex]!.id);
 
-  switch (state.phase.kind) {
+  switch (view.phase.kind) {
     case 'setup':
-      return state.phase.settlement === null
-        ? `Gruendung: ${nameOf(setupPlayer(state))} setzt eine Siedlung`
-        : `Gruendung: ${nameOf(setupPlayer(state))} setzt die zugehoerige Strasse`;
+      return view.phase.settlement === null
+        ? `Gruendung: ${nameOf(setupPlayerOf(view))} setzt eine Siedlung`
+        : `Gruendung: ${nameOf(setupPlayerOf(view))} setzt die zugehoerige Strasse`;
     case 'rollPending':
       return `${currentName()} muss wuerfeln`;
     case 'discardPending':
-      return `Sieben: ${state.phase.pending.map((id) => nameOf(id)).join(' und ')} muss abwerfen`;
+      return `Sieben: ${view.phase.pending.map((id) => nameOf(id)).join(' und ')} muss abwerfen`;
     case 'robberPending':
       return `${currentName()} versetzt den Raeuber`;
     case 'main':
       return `${currentName()} ist am Zug`;
     case 'finished':
-      return `${nameOf(state.phase.winner)} hat gewonnen`;
+      return `${nameOf(view.phase.winner)} hat gewonnen`;
   }
 }
 
-export function gameView(state: GameState, seats: readonly Seat[], options: ViewOptions): GameView {
-  const byId = seatsById(seats);
-  const current = state.players[state.currentPlayerIndex]!.id;
+/**
+ * Wie viele Karten dieser Spieler abwerfen muss - aus der Sicht gerechnet.
+ *
+ * `discardCountFor` in `shared` braucht den vollen Zustand; die Sicht hat
+ * `cardCount` und `rules`, und das genuegt. Ein Test haelt fest, dass beide
+ * dasselbe sagen - hier entsteht zum ersten Mal eine Rechnung im Client, die
+ * es auch in `shared` gibt.
+ */
+export function discardCountForView(view: PlayerView, player: PlayerId): number {
+  const held = view.players.find((entry) => entry.id === player)?.cardCount ?? 0;
+  return held > view.rules.handLimitBeforeDiscard ? Math.floor(held / 2) : 0;
+}
 
-  const players = state.players.map((player): PlayerView => {
-    const seat = byId.get(player.id);
-    const open = !options.conceal || player.id === options.viewer;
-
-    return {
-      id: player.id,
-      name: seat?.name ?? player.id,
-      color: seat?.color ?? '#8b93a3',
-      victoryPoints: victoryPointsOf(state, player.id),
-      cardCount: countResources(player.resources),
-      resources: open ? player.resources : null,
-      piecesLeft: player.piecesLeft,
-      isCurrent: player.id === current,
-      mustDiscard:
-        state.phase.kind === 'discardPending' && state.phase.pending.includes(player.id)
-          ? discardCountFor(state, player.id)
-          : 0,
-    };
-  });
+export function gameViewOf(view: PlayerView): GameView {
+  const current = view.players[view.currentPlayerIndex];
 
   return {
-    players,
-    actingPlayers: actingPlayers(state),
-    currentPlayerId: current,
-    phaseText: phaseText(state, byId),
-    lastRoll: state.lastRoll,
-    turn: state.turn,
-    longestRoad: state.longestRoad,
+    players: view.players.map((player) => ({
+      id: player.id,
+      name: player.name,
+      color: player.color,
+      victoryPoints: player.victoryPoints,
+      cardCount: player.cardCount,
+      resources: player.resources,
+      piecesLeft: player.piecesLeft,
+      connected: player.connected,
+      isCurrent: player.id === current?.id,
+      mustDiscard:
+        view.phase.kind === 'discardPending' && view.phase.pending.includes(player.id)
+          ? discardCountForView(view, player.id)
+          : 0,
+    })),
+    actingPlayers: actingPlayers(view),
+    currentPlayerId: current?.id ?? view.you,
+    phaseText: phaseTextOf(view),
+    lastRoll: view.lastRoll,
+    turn: view.turn,
+    longestRoad: view.longestRoad,
+    you: view.you,
   };
 }

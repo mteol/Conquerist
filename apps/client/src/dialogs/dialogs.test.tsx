@@ -2,11 +2,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ResourceId } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
-import type { PlayerView } from '../game/view';
+import type { PlayerRow } from '../game/view';
 import { DiscardDialog } from './DiscardDialog';
 import { TradeDialog } from './TradeDialog';
 
-const player: PlayerView = {
+const player: PlayerRow = {
   id: 'p1',
   name: 'Spieler 1',
   color: '#c0392b',
@@ -15,6 +15,7 @@ const player: PlayerView = {
   resources: { brick: 3, lumber: 2, wool: 2, grain: 1, ore: 0 },
   piecesLeft: { road: 13, settlement: 3, city: 4 },
   isCurrent: true,
+  connected: true,
   mustDiscard: 4,
 };
 

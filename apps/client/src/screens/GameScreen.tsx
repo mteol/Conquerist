@@ -1,19 +1,15 @@
 import { useCallback, useMemo, useState, type JSX } from 'react';
 import {
-  canTradeWithBank,
-  discardCountFor,
   tradeRateFor,
-  victimsAt,
-  type GameState,
+  type GameAction,
   type PlayerId,
+  type PlayerView,
   type ResourceAmounts,
   type ResourceId,
 } from '@conquerist/shared';
-import type { Seat } from '../seats';
 import { BoardSvg, type Place } from '../board/BoardSvg';
-import { EMPTY_TARGETS, actionTargets } from '../game/targets';
-import { useHotseatGame } from '../game/useHotseatGame';
-import { actingPlayers, gameView, type PlayerView } from '../game/view';
+import { targetsFrom } from '../game/targets';
+import { discardCountForView, gameViewOf, type PlayerRow } from '../game/view';
 import { ActionPanel } from '../panels/ActionPanel';
 import { LogPanel } from '../panels/LogPanel';
 import { StatusPanel } from '../panels/StatusPanel';
@@ -21,144 +17,188 @@ import { TablePanel } from '../panels/TablePanel';
 import { DiscardDialog } from '../dialogs/DiscardDialog';
 import { TradeDialog } from '../dialogs/TradeDialog';
 import { VictimDialog } from '../dialogs/VictimDialog';
+import type { LogEntry } from '../game/hotseat';
 
 /**
- * Setzt Brett, Panels und Dialoge zusammen - und trifft dabei die wenigen
- * Entscheidungen, die keine Regel sind:
+ * Setzt Brett, Panels und Dialoge zusammen.
  *
- * - Wessen Sicht gilt: der erste aus `actingPlayers`. In der Gruendung ist das
- *   die Schlange, nach einer Sieben der erste Wartende, sonst der Spieler am
- *   Zug.
- * - Ein Feld mit genau einem Raeuberziel wird sofort ausgefuehrt; bei mehreren
- *   fragt der Dialog nach dem Opfer.
- * - Das Brett liegt in `.board-area`, deren Einzug die Panels aussparen. Damit
- *   liegt kein Feld je unter einem Panel - die Randknoten der Gruendung bleiben
- *   anklickbar.
+ * Seit Etappe 4 bekommt er **eine Sicht und eine Aktionsliste** - und weiter
+ * nichts. Wer sie gebaut hat, ist ihm gleich: die lokale Partie erzeugt beides
+ * selbst, die Online-Partie bekommt beides vom Server. Ein Satz Bildschirme
+ * fuer beide Quellen, und keine Stelle, an der eine Regel ein zweites Mal
+ * ausgelegt wird.
+ *
+ * Was daraus folgt, ist der eigentliche Gewinn: **die Dialoge lesen ihre
+ * Auswahl aus der Aktionsliste.** Wer als Opfer eines Raeuberzugs in Frage
+ * kommt, steht nicht mehr in einer Client-Rechnung ueber fremde Handkarten -
+ * die sieht der Client gar nicht mehr -, sondern in den Zuegen, die erlaubt
+ * sind.
+ *
+ * Das Brett liegt in `.board-area`, deren Einzug die Panels aussparen. Damit
+ * liegt kein Feld je unter einem Panel - die Randknoten der Gruendung bleiben
+ * anklickbar.
  */
 export interface GameScreenProps {
-  readonly game: GameState;
-  readonly seats: readonly Seat[];
+  readonly view: PlayerView;
+  /** Was der Empfaenger dieser Sicht gerade tun darf. */
+  readonly actions: readonly GameAction[];
+  readonly log: readonly LogEntry[];
+  readonly error: string | null;
+  readonly onAct: (action: GameAction) => void;
+  readonly onDismissError: () => void;
   readonly onLeave: () => void;
 }
 
-export function GameScreen({ game, seats, onLeave }: GameScreenProps): JSX.Element {
-  const { state, dispatch, dismissError } = useHotseatGame(game, seats);
-  const [conceal, setConceal] = useState(false);
+export function GameScreen({
+  view,
+  actions,
+  log,
+  error,
+  onAct,
+  onDismissError,
+  onLeave,
+}: GameScreenProps): JSX.Element {
   const [tradeOpen, setTradeOpen] = useState(false);
   const [robberHex, setRobberHex] = useState<string | null>(null);
 
-  const current = state.game;
-  const viewer = actingPlayers(current)[0] ?? null;
-  const view = useMemo(
-    () => gameView(current, seats, { viewer, conceal }),
-    [current, seats, viewer, conceal],
-  );
-  const targets = useMemo(
-    () => (viewer === null ? EMPTY_TARGETS : actionTargets(current, viewer)),
-    [current, viewer],
-  );
+  const display = useMemo(() => gameViewOf(view), [view]);
+  const targets = useMemo(() => targetsFrom(actions), [actions]);
 
   const pick = useCallback(
     (place: Place) => {
       if (place.kind === 'vertex') {
         const action = targets.vertices.get(place.id);
-        if (action !== undefined) dispatch(action);
+        if (action !== undefined) onAct(action);
         return;
       }
       if (place.kind === 'edge') {
         const action = targets.edges.get(place.id);
-        if (action !== undefined) dispatch(action);
+        if (action !== undefined) onAct(action);
         return;
       }
 
       const options = targets.hexes.get(place.id) ?? [];
-      if (options.length === 1) dispatch(options[0]!);
+      if (options.length === 1) onAct(options[0]!);
       else if (options.length > 1) setRobberHex(place.id);
     },
-    [targets, dispatch],
+    [targets, onAct],
   );
 
-  const playerOf = (id: PlayerId): PlayerView | undefined =>
-    view.players.find((player) => player.id === id);
+  const playerOf = (id: PlayerId): PlayerRow | undefined =>
+    display.players.find((player) => player.id === id);
 
-  const discarding =
-    current.phase.kind === 'discardPending' ? (current.phase.pending[0] ?? null) : null;
-  const discardingPlayer = discarding === null ? undefined : playerOf(discarding);
-  const tradingPlayer = viewer === null ? undefined : playerOf(viewer);
+  const you = playerOf(view.you);
+
+  /*
+   * Abwerfen betrifft immer nur den Empfaenger dieser Sicht: die Karten eines
+   * anderen kennt er nicht und koennte sie gar nicht auswaehlen. Online steht
+   * am selben Bildschirm ohnehin nur einer.
+   */
+  const mustDiscard =
+    view.phase.kind === 'discardPending' && view.phase.pending.includes(view.you)
+      ? discardCountForView(view, view.you)
+      : 0;
+
+  /** Die moeglichen Opfer stehen in den Zuegen, nicht in einer eigenen Rechnung. */
+  const victims: readonly PlayerRow[] =
+    robberHex === null
+      ? []
+      : (targets.hexes.get(robberHex) ?? []).flatMap((action) => {
+          if (action.type !== 'moveRobber' || action.victim === null) return [];
+          const player = playerOf(action.victim);
+          return player === undefined ? [] : [player];
+        });
 
   return (
     <main className="game">
       <div className="board-area">
-        <BoardSvg state={current} targets={targets} seats={seats} onPick={pick} />
+        <BoardSvg
+          state={view}
+          targets={targets}
+          seats={display.players.map((player) => ({
+            id: player.id,
+            name: player.name,
+            color: player.color,
+          }))}
+          onPick={pick}
+        />
       </div>
 
-      <TablePanel view={view} conceal={conceal} onConcealChange={setConceal} />
-      <StatusPanel view={view} />
-      <LogPanel entries={state.log} />
+      <TablePanel view={display} />
+      <StatusPanel view={display} />
+      <LogPanel entries={log} />
 
       <ActionPanel
-        view={view}
+        view={display}
         targets={targets}
-        error={state.lastError}
+        error={error}
         onRoll={() => {
-          if (targets.roll !== null) dispatch(targets.roll);
+          if (targets.roll !== null) onAct(targets.roll);
         }}
         onEndTurn={() => {
-          if (targets.endTurn !== null) dispatch(targets.endTurn);
+          if (targets.endTurn !== null) onAct(targets.endTurn);
         }}
         onOpenTrade={() => setTradeOpen(true)}
-        onDismissError={dismissError}
+        onDismissError={onDismissError}
       />
 
-      {discarding !== null && discardingPlayer !== undefined ? (
+      {mustDiscard > 0 && you !== undefined ? (
         <DiscardDialog
-          player={discardingPlayer}
-          required={discardCountFor(current, discarding)}
+          player={you}
+          required={mustDiscard}
           onConfirm={(resources: ResourceAmounts) => {
-            dispatch({ type: 'discard', player: discarding, resources });
+            onAct({ type: 'discard', player: view.you, resources });
           }}
         />
       ) : null}
 
-      {tradeOpen && viewer !== null && tradingPlayer !== undefined ? (
+      {tradeOpen && you !== undefined ? (
         <TradeDialog
-          player={tradingPlayer}
-          rateFor={(give: ResourceId) => tradeRateFor(current, viewer, give)}
+          player={you}
+          rateFor={(give: ResourceId) => tradeRateFor(view, view.you, give)}
           canTrade={(give: ResourceId, receive: ResourceId) =>
-            canTradeWithBank(current, viewer, give, receive) === null
+            targets.trades.some(
+              (action) =>
+                action.type === 'tradeWithBank' &&
+                action.give === give &&
+                action.receive === receive,
+            )
           }
           onConfirm={(give, receive) => {
-            dispatch({ type: 'tradeWithBank', player: viewer, give, receive });
+            const action = targets.trades.find(
+              (candidate) =>
+                candidate.type === 'tradeWithBank' &&
+                candidate.give === give &&
+                candidate.receive === receive,
+            );
+            if (action !== undefined) onAct(action);
             setTradeOpen(false);
           }}
           onClose={() => setTradeOpen(false)}
         />
       ) : null}
 
-      {robberHex !== null && viewer !== null ? (
+      {robberHex !== null ? (
         <VictimDialog
           hex={robberHex}
-          victims={victimsAt(current, robberHex, viewer).flatMap((id) => {
-            const player = playerOf(id);
-            return player === undefined ? [] : [player];
-          })}
+          victims={victims}
           onChoose={(victim) => {
             const action = (targets.hexes.get(robberHex) ?? []).find(
               (candidate) => candidate.type === 'moveRobber' && candidate.victim === victim,
             );
-            if (action !== undefined) dispatch(action);
+            if (action !== undefined) onAct(action);
             setRobberHex(null);
           }}
           onClose={() => setRobberHex(null)}
         />
       ) : null}
 
-      {current.phase.kind === 'finished' ? (
+      {view.phase.kind === 'finished' ? (
         <div className="modal" role="dialog" aria-label="Partie beendet">
           <div className="modal__box">
-            <h2>{view.phaseText}</h2>
+            <h2>{display.phaseText}</h2>
             <ol className="result">
-              {view.players.map((player) => (
+              {display.players.map((player) => (
                 <li key={player.id}>
                   {player.name}: {player.victoryPoints} Siegpunkte
                 </li>

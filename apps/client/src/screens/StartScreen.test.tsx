@@ -11,7 +11,7 @@ describe('Startbildschirm', () => {
   });
 
   it('zeigt eine Namenszeile je Spieler und passt sie der Tischgroesse an', async () => {
-    render(<StartScreen onStart={vi.fn()} />);
+    render(<StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
 
     expect(screen.getAllByLabelText(/^Name von Spieler/)).toHaveLength(3);
 
@@ -20,7 +20,7 @@ describe('Startbildschirm', () => {
   });
 
   it('zeigt das Brett, das gespielt wird - und wechselt es mit der Tischgroesse', async () => {
-    render(<StartScreen onStart={vi.fn()} />);
+    render(<StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
 
     // Basisbrett: 19 Felder. Die Vorschau ist kein Bild, sondern dasselbe
     // Brett, das `createGame` gleich bekommt.
@@ -31,7 +31,7 @@ describe('Startbildschirm', () => {
   });
 
   it('zeichnet zu einem anderen Seed ein anderes Brett', async () => {
-    render(<StartScreen onStart={vi.fn()} />);
+    render(<StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
 
     const terrainOf = (): string =>
       screen
@@ -52,12 +52,12 @@ describe('Startbildschirm', () => {
 
   it('startet eine Partie mit den eingetragenen Namen', async () => {
     const onStart = vi.fn();
-    render(<StartScreen onStart={onStart} />);
+    render(<StartScreen onStartLocal={onStart} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
 
     const firstName = screen.getAllByLabelText(/^Name von Spieler/)[0]!;
     await userEvent.clear(firstName);
     await userEvent.type(firstName, 'Anna');
-    await userEvent.click(screen.getByRole('button', { name: 'Partie starten' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
 
     expect(onStart).toHaveBeenCalledTimes(1);
     const [game, seats] = onStart.mock.calls[0]!;
@@ -68,13 +68,13 @@ describe('Startbildschirm', () => {
 
   it('baut aus demselben Seed dasselbe Brett', async () => {
     const onStart = vi.fn();
-    render(<StartScreen onStart={onStart} />);
+    render(<StartScreen onStartLocal={onStart} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
 
     const seed = screen.getByLabelText('Seed');
     await userEvent.clear(seed);
     await userEvent.type(seed, 'immer-gleich');
-    await userEvent.click(screen.getByRole('button', { name: 'Partie starten' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Partie starten' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
 
     const [first] = onStart.mock.calls[0]!;
     const [second] = onStart.mock.calls[1]!;
@@ -82,7 +82,7 @@ describe('Startbildschirm', () => {
   });
 
   it('haelt die Diagnose aus Etappe 0 zugeklappt bereit', () => {
-    render(<StartScreen onStart={vi.fn()} />);
+    render(<StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
 
     // Zugeklappt heisst: kein Verbindungsaufbau. Der Ping-Knopf existiert erst,
     // wenn man das Feld oeffnet.

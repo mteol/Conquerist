@@ -22,13 +22,26 @@ import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './s
 const DEFAULT_RATE = 4;
 
 /**
+ * Was `tradeRateFor` wirklich braucht.
+ *
+ * Nur Brett und Belegung - keine Handkarten, kein Zufall. Deshalb ein eigener
+ * Typ statt `GameState`: so kann auch eine `PlayerView` den Kurs ausrechnen,
+ * und die Oberflaeche muss ihn nicht vom Server erfragen. Es ist keine Regel,
+ * die hier zweimal ausgelegt wird - es ist dieselbe Funktion.
+ */
+export interface HarborSource {
+  readonly scenario: GameState['scenario'];
+  readonly buildings: GameState['buildings'];
+}
+
+/**
  * Der beste Kurs, den dieser Spieler fuer diese Ressource erreicht.
  *
  * Ein Hafen zaehlt, wenn der Spieler auf einem der beiden Knoten seiner Kante
  * gebaut hat - Siedlung wie Stadt. Der 2:1-Hafen gilt nur fuer seine eigene
  * Ressource, der 3:1-Hafen fuer jede.
  */
-export function tradeRateFor(state: GameState, player: PlayerId, give: ResourceId): number {
+export function tradeRateFor(state: HarborSource, player: PlayerId, give: ResourceId): number {
   const board = boardOf(state.scenario);
   let best = DEFAULT_RATE;
 

@@ -6,13 +6,14 @@ import {
   createGame,
   generateScenario,
   legalActions,
+  playerViewOf,
   reduce,
   setupPlayer,
   type GameState,
 } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
-import { gameView } from '../game/view';
+import { gameViewOf } from '../game/view';
 import { actionTargets } from '../game/targets';
 import { ActionPanel } from './ActionPanel';
 import { TablePanel } from './TablePanel';
@@ -32,42 +33,33 @@ function afterSetup(): GameState {
 }
 
 describe('TablePanel', () => {
-  it('zeigt offen die Karten aller Spieler', () => {
+  it('zeigt die eigenen Karten offen und von fremden nur die Anzahl', () => {
     const state = afterSetup();
-    const view = gameView(state, seats, { viewer: ids[0]!, conceal: false });
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
 
-    render(<TablePanel view={view} conceal={false} onConcealChange={vi.fn()} />);
+    render(<TablePanel view={view} />);
 
-    expect(screen.getAllByTestId(/^hand-p/)).toHaveLength(3);
-    expect(screen.queryAllByTestId(/^hand-count-/)).toHaveLength(0);
-  });
-
-  it('zeigt verdeckt nur noch Anzahlen - ausser bei sich selbst', () => {
-    const state = afterSetup();
-    const view = gameView(state, seats, { viewer: ids[0]!, conceal: true });
-
-    render(<TablePanel view={view} conceal={true} onConcealChange={vi.fn()} />);
-
+    // Verdeckt ist keine Ansichtssache mehr, sondern der Zustand: genau eine
+    // offene Hand, und die gehoert dem, der zusieht.
     expect(screen.getAllByTestId(/^hand-p/)).toHaveLength(1);
     expect(screen.getAllByTestId(/^hand-count-/)).toHaveLength(2);
   });
 
-  it('meldet das Umschalten weiter', async () => {
+  it('nennt einen getrennten Mitspieler beim Wort statt ihn nur einzufaerben', () => {
     const state = afterSetup();
-    const view = gameView(state, seats, { viewer: ids[0]!, conceal: false });
-    const onConcealChange = vi.fn();
+    const offline = new Map([[ids[1]!, false]]);
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1, offline));
 
-    render(<TablePanel view={view} conceal={false} onConcealChange={onConcealChange} />);
-    await userEvent.click(screen.getByLabelText('Fremde Haende verdecken'));
+    render(<TablePanel view={view} />);
 
-    expect(onConcealChange).toHaveBeenCalledWith(true);
+    expect(screen.getByText('getrennt')).toBeDefined();
   });
 });
 
 describe('ActionPanel', () => {
   it('sperrt Handel und Zugende, solange nicht gewuerfelt ist', () => {
     const state = afterSetup();
-    const view = gameView(state, seats, { viewer: null, conceal: false });
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
     const targets = actionTargets(state, view.currentPlayerId);
 
     render(
@@ -89,7 +81,7 @@ describe('ActionPanel', () => {
 
   it('zeigt den Ablehnungsgrund und laesst ihn wegraeumen', async () => {
     const state = afterSetup();
-    const view = gameView(state, seats, { viewer: null, conceal: false });
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
     const onDismissError = vi.fn();
 
     render(

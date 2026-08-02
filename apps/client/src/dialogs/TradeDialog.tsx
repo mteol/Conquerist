@@ -1,7 +1,7 @@
 import { useState, type JSX } from 'react';
 import { RESOURCE_IDS, type ResourceId } from '@conquerist/shared';
 import { RESOURCE_LABELS } from '../game/labels';
-import type { PlayerView } from '../game/view';
+import type { PlayerRow } from '../game/view';
 
 /**
  * Bankhandel.
@@ -15,7 +15,7 @@ import type { PlayerView } from '../game/view';
  * Fenster.
  */
 export interface TradeDialogProps {
-  readonly player: PlayerView;
+  readonly player: PlayerRow;
   readonly rateFor: (give: ResourceId) => number;
   readonly canTrade: (give: ResourceId, receive: ResourceId) => boolean;
   readonly onConfirm: (give: ResourceId, receive: ResourceId) => void;

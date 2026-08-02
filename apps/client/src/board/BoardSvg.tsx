@@ -23,8 +23,23 @@ export interface Place {
   readonly id: string;
 }
 
+/**
+ * Was das Brett zum Zeichnen braucht - und nicht mehr.
+ *
+ * Genau diese vier Felder, keine Handkarten und kein Zufall. Sowohl ein
+ * `GameState` als auch eine `PlayerView` erfuellen das, und damit zeichnet
+ * dieselbe Komponente die Vorschau auf dem Startbildschirm, die lokale Partie
+ * und die Online-Partie.
+ */
+export interface BoardSource {
+  readonly scenario: GameState['scenario'];
+  readonly buildings: GameState['buildings'];
+  readonly roads: GameState['roads'];
+  readonly robber: GameState['robber'];
+}
+
 export interface BoardSvgProps {
-  readonly state: GameState;
+  readonly state: BoardSource;
   readonly targets: ActionTargets;
   readonly seats: readonly Seat[];
   readonly onPick: (place: Place) => void;
@@ -186,7 +201,7 @@ function VertexMark({
   onPick,
 }: {
   readonly vertex: VertexId;
-  readonly state: GameState;
+  readonly state: BoardSource;
   readonly isTarget: boolean;
   readonly colorOf: (player: PlayerId) => string;
   readonly onPick: (place: Place) => void;

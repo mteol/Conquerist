@@ -25,9 +25,25 @@ import { ConnectionPanel } from '../diagnostics/ConnectionPanel';
  * Der Vorschlag fuer den Seed kommt aus `crypto` - echter Zufall, und die
  * einzige Stelle im Projekt, an der das erlaubt ist. Regel 2 gilt fuer die
  * Logik; die Grenze zwischen Welt und Logik ist genau dieses Eingabefeld.
+ *
+ * **Seit Etappe 4 zwei Wege, und die Verben sagen den Unterschied:** online
+ * wird eine Partie *erstellt* - danach wartet man im Wartebereich auf die
+ * anderen. An einem Geraet wird sie *gestartet* und laeuft sofort. Tischgroesse
+ * und Seed gelten fuer beide Wege, deshalb stehen sie oben und nicht in einem
+ * der beiden Kaesten.
  */
 export interface StartScreenProps {
-  readonly onStart: (game: GameState, seats: readonly Seat[]) => void;
+  /** An einem Geraet: die Partie beginnt sofort. */
+  readonly onStartLocal: (game: GameState, seats: readonly Seat[]) => void;
+  /** Online: es entsteht ein Raum, gespielt wird spaeter. */
+  readonly onCreateRoom: (seatCount: number, seed: string, name: string) => void;
+  readonly onJoinRoom: (code: string, name: string) => void;
+  /** Aus `?raum=` in der Adresse - der Einladungslink. */
+  readonly initialCode?: string | null;
+  /** Was zuletzt schiefging; kommt von aussen, weil es dort passiert. */
+  readonly problem?: string | null;
+  /** Zuletzt benutzter Anzeigename. */
+  readonly initialName?: string;
 }
 
 const BLUEPRINTS: readonly ScenarioBlueprint[] = [CLASSIC_34, CLASSIC_56];
@@ -57,11 +73,20 @@ const SEAT_COUNTS = Array.from(
   (_unused, index) => MIN_SEATS + index,
 );
 
-export function StartScreen({ onStart }: StartScreenProps): JSX.Element {
+export function StartScreen({
+  onStartLocal,
+  onCreateRoom,
+  onJoinRoom,
+  initialCode = null,
+  problem = null,
+  initialName = '',
+}: StartScreenProps): JSX.Element {
   const [seats, setSeats] = useState<Seat[]>(() => defaultSeats(MIN_SEATS));
   const [seed, setSeed] = useState(randomSeed);
-  const [problem, setProblem] = useState<string | null>(null);
+  const [localProblem, setLocalProblem] = useState<string | null>(null);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [name, setName] = useState(initialName);
+  const [code, setCode] = useState(initialCode ?? '');
 
   /*
    * Bei drei bis vier Spielern passt nur `classic34`, bei fuenf bis sechs nur
@@ -105,27 +130,29 @@ export function StartScreen({ onStart }: StartScreenProps): JSX.Element {
     );
   };
 
-  const start = (): void => {
+  const startLocal = (): void => {
     if (blueprint === undefined) {
-      setProblem(`Fuer ${seats.length} Spieler gibt es kein passendes Brett`);
+      setLocalProblem(`Fuer ${seats.length} Spieler gibt es kein passendes Brett`);
       return;
     }
     if (preview === null) {
-      setProblem('Das Brett zu diesem Seed laesst sich nicht bauen');
+      setLocalProblem('Das Brett zu diesem Seed laesst sich nicht bauen');
       return;
     }
 
-    setProblem(null);
-    onStart(preview, seats);
+    setLocalProblem(null);
+    onStartLocal(preview, seats);
   };
+
+  const shown = problem ?? localProblem;
 
   return (
     <main className="start">
       <section className="start__panel">
         <header className="start__brand">
-          <span className="eyebrow">Etappe 3 · Hotseat</span>
+          <span className="eyebrow">Etappe 4 · Online</span>
           <h1>Conquerist</h1>
-          <p className="start__lead">Ein Tisch, ein Gerät, drei bis sechs Spieler.</p>
+          <p className="start__lead">Drei bis sechs Spieler — an sechs Geräten oder an einem.</p>
         </header>
 
         <fieldset className="field-group">
@@ -146,32 +173,6 @@ export function StartScreen({ onStart }: StartScreenProps): JSX.Element {
             ))}
           </div>
         </fieldset>
-
-        <fieldset className="field-group">
-          <legend>Am Tisch</legend>
-          <ol className="seats">
-            {seats.map((seat, index) => (
-              <li key={seat.id}>
-                <PieceMark color={SEAT_COLORS[index] ?? seat.color} />
-                <input
-                  aria-label={`Name von Spieler ${index + 1}`}
-                  value={seat.name}
-                  maxLength={16}
-                  onChange={(event) => rename(index, event.currentTarget.value)}
-                />
-              </li>
-            ))}
-          </ol>
-        </fieldset>
-
-        <div className="boardfact">
-          <span className="boardfact__name">{blueprint?.name ?? 'Kein passendes Brett'}</span>
-          <span className="boardfact__detail">
-            {blueprint === undefined
-              ? `${seats.length} Spieler`
-              : `${blueprint.rows.reduce((sum, row) => sum + row, 0)} Felder`}
-          </span>
-        </div>
 
         <fieldset className="field-group">
           <legend>Seed</legend>
@@ -195,11 +196,87 @@ export function StartScreen({ onStart }: StartScreenProps): JSX.Element {
           </p>
         </fieldset>
 
-        {problem === null ? null : <p className="error">{problem}</p>}
+        <div className="boardfact">
+          <span className="boardfact__name">{blueprint?.name ?? 'Kein passendes Brett'}</span>
+          <span className="boardfact__detail">
+            {blueprint === undefined
+              ? `${seats.length} Spieler`
+              : `${blueprint.rows.reduce((sum, row) => sum + row, 0)} Felder`}
+          </span>
+        </div>
 
-        <button type="button" className="button button--go start__start" onClick={start}>
-          Partie starten
-        </button>
+        {shown === null ? null : <p className="error">{shown}</p>}
+
+        <section className="way">
+          <span className="eyebrow">Online spielen</span>
+          <p className="way__lead">Jeder an seinem Gerät. Beitritt über Code oder Link.</p>
+
+          <label className="field-label" htmlFor="displayname">
+            Dein Name
+          </label>
+          <input
+            id="displayname"
+            value={name}
+            maxLength={16}
+            placeholder="Anna"
+            onChange={(event) => setName(event.currentTarget.value)}
+          />
+
+          <button
+            type="button"
+            className="button button--go"
+            disabled={name.trim() === ''}
+            onClick={() => onCreateRoom(seats.length, seed, name.trim())}
+          >
+            Partie erstellen
+          </button>
+
+          <p className="way__or">oder</p>
+
+          <div className="seedrow">
+            <input
+              aria-label="Raumcode"
+              value={code}
+              maxLength={4}
+              placeholder="K7X2"
+              onChange={(event) => setCode(event.currentTarget.value.toUpperCase())}
+            />
+            <button
+              type="button"
+              className="button"
+              // Aus dem Einladungslink gekommen: der Code steht schon da, es
+              // fehlt nur noch der Griff zur Maus.
+              autoFocus={initialCode !== null}
+              disabled={code.trim().length !== 4 || name.trim() === ''}
+              onClick={() => onJoinRoom(code.trim(), name.trim())}
+            >
+              Beitreten
+            </button>
+          </div>
+        </section>
+
+        <section className="way">
+          <span className="eyebrow">An einem Gerät</span>
+          <p className="way__lead">Alle am selben Bildschirm, reihum.</p>
+
+          <ol className="seats">
+            {seats.map((seat, index) => (
+              <li key={seat.id}>
+                <PieceMark color={SEAT_COLORS[index] ?? seat.color} />
+                <input
+                  aria-label={`Name von Spieler ${index + 1}`}
+                  value={seat.name}
+                  maxLength={16}
+                  onChange={(event) => rename(index, event.currentTarget.value)}
+                />
+              </li>
+            ))}
+          </ol>
+
+          <button type="button" className="button" onClick={startLocal}>
+            Lokale Partie starten
+          </button>
+        </section>
 
         {/*
          * Der Inhalt wird erst erzeugt, wenn das Feld offen ist - und nicht
@@ -247,8 +324,7 @@ function PieceMark({ color }: { readonly color: string }): JSX.Element {
     <svg className="piece" viewBox="-10 -12 20 22" aria-hidden="true">
       <path
         d="M -8 8 L -8 -2 L 0 -10 L 8 -2 L 8 8 Z"
-        fill={color}
-        stroke="#16202a"
+        style={{ fill: color, stroke: '#16202a' }}
         strokeWidth={1.6}
         strokeLinejoin="round"
       />

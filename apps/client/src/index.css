@@ -391,6 +391,187 @@ body {
   }
 }
 
+/*
+ * Die zwei Wege in eine Partie.
+ *
+ * Beide bekommen dieselbe Kachel und dieselbe Beschriftung - keiner ist der
+ * empfohlene. Was sie unterscheidet, steht in den Verben („erstellen" gegen
+ * „starten") und nicht in einer Hervorhebung.
+ */
+.way {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid rgb(233 225 207 / 12%);
+  border-radius: var(--radius);
+  background: rgb(0 0 0 / 16%);
+}
+
+.way__lead {
+  margin: 0;
+  color: var(--on-sea-muted);
+  font-size: 0.875rem;
+}
+
+.way > input {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid rgb(233 225 207 / 18%);
+  border-radius: 8px;
+  background: rgb(0 0 0 / 22%);
+  color: var(--on-sea);
+  font: inherit;
+}
+
+/* „oder" als Trennlinie, die das Wort traegt - nicht als Wort ueber einer Linie. */
+.way__or {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  margin: 0.15rem 0;
+  color: var(--on-sea-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.way__or::before,
+.way__or::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: rgb(233 225 207 / 14%);
+}
+
+/* --- Wartebereich --------------------------------------------------------- *
+ *
+ * Der Code ist das groesste Element der Anwendung - groesser als der Titel auf
+ * dem Startbildschirm, und das mit Absicht: hier wird er vorgelesen. Weite
+ * Sperrung, damit die vier Zeichen einzeln ankommen, und Tabellenziffern, damit
+ * K7X2 und M8Y3 gleich breit sind.
+ *
+ * Alles andere ist bewusst still. Der Tisch traegt die eine auffaellige Idee:
+ * ein freier Platz steht als gestrichelter Stein in der Farbe, die er bekommen
+ * wird.
+ */
+
+.lobby {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  align-items: center;
+  min-height: 100vh;
+  padding: clamp(1.5rem, 5vw, 4rem) 1.25rem;
+  background:
+    radial-gradient(120% 80% at 50% 0%, var(--sea-700) 0%, transparent 62%), var(--sea-900);
+}
+
+.lobby__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+
+.lobby__code {
+  margin: 0;
+  font-size: clamp(3.5rem, 14vw, 7rem);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  /* Die Sperrung haengt rechts nach - der eingerueckte Ausgleich zentriert. */
+  text-indent: 0.16em;
+  line-height: 1;
+  color: var(--parchment);
+}
+
+.lobby__lead {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--on-sea-muted);
+}
+
+.lobby__invite {
+  display: flex;
+  gap: 0.5rem;
+  width: min(100%, 34rem);
+}
+
+.lobby__invite input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgb(233 225 207 / 18%);
+  border-radius: 8px;
+  background: rgb(0 0 0 / 22%);
+  color: var(--on-sea);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.lobby__table {
+  width: min(100%, 34rem);
+}
+
+.lobby__seats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lobby__seat {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid rgb(233 225 207 / 12%);
+  border-radius: var(--radius);
+  background: rgb(0 0 0 / 18%);
+}
+
+/* Der leere Platz: gestrichelt wie der Stein darin, und leiser als ein Sitz. */
+.lobby__seat--open {
+  border-style: dashed;
+  border-color: rgb(233 225 207 / 16%);
+  background: transparent;
+  color: var(--on-sea-muted);
+}
+
+.lobby__name {
+  flex: 1 1 auto;
+  font-weight: 650;
+}
+
+.lobby__status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--on-sea-muted);
+}
+
+.piece--seat {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.lobby__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.lobby__hint {
+  margin: 0;
+  color: var(--on-sea-muted);
+  font-size: 0.875rem;
+}
+
 /* --- Spielbildschirm ------------------------------------------------------ */
 
 .game {
