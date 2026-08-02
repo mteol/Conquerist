@@ -115,6 +115,7 @@ function Online({
         void online.act(action);
       }}
       onDismissError={online.dismissError}
+      offline={online.connection.status !== 'open'}
       onLeave={() => {
         void online.leaveRoom();
       }}

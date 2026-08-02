@@ -140,9 +140,21 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
         );
       })}
 
-      <g className="robber" pointerEvents="none" data-testid="robber">
-        <circle cx={robber.x} cy={robber.y} r={0.2} />
-        <circle cx={robber.x} cy={robber.y - 0.16} r={0.1} />
+      {/*
+       * Der Raeuber wird verschoben statt neu gesetzt: `transform` laesst sich
+       * weich uebergehen, `cx`/`cy` nicht zuverlaessig. Sein Feld steht als
+       * `data-hex` daneben - die Endlage ist die Information, der Weg dorthin
+       * ist Beiwerk und faellt bei abgeschalteter Bewegung ersatzlos weg.
+       */}
+      <g
+        className="robber"
+        pointerEvents="none"
+        data-testid="robber"
+        data-hex={state.robber}
+        style={{ transform: `translate(${robber.x}px, ${robber.y}px)` }}
+      >
+        <circle cx={0} cy={0} r={0.2} />
+        <circle cx={0} cy={-0.16} r={0.1} />
       </g>
 
       {board.topology.edges.map((edge) => {
@@ -225,11 +237,14 @@ function VertexMark({
         ) : null
       ) : (
         <circle
-          className="vertex__building"
+          className="vertex__building building"
           cx={point.x}
           cy={point.y}
           r={building.kind === 'city' ? 0.2 : 0.14}
-          fill={colorOf(building.owner)}
+          // Farbe per `style`: eine gleichnamige CSS-Regel schlaegt jedes
+          // SVG-Praesentationsattribut - daran sind in Etappe 3 alle
+          // gebauten Strassen unsichtbar geworden.
+          style={{ fill: colorOf(building.owner) }}
         />
       )}
     </g>

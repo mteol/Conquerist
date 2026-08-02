@@ -725,6 +725,60 @@ body {
   font-size: 0.7rem;
 }
 
+@keyframes rise {
+  from {
+    transform: translateY(0.35rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/*
+ * Was seit dem vorigen Stand dazugekommen ist.
+ *
+ * Steigt beim Erscheinen kurz auf und bleibt dann stehen, bis der naechste
+ * Stand kommt - es verblasst NICHT von selbst. Eine abgeschaltete Animation
+ * steht sofort an ihrem Ende; ein ausblendender Chip waere fuer alle mit
+ * `prefers-reduced-motion` von Anfang an unsichtbar.
+ */
+.seat__gain {
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--ok);
+  color: #f4f9f5;
+  font-size: 0.7rem;
+  font-weight: 700;
+  animation: rise 220ms ease-out;
+}
+
+/*
+ * Verbindung weg: eine ruhige Schicht statt eines eingefrorenen Bildes.
+ *
+ * Das Brett bleibt lesbar - man soll weiterschauen koennen, nur nicht mehr
+ * klicken. Die Erklaerung steht im Text und nicht in der Truebung.
+ */
+.offline {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgb(11 31 42 / 55%);
+  backdrop-filter: blur(1px);
+}
+
+.offline__text {
+  padding: 0.6rem 1rem;
+  border: 1px solid rgb(233 225 207 / 18%);
+  border-radius: var(--radius);
+  background: var(--sea-800);
+  color: var(--on-sea);
+  font-weight: 650;
+}
+
 .status__phase {
   font-weight: 650;
 }
@@ -824,10 +878,45 @@ body {
   dominant-baseline: central;
 }
 
+/*
+ * Bewegung, und zwar nur dort, wo sich der Zustand aendert.
+ *
+ * Der Raeuber gleitet, weil man sehen soll, WOHER er kam - eine Sieben ist die
+ * unangenehmste Stelle im Spiel, und wer sie verpasst, sucht danach das halbe
+ * Brett ab. Ein neues Bauwerk waechst kurz auf, weil der eigene Zug sich
+ * bestaetigen darf. Mehr bewegt sich auf dem Brett nicht: alles andere waere
+ * Dekoration, und die faellt nach Regel 5 in CLAUDE.md weg.
+ *
+ * Die globale `prefers-reduced-motion`-Regel weiter oben schaltet beides ab.
+ * Das darf sie, weil keine dieser Bewegungen etwas erzaehlt, das nicht auch
+ * ohne sie am Bildschirm steht.
+ */
+.robber {
+  transition: transform 300ms ease;
+}
+
 .robber circle {
   fill: #24211d;
   stroke: #0c0b0a;
   stroke-width: 0.02;
+}
+
+@keyframes settle {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.building {
+  /* Ohne fill-box waere der Ursprung die Ecke des SVG, nicht die des Bauwerks. */
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: settle 180ms ease-out;
 }
 
 /*

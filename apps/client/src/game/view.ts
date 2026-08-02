@@ -48,6 +48,16 @@ export interface GameView {
   readonly longestRoad: GameState['longestRoad'];
   /** Wer zusieht. Seine Karten sind die einzigen, die offen liegen. */
   readonly you: PlayerId;
+  /**
+   * Wie viele Karten seit dem vorigen Stand dazugekommen sind, je Spieler.
+   *
+   * Aus dem Unterschied zweier Sichten gelesen und aus nichts sonst: `cardCount`
+   * ist oeffentlich, und eine Differenz zweier Zahlen ist keine Regel. Wer statt
+   * dessen ausrechnete, welches Feld bei einer Acht liefert, haette die
+   * Ertragsregel ein zweites Mal ausgelegt - und genau das darf der Client
+   * nicht.
+   */
+  readonly gains: ReadonlyMap<PlayerId, number>;
 }
 
 /**
@@ -132,8 +142,17 @@ export function discardCountForView(view: PlayerView, player: PlayerId): number 
   return held > view.rules.handLimitBeforeDiscard ? Math.floor(held / 2) : 0;
 }
 
-export function gameViewOf(view: PlayerView): GameView {
+export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
   const current = view.players[view.currentPlayerIndex];
+  const before = new Map((previous ?? view).players.map((player) => [player.id, player.cardCount]));
+
+  const gains = new Map<PlayerId, number>();
+  if (previous !== undefined) {
+    for (const player of view.players) {
+      const grown = player.cardCount - (before.get(player.id) ?? player.cardCount);
+      if (grown > 0) gains.set(player.id, grown);
+    }
+  }
 
   return {
     players: view.players.map((player) => ({
@@ -158,5 +177,6 @@ export function gameViewOf(view: PlayerView): GameView {
     turn: view.turn,
     longestRoad: view.longestRoad,
     you: view.you,
+    gains,
   };
 }

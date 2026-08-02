@@ -29,6 +29,7 @@ export function TablePanel({ view }: TablePanelProps): JSX.Element {
           player={player}
           acting={view.actingPlayers.includes(player.id)}
           isYou={player.id === view.you}
+          gained={view.gains.get(player.id) ?? 0}
         />
       ))}
     </section>
@@ -39,10 +40,13 @@ function PlayerRow({
   player,
   acting,
   isYou,
+  gained,
 }: {
   readonly player: PlayerRowData;
   readonly acting: boolean;
   readonly isYou: boolean;
+  /** Karten seit dem vorigen Stand; 0 heisst: nichts zu zeigen. */
+  readonly gained: number;
 }): JSX.Element {
   const hand = player.resources;
 
@@ -69,6 +73,18 @@ function PlayerRow({
           ).join(' ')}
         </span>
       )}
+
+      {/*
+       * Der Zuwachs steigt beim Erscheinen kurz auf - und bleibt dann stehen,
+       * bis der naechste Stand kommt. Er verblasst NICHT von selbst: wer
+       * `prefers-reduced-motion` gesetzt hat, saehe sonst gar nichts, weil eine
+       * abgeschaltete Animation sofort an ihrem Ende steht.
+       */}
+      {gained > 0 ? (
+        <span className="seat__gain" data-testid={`gain-${player.id}`}>
+          +{gained}
+        </span>
+      ) : null}
 
       {player.mustDiscard > 0 ? (
         <span className="seat__pending">wirft {player.mustDiscard} ab</span>

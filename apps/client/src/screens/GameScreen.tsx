@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type JSX } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import {
   tradeRateFor,
   type GameAction,
@@ -47,6 +47,8 @@ export interface GameScreenProps {
   readonly onAct: (action: GameAction) => void;
   readonly onDismissError: () => void;
   readonly onLeave: () => void;
+  /** Verbindung weg. Die lokale Partie laesst das aus - sie hat keine. */
+  readonly offline?: boolean;
 }
 
 export function GameScreen({
@@ -57,11 +59,26 @@ export function GameScreen({
   onAct,
   onDismissError,
   onLeave,
+  offline = false,
 }: GameScreenProps): JSX.Element {
   const [tradeOpen, setTradeOpen] = useState(false);
   const [robberHex, setRobberHex] = useState<string | null>(null);
 
-  const display = useMemo(() => gameViewOf(view), [view]);
+  /*
+   * Der vorige Stand, nur um die Differenz zu bilden.
+   *
+   * In einem Ref und nicht im State: er soll kein Rendern ausloesen, sondern
+   * beim naechsten begleiten. Beim ersten Bild gibt es keinen Vorgaenger, und
+   * dann gibt es auch keinen Zuwachs zu zeigen - eine Partie faengt nicht mit
+   * „+3" an.
+   */
+  const previous = useRef<PlayerView | null>(null);
+
+  const display = useMemo(() => gameViewOf(view, previous.current ?? undefined), [view]);
+  useEffect(() => {
+    previous.current = view;
+  }, [view]);
+
   const targets = useMemo(() => targetsFrom(actions), [actions]);
 
   const pick = useCallback(
@@ -122,6 +139,12 @@ export function GameScreen({
           }))}
           onPick={pick}
         />
+
+        {offline ? (
+          <div className="offline" role="status">
+            <p className="offline__text">Verbindung weg — es wird weiter versucht.</p>
+          </div>
+        ) : null}
       </div>
 
       <TablePanel view={display} />
