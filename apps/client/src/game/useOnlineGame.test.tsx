@@ -2,7 +2,9 @@
 import type { JSX } from 'react';
 import { act } from 'react';
 import { describe, expect, it } from 'vitest';
+import { AUTH_LOGIN, HELLO } from '@conquerist/shared';
 import { render, screen } from '../test/dom';
+import { loadSecret } from '../net/session';
 import type { SocketLike } from '../net/types';
 import { useOnlineGame } from './useOnlineGame';
 
@@ -88,6 +90,10 @@ function Probe(): JSX.Element {
   return (
     <div>
       <p data-testid="raum">{online.state.room === null ? 'kein Raum' : online.state.room.code}</p>
+      <p data-testid="gast">
+        {online.identity === null ? 'unbekannt' : String(online.identity.isGuest)}
+      </p>
+      <p data-testid="login">{online.identity?.login ?? 'kein Login'}</p>
       <button
         type="button"
         onClick={() => {
@@ -95,6 +101,14 @@ function Probe(): JSX.Element {
         }}
       >
         Tisch verlassen
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void online.login({ login: 'anna', password: 'langgenug1' });
+        }}
+      >
+        Anmelden
       </button>
     </div>
   );
@@ -163,5 +177,51 @@ describe('Online-Partie', () => {
     });
 
     expect(window.localStorage.getItem('conquerist.secret')).toBe('frisch');
+  });
+
+  it('merkt sich die Identitaet aus hello und gibt sie heraus', async () => {
+    render(<Probe />);
+
+    await act(async () => {
+      socket.onopen?.({});
+    });
+    await act(async () => {
+      socket.reply(HELLO, { userId: 'u1', name: 'Gast', isGuest: true });
+    });
+
+    expect(screen.getByTestId('gast').textContent).toBe('true');
+  });
+
+  it('legt das neue Geheimnis nach dem Anmelden ab', async () => {
+    render(<Probe />);
+
+    await act(async () => {
+      socket.onopen?.({});
+    });
+    await act(async () => {
+      socket.reply(HELLO, { userId: 'u1', name: 'Gast', isGuest: true });
+    });
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Anmelden' }).click();
+    });
+    await act(async () => {
+      socket.reply(AUTH_LOGIN, {
+        userId: 'u2',
+        name: 'Anna',
+        isGuest: false,
+        login: 'anna',
+        secret: 'neu',
+      });
+    });
+
+    expect(loadSecret()).toBe('neu');
+    expect(screen.getByTestId('login').textContent).toBe('anna');
+    expect(socket.sent).toContainEqual(
+      expect.objectContaining({
+        type: AUTH_LOGIN,
+        payload: { login: 'anna', password: 'langgenug1' },
+      }),
+    );
   });
 });

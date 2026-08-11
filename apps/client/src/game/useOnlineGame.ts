@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   ACT,
+  AUTH_LOGIN,
+  AUTH_LOGOUT,
+  AUTH_REGISTER,
   CONFIGURE_ROOM,
   CREATE_ROOM,
   GAME_EVENT,
@@ -13,7 +16,10 @@ import {
   eventSchema,
   isEventType,
   START_GAME,
+  type AuthResponse,
   type GameAction,
+  type LoginRequest,
+  type RegisterRequest,
   type RoomSummary,
 } from '@conquerist/shared';
 import { forgetSecret, loadName, loadSecret, storeName, storeSecret } from '../net/session';
@@ -39,10 +45,27 @@ import type { OnlineState } from './onlineState';
  * Nach einem Abriss wird sie wiederholt. Genau das ist der Reconnect; er
  * braucht keinen eigenen Zweig.
  */
+
+/**
+ * Wer gerade verbunden ist - Gast oder Konto, `null` bis das erste `hello`
+ * durch ist.
+ *
+ * Der Client rechnet hier nichts aus: jedes Feld kommt unveraendert von einer
+ * Server-Antwort (`hello.ok` oder `auth.ok`).
+ */
+export interface Identity {
+  readonly userId: string;
+  readonly name: string;
+  readonly isGuest: boolean;
+  /** Fehlt bei Gaesten. */
+  readonly login?: string;
+}
+
 export interface OnlineGame {
   readonly state: OnlineState;
   readonly connection: ReturnType<typeof useConnection>['state'];
   readonly userId: string | null;
+  readonly identity: Identity | null;
   /** Partien, an denen dieser Spieler sitzt. */
   readonly myRooms: readonly RoomSummary[];
   readonly refreshMyRooms: () => Promise<void>;
@@ -52,6 +75,10 @@ export interface OnlineGame {
   readonly configureRoom: (seatCount: number, seed: string) => Promise<void>;
   readonly startGame: () => Promise<void>;
   readonly act: (action: GameAction) => Promise<void>;
+  /** Konto anlegen. Ablehnung (etwa: Login vergeben) kommt als Fehler vom Server. */
+  readonly register: (input: RegisterRequest) => Promise<void>;
+  readonly login: (input: LoginRequest) => Promise<void>;
+  readonly logout: () => Promise<void>;
   readonly dismissError: () => void;
 }
 
@@ -63,6 +90,7 @@ export function useOnlineGame(
   const { state: connection, send, onEvent } = useConnection(options);
   const [state, dispatch] = useReducer(onlineReducer, emptyOnlineState);
   const [userId, setUserId] = useState<string | null>(null);
+  const [identity, setIdentity] = useState<Identity | null>(null);
   const [myRooms, setMyRooms] = useState<readonly RoomSummary[]>([]);
 
   /**
@@ -119,6 +147,46 @@ export function useOnlineGame(
     }
   }, [send]);
 
+  /**
+   * Konto anlegen, anmelden, abmelden.
+   *
+   * Alle drei enden gleich: kommt ein Geheimnis zurueck, ist es ein neues
+   * Geraet bzw. eine neue Person - dann ablegen. Die Identitaet kommt in
+   * jedem Fall vom Server; der Client leitet sie sich nirgends selbst ab.
+   */
+  const adopt = useCallback((answer: AuthResponse): void => {
+    if (answer.secret !== undefined) storeSecret(answer.secret);
+    setUserId(answer.userId);
+    setIdentity({
+      userId: answer.userId,
+      name: answer.name,
+      isGuest: answer.isGuest,
+      ...(answer.login === undefined ? {} : { login: answer.login }),
+    });
+  }, []);
+
+  const register = useCallback(
+    async (input: RegisterRequest): Promise<void> => {
+      adopt(await send(AUTH_REGISTER, input));
+      await refreshMyRooms();
+    },
+    [adopt, send, refreshMyRooms],
+  );
+
+  const login = useCallback(
+    async (input: LoginRequest): Promise<void> => {
+      adopt(await send(AUTH_LOGIN, input));
+      // Die Liste gehoert jetzt jemand anderem.
+      await refreshMyRooms();
+    },
+    [adopt, send, refreshMyRooms],
+  );
+
+  const logout = useCallback(async (): Promise<void> => {
+    adopt(await send(AUTH_LOGOUT, {}));
+    await refreshMyRooms();
+  }, [adopt, send, refreshMyRooms]);
+
   // Anmelden, sobald die Verbindung steht - und nach jedem Wiederaufbau erneut.
   useEffect(() => {
     if (connection.status !== 'open') {
@@ -153,6 +221,12 @@ export function useOnlineGame(
 
         if (hello.secret !== undefined) storeSecret(hello.secret);
         setUserId(hello.userId);
+        setIdentity({
+          userId: hello.userId,
+          name: hello.name,
+          isGuest: hello.isGuest,
+          ...(hello.login === undefined ? {} : { login: hello.login }),
+        });
 
         // Der Server schickt nach `hello` von sich aus den Stand, wenn er uns
         // an einem Tisch findet. Ein `joinRoom` ist nur noetig, wenn wir einen
@@ -244,6 +318,7 @@ export function useOnlineGame(
       state,
       connection,
       userId,
+      identity,
       myRooms,
       refreshMyRooms,
       createRoom,
@@ -252,12 +327,16 @@ export function useOnlineGame(
       configureRoom,
       startGame,
       act,
+      register,
+      login,
+      logout,
       dismissError,
     }),
     [
       state,
       connection,
       userId,
+      identity,
       myRooms,
       refreshMyRooms,
       createRoom,
@@ -266,6 +345,9 @@ export function useOnlineGame(
       configureRoom,
       startGame,
       act,
+      register,
+      login,
+      logout,
       dismissError,
     ],
   );
