@@ -140,6 +140,31 @@ describe('AccountDialog', () => {
     );
   });
 
+  it('schickt keine Bestaetigung mit, wenn gar nicht gewarnt wurde', async () => {
+    const onSubmit = vi.fn();
+    render(
+      <AccountDialog
+        mode="login"
+        openGuestGames={0}
+        problem={null}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await userEvent.type(screen.getByLabelText(/Benutzername/), 'anna');
+    await userEvent.type(screen.getByLabelText(/Passwort/), 'langgenug1');
+    await userEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
+
+    // Nicht nur "confirmAbandonGuest ist nicht true" - der Schluessel darf
+    // im gesendeten Objekt gar nicht erst auftauchen. `objectContaining`
+    // (auch negiert) prueft Abwesenheit korrekt; ein fest verdrahtetes
+    // `confirmAbandonGuest: true` wuerde diesen Test rot werden lassen.
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.not.objectContaining({ confirmAbandonGuest: expect.anything() }),
+    );
+  });
+
   it('zeigt die Absage des Servers, statt sie zu verschlucken', () => {
     render(
       <AccountDialog
