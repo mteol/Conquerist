@@ -483,6 +483,12 @@ body {
   right: 0;
   z-index: 1;
   display: flex;
+  /* Ohne das bricht der Inhalt im schmalen Fenster nicht um, er wird von
+     `.menu`s `overflow: hidden` abgeschnitten - „Anmelden" waere dann nicht
+     nur unsichtbar, sondern unklickbar (Regel 7). `flex-end`, damit
+     umgebrochene Zeilen weiter an der Kante haengen, an der die Ecke sitzt. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.9rem;
   align-items: baseline;
   padding: 1.1rem 1.4rem;
@@ -511,6 +517,26 @@ body {
 
 .corner__action:hover {
   border-bottom-color: var(--on-sea);
+}
+
+/*
+ * Unter 26rem (~416px) wird aus dem Umbruch der Regelfall, nicht die
+ * Ausnahme: „Gast" plus zwei Aktionen passen dort nicht mehr in eine Zeile.
+ * Engere Masse halten die Ecke trotzdem klein, und `.menu__inner` bekommt
+ * mehr Luft nach oben - sonst liefe die Wortmarke unter die jetzt hoehere,
+ * zweizeilige Ecke. Beides gehoert zusammen, weil eine hoehere Ecke ohne
+ * mehr Abstand denselben Fehler nur verschiebt statt ihn zu beheben.
+ */
+@media (max-width: 26rem) {
+  .corner {
+    gap: 0.5rem;
+    padding: 0.75rem 0.9rem;
+    font-size: 0.72rem;
+  }
+
+  .menu__inner {
+    padding-top: 6rem;
+  }
 }
 
 /* --- Startbildschirm ------------------------------------------------------ */

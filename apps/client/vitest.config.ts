@@ -20,5 +20,19 @@ export default defineConfig({
      */
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    css: {
+      /**
+       * Vitest stubbt CSS-Importe sonst als leeres Modul - schneller, aber ein
+       * `?raw`-Import liefert dann nichts. `AccountCorner.test.tsx` braucht den
+       * echten Text von `index.css`, um zu pruefen, dass die
+       * Schmale-Fenster-Regeln tatsaechlich dort stehen (jsdom wertet keine
+       * Media Query aus, das CSS selbst ist die einzig pruefbare Quelle).
+       *
+       * Eng gefasst auf genau dieses Muster - jeder andere CSS-Import (etwa
+       * `main.tsx`s `./index.css` fuer die Anwendung selbst) bleibt gestubbt,
+       * unveraendertes Verhalten fuer den Rest der Tests.
+       */
+      include: [/\.css\?raw$/],
+    },
   },
 });
