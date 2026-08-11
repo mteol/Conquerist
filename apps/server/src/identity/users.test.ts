@@ -77,6 +77,25 @@ describe('Identitaet', () => {
     expect(store.count()).toBe(0);
   });
 
+  it('nimmt die halbe Konto-Zeile zurueck, wenn die Sitzung nicht angelegt werden kann', () => {
+    // Wie bei createGuest: sessions faellt kuenstlich weg, sessions.issue()
+    // wirft dann beim INSERT. Ohne Transaktion bliebe die users-Zeile mit
+    // Login und Passwort stehen - ein Konto ohne Sitzung, das erst der
+    // naechste Anmeldeversuch wiederfindet.
+    const database = openDatabase(':memory:');
+    const store = new Users(database, new Sessions(database));
+    database.exec('DROP TABLE sessions');
+
+    expect(() =>
+      store.createAccountWithSession({
+        login: 'anna',
+        passwordHash: 'scrypt$1$1$1$a$b',
+        name: 'Anna',
+      }),
+    ).toThrow();
+    expect(store.count()).toBe(0);
+  });
+
   it('findet ein Konto an seinem Login, aber nicht an fremder Schreibweise', () => {
     const database = openDatabase(':memory:');
     const store = new Users(database, new Sessions(database));

@@ -146,21 +146,39 @@ export class Users {
     return user;
   }
 
-  createAccount(fields: {
+  /**
+   * Konto anlegen und sofort eine Sitzung dafuer ausstellen.
+   *
+   * Beide Schreibvorgaenge in EINER Transaktion, aus demselben Grund wie bei
+   * `createGuest`: sonst bliebe bei einem Fehler in `sessions.issue()` die
+   * users-Zeile mit Login und Passwort stehen - ein Konto ohne jede Sitzung,
+   * dessen erster Anmeldeversuch mit INTERNAL scheitert und dessen zweiter
+   * `register`-Versuch dann verwirrend "Login vergeben" meldet.
+   */
+  createAccountWithSession(fields: {
     readonly login: string;
     readonly passwordHash: string;
     readonly email?: string | undefined;
     readonly name: string;
-  }): User {
+  }): { user: User; secret: string; tokenHash: string } {
     const id = randomUUID();
-    this.database
-      .prepare(
-        `INSERT INTO users (id, name, is_guest, login, password_hash, email, created_at)
-         VALUES (?, ?, 0, ?, ?, ?, ?)`,
-      )
-      .run(id, fields.name, fields.login, fields.passwordHash, fields.email ?? null, Date.now());
 
-    return { id, name: fields.name, isGuest: false, login: fields.login };
+    const { token, tokenHash } = this.database.transaction(() => {
+      this.database
+        .prepare(
+          `INSERT INTO users (id, name, is_guest, login, password_hash, email, created_at)
+           VALUES (?, ?, 0, ?, ?, ?, ?)`,
+        )
+        .run(id, fields.name, fields.login, fields.passwordHash, fields.email ?? null, Date.now());
+
+      return this.sessions.issue(id);
+    })();
+
+    return {
+      user: { id, name: fields.name, isGuest: false, login: fields.login },
+      secret: token,
+      tokenHash,
+    };
   }
 }
 

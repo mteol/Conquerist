@@ -84,14 +84,16 @@ export class Accounts {
       return { user: claimed, tokenHash: currentTokenHash };
     }
 
-    const created = this.users.createAccount({
+    // Anlegen und Sitzung ausstellen in einer Transaktion (in `users.ts`
+    // gekapselt) - sonst bliebe bei einem Fehler in `sessions.issue()` eine
+    // Konto-Zeile ohne jede Sitzung stehen.
+    const created = this.users.createAccountWithSession({
       login: input.login,
       passwordHash,
       email: input.email,
       name: input.name ?? input.login,
     });
-    const { token, tokenHash } = this.sessions.issue(created.id);
-    return { user: created, secret: token, tokenHash };
+    return { user: created.user, secret: created.secret, tokenHash: created.tokenHash };
   }
 
   /**

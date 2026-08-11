@@ -76,8 +76,23 @@ async function run<T>(action: () => Promise<T>): Promise<T> {
  * wuerde diese Form wieder verlieren.
  */
 function adopt(result: AccountResult, context: RequestContext, sinks: SinkHub) {
+  const previousUserId = context.session.userId;
   context.session.userId = result.user.id;
   context.session.tokenHash = result.tokenHash;
+
+  /*
+   * Ein Identitaetswechsel darf die alte Senke nicht stehen lassen: sonst
+   * bekaeme diese Verbindung weiterhin `broadcastRoom`/`broadcastGame` fuer
+   * Raeume der Identitaet, die sie gerade verlassen hat - ein Leck ueber eine
+   * Identitaetsgrenze hinweg (Regel 4). `handleDisconnect` findet die alte Id
+   * danach auch nicht mehr, der SinkHub wuerde sonst unbegrenzt wachsen.
+   *
+   * Bei `register` auf dem Beanspruchen-Pfad ist `previousUserId` gleich der
+   * neuen Id (dieselbe Zeile) - dort passiert nichts.
+   */
+  if (previousUserId !== null && previousUserId !== result.user.id) {
+    sinks.remove(previousUserId, context.events);
+  }
   sinks.add(result.user.id, context.events);
 
   const identity = identityOf(result.user);
