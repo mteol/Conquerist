@@ -20,7 +20,8 @@
 - **Commits ohne `Co-Authored-By`-Trailer.**
 - **`pnpm typecheck` niemals durch eine Pipe laufen lassen** — das verschluckt den Exit-Code.
 - **Abnahme je Aufgabe:** `pnpm typecheck && pnpm test && pnpm format:check`. Am Ende zusaetzlich `pnpm build`.
-- **`PROGRESS.md` wird mitgeschrieben**, nicht nachgereicht (Aufgabe 11).
+- **`PROGRESS.md` wird mitgeschrieben**, nicht nachgereicht (Aufgabe 9).
+- **Jede Aufgabe endet mit einem gruenen Testpaket.** Innerhalb einer Aufgabe darf rot sein, was gerade entsteht; ein Commit mit rotem Paket ist keiner, den man spaeter bisektieren kann.
 
 ## Dateien im Ueberblick
 
@@ -212,16 +213,31 @@ git commit -m "Die Datenbank zaehlt ihre Schritte: user_version statt IF NOT EXI
 
 ---
 
-### Aufgabe 2: `sessions` anlegen, `secret_hash` umziehen
+### Aufgabe 2: `sessions` — Tabelle, Baustein und der Umbau von `Users`
+
+**Warum das eine Aufgabe ist und nicht drei.** Die Tabelle, der Baustein
+davor und `Users` sind eine einzige Aenderung: sobald `secret_hash` aus
+`users` verschwindet, liest `users.ts` ins Leere. Getrennt committet waere
+zwischendurch immer etwas kaputt — und ein Commit, bei dem das Testpaket rot
+ist, ist keiner, den man spaeter noch bisektieren kann.
+
+Deshalb: **ein** Commit am Ende, und der ist gruen. Innerhalb der Aufgabe wird
+trotzdem dreimal der uebliche Weg gegangen — Test zuerst, rot sehen,
+umsetzen, gruen sehen.
 
 **Dateien:**
 
-- Aendern: `apps/server/src/db/database.ts`
-- Test: `apps/server/src/db/database.test.ts`
+- Aendern: `apps/server/src/db/database.ts`, `apps/server/src/db/database.test.ts`
+- Anlegen: `apps/server/src/identity/sessions.ts`, `apps/server/src/identity/sessions.test.ts`
+- Aendern: `apps/server/src/identity/users.ts`, `apps/server/src/identity/users.test.ts`
+- Aendern: `apps/server/src/app.ts` (Verdrahtung)
 
 **Schnittstellen:**
 
+- Konsumiert: die Migrationsliste aus Aufgabe 1.
 - Produziert: Tabelle `sessions(token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at INTEGER NOT NULL)`; `users` ohne `secret_hash`, dafuer mit `login`, `password_hash`, `email`.
+- Produziert: `class Sessions` mit `issue(userId: string): { token: string; tokenHash: string }`, `userIdOf(token: string): string | undefined`, `hashOf(token: string): string`, `revoke(tokenHash: string): void`, `countFor(userId: string): number`.
+- Produziert: `User` bekommt `login?: string`. `HelloResult` bekommt `tokenHash: string`. `Users` bekommt `byLogin(login: string): AccountRow | undefined`; `byId` bleibt, wie es heisst. Der Konstruktor nimmt jetzt zwei Argumente: `new Users(database, sessions)`.
 
 - [ ] **Schritt 1: Den fehlschlagenden Test schreiben**
 
@@ -336,7 +352,7 @@ Kopf der Testdatei um `import Database from 'better-sqlite3';` und `import type 
 Ausfuehren: `pnpm --filter @conquerist/server exec vitest run src/db/database.test.ts`
 Erwartet: FEHLSCHLAG — `no such table: sessions`.
 
-- [ ] **Schritt 3: Schritt 1 an die Liste haengen**
+- [ ] **Schritt 3: Den Migrationsschritt an die Liste haengen**
 
 In `database.ts`:
 
@@ -390,13 +406,358 @@ function stepSessionsAndAccounts(database: AppDatabase): void {
 Ausfuehren: `pnpm --filter @conquerist/server exec vitest run src/db/database.test.ts`
 Erwartet: BESTANDEN.
 
-`pnpm --filter @conquerist/server test` schlaegt jetzt in `users.test.ts` fehl (der Test liest `secret_hash` aus `users`). Das ist erwartet und wird in Aufgabe 5 behoben — **hier noch nicht anfassen**.
+- [ ] **Schritt 5: Den fehlschlagenden Test schreiben**
 
-- [ ] **Schritt 5: Commit**
+```ts
+import { describe, expect, it } from 'vitest';
+import { openDatabase } from '../db/database.js';
+import { Sessions } from './sessions.js';
+
+function fixture(): { sessions: Sessions; userId: string } {
+  const database = openDatabase(':memory:');
+  database
+    .prepare('INSERT INTO users (id, name, is_guest, created_at) VALUES (?,?,1,?)')
+    .run('u1', 'Anna', 1000);
+  return { sessions: new Sessions(database), userId: 'u1' };
+}
+
+describe('Sitzungen', () => {
+  it('loest ein ausgegebenes Token zu seinem Nutzer auf', () => {
+    const { sessions, userId } = fixture();
+    const { token } = sessions.issue(userId);
+
+    expect(sessions.userIdOf(token)).toBe(userId);
+  });
+
+  it('kennt ein erfundenes Token nicht', () => {
+    const { sessions } = fixture();
+    expect(sessions.userIdOf('voellig-erfunden')).toBeUndefined();
+  });
+
+  it('legt das Token niemals im Klartext ab', () => {
+    const database = openDatabase(':memory:');
+    database
+      .prepare('INSERT INTO users (id, name, is_guest, created_at) VALUES (?,?,1,?)')
+      .run('u1', 'Anna', 1000);
+    const sessions = new Sessions(database);
+    const { token } = sessions.issue('u1');
+
+    const rows = database.prepare('SELECT token_hash FROM sessions').all() as {
+      token_hash: string;
+    }[];
+
+    expect(rows[0]?.token_hash).not.toBe(token);
+    expect(rows[0]?.token_hash).toHaveLength(64); // SHA-256 in hex
+  });
+
+  it('traegt zwei Geraete nebeneinander', () => {
+    const { sessions, userId } = fixture();
+    const laptop = sessions.issue(userId);
+    const handy = sessions.issue(userId);
+
+    expect(sessions.userIdOf(laptop.token)).toBe(userId);
+    expect(sessions.userIdOf(handy.token)).toBe(userId);
+    expect(sessions.countFor(userId)).toBe(2);
+  });
+
+  it('beendet beim Abmelden nur die eine Sitzung', () => {
+    const { sessions, userId } = fixture();
+    const laptop = sessions.issue(userId);
+    const handy = sessions.issue(userId);
+
+    sessions.revoke(laptop.tokenHash);
+
+    expect(sessions.userIdOf(laptop.token)).toBeUndefined();
+    expect(sessions.userIdOf(handy.token)).toBe(userId);
+  });
+});
+```
+
+- [ ] **Schritt 6: Den Test laufen lassen und scheitern sehen**
+
+Ausfuehren: `pnpm --filter @conquerist/server exec vitest run src/identity/sessions.test.ts`
+Erwartet: FEHLSCHLAG — Modul nicht gefunden.
+
+- [ ] **Schritt 7: `sessions.ts` schreiben**
+
+```ts
+import { createHash, randomBytes } from 'node:crypto';
+
+import type { AppDatabase } from '../db/database.js';
+
+/**
+ * Sitzungen: eine Zeile je angemeldetem Geraet.
+ *
+ * Das Token ist kein getipptes Passwort, sondern 32 Zufallsbytes - deshalb
+ * genuegt `sha256` und es braucht keine KDF. Der Klartext verlaesst den Server
+ * genau einmal, naemlich in der Antwort, die ihn erzeugt.
+ *
+ * Getrennt von `Users`, weil es zwei Fragen sind: „wer bin ich" beantwortet
+ * `users`, „ist dieser Browser angemeldet" beantwortet `sessions`. Solange
+ * beides in einer Spalte stand, konnte es nur eine Antwort gleichzeitig geben.
+ */
+export interface IssuedSession {
+  /** Geht an den Browser und wird dort abgelegt. */
+  readonly token: string;
+  /** Steht in der Datenbank und in der Verbindungssitzung. */
+  readonly tokenHash: string;
+}
+
+export class Sessions {
+  constructor(private readonly database: AppDatabase) {}
+
+  issue(userId: string): IssuedSession {
+    const token = randomBytes(32).toString('base64url');
+    const tokenHash = hash(token);
+
+    this.database
+      .prepare('INSERT INTO sessions (token_hash, user_id, created_at) VALUES (?, ?, ?)')
+      .run(tokenHash, userId, Date.now());
+
+    return { token, tokenHash };
+  }
+
+  userIdOf(token: string): string | undefined {
+    const row = this.database
+      .prepare('SELECT user_id FROM sessions WHERE token_hash = ?')
+      .get(hash(token)) as { user_id: string } | undefined;
+
+    return row?.user_id;
+  }
+
+  hashOf(token: string): string {
+    return hash(token);
+  }
+
+  revoke(tokenHash: string): void {
+    this.database.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
+  }
+
+  countFor(userId: string): number {
+    const row = this.database
+      .prepare('SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?')
+      .get(userId) as { n: number };
+
+    return row.n;
+  }
+}
+
+function hash(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+```
+
+- [ ] **Schritt 8: Test laufen lassen und gruen sehen**
+
+Ausfuehren: `pnpm --filter @conquerist/server exec vitest run src/identity/sessions.test.ts`
+Erwartet: BESTANDEN.
+
+- [ ] **Schritt 9: Die Tests anpassen und erweitern**
+
+In `users.test.ts` den Test „speichert das Geheimnis niemals im Klartext" ersetzen — er liest `users.secret_hash`, das es nicht mehr gibt:
+
+```ts
+it('speichert das Geheimnis niemals im Klartext', () => {
+  const database = openDatabase(':memory:');
+  const store = new Users(database, new Sessions(database));
+  const created = store.hello(undefined, 'Anna');
+
+  const row = database.prepare('SELECT token_hash FROM sessions').get() as {
+    token_hash: string;
+  };
+
+  expect(row.token_hash).not.toBe(created.secret);
+  expect(row.token_hash).toHaveLength(64); // SHA-256 in hex
+});
+```
+
+Die Hilfsfunktion oben in der Datei anpassen:
+
+```ts
+function users(): Users {
+  const database = openDatabase(':memory:');
+  return new Users(database, new Sessions(database));
+}
+```
+
+Und zwei Tests anhaengen:
+
+```ts
+it('gibt den Hash der Sitzung mit heraus, damit die Verbindung ihn merkt', () => {
+  const store = users();
+  const created = store.hello(undefined, 'Anna');
+
+  expect(created.tokenHash).toHaveLength(64);
+});
+
+it('findet ein Konto an seinem Login, aber nicht an fremder Schreibweise', () => {
+  const database = openDatabase(':memory:');
+  const store = new Users(database, new Sessions(database));
+  database
+    .prepare(
+      'INSERT INTO users (id, name, is_guest, login, password_hash, created_at) VALUES (?,?,0,?,?,?)',
+    )
+    .run('u1', 'Anna', 'anna', 'scrypt$1$1$1$a$b', 1);
+
+  expect(store.byLogin('anna')?.id).toBe('u1');
+  expect(store.byLogin('gibtsnicht')).toBeUndefined();
+});
+```
+
+Import ergaenzen: `import { Sessions } from './sessions.js';`
+
+- [ ] **Schritt 10: Den Test laufen lassen und scheitern sehen**
+
+Ausfuehren: `pnpm --filter @conquerist/server exec vitest run src/identity/users.test.ts`
+Erwartet: FEHLSCHLAG — `Users` nimmt noch kein zweites Argument, `tokenHash` fehlt.
+
+- [ ] **Schritt 11: `users.ts` umbauen**
+
+```ts
+import { randomUUID } from 'node:crypto';
+
+import type { AppDatabase } from '../db/database.js';
+import type { Sessions } from './sessions.js';
+
+/**
+ * Nutzerzeilen (Regel 7: Identitaet ab Tag 1).
+ *
+ * Ein Gast ist eine Zeile mit `login IS NULL`, ein Konto eine mit gefuelltem
+ * `login` - kein zweiter Datentyp, sondern dieselbe Zeile mit mehr darin.
+ * Genau deshalb ueberlebt beim Beanspruchen jeder Sitz: es wird nichts
+ * umgehaengt, es wird nur ergaenzt.
+ *
+ * Das Sitzungsgeheimnis liegt seit Etappe 7 nicht mehr hier, sondern in
+ * `sessions` - eine Person kann an mehreren Geraeten angemeldet sein.
+ */
+export interface User {
+  readonly id: string;
+  readonly name: string;
+  readonly isGuest: boolean;
+  /** Fehlt bei Gaesten. */
+  readonly login?: string;
+}
+
+export interface HelloResult {
+  readonly user: User;
+  /** Nur beim Anlegen gefuellt - danach kennt der Browser es. */
+  readonly secret?: string;
+  /** Womit die Verbindung ihre Sitzung wiederfindet (fuers Abmelden). */
+  readonly tokenHash: string;
+}
+
+/** Was zum Anmelden gebraucht wird - inklusive des Hashes. */
+export interface AccountRow {
+  readonly id: string;
+  readonly name: string;
+  readonly login: string;
+  readonly passwordHash: string;
+}
+
+interface UserRow {
+  readonly id: string;
+  readonly name: string;
+  readonly is_guest: number;
+  readonly login: string | null;
+}
+
+export class Users {
+  constructor(
+    private readonly database: AppDatabase,
+    private readonly sessions: Sessions,
+  ) {}
+
+  /**
+   * Anmelden oder anlegen.
+   *
+   * Ein unbekanntes Geheimnis wirft, statt still einen neuen Gast anzulegen:
+   * sonst waere ein Tippfehler im `localStorage` nicht von einem Angriff zu
+   * unterscheiden, und der Tisch fuellte sich mit Karteileichen.
+   */
+  hello(secret: string | undefined, name: string | undefined): HelloResult {
+    if (secret === undefined) return this.createGuest(name ?? 'Gast');
+
+    const userId = this.sessions.userIdOf(secret);
+    if (userId === undefined) throw new Error('Unbekanntes Sitzungsgeheimnis');
+
+    const user = this.byId(userId);
+    if (user === undefined) throw new Error('Sitzung ohne Nutzer');
+
+    const tokenHash = this.sessions.hashOf(secret);
+
+    if (name !== undefined && name !== user.name) {
+      this.database.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, user.id);
+      return { user: { ...user, name }, tokenHash };
+    }
+
+    return { user, tokenHash };
+  }
+
+  createGuest(name: string): HelloResult {
+    const id = randomUUID();
+    this.database
+      .prepare('INSERT INTO users (id, name, is_guest, created_at) VALUES (?, ?, 1, ?)')
+      .run(id, name, Date.now());
+
+    const { token, tokenHash } = this.sessions.issue(id);
+    return { user: { id, name, isGuest: true }, secret: token, tokenHash };
+  }
+
+  byId(id: string): User | undefined {
+    const row = this.database
+      .prepare('SELECT id, name, is_guest, login FROM users WHERE id = ?')
+      .get(id) as UserRow | undefined;
+
+    return row === undefined ? undefined : toUser(row);
+  }
+
+  byLogin(login: string): AccountRow | undefined {
+    const row = this.database
+      .prepare('SELECT id, name, login, password_hash FROM users WHERE login = ?')
+      .get(login) as { id: string; name: string; login: string; password_hash: string } | undefined;
+
+    return row === undefined
+      ? undefined
+      : { id: row.id, name: row.name, login: row.login, passwordHash: row.password_hash };
+  }
+
+  count(): number {
+    const row = this.database.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number };
+    return row.n;
+  }
+}
+
+function toUser(row: UserRow): User {
+  return row.login === null
+    ? { id: row.id, name: row.name, isGuest: row.is_guest === 1 }
+    : { id: row.id, name: row.name, isGuest: row.is_guest === 1, login: row.login };
+}
+```
+
+- [ ] **Schritt 12: Die Verdrahtung nachziehen und alles gruen sehen**
+
+`apps/server/src/app.ts` legt `Users` an — dort `new Sessions(database)` erzeugen und durchreichen. Der genaue Ort ergibt sich aus `grep -n "new Users" apps/server/src`.
+
+Ausfuehren: `pnpm --filter @conquerist/server test`
+Erwartet: BESTANDEN (alle 74 plus die neuen).
+
+- [ ] **Schritt 13: Die ganze Abnahme und ein einziger Commit**
+
+Jetzt muss alles gruen sein — die Aufgabe endet nie mit einem roten Paket.
 
 ```bash
-git add apps/server/src/db/database.ts apps/server/src/db/database.test.ts
-git commit -m "Sitzungen als eigene Tabelle, users bekommt Login und Passwort"
+pnpm typecheck
+pnpm test
+pnpm format:check
+```
+
+Erwartet: BESTANDEN. `pnpm test` laeuft ueber alle drei Pakete; `shared` und
+`client` sind von dieser Aufgabe nicht betroffen und muessen unveraendert
+gruen sein.
+
+```bash
+git add apps/server/src/db apps/server/src/identity apps/server/src/app.ts
+git commit -m "Sitzungen ziehen in eine eigene Tabelle, users kennt jetzt Konten"
 ```
 
 ---
@@ -541,385 +902,7 @@ git commit -m "Passwoerter mit scrypt, Parameter wandern im Hash mit"
 
 ---
 
-### Aufgabe 4: Sitzungen anlegen, aufloesen, loeschen
-
-**Dateien:**
-
-- Anlegen: `apps/server/src/identity/sessions.ts`
-- Test: `apps/server/src/identity/sessions.test.ts`
-
-**Schnittstellen:**
-
-- Produziert: `class Sessions` mit `issue(userId: string): { token: string; tokenHash: string }`, `userIdOf(token: string): string | undefined`, `hashOf(token: string): string`, `revoke(tokenHash: string): void`, `countFor(userId: string): number`.
-
-- [ ] **Schritt 1: Den fehlschlagenden Test schreiben**
-
-```ts
-import { describe, expect, it } from 'vitest';
-import { openDatabase } from '../db/database.js';
-import { Sessions } from './sessions.js';
-
-function fixture(): { sessions: Sessions; userId: string } {
-  const database = openDatabase(':memory:');
-  database
-    .prepare('INSERT INTO users (id, name, is_guest, created_at) VALUES (?,?,1,?)')
-    .run('u1', 'Anna', 1000);
-  return { sessions: new Sessions(database), userId: 'u1' };
-}
-
-describe('Sitzungen', () => {
-  it('loest ein ausgegebenes Token zu seinem Nutzer auf', () => {
-    const { sessions, userId } = fixture();
-    const { token } = sessions.issue(userId);
-
-    expect(sessions.userIdOf(token)).toBe(userId);
-  });
-
-  it('kennt ein erfundenes Token nicht', () => {
-    const { sessions } = fixture();
-    expect(sessions.userIdOf('voellig-erfunden')).toBeUndefined();
-  });
-
-  it('legt das Token niemals im Klartext ab', () => {
-    const database = openDatabase(':memory:');
-    database
-      .prepare('INSERT INTO users (id, name, is_guest, created_at) VALUES (?,?,1,?)')
-      .run('u1', 'Anna', 1000);
-    const sessions = new Sessions(database);
-    const { token } = sessions.issue('u1');
-
-    const rows = database.prepare('SELECT token_hash FROM sessions').all() as {
-      token_hash: string;
-    }[];
-
-    expect(rows[0]?.token_hash).not.toBe(token);
-    expect(rows[0]?.token_hash).toHaveLength(64); // SHA-256 in hex
-  });
-
-  it('traegt zwei Geraete nebeneinander', () => {
-    const { sessions, userId } = fixture();
-    const laptop = sessions.issue(userId);
-    const handy = sessions.issue(userId);
-
-    expect(sessions.userIdOf(laptop.token)).toBe(userId);
-    expect(sessions.userIdOf(handy.token)).toBe(userId);
-    expect(sessions.countFor(userId)).toBe(2);
-  });
-
-  it('beendet beim Abmelden nur die eine Sitzung', () => {
-    const { sessions, userId } = fixture();
-    const laptop = sessions.issue(userId);
-    const handy = sessions.issue(userId);
-
-    sessions.revoke(laptop.tokenHash);
-
-    expect(sessions.userIdOf(laptop.token)).toBeUndefined();
-    expect(sessions.userIdOf(handy.token)).toBe(userId);
-  });
-});
-```
-
-- [ ] **Schritt 2: Den Test laufen lassen und scheitern sehen**
-
-Ausfuehren: `pnpm --filter @conquerist/server exec vitest run src/identity/sessions.test.ts`
-Erwartet: FEHLSCHLAG — Modul nicht gefunden.
-
-- [ ] **Schritt 3: `sessions.ts` schreiben**
-
-```ts
-import { createHash, randomBytes } from 'node:crypto';
-
-import type { AppDatabase } from '../db/database.js';
-
-/**
- * Sitzungen: eine Zeile je angemeldetem Geraet.
- *
- * Das Token ist kein getipptes Passwort, sondern 32 Zufallsbytes - deshalb
- * genuegt `sha256` und es braucht keine KDF. Der Klartext verlaesst den Server
- * genau einmal, naemlich in der Antwort, die ihn erzeugt.
- *
- * Getrennt von `Users`, weil es zwei Fragen sind: „wer bin ich" beantwortet
- * `users`, „ist dieser Browser angemeldet" beantwortet `sessions`. Solange
- * beides in einer Spalte stand, konnte es nur eine Antwort gleichzeitig geben.
- */
-export interface IssuedSession {
-  /** Geht an den Browser und wird dort abgelegt. */
-  readonly token: string;
-  /** Steht in der Datenbank und in der Verbindungssitzung. */
-  readonly tokenHash: string;
-}
-
-export class Sessions {
-  constructor(private readonly database: AppDatabase) {}
-
-  issue(userId: string): IssuedSession {
-    const token = randomBytes(32).toString('base64url');
-    const tokenHash = hash(token);
-
-    this.database
-      .prepare('INSERT INTO sessions (token_hash, user_id, created_at) VALUES (?, ?, ?)')
-      .run(tokenHash, userId, Date.now());
-
-    return { token, tokenHash };
-  }
-
-  userIdOf(token: string): string | undefined {
-    const row = this.database
-      .prepare('SELECT user_id FROM sessions WHERE token_hash = ?')
-      .get(hash(token)) as { user_id: string } | undefined;
-
-    return row?.user_id;
-  }
-
-  hashOf(token: string): string {
-    return hash(token);
-  }
-
-  revoke(tokenHash: string): void {
-    this.database.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
-  }
-
-  countFor(userId: string): number {
-    const row = this.database
-      .prepare('SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?')
-      .get(userId) as { n: number };
-
-    return row.n;
-  }
-}
-
-function hash(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
-}
-```
-
-- [ ] **Schritt 4: Test laufen lassen und gruen sehen**
-
-Ausfuehren: `pnpm --filter @conquerist/server exec vitest run src/identity/sessions.test.ts`
-Erwartet: BESTANDEN.
-
-- [ ] **Schritt 5: Commit**
-
-```bash
-git add apps/server/src/identity/sessions.ts apps/server/src/identity/sessions.test.ts
-git commit -m "Sitzungen als eigener Baustein: ausgeben, aufloesen, einzeln beenden"
-```
-
----
-
-### Aufgabe 5: `Users` auf `Sessions` umstellen
-
-`users.test.ts` ist seit Aufgabe 2 rot. Diese Aufgabe macht es wieder gruen.
-
-**Dateien:**
-
-- Aendern: `apps/server/src/identity/users.ts`, `apps/server/src/identity/users.test.ts`
-
-**Schnittstellen:**
-
-- Konsumiert: `Sessions` aus Aufgabe 4.
-- Produziert: `User` bekommt `login?: string`. `HelloResult` bekommt `tokenHash: string`. `Users` bekommt `byLogin(login: string): AccountRow | undefined` und `findId(id: string): User | undefined` (bisher `byId`, Name bleibt).
-
-- [ ] **Schritt 1: Die Tests anpassen und erweitern**
-
-In `users.test.ts` den Test „speichert das Geheimnis niemals im Klartext" ersetzen — er liest `users.secret_hash`, das es nicht mehr gibt:
-
-```ts
-it('speichert das Geheimnis niemals im Klartext', () => {
-  const database = openDatabase(':memory:');
-  const store = new Users(database, new Sessions(database));
-  const created = store.hello(undefined, 'Anna');
-
-  const row = database.prepare('SELECT token_hash FROM sessions').get() as {
-    token_hash: string;
-  };
-
-  expect(row.token_hash).not.toBe(created.secret);
-  expect(row.token_hash).toHaveLength(64); // SHA-256 in hex
-});
-```
-
-Die Hilfsfunktion oben in der Datei anpassen:
-
-```ts
-function users(): Users {
-  const database = openDatabase(':memory:');
-  return new Users(database, new Sessions(database));
-}
-```
-
-Und zwei Tests anhaengen:
-
-```ts
-it('gibt den Hash der Sitzung mit heraus, damit die Verbindung ihn merkt', () => {
-  const store = users();
-  const created = store.hello(undefined, 'Anna');
-
-  expect(created.tokenHash).toHaveLength(64);
-});
-
-it('findet ein Konto an seinem Login, aber nicht an fremder Schreibweise', () => {
-  const database = openDatabase(':memory:');
-  const store = new Users(database, new Sessions(database));
-  database
-    .prepare(
-      'INSERT INTO users (id, name, is_guest, login, password_hash, created_at) VALUES (?,?,0,?,?,?)',
-    )
-    .run('u1', 'Anna', 'anna', 'scrypt$1$1$1$a$b', 1);
-
-  expect(store.byLogin('anna')?.id).toBe('u1');
-  expect(store.byLogin('gibtsnicht')).toBeUndefined();
-});
-```
-
-Import ergaenzen: `import { Sessions } from './sessions.js';`
-
-- [ ] **Schritt 2: Den Test laufen lassen und scheitern sehen**
-
-Ausfuehren: `pnpm --filter @conquerist/server exec vitest run src/identity/users.test.ts`
-Erwartet: FEHLSCHLAG — `Users` nimmt noch kein zweites Argument, `tokenHash` fehlt.
-
-- [ ] **Schritt 3: `users.ts` umbauen**
-
-```ts
-import { randomUUID } from 'node:crypto';
-
-import type { AppDatabase } from '../db/database.js';
-import type { Sessions } from './sessions.js';
-
-/**
- * Nutzerzeilen (Regel 7: Identitaet ab Tag 1).
- *
- * Ein Gast ist eine Zeile mit `login IS NULL`, ein Konto eine mit gefuelltem
- * `login` - kein zweiter Datentyp, sondern dieselbe Zeile mit mehr darin.
- * Genau deshalb ueberlebt beim Beanspruchen jeder Sitz: es wird nichts
- * umgehaengt, es wird nur ergaenzt.
- *
- * Das Sitzungsgeheimnis liegt seit Etappe 7 nicht mehr hier, sondern in
- * `sessions` - eine Person kann an mehreren Geraeten angemeldet sein.
- */
-export interface User {
-  readonly id: string;
-  readonly name: string;
-  readonly isGuest: boolean;
-  /** Fehlt bei Gaesten. */
-  readonly login?: string;
-}
-
-export interface HelloResult {
-  readonly user: User;
-  /** Nur beim Anlegen gefuellt - danach kennt der Browser es. */
-  readonly secret?: string;
-  /** Womit die Verbindung ihre Sitzung wiederfindet (fuers Abmelden). */
-  readonly tokenHash: string;
-}
-
-/** Was zum Anmelden gebraucht wird - inklusive des Hashes. */
-export interface AccountRow {
-  readonly id: string;
-  readonly name: string;
-  readonly login: string;
-  readonly passwordHash: string;
-}
-
-interface UserRow {
-  readonly id: string;
-  readonly name: string;
-  readonly is_guest: number;
-  readonly login: string | null;
-}
-
-export class Users {
-  constructor(
-    private readonly database: AppDatabase,
-    private readonly sessions: Sessions,
-  ) {}
-
-  /**
-   * Anmelden oder anlegen.
-   *
-   * Ein unbekanntes Geheimnis wirft, statt still einen neuen Gast anzulegen:
-   * sonst waere ein Tippfehler im `localStorage` nicht von einem Angriff zu
-   * unterscheiden, und der Tisch fuellte sich mit Karteileichen.
-   */
-  hello(secret: string | undefined, name: string | undefined): HelloResult {
-    if (secret === undefined) return this.createGuest(name ?? 'Gast');
-
-    const userId = this.sessions.userIdOf(secret);
-    if (userId === undefined) throw new Error('Unbekanntes Sitzungsgeheimnis');
-
-    const user = this.byId(userId);
-    if (user === undefined) throw new Error('Sitzung ohne Nutzer');
-
-    const tokenHash = this.sessions.hashOf(secret);
-
-    if (name !== undefined && name !== user.name) {
-      this.database.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, user.id);
-      return { user: { ...user, name }, tokenHash };
-    }
-
-    return { user, tokenHash };
-  }
-
-  createGuest(name: string): HelloResult {
-    const id = randomUUID();
-    this.database
-      .prepare('INSERT INTO users (id, name, is_guest, created_at) VALUES (?, ?, 1, ?)')
-      .run(id, name, Date.now());
-
-    const { token, tokenHash } = this.sessions.issue(id);
-    return { user: { id, name, isGuest: true }, secret: token, tokenHash };
-  }
-
-  byId(id: string): User | undefined {
-    const row = this.database
-      .prepare('SELECT id, name, is_guest, login FROM users WHERE id = ?')
-      .get(id) as UserRow | undefined;
-
-    return row === undefined ? undefined : toUser(row);
-  }
-
-  byLogin(login: string): AccountRow | undefined {
-    const row = this.database
-      .prepare('SELECT id, name, login, password_hash FROM users WHERE login = ?')
-      .get(login) as { id: string; name: string; login: string; password_hash: string } | undefined;
-
-    return row === undefined
-      ? undefined
-      : { id: row.id, name: row.name, login: row.login, passwordHash: row.password_hash };
-  }
-
-  count(): number {
-    const row = this.database.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number };
-    return row.n;
-  }
-}
-
-function toUser(row: UserRow): User {
-  return row.login === null
-    ? { id: row.id, name: row.name, isGuest: row.is_guest === 1 }
-    : { id: row.id, name: row.name, isGuest: row.is_guest === 1, login: row.login };
-}
-```
-
-- [ ] **Schritt 4: Die Verdrahtung nachziehen und alles gruen sehen**
-
-`apps/server/src/app.ts` legt `Users` an — dort `new Sessions(database)` erzeugen und durchreichen. Der genaue Ort ergibt sich aus `grep -n "new Users" apps/server/src`.
-
-Ausfuehren: `pnpm --filter @conquerist/server test`
-Erwartet: BESTANDEN (alle 74 plus die neuen).
-
-- [ ] **Schritt 5: Commit**
-
-```bash
-pnpm typecheck
-git add apps/server/src/identity apps/server/src/app.ts
-git commit -m "hello geht ueber sessions, users kennt jetzt Konten"
-```
-
----
-
-### Aufgabe 6: Das Protokoll der vier Nachrichten
+### Aufgabe 4: Das Protokoll der vier Nachrichten
 
 **Dateien:**
 
@@ -1144,7 +1127,7 @@ git commit -m "Protokoll fuer Registrieren, Anmelden, Abmelden - eine Antwortfor
 
 ---
 
-### Aufgabe 7: Die Ablaeufe im Server und die vier Handler
+### Aufgabe 5: Die Ablaeufe im Server und die vier Handler
 
 **Dateien:**
 
@@ -1666,7 +1649,7 @@ git commit -m "Registrieren, Anmelden, Abmelden im Server - der Gast beansprucht
 
 ---
 
-### Aufgabe 8: Die Identitaet im Client
+### Aufgabe 6: Die Identitaet im Client
 
 **Dateien:**
 
@@ -1791,7 +1774,7 @@ git commit -m "Der Client fuehrt seine Identitaet mit und kann sie wechseln"
 
 ---
 
-### Aufgabe 9: Die Ecke oben rechts
+### Aufgabe 7: Die Ecke oben rechts
 
 **Dateien:**
 
@@ -1983,7 +1966,7 @@ git commit -m "Die Konto-Ecke: wer spielt, steht oben rechts"
 
 ---
 
-### Aufgabe 10: Der Dialog
+### Aufgabe 8: Der Dialog
 
 **Dateien:**
 
@@ -2221,7 +2204,7 @@ git commit -m "Ein Dialog fuer beide Wege ins Konto, mit ehrlicher E-Mail-Beschr
 
 ---
 
-### Aufgabe 11: Verdrahten, im Browser ansehen, Standsdatei
+### Aufgabe 9: Verdrahten, im Browser ansehen, Standsdatei
 
 **Dateien:**
 
@@ -2326,28 +2309,46 @@ git commit -m "Etappe 7 abgenommen: Konten, Sitzungen, der Gast beansprucht sich
 
 ---
 
+---
+
 ## Selbstpruefung des Plans
 
 **Abdeckung der Spec** — jede Anforderung hat eine Aufgabe:
 
-| Spec                                                         | Aufgabe                  |
-| ------------------------------------------------------------ | ------------------------ |
-| `sessions`-Tabelle, `users`-Spalten                          | 2                        |
-| `PRAGMA user_version`, Schritt 0 eingefroren                 | 1, 2, 11                 |
-| Migration rettet Geheimnisse und Sitze                       | 2                        |
-| scrypt mit Parametern im Hash                                | 3                        |
-| Zweites Geraet, Abmelden trifft eins                         | 4, 7                     |
-| Vier Nachrichten, eine Antwortform                           | 6                        |
-| `hello.ok` erweitert                                         | 6                        |
-| Gast beansprucht sich selbst                                 | 7                        |
-| Warnung bei offenen Gast-Partien                             | 7 (Riegel), 10 (Anzeige) |
-| Gleiche Meldung fuer falsches Passwort und unbekannten Login | 7                        |
-| Dummy-Hash gegen Zeitverrat                                  | 7                        |
-| Ecke oben rechts, faellt zuletzt ein                         | 9, 11                    |
-| Ein Dialog, zwei Modi                                        | 10                       |
-| E-Mail ehrlich beschriftet                                   | 10                       |
-| Ecke nicht waehrend einer Partie                             | 11 (nur Menue und Start) |
+| Spec                                                         | Aufgabe                           |
+| ------------------------------------------------------------ | --------------------------------- |
+| `PRAGMA user_version`, Schritt 0 eingefroren                 | 1, 9                              |
+| `sessions`-Tabelle, `users`-Spalten                          | 2                                 |
+| Migration rettet Geheimnisse und Sitze                       | 2                                 |
+| Zweites Geraet, Abmelden trifft nur eins                     | 2 (Baustein), 5 (Ablauf)          |
+| scrypt mit Parametern im Hash                                | 3                                 |
+| Vier Nachrichten, eine Antwortform                           | 4                                 |
+| `hello.ok` erweitert                                         | 4                                 |
+| Gast beansprucht sich selbst, Sitze bleiben                  | 5                                 |
+| Warnung bei offenen Gast-Partien                             | 5 (Riegel), 8 (Anzeige)           |
+| Gleiche Meldung fuer falsches Passwort und unbekannten Login | 5                                 |
+| Dummy-Hash gegen Zeitverrat                                  | 5                                 |
+| Identitaet im Client                                         | 6                                 |
+| Ecke oben rechts, faellt zuletzt ein                         | 7, 9                              |
+| Ein Dialog, zwei Modi                                        | 8                                 |
+| E-Mail ehrlich beschriftet                                   | 8                                 |
+| Ecke nicht waehrend einer Partie                             | 9 (nur Menue und Startbildschirm) |
 
-**Namen, die ueber Aufgaben hinweg gelten:** `Sessions.issue/userIdOf/hashOf/revoke/countFor` (4) — benutzt in 5, 7. `Users.claim/createAccount/byLogin/byId` (5, 7) — benutzt in 7. `hashPassword/verifyPassword` (3) — benutzt in 7. `AccountError` (7) — benutzt in `handlers/auth.ts`. `Identity` (8) — benutzt in 9, 11. `MIN_PASSWORD_LENGTH` (6) — benutzt in 10.
+**Namen, die ueber Aufgaben hinweg gelten:**
+`Sessions.issue/userIdOf/hashOf/revoke/countFor` (2) — benutzt in 5.
+`Users.claim/createAccount/byLogin/byId` (2, 5) — benutzt in 5.
+`hashPassword/verifyPassword` (3) — benutzt in 5.
+`AccountError`, `Accounts.register/login/logout` (5) — benutzt in `handlers/auth.ts`.
+`Identity` (6) — benutzt in 7, 9.
+`MIN_PASSWORD_LENGTH` (4) — benutzt in 8.
 
-**Bekannt roter Zwischenstand:** Nach Aufgabe 2 ist `users.test.ts` rot, bis Aufgabe 5 es aufraeumt. Das steht in beiden Aufgaben ausdruecklich dabei, damit niemand daran vorbeirepariert.
+**Reihenfolge und ihre Gruende:**
+
+- Aufgabe 1 baut nur das Migrationsgeruest, **ohne** Schemaaenderung. Sonst
+  waeren beim Fehlersuchen zwei Dinge gleichzeitig neu.
+- Aufgabe 2 ist bewusst gross: Tabelle, `Sessions` und `Users` sind eine
+  atomare Aenderung. Getrennt committet waere zwischendurch immer etwas
+  kaputt. Ein Commit am Ende, und der ist gruen.
+- Aufgabe 3 (Passwoerter) haengt an nichts und koennte auch frueher stehen.
+  Sie steht hier, weil Aufgabe 5 sie braucht und die Reihenfolge sonst
+  nichts erzwingt.
