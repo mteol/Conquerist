@@ -1,35 +1,55 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import type { AppDatabase } from '../db/database.js';
+import type { Sessions } from './sessions.js';
 
 /**
- * Gaeste und ihre Sitzungsgeheimnisse (Regel 7: Identitaet ab Tag 1).
+ * Nutzerzeilen (Regel 7: Identitaet ab Tag 1).
  *
- * Das Geheimnis wird **gehasht** abgelegt, obwohl es „nur" ein Gast ist. Zwei
- * Gruende: es ist faktisch ein Passwort - wer es hat, ist diese Person -, und
- * in Etappe 7 wird aus genau dieser Zeile per UPDATE ein richtiges Konto. Wer
- * jetzt Klartext speichert, hat das Datenleck dann schon eingebaut.
+ * Ein Gast ist eine Zeile mit `login IS NULL`, ein Konto eine mit gefuelltem
+ * `login` - kein zweiter Datentyp, sondern dieselbe Zeile mit mehr darin.
+ * Genau deshalb ueberlebt beim Beanspruchen jeder Sitz: es wird nichts
+ * umgehaengt, es wird nur ergaenzt.
+ *
+ * Das Sitzungsgeheimnis liegt seit Etappe 7 nicht mehr hier, sondern in
+ * `sessions` - eine Person kann an mehreren Geraeten angemeldet sein.
  */
 export interface User {
   readonly id: string;
   readonly name: string;
   readonly isGuest: boolean;
+  /** Fehlt bei Gaesten. */
+  readonly login?: string;
 }
 
 export interface HelloResult {
   readonly user: User;
   /** Nur beim Anlegen gefuellt - danach kennt der Browser es. */
   readonly secret?: string;
+  /** Womit die Verbindung ihre Sitzung wiederfindet (fuers Abmelden). */
+  readonly tokenHash: string;
+}
+
+/** Was zum Anmelden gebraucht wird - inklusive des Hashes. */
+export interface AccountRow {
+  readonly id: string;
+  readonly name: string;
+  readonly login: string;
+  readonly passwordHash: string;
 }
 
 interface UserRow {
   readonly id: string;
   readonly name: string;
   readonly is_guest: number;
+  readonly login: string | null;
 }
 
 export class Users {
-  constructor(private readonly database: AppDatabase) {}
+  constructor(
+    private readonly database: AppDatabase,
+    private readonly sessions: Sessions,
+  ) {}
 
   /**
    * Anmelden oder anlegen.
@@ -41,43 +61,48 @@ export class Users {
   hello(secret: string | undefined, name: string | undefined): HelloResult {
     if (secret === undefined) return this.createGuest(name ?? 'Gast');
 
-    const row = this.database
-      .prepare('SELECT id, name, is_guest FROM users WHERE secret_hash = ?')
-      .get(hash(secret)) as UserRow | undefined;
+    const userId = this.sessions.userIdOf(secret);
+    if (userId === undefined) throw new Error('Unbekanntes Sitzungsgeheimnis');
 
-    if (row === undefined) {
-      throw new Error('Unbekanntes Sitzungsgeheimnis');
+    const user = this.byId(userId);
+    if (user === undefined) throw new Error('Sitzung ohne Nutzer');
+
+    const tokenHash = this.sessions.hashOf(secret);
+
+    if (name !== undefined && name !== user.name) {
+      this.database.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, user.id);
+      return { user: { ...user, name }, tokenHash };
     }
 
-    if (name !== undefined && name !== row.name) {
-      this.database.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, row.id);
-      return { user: { id: row.id, name, isGuest: row.is_guest === 1 } };
-    }
-
-    return { user: { id: row.id, name: row.name, isGuest: row.is_guest === 1 } };
+    return { user, tokenHash };
   }
 
   createGuest(name: string): HelloResult {
     const id = randomUUID();
-    const secret = randomBytes(32).toString('base64url');
-
     this.database
-      .prepare(
-        'INSERT INTO users (id, name, is_guest, secret_hash, created_at) VALUES (?, ?, 1, ?, ?)',
-      )
-      .run(id, name, hash(secret), Date.now());
+      .prepare('INSERT INTO users (id, name, is_guest, created_at) VALUES (?, ?, 1, ?)')
+      .run(id, name, Date.now());
 
-    return { user: { id, name, isGuest: true }, secret };
+    const { token, tokenHash } = this.sessions.issue(id);
+    return { user: { id, name, isGuest: true }, secret: token, tokenHash };
   }
 
   byId(id: string): User | undefined {
     const row = this.database
-      .prepare('SELECT id, name, is_guest FROM users WHERE id = ?')
+      .prepare('SELECT id, name, is_guest, login FROM users WHERE id = ?')
       .get(id) as UserRow | undefined;
+
+    return row === undefined ? undefined : toUser(row);
+  }
+
+  byLogin(login: string): AccountRow | undefined {
+    const row = this.database
+      .prepare('SELECT id, name, login, password_hash FROM users WHERE login = ?')
+      .get(login) as { id: string; name: string; login: string; password_hash: string } | undefined;
 
     return row === undefined
       ? undefined
-      : { id: row.id, name: row.name, isGuest: row.is_guest === 1 };
+      : { id: row.id, name: row.name, login: row.login, passwordHash: row.password_hash };
   }
 
   count(): number {
@@ -86,6 +111,8 @@ export class Users {
   }
 }
 
-function hash(secret: string): string {
-  return createHash('sha256').update(secret).digest('hex');
+function toUser(row: UserRow): User {
+  return row.login === null
+    ? { id: row.id, name: row.name, isGuest: row.is_guest === 1 }
+    : { id: row.id, name: row.name, isGuest: row.is_guest === 1, login: row.login };
 }

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { legalActions, setupPlayer } from '@conquerist/shared';
 import { openDatabase } from '../db/database.js';
 import { Users } from '../identity/users.js';
+import { Sessions } from '../identity/sessions.js';
 import { RoomRegistry } from './registry.js';
 import { SqliteRoomStore } from './sqliteStore.js';
 import { applyAction, joinRoom, startGame } from './room.js';
@@ -27,7 +28,7 @@ describe('Ein Neustart kostet keine Partie', () => {
 
     // --- Erster Serverlauf -------------------------------------------------
     const firstDb = openDatabase(path);
-    const users = new Users(firstDb);
+    const users = new Users(firstDb, new Sessions(firstDb));
     const ids = ['Anna', 'Ben', 'Cem'].map((name) => users.hello(undefined, name).user.id);
     const first = new RoomRegistry({ store: new SqliteRoomStore(firstDb) });
 
@@ -80,7 +81,7 @@ describe('Ein Neustart kostet keine Partie', () => {
     const path = file();
 
     const firstDb = openDatabase(path);
-    const users = new Users(firstDb);
+    const users = new Users(firstDb, new Sessions(firstDb));
     const id = users.hello(undefined, 'Anna').user.id;
     const first = new RoomRegistry({ store: new SqliteRoomStore(firstDb) });
     const created = first.create(id, 'Anna', 4, 'wartend');

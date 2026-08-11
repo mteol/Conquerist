@@ -46,7 +46,10 @@ export function openDatabase(file: string): AppDatabase {
  * durchlaufen haben - deren Datenbanken saehen danach anders aus als die der
  * Neuzugaenge, und niemand koennte sagen, welche der beiden die richtige ist.
  */
-const MIGRATIONS: readonly ((database: AppDatabase) => void)[] = [stepInitialSchema];
+const MIGRATIONS: readonly ((database: AppDatabase) => void)[] = [
+  stepInitialSchema,
+  stepSessionsAndAccounts,
+];
 
 export function migrate(database: AppDatabase): void {
   const [{ user_version: applied }] = database.pragma('user_version') as [{ user_version: number }];
@@ -117,5 +120,87 @@ function stepInitialSchema(database: AppDatabase): void {
       action   TEXT NOT NULL,
       PRIMARY KEY (code, ordinal)
     );
+  `);
+}
+
+/**
+ * Das Sitzungsgeheimnis zieht aus `users` in eine eigene Tabelle, und `users`
+ * bekommt, was ein Konto ausmacht.
+ *
+ * Der Grund fuer den Umzug: `users.secret_hash` ist EINE Spalte pro Person.
+ * Der Server kennt nur den Hash und kann beim Anmelden kein bestehendes
+ * Geheimnis herausgeben - er muesste eins ersetzen und damit das andere Geraet
+ * aussperren. Ausgerechnet das zweite Geraet ist aber der Grund, sich
+ * ueberhaupt zu registrieren.
+ */
+function stepSessionsAndAccounts(database: AppDatabase): void {
+  database.exec(`
+    /*
+     * Keine ALTER TABLE users DROP COLUMN secret_hash: die Spalte traegt in
+     * stepInitialSchema ein UNIQUE-Constraint, und genau das lehnt SQLite bei
+     * DROP COLUMN ab ("cannot drop UNIQUE column"). stepInitialSchema ist
+     * eingefroren, also bleibt nur der uebliche Weg fuer Aenderungen, die
+     * ALTER TABLE nicht kann: Tabelle neu aufbauen, Daten umziehen.
+     *
+     * Drei Stolpersteine dabei, alle mit echten Daten in rooms/room_seats
+     * durchgespielt, bevor diese Reihenfolge stand:
+     *
+     * 1. PRAGMA foreign_keys laesst sich mitten in der Migrations-Transaktion
+     *    nicht umschalten (SQLite ignoriert das schlicht) - defer_foreign_keys
+     *    dagegen schon: die Pruefung wandert ans Transaktionsende.
+     * 2. ALTER TABLE ... RENAME TO haelt die verschobene Pruefung nicht bei -
+     *    obwohl der Endzustand stimmt, meldet COMMIT trotzdem einen Verstoss.
+     *    Deshalb hier: direkt unter dem alten Namen neu anlegen, nicht per
+     *    Umbenennung dorthin gelangen.
+     * 3. sessions erst NACH der neuen users-Tabelle anlegen: sessions.user_id
+     *    hat ON DELETE CASCADE, und das feuert bei DROP TABLE users sofort -
+     *    nicht erst am Transaktionsende -, und raeumt sonst genau die Zeilen
+     *    wieder ab, die eben erst hinuebergerettet wurden.
+     */
+    PRAGMA defer_foreign_keys = ON;
+
+    /* Zwischenlager fuer beides, was aus der alten users-Zeile ueberlebt. */
+    CREATE TABLE users_staging (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      is_guest    INTEGER NOT NULL DEFAULT 1,
+      created_at  INTEGER NOT NULL,
+      secret_hash TEXT NOT NULL
+    );
+    INSERT INTO users_staging (id, name, is_guest, created_at, secret_hash)
+      SELECT id, name, is_guest, created_at, secret_hash FROM users;
+
+    DROP TABLE users;
+
+    CREATE TABLE users (
+      id             TEXT PRIMARY KEY,
+      name           TEXT NOT NULL,
+      is_guest       INTEGER NOT NULL DEFAULT 1,
+      created_at     INTEGER NOT NULL,
+      login          TEXT,
+      password_hash  TEXT,
+      email          TEXT
+    );
+    INSERT INTO users (id, name, is_guest, created_at)
+      SELECT id, name, is_guest, created_at FROM users_staging;
+
+    CREATE TABLE sessions (
+      token_hash  TEXT PRIMARY KEY,
+      user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at  INTEGER NOT NULL
+    );
+    INSERT INTO sessions (token_hash, user_id, created_at)
+      SELECT secret_hash, id, created_at FROM users_staging;
+
+    DROP TABLE users_staging;
+
+    /*
+     * UNIQUE als Index, nicht als Spaltenzusatz: ALTER TABLE ADD COLUMN kann
+     * in SQLite kein UNIQUE mitbringen. Mehrere NULL stoeren einen UNIQUE-Index
+     * nicht - genau deshalb duerfen beliebig viele Gaeste ohne login bestehen.
+     */
+    CREATE UNIQUE INDEX users_login ON users(login);
+    CREATE UNIQUE INDEX users_email ON users(email);
+    CREATE INDEX sessions_user ON sessions(user_id);
   `);
 }

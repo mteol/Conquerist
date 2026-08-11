@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { legalActions, setupPlayer } from '@conquerist/shared';
 import { openDatabase } from '../db/database.js';
 import { Users } from '../identity/users.js';
+import { Sessions } from '../identity/sessions.js';
 import { SqliteRoomStore } from './sqliteStore.js';
 import { applyAction, createRoom, joinRoom, startGame, type Room } from './room.js';
 
 /** Drei Gaeste anlegen und ihre Ids zurueckgeben - rooms verweist auf users. */
 function withUsers(): { store: SqliteRoomStore; ids: string[] } {
   const database = openDatabase(':memory:');
-  const users = new Users(database);
+  const users = new Users(database, new Sessions(database));
   const ids = ['Anna', 'Ben', 'Cem'].map((name) => users.hello(undefined, name).user.id);
   return { store: new SqliteRoomStore(database), ids };
 }
