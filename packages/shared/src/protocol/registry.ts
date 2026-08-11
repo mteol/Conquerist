@@ -1,4 +1,15 @@
 import type { z } from 'zod';
+import {
+  AUTH_LOGIN,
+  AUTH_LOGOUT,
+  AUTH_ME,
+  AUTH_OK,
+  AUTH_REGISTER,
+  AuthResponseSchema,
+  EmptyAuthRequestSchema,
+  LoginRequestSchema,
+  RegisterRequestSchema,
+} from './auth.js';
 import { PING, PONG, PingRequestSchema, PongResponseSchema } from './ping.js';
 import {
   ACT,
@@ -93,6 +104,26 @@ export const protocol = {
     responseType: ACT_OK,
     request: ActRequestSchema,
     response: EmptyResponseSchema,
+  },
+  [AUTH_REGISTER]: {
+    responseType: AUTH_OK,
+    request: RegisterRequestSchema,
+    response: AuthResponseSchema,
+  },
+  [AUTH_LOGIN]: {
+    responseType: AUTH_OK,
+    request: LoginRequestSchema,
+    response: AuthResponseSchema,
+  },
+  [AUTH_LOGOUT]: {
+    responseType: AUTH_OK,
+    request: EmptyAuthRequestSchema,
+    response: AuthResponseSchema,
+  },
+  [AUTH_ME]: {
+    responseType: AUTH_OK,
+    request: EmptyAuthRequestSchema,
+    response: AuthResponseSchema,
   },
 } as const satisfies ProtocolMap;
 

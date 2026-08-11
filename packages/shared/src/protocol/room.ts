@@ -59,11 +59,19 @@ export const HelloRequestSchema = z.object({
   name: DisplayNameSchema.optional(),
 });
 
+/**
+ * Die Antwort auf `hello` ist dieselbe Form wie die auf `auth.*`.
+ *
+ * Sie wurde in Etappe 7 um `isGuest` und `login` erweitert - vertraeglich,
+ * denn ein aelterer Client liest die neuen Felder einfach nicht.
+ */
 export const HelloResponseSchema = z.object({
   userId: z.string().min(1),
   /** Nur beim Anlegen gefuellt - danach kennt der Browser es. */
   secret: z.string().min(1).optional(),
   name: DisplayNameSchema,
+  isGuest: z.boolean(),
+  login: z.string().optional(),
 });
 
 export const CreateRoomRequestSchema = z.object({

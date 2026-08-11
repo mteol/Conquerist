@@ -87,8 +87,19 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     }
 
     return result.secret === undefined
-      ? { userId: result.user.id, name: result.user.name }
-      : { userId: result.user.id, secret: result.secret, name: result.user.name };
+      ? {
+          userId: result.user.id,
+          name: result.user.name,
+          isGuest: result.user.isGuest,
+          login: result.user.login,
+        }
+      : {
+          userId: result.user.id,
+          secret: result.secret,
+          name: result.user.name,
+          isGuest: result.user.isGuest,
+          login: result.user.login,
+        };
   });
 
   router.register(CREATE_ROOM, (payload, context) => {
