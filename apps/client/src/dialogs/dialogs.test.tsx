@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ResourceId } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import type { PlayerRow } from '../game/view';
+import { AccountDialog } from './AccountDialog';
 import { DiscardDialog } from './DiscardDialog';
 import { TradeDialog } from './TradeDialog';
 
@@ -72,5 +73,84 @@ describe('TradeDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: /Tauschen/ }));
 
     expect(onConfirm).toHaveBeenCalledWith('brick', 'ore');
+  });
+});
+
+describe('AccountDialog', () => {
+  it('fragt beim Anlegen zusaetzlich nach der freiwilligen E-Mail', () => {
+    render(
+      <AccountDialog
+        mode="register"
+        openGuestGames={0}
+        problem={null}
+        onSubmit={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText(/E-Mail/)).toBeTruthy();
+  });
+
+  it('fragt beim Anmelden nicht nach der E-Mail', () => {
+    render(
+      <AccountDialog
+        mode="login"
+        openGuestGames={0}
+        problem={null}
+        onSubmit={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText(/E-Mail/)).toBeNull();
+  });
+
+  it('warnt vor dem Anmelden, wenn als Gast noch Partien offen sind', () => {
+    render(
+      <AccountDialog
+        mode="login"
+        openGuestGames={2}
+        problem={null}
+        onSubmit={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/2 offene Partien/)).toBeTruthy();
+  });
+
+  it('schickt die Bestaetigung mit, wenn gewarnt wurde', async () => {
+    const onSubmit = vi.fn();
+    render(
+      <AccountDialog
+        mode="login"
+        openGuestGames={2}
+        problem={null}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await userEvent.type(screen.getByLabelText(/Benutzername/), 'anna');
+    await userEvent.type(screen.getByLabelText(/Passwort/), 'langgenug1');
+    await userEvent.click(screen.getByRole('button', { name: 'Trotzdem anmelden' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ login: 'anna', confirmAbandonGuest: true }),
+    );
+  });
+
+  it('zeigt die Absage des Servers, statt sie zu verschlucken', () => {
+    render(
+      <AccountDialog
+        mode="register"
+        openGuestGames={0}
+        problem="Dieser Benutzername ist vergeben."
+        onSubmit={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Dieser Benutzername ist vergeben.')).toBeTruthy();
   });
 });
