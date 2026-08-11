@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { openDatabase } from './database.js';
+import { migrate, openDatabase } from './database.js';
 
 const created: string[] = [];
 
@@ -73,5 +73,37 @@ describe('Datenbank oeffnen', () => {
     expect(seats.n).toBe(0);
     expect(actions.n).toBe(0);
     database.close();
+  });
+});
+
+describe('Migrationen', () => {
+  it('setzt user_version auf die Zahl der angewandten Schritte', () => {
+    const database = openDatabase(':memory:');
+    const [{ user_version: version }] = database.pragma('user_version') as [
+      { user_version: number },
+    ];
+
+    expect(version).toBeGreaterThan(0);
+  });
+
+  it('laeuft zweimal hintereinander ohne Wirkung und ohne Wurf', () => {
+    const database = openDatabase(':memory:');
+    const before = database.pragma('user_version');
+
+    expect(() => migrate(database)).not.toThrow();
+    expect(database.pragma('user_version')).toEqual(before);
+  });
+
+  it('holt eine Datenbank ohne user_version von vorne ab', () => {
+    // Der Stand vor dieser Etappe: Tabellen da, user_version noch 0.
+    const database = openDatabase(':memory:');
+    database.pragma('user_version = 0');
+
+    migrate(database);
+
+    const [{ user_version: version }] = database.pragma('user_version') as [
+      { user_version: number },
+    ];
+    expect(version).toBeGreaterThan(0);
   });
 });
