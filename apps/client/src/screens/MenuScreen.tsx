@@ -1,4 +1,6 @@
 import type { CSSProperties, JSX } from 'react';
+import type { Identity } from '../game/useOnlineGame';
+import { AccountCorner } from './AccountCorner';
 import { HexField } from './HexField';
 import { Wordmark } from './Wordmark';
 
@@ -50,6 +52,22 @@ export interface MenuScreenProps {
    * Auskunft ueber nichts und stuende trotzdem vor den drei Wegen.
    */
   readonly openGames?: number;
+  /**
+   * Wer angemeldet ist - fuer die Konto-Ecke oben rechts.
+   *
+   * Optional, damit bestehende Aufrufe ohne Identitaet weiter gelten: ohne
+   * Angabe bleibt die Ecke leer (`AccountCorner` rendert dann `null`).
+   */
+  readonly identity?: Identity | null;
+  readonly onRegister?: () => void;
+  readonly onLogin?: () => void;
+  readonly onLogout?: () => void;
+}
+
+/** Tut nichts - Vorgabewert fuer die drei Konto-Aktionen ohne Identitaet. */
+function noop(): void {
+  // Bewusst leer: ohne `identity` rendert `AccountCorner` ohnehin `null`, und
+  // diese Griffe werden nie aufgerufen.
 }
 
 /*
@@ -78,13 +96,34 @@ function order(index: number): CSSProperties {
   return { '--i': index } as CSSProperties;
 }
 
-export function MenuScreen({ onChoose, openGames = 0 }: MenuScreenProps): JSX.Element {
+export function MenuScreen({
+  onChoose,
+  openGames = 0,
+  identity = null,
+  onRegister = noop,
+  onLogin = noop,
+  onLogout = noop,
+}: MenuScreenProps): JSX.Element {
   // „Weiterspielen" steht vor den drei Wegen und faellt deshalb auch zuerst.
   const resumeShown = openGames > 0;
 
   return (
     <main className="menu">
       <HexField />
+
+      {/*
+       * Die Konto-Ecke faellt zuletzt in die Choreografie ein - ihr `order`
+       * muss deshalb hinter dem hoechsten `--i` der Eintraege liegen.
+       * „Weiterspielen" schiebt die drei Wege um eine Stufe, und genau darum
+       * verschiebt es auch die Ecke.
+       */}
+      <AccountCorner
+        identity={identity}
+        onRegister={onRegister}
+        onLogin={onLogin}
+        onLogout={onLogout}
+        order={resumeShown ? 4 : 3}
+      />
 
       <div className="menu__inner">
         {/* Ohne Klasse: das `header` gruppiert, gestaltet wird an Titel und

@@ -13,7 +13,15 @@ import { MAX_SEATS, MIN_SEATS, SEAT_COLORS, defaultSeats, type Seat } from '../s
 import { BoardSvg } from '../board/BoardSvg';
 import { EMPTY_TARGETS } from '../game/targets';
 import { ConnectionPanel } from '../diagnostics/ConnectionPanel';
+import type { Identity } from '../game/useOnlineGame';
+import { AccountCorner } from './AccountCorner';
 import { SeatPiece } from './LobbyScreen';
+
+/** Tut nichts - Vorgabewert fuer die drei Konto-Aktionen ohne Identitaet. */
+function noop(): void {
+  // Bewusst leer: ohne `identity` rendert `AccountCorner` ohnehin `null`, und
+  // diese Griffe werden nie aufgerufen.
+}
 
 /** Was nur die lokale Partie betrifft - online gibt es diese Fragen nicht. */
 export interface LocalOptions {
@@ -53,6 +61,16 @@ export interface StartScreenProps {
   readonly mode?: 'online' | 'local' | 'join' | 'all';
   /** Zurueck ins Hauptmenue. Fehlt, wenn es keines gibt. */
   readonly onBack?: () => void;
+  /**
+   * Wer angemeldet ist - fuer die Konto-Ecke oben rechts, wie im Hauptmenue.
+   *
+   * Ohne Eingangsanimation: dieser Bildschirm hatte nie eine Choreografie,
+   * und ein `order` gaebe es nur fuer eine, die es hier nicht gibt.
+   */
+  readonly identity?: Identity | null;
+  readonly onRegister?: () => void;
+  readonly onLogin?: () => void;
+  readonly onLogout?: () => void;
 }
 
 const BLUEPRINTS: readonly ScenarioBlueprint[] = [CLASSIC_34, CLASSIC_56];
@@ -112,6 +130,10 @@ export function StartScreen({
   onResume,
   mode = 'all',
   onBack,
+  identity = null,
+  onRegister = noop,
+  onLogin = noop,
+  onLogout = noop,
 }: StartScreenProps): JSX.Element {
   const [seats, setSeats] = useState<Seat[]>(() => defaultSeats(MIN_SEATS));
   const [seed, setSeed] = useState(randomSeed);
@@ -200,6 +222,15 @@ export function StartScreen({
 
   return (
     <main className="start">
+      {/* Dieselbe Ecke wie im Hauptmenue, ohne `order`: dieser Bildschirm
+          hat keinen Eingang, den sie nachzeichnen muesste. */}
+      <AccountCorner
+        identity={identity}
+        onRegister={onRegister}
+        onLogin={onLogin}
+        onLogout={onLogout}
+      />
+
       <section className="start__panel">
         <header className="start__brand">
           {onBack === undefined ? null : (

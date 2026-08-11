@@ -91,4 +91,39 @@ describe('Hauptmenue', () => {
     rerender(<MenuScreen onChoose={vi.fn()} openGames={2} />);
     expect(order()).toEqual(['0', '1', '2', '3']);
   });
+
+  it('zeigt die Konto-Ecke ueber den drei Wegen', () => {
+    render(
+      <MenuScreen
+        openGames={0}
+        onChoose={vi.fn()}
+        identity={{ userId: 'u1', name: 'Gast', isGuest: true }}
+        onRegister={vi.fn()}
+        onLogin={vi.fn()}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Anmelden' })).toBeTruthy();
+  });
+
+  it('laesst die Ecke zuletzt einfallen - nach den drei Wegen', () => {
+    const { container } = render(
+      <MenuScreen
+        openGames={0}
+        onChoose={vi.fn()}
+        identity={{ userId: 'u1', name: 'Gast', isGuest: true }}
+        onRegister={vi.fn()}
+        onLogin={vi.fn()}
+        onLogout={vi.fn()}
+      />,
+    );
+
+    const corner = container.querySelector('.corner') as HTMLElement;
+    const last = [...container.querySelectorAll('.menu__entry')].at(-1) as HTMLElement;
+
+    expect(Number(corner.style.getPropertyValue('--i'))).toBeGreaterThan(
+      Number(last.style.getPropertyValue('--i')),
+    );
+  });
 });

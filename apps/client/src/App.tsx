@@ -1,6 +1,7 @@
 import { useState, type JSX } from 'react';
 import type { GameState } from '@conquerist/shared';
 import type { Seat } from './seats';
+import { AccountDialog } from './dialogs/AccountDialog';
 import { GameScreen } from './screens/GameScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
 import { StartScreen, type LocalOptions } from './screens/StartScreen';
@@ -87,8 +88,63 @@ function Online({
     roomFromLocation() === null ? null : 'join',
   );
 
+  /*
+   * Der Konto-Dialog: welcher Modus (oder keiner) und die Absage des Servers,
+   * falls es eine gab.
+   *
+   * Beide leben hier und nicht in `MenuScreen`/`StartScreen`, weil beide
+   * Bildschirme dieselbe Konto-Ecke tragen und derselbe Dialog fuer beide
+   * gilt - ein Zustand, zwei Aufrufer.
+   */
+  const [account, setAccount] = useState<'register' | 'login' | null>(null);
+  const [accountProblem, setAccountProblem] = useState<string | null>(null);
+
+  const openAccount = (mode: 'register' | 'login'): void => {
+    setAccountProblem(null);
+    setAccount(mode);
+  };
+
+  const submitAccount = async (input: {
+    login: string;
+    password: string;
+    email?: string;
+    confirmAbandonGuest?: boolean;
+  }): Promise<void> => {
+    try {
+      if (account === 'register') {
+        await online.register(input);
+      } else {
+        await online.login(input);
+      }
+      setAccount(null);
+      setAccountProblem(null);
+    } catch (error) {
+      // Der Dialog bleibt offen, sonst ist die Meldung weg, bevor jemand sie
+      // liest - erst ein zweiter Versuch oder „Abbrechen" raeumt ihn weg.
+      setAccountProblem(error instanceof Error ? error.message : 'Unbekannter Fehler');
+    }
+  };
+
+  const accountDialog =
+    account === null ? null : (
+      <AccountDialog
+        mode={account}
+        openGuestGames={online.myRooms.length}
+        problem={accountProblem}
+        onSubmit={(input) => {
+          void submitAccount(input);
+        }}
+        onClose={() => {
+          setAccount(null);
+          setAccountProblem(null);
+        }}
+      />
+    );
+
+  let screen: JSX.Element;
+
   if (room === null && choice === null) {
-    return (
+    screen = (
       <MenuScreen
         openGames={online.myRooms.length}
         onChoose={(next) => {
@@ -96,12 +152,16 @@ function Online({
           // dem Startbildschirm, und dorthin fuehrt sie.
           setChoice(next === 'resume' ? 'online' : next);
         }}
+        identity={online.identity}
+        onRegister={() => openAccount('register')}
+        onLogin={() => openAccount('login')}
+        onLogout={() => {
+          void online.logout();
+        }}
       />
     );
-  }
-
-  if (room === null) {
-    return (
+  } else if (room === null) {
+    screen = (
       <StartScreen
         mode={choice ?? 'all'}
         onBack={() => setChoice(null)}
@@ -122,12 +182,16 @@ function Online({
           // dieselbe Sache.
           void online.joinRoom(code, loadName() ?? '');
         }}
+        identity={online.identity}
+        onRegister={() => openAccount('register')}
+        onLogin={() => openAccount('login')}
+        onLogout={() => {
+          void online.logout();
+        }}
       />
     );
-  }
-
-  if (!room.started || view === null) {
-    return (
+  } else if (!room.started || view === null) {
+    screen = (
       <LobbyScreen
         room={room}
         youId={online.userId ?? ''}
@@ -142,22 +206,29 @@ function Online({
         }}
       />
     );
+  } else {
+    screen = (
+      <GameScreen
+        view={view}
+        actions={online.state.actions}
+        log={online.state.log}
+        error={online.state.lastError}
+        onAct={(action) => {
+          void online.act(action);
+        }}
+        onDismissError={online.dismissError}
+        offline={online.connection.status !== 'open'}
+        onLeave={() => {
+          void online.leaveRoom();
+        }}
+      />
+    );
   }
 
   return (
-    <GameScreen
-      view={view}
-      actions={online.state.actions}
-      log={online.state.log}
-      error={online.state.lastError}
-      onAct={(action) => {
-        void online.act(action);
-      }}
-      onDismissError={online.dismissError}
-      offline={online.connection.status !== 'open'}
-      onLeave={() => {
-        void online.leaveRoom();
-      }}
-    />
+    <>
+      {screen}
+      {accountDialog}
+    </>
   );
 }

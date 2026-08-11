@@ -133,6 +133,12 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
   fester Effekt.** Die Aufprallwelle hob jedes Hex um `+0.34` — in der Mitte
   nicht ganz das Doppelte, am Rand fast das Siebenfache, also nach außen hin
   lauter statt leiser. Wer eine Ruhelage anhebt, rechnet in Anteilen davon.
+- **Ein einmal veröffentlichter Migrationsschritt wird nie wieder angefasst.**
+  Er beschreibt den Stand, den es einmal gab. Wer ihn ändert, gibt Bestands-
+  und Neudatenbanken verschiedene Schemata — deren `user_version` steht auf
+  derselben Zahl, aber die Tabellen darunter sind nicht mehr dieselben. Wer
+  eine Spalte braucht, hängt hinten einen neuen Schritt an
+  (`MIGRATIONS` in `apps/server/src/db/database.ts`).
 
 ## Etappenplan
 0. ✅ Monorepo-Grundgerüst, WS-Ping/Pong
@@ -142,16 +148,26 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
 4. ✅ server: WS-Infra, SQLite, Gast-Identität
 5. ✅ Client-Anbindung, State-Filtering, Reconnect
 6. ✅ Persistence: Action-Log, „Deine Partien"
-7. Auth: Registrierung, Login, Gast-Account beanspruchen
+7. ✅ Auth: Registrierung, Login, Gast-Account beanspruchen
 8. Handel, Entwicklungskarten
 9. Docker + Coolify
 10. Erweiterungen
 
 ## Aktueller Stand
-Etappen 0 bis 6 fertig. 0–3 liegen in `main`, 4–6 auf `etappe-4-online`.
+Etappen 0 bis 7 fertig. 0–3 liegen in `main`, 4–7 auf `etappe-4-online`.
 Ein Serverneustart kostet keine Partie mehr: gespeichert wird der Startzustand
 plus das Action-Log, wiederhergestellt per `replay` — **kein Snapshot**, das ist
 gemessen (4000 Züge = 19 ms).
+
+Seit Etappe 7 ist ein Gast ein richtiges Konto auf Wunsch: `users` trägt
+`login`, `password_hash` (`scrypt`) und die freiwillige `email` (tut noch
+nichts), das Sitzungsgeheimnis liegt in einer eigenen Tabelle `sessions`
+(`token_hash`, `user_id`, `created_at`) statt in `users` selbst — erst dieser
+Umzug erlaubt mehrere gleichzeitig angemeldete Geräte pro Konto. Die
+Migrationsliste (`MIGRATIONS` in `apps/server/src/db/database.ts`, gezählt
+über `PRAGMA user_version`) steht bei zwei Schritten: `stepInitialSchema`
+(Etappe 4–6, eingefroren) und `stepSessionsAndAccounts` (Etappe 7, `sessions`
+plus der Umbau von `users`).
 
 Was in `shared` schon steht:
 - `protocol/` — Envelope, Registry, Ping (Etappe 0)
@@ -171,8 +187,12 @@ Regeln liegen je in eigener Datei, jeweils als `can…` (nur prüfen) und
 `apply…` (prüfen und anwenden). `legalActions` benutzt dieselben `can…` —
 neue Regeln bitte genauso, damit es weiter nur eine Auslegung gibt.
 
-Was im Server steht (Etappe 4/5):
-- `db/`, `identity/` — SQLite, Gäste; das Sitzungsgeheimnis liegt **nur gehasht**
+Was im Server steht (Etappe 4/5, `identity/` seit Etappe 7 erweitert):
+- `db/` — SQLite samt Migrationsliste (`database.ts`, `MIGRATIONS` über
+  `PRAGMA user_version`)
+- `identity/` — Gäste und Konten (`users.ts`), Sitzungen in eigener Tabelle
+  (`sessions.ts`, nur der Hash liegt in der Datenbank), Passwort-Hashing mit
+  `scrypt` (`password.ts`), Registrieren/Anmelden/Abmelden (`accounts.ts`)
 - `rooms/` — der Raum als Wert (`room.ts`), Codevergabe und Persistenz
   (`registry.ts`), Zustellung je Empfänger (`broadcast.ts`), Ablage hinter einer
   Schnittstelle (`store.ts`, `sqliteStore.ts`), Übersicht (`summary.ts`)

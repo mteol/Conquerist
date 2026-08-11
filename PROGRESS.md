@@ -1449,3 +1449,140 @@ haben sich im Ansehen bestaetigt.
 
 Unveraendert **Etappe 7: Auth** — Registrierung, Login, Gast-Account
 beanspruchen.
+
+---
+
+## Etappe 7 — Auth: Registrierung, Login, Gast-Konto beanspruchen ✅
+
+Stand: 2026-08-11, Branch `etappe-4-online`.
+
+Aus einer Zeile in `users` (Gast, `is_guest = true`, kein Zugangsdaten) wird ein
+richtiges Konto — genau das UPDATE, das Regel 7 seit Etappe 4 verspricht. Neun
+Aufgaben: Migrationsgeruest, `sessions`-Tabelle und Users-Umbau, Passwoerter mit
+`scrypt`, das Protokoll der vier Auth-Nachrichten, die Accounts-Ablaeufe und
+ihre Handler, die Identitaet im Client, die Konto-Ecke, der Dialog, und
+schliesslich das Verdrahten hier.
+
+### Abnahme
+
+| Pruefung                                      | Ergebnis                                                      |
+| --------------------------------------------- | ------------------------------------------------------------- |
+| `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                                         |
+| `pnpm test`                                   | 785 Tests gruen (shared 499, server 108, client 178)          |
+| `pnpm build`                                  | gruen, Client-Bundle 366,55 kB (109,90 kB gzip), CSS 23,89 kB |
+| `pnpm format:check`                           | gruen                                                         |
+
+**Nicht in dieser Tabelle: der Durchlauf im Browser.** Siehe „Offene Punkte"
+unten — er steht zum Zeitpunkt dieses Commits noch aus.
+
+### Getroffene Entscheidungen
+
+**Das urspruenglich geplante Migrations-SQL haette Daten vernichtet, und zwar
+still.** Der erste Entwurf legte `sessions` an, bevor `users` umgebaut war;
+beim anschliessenden `DROP TABLE users` haette `ON DELETE CASCADE` die gerade
+erst geretteten Sitzungsgeheimnisse sofort wieder geloescht — dieselbe
+Transaktion, die sie retten sollte, haette sie am Ende wieder mitgenommen.
+Dazu kamen drei weitere Grenzen, alle gegen SQLite 3.53.4 nachgemessen statt
+vermutet: `ALTER TABLE ... DROP COLUMN` lehnt eine `UNIQUE`-Spalte ab
+(„cannot drop UNIQUE column"), `PRAGMA foreign_keys` laesst sich mitten in
+einer Transaktion nicht umschalten (SQLite ignoriert es kommentarlos), und
+`ALTER TABLE ... RENAME TO` haelt eine aufgeschobene Fremdschluesselpruefung
+nicht bei — `COMMIT` meldet trotz korrektem Endzustand einen Verstoss. Gebaut
+wurde stattdessen: `PRAGMA defer_foreign_keys = ON` (die Pruefung wandert ans
+Transaktionsende), eine Zwischentabelle `users_staging` fuer das, was aus der
+alten Zeile ueberlebt, `users` unter demselben Namen neu angelegt statt per
+`RENAME TO` dorthin gelangt, und `sessions` **erst danach** befuellt — genau
+in dieser Reihenfolge, damit `DROP TABLE users` nichts mehr trifft, was schon
+in Sicherheit ist. Alle vier Punkte stehen jetzt auch als Kommentar in
+`stepSessionsAndAccounts` (`apps/server/src/db/database.ts`), damit die
+Reihenfolge nicht wie Zufall aussieht.
+
+**`createGuest` und `createAccountWithSession` sind transaktional**, weil
+beide in zwei Tabellen schreiben (`users` und `sessions`). Ohne Transaktion
+bliebe bei einem Abbruch zwischen beiden Schreibvorgaengen ein Nutzer ohne
+Sitzung zurueck — beim Gast dauerhaft unerreichbar, weil ihm ohne Sitzung kein
+Geheimnis mehr zugeordnet werden kann.
+
+**Beim Identitaetswechsel wird die alte Senke aus dem `SinkHub` entfernt.**
+Meldet sich eine Verbindung um (Login, Logout), bekommt sie eine neue
+Identitaet — ohne das Entfernen empfienge sie aber weiter Broadcasts der
+verlassenen Identitaet. Das ist ein Informationsleck ueber eine
+Identitaetsgrenze hinweg (Regel 4) und zugleich ein wachsendes Speicherleck,
+weil die alte Senke nie wieder abgeraeumt wuerde.
+
+**Bei unbekanntem Login wird trotzdem gegen einen Hash geprueft** —
+`DUMMY_HASH` in `accounts.ts`. Ohne ihn antwortet der Server bei einem
+unbekannten Login sofort und bei einem falschen Passwort erst nach der
+`scrypt`-Berechnung; die Antwortzeit verriete dann genau das, was die
+gemeinsame Fehlermeldung „Benutzername oder Passwort stimmt nicht" bewusst
+verschweigt.
+
+**Der Kontodialog-Zustand lebt in `Online()` (`App.tsx`), nicht in
+`MenuScreen` oder `StartScreen`.** Beide Bildschirme tragen dieselbe
+Konto-Ecke und sollen denselben Dialog oeffnen — ein `useState` an einer
+Stelle statt derselben Logik zweimal in zwei Bildschirmen.
+
+**Eine Absage des Servers haelt den Dialog offen.** `register` und `login`
+werfen bei Ablehnung (Login vergeben, falsches Passwort, offene Gast-Partien
+ohne Bestaetigung); der Fangblock in `submitAccount` traegt die Meldung in
+`accountProblem`, ruft aber `setAccount(null)` nicht auf. Ohne diese
+Unterscheidung waere die Meldung verschwunden, bevor sie jemand liest — der
+Dialog schliesst nur bei Erfolg.
+
+**Die Warnung im Dialog zaehlt aus derselben Quelle wie „Weiterspielen
+(n)".** `online.myRooms.length` speist beides. Der Server rechnet die Zahl
+nicht selbst aus (er bekommt bei `auth.login` keine eigene Anfrage danach),
+und der Dialog wiederholt die Rechnung nicht — er bekommt sie als
+`openGuestGames` gereicht.
+
+**Der Platz der Konto-Ecke in der Eingangs-Choreografie ist eine Rechnung,
+keine feste Zahl.** `MenuScreen` gibt ihr `order={resumeShown ? 4 : 3}` —
+einen Schritt hinter dem hoechsten `--i` der drei Wege (2, oder 3 mit
+„Weiterspielen" davor). Eine feste `4` waere bei einem vierten Menueeintrag
+still falsch geworden; so faellt die Ecke immer zuletzt ein, unabhaengig
+davon, wie viele Eintraege vor ihr liegen. `StartScreen` bekommt dieselbe
+Komponente ohne `order` — dieser Bildschirm hatte nie eine Eingangs-Choreografie
+und soll auch keine bekommen.
+
+### Abweichungen vom Plan
+
+Keine am fertigen Verhalten — die Migrations-Abweichung oben war eine
+Korrektur **waehrend** der Umsetzung (Aufgabe 2), kein nachtraeglicher Bruch
+mit einem bereits abgenommenen Plan: der urspruengliche Entwurf ist nie
+gelaufen.
+
+### Offene Punkte
+
+- **Kein Passwort-vergessen.** Es gibt keinen Mailversand — die freiwillige
+  E-Mail-Adresse liegt dafuer bereit, tut aber nichts (siehe unten).
+- **Kein Rate-Limit auf `auth.login`.** Solange der Server nicht oeffentlich
+  erreichbar ist, ist das risikolos; noetig, sobald das der Fall ist
+  (Etappe 9).
+- **Sitzungen laufen nie ab.** `sessions` kennt kein Ablaufdatum und keine
+  Bereinigung.
+- **Keine Kontoloeschung.**
+- **Die freiwillige E-Mail tut heute nichts** — kein Versand, keine
+  Bestaetigung. Bewusst so entschieden, und im Dialog auch so beschriftet
+  („Tut heute noch nichts"); sie liegt fuer eine spaetere
+  Passwort-Wiederherstellung bereit.
+- **Der Durchlauf im Browser steht zum Zeitpunkt dieses Commits noch aus.**
+  Gast-Partie anlegen und dann Konto anlegen (die Partie muss unter
+  „Weiterspielen" stehen bleiben), Abmelden und wieder Anmelden (die Partie
+  ist wieder da), zwei Fenster mit demselben Konto (beide bleiben
+  angemeldet), das schmale Fenster (die Ecke beruehrt die Wortmarke nicht),
+  und ein Neuladen mit Blick auf die Choreografie (faellt die Ecke zuletzt?)
+  — das alles ist bislang nur gegen Komponententests belegt, nicht gesehen.
+  Wird nachgetragen.
+- **Eine Sicherungskopie der echten `data/`-Datenbank vor dem ersten
+  Migrationslauf** (`VACUUM INTO` auf eine Kopie, bevor `stepSessionsAndAccounts`
+  gegen den echten Bestand laeuft) wurde vorgeschlagen, aber nicht eingebaut.
+  Die Migration ist gegen Testdaten durchgespielt und nachgewiesenermassen
+  sicher (siehe „Getroffene Entscheidungen" oben), aber „nachgewiesenermassen
+  sicher am Testdatensatz" ist nicht dasselbe wie „eine Sicherung existiert,
+  falls doch". Die Entscheidung, ob das noetig ist, liegt beim Nutzer.
+
+### Naechste Etappe
+
+**Etappe 8 — Handel zwischen Spielern.** Entwicklungskarten sind bereits aus
+Etappe 8 vorgezogen (siehe weiter oben in dieser Datei); was bleibt, ist der
+Tausch zwischen zwei Spielern selbst.
