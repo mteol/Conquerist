@@ -35,6 +35,8 @@ export class RejectedError extends Error {
 export interface Session {
   userId: string | null;
   roomCode: string | null;
+  /** Womit sich diese Verbindung abmelden kann. `hello` traegt ihn ein. */
+  tokenHash: string | null;
 }
 
 /**

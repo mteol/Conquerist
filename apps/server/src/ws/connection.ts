@@ -20,7 +20,7 @@ export class Connection {
    * Der Server liest die Identitaet ausschliesslich hier und nie aus einer
    * eingehenden Nachricht - sonst koennte sich jeder als jeder ausgeben.
    */
-  readonly session: Session = { userId: null, roomCode: null };
+  readonly session: Session = { userId: null, roomCode: null, tokenHash: null };
 
   /** Ungefragtes Senden, jede Nachricht vorher gegen ihr Schema geprueft. */
   readonly events: EventSink;

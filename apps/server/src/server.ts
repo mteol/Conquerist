@@ -4,10 +4,12 @@ import { buildApp } from './app.js';
 import { MessageRouter } from './ws/router.js';
 import { registerPingHandler } from './ws/handlers/ping.js';
 import { handleDisconnect, registerRoomHandlers } from './ws/handlers/room.js';
+import { registerAuthHandlers } from './ws/handlers/auth.js';
 import { attachWebSocketServer } from './ws/attach.js';
 import { openDatabase } from './db/database.js';
 import { Users } from './identity/users.js';
 import { Sessions } from './identity/sessions.js';
+import { Accounts } from './identity/accounts.js';
 import { RoomRegistry } from './rooms/registry.js';
 import { SqliteRoomStore } from './rooms/sqliteStore.js';
 import { SinkHub } from './ws/sinks.js';
@@ -23,6 +25,7 @@ async function main(): Promise<void> {
   // Eine einzige Instanz: sonst saehe jede Stelle ihre eigenen Sitzungen,
   // statt derselben Sitzungstabelle.
   const sessions = new Sessions(database);
+  const users = new Users(database, sessions);
 
   const deps = {
     // Aus dem, was auf der Platte liegt: ein Neustart kostet keine Partie.
@@ -33,9 +36,12 @@ async function main(): Promise<void> {
         app.log.error({ code, err: error }, 'Raum liess sich nicht schreiben');
       },
     }),
-    users: new Users(database, sessions),
+    users,
     sinks: new SinkHub(),
   };
+  // Dieselbe Sessions-Instanz wie oben - Accounts und Users teilen sich eine
+  // Sitzungstabelle, sonst saehen sie unterschiedliche Anmeldungen.
+  const accounts = new Accounts(users, sessions);
 
   app.log.info({ rooms: deps.registry.all.length }, 'Raeume von der Platte geladen');
 
@@ -47,6 +53,7 @@ async function main(): Promise<void> {
 
   registerPingHandler(router);
   registerRoomHandlers(router, deps);
+  registerAuthHandlers(router, { accounts, users, registry: deps.registry, sinks: deps.sinks });
 
   // Reihenfolge: den upgrade-Listener registrieren, BEVOR gelauscht wird.
   const ws = attachWebSocketServer({

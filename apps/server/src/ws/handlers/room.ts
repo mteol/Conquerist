@@ -65,6 +65,7 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     }
 
     context.session.userId = result.user.id;
+    context.session.tokenHash = result.tokenHash;
     sinks.add(result.user.id, context.events);
 
     /*

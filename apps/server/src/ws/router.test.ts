@@ -7,7 +7,7 @@ import { registerPingHandler } from './handlers/ping.js';
 const context: RequestContext = {
   connectionId: 'conn-test',
   receivedAt: 1_700_000_000_000,
-  session: { userId: null, roomCode: null },
+  session: { userId: null, roomCode: null, tokenHash: null },
   events: { send: () => undefined },
 };
 

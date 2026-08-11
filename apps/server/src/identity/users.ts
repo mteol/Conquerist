@@ -116,6 +116,52 @@ export class Users {
     const row = this.database.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number };
     return row.n;
   }
+
+  /**
+   * Aus dem Gast wird ein Konto - dieselbe Zeile, nur voller.
+   *
+   * `is_guest` und `login` werden zusammen gesetzt. Sie sagen dasselbe, und
+   * getrennt gesetzt liefe genau das auseinander.
+   */
+  claim(
+    id: string,
+    fields: {
+      readonly login: string;
+      readonly passwordHash: string;
+      readonly email?: string | undefined;
+      readonly name?: string | undefined;
+    },
+  ): User {
+    this.database
+      .prepare(
+        `UPDATE users
+            SET login = ?, password_hash = ?, email = ?, is_guest = 0,
+                name = COALESCE(?, name)
+          WHERE id = ?`,
+      )
+      .run(fields.login, fields.passwordHash, fields.email ?? null, fields.name ?? null, id);
+
+    const user = this.byId(id);
+    if (user === undefined) throw new Error('Beanspruchte Zeile ist verschwunden');
+    return user;
+  }
+
+  createAccount(fields: {
+    readonly login: string;
+    readonly passwordHash: string;
+    readonly email?: string | undefined;
+    readonly name: string;
+  }): User {
+    const id = randomUUID();
+    this.database
+      .prepare(
+        `INSERT INTO users (id, name, is_guest, login, password_hash, email, created_at)
+         VALUES (?, ?, 0, ?, ?, ?, ?)`,
+      )
+      .run(id, fields.name, fields.login, fields.passwordHash, fields.email ?? null, Date.now());
+
+    return { id, name: fields.name, isGuest: false, login: fields.login };
+  }
 }
 
 function toUser(row: UserRow): User {
