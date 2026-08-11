@@ -122,6 +122,17 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
 - Eine Animation, die etwas ausblendet, ist bei `prefers-reduced-motion` von
   Anfang an unsichtbar — die abgeschaltete Animation steht sofort an ihrem
   Ende. Für Information deshalb nur Eingangs-, nie Ausgangsanimationen.
+- **`prefers-reduced-motion` kürzt nur, was man ihm nennt.** Der übliche Block
+  setzt `animation-duration` — die **Verzögerung** bleibt stehen, und mit
+  `backwards` hängt das Element solange in seiner Anfangsstellung fest. Bei
+  einem Eingang heißt die „unsichtbar": das Hauptmenü hatte damit keine
+  Animation mehr, aber immer noch eine Choreografie (gemessen: die drei
+  Einträge sprangen bei 333/396/459 ms nacheinander ins Bild). `animation-delay`
+  gehört deshalb in denselben Block, negativ.
+- **Ein fester Aufschlag auf einen Wert, der nicht überall gleich ist, ist kein
+  fester Effekt.** Die Aufprallwelle hob jedes Hex um `+0.34` — in der Mitte
+  nicht ganz das Doppelte, am Rand fast das Siebenfache, also nach außen hin
+  lauter statt leiser. Wer eine Ruhelage anhebt, rechnet in Anteilen davon.
 
 ## Etappenplan
 0. ✅ Monorepo-Grundgerüst, WS-Ping/Pong

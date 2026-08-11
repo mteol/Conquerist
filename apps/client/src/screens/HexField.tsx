@@ -21,9 +21,14 @@ import { hexCenter, hexCorners } from '../board/layout';
  * Zustandswechsel und faellt unter Regel 5; ein Aufprall, den man sieht, ist
  * der Zustandswechsel.
  *
- * Der Abstand zur Mitte steuert beides - wie deutlich ein Hex in Ruhe ist und
- * wann die Welle es erreicht. Beides aus derselben Zahl, damit es nicht zwei
- * Vorstellungen davon gibt, wo die Mitte liegt.
+ * Der Abstand zur Mitte steuert alles drei - wie deutlich ein Hex in Ruhe ist,
+ * wann die Welle es erreicht, und wie weit sie es hebt. Alles aus derselben
+ * Zahl, damit es nicht zwei Vorstellungen davon gibt, wo die Mitte liegt.
+ *
+ * Das Heben rechnet sich `index.css` selbst aus der Ruhelage aus (ein Anteil
+ * davon, kein fester Betrag - sonst wuerde die Welle nach aussen lauter statt
+ * leiser). Hier steht deshalb nur `--rest`; eine zweite Zahl dafuer waere
+ * dieselbe Auskunft ein zweites Mal.
  */
 
 /** Wie weit das Feld reicht, in Ringen um die Mitte. Sechs fuellen jeden Bildschirm. */

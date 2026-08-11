@@ -70,13 +70,32 @@ body {
   outline-offset: 2px;
 }
 
+/*
+ * Bewegung abbestellt heisst: die Flaeche steht fertig da, nicht sie laeuft
+ * schneller ab.
+ *
+ * **Die Dauer allein genuegt nicht.** Eine Verzoegerung, die stehen bleibt,
+ * haelt das Element mit `backwards` in seiner Anfangsstellung fest - und die
+ * heisst bei einem Eingang „unsichtbar". Gemessen am Hauptmenue, bevor
+ * `animation-delay` hier stand: die drei Eintraege sprangen bei 333, 396 und
+ * 459 ms nacheinander ins Bild. Also keine Animation mehr, aber immer noch
+ * eine Choreografie - genau das, was hier abbestellt wurde.
+ *
+ * Die Verzoegerung ist deshalb negativ: die Animation ist damit schon vorbei,
+ * bevor das erste Bild gezeichnet wird. Eine Verzoegerung von null waere nur
+ * fast richtig - sie liesse den Anfangszustand noch ein Bild lang stehen.
+ * `!important` schlaegt auch das `style`-Attribut, und genau dort steht die
+ * Verzoegerung der Hexe (`HexField.tsx`).
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: -1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
   }
 }
 
@@ -219,6 +238,22 @@ body {
   animation: hex-impact 620ms ease-out backwards;
 }
 
+/*
+ * Der Hub ist ein Anteil der Ruhelage, kein fester Betrag.
+ *
+ * Vorher stand hier `+ 0.34` fuer jedes Hex gleich. Das klang richtig und war
+ * es nicht: in der Mitte (Ruhelage 0,40) ist das nicht ganz das Doppelte, am
+ * Rand (0,06) fast das Siebenfache. Die Welle wurde nach aussen hin lauter,
+ * und das Rand-Hex erreichte auf seiner Spitze genau die Helligkeit, die das
+ * Zentrum in Ruhe hat. Ein Aufprall, der beim Wandern kraeftiger wird,
+ * erzaehlt das Gegenteil eines Aufpralls - und sein lautester Moment fiel
+ * ausgerechnet dorthin, wo die Menueeintraege landen.
+ *
+ * Mit dem Faktor hebt die Welle jedes Hex um denselben Anteil dessen, was es
+ * ohnehin hergibt. Sie zerfaellt damit nach aussen genau so, wie sich das Feld
+ * selbst nach aussen verliert - dieselbe Zahl regiert beides. In der Mitte
+ * bleibt alles, wie es war (0,40 auf 0,74; Strich 0,012 auf 0,030).
+ */
 @keyframes hex-impact {
   0%,
   100% {
@@ -227,8 +262,8 @@ body {
   }
 
   30% {
-    opacity: calc(var(--rest) + 0.34);
-    stroke-width: 0.03;
+    opacity: calc(var(--rest) * 1.85);
+    stroke-width: calc(0.012 + var(--rest) * 0.045);
   }
 }
 

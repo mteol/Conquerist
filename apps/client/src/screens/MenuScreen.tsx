@@ -27,10 +27,17 @@ import { Wordmark } from './Wordmark';
  * gibt: Dauerbewegung, Schweben, Parallaxe am Mauszeiger. Das waere Dekoration
  * und faellt unter denselben Satz.
  *
- * Alle Animationen sind Eingaenge und enden in ihrer Ruhelage. Bei
- * `prefers-reduced-motion` steht die Flaeche damit sofort fertig da - der Fall,
- * der in `CLAUDE.md` als Falle notiert ist (eine abgeschaltete
- * Ausgangsanimation stuende sofort an ihrem Ende und waere unsichtbar).
+ * Alle Animationen sind Eingaenge und enden in ihrer Ruhelage - der Fall, der
+ * in `CLAUDE.md` als Falle notiert ist (eine abgeschaltete Ausgangsanimation
+ * stuende sofort an ihrem Ende und waere unsichtbar).
+ *
+ * **Das allein reicht bei `prefers-reduced-motion` aber nicht**, und hier stand
+ * eine Zeit lang das Gegenteil. Die Ruhelage am Ende hilft nur, wenn die
+ * Animation auch wirklich vorbei ist; die Verzoegerungen dieses Bildschirms
+ * (260 ms fuer den Untertitel, 320 + 65 ms je Eintrag) blieben von der
+ * Kuerzung der Dauer unberuehrt. Gemessen: die drei Eintraege sprangen bei
+ * 333, 396 und 459 ms nacheinander ins Bild - keine Animation mehr, aber immer
+ * noch eine Choreografie. Seither kuerzt `index.css` auch die Verzoegerung.
  */
 export type MenuChoice = 'online' | 'local' | 'join' | 'resume';
 

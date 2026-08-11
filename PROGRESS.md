@@ -1328,3 +1328,124 @@ losfliegen. Die Voreinstellung ist deshalb „steht einfach da".
 
 Unveraendert **Etappe 7: Auth** — Registrierung, Login, Gast-Account
 beanspruchen.
+
+## Die Choreografie zum ersten Mal gesehen ✅
+
+Stand: 2026-08-11, Branch `etappe-4-online`, direkt nach `1fa1b55`. Der
+Abschnitt davor endete mit „die Animation ist ungesehen" und der Bitte, die
+Zahlen nach dem ersten Ansehen anzufassen statt zu verteidigen. Das ist jetzt
+passiert — im Browser, mit gemessenen Werten. Zwei Dinge waren zu aendern, die
+Zahlen selbst keins davon.
+
+### Abnahme
+
+| Pruefung                                      | Ergebnis                                               |
+| --------------------------------------------- | ------------------------------------------------------ |
+| `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                                  |
+| `pnpm test`                                   | 726 Tests gruen (shared 492, server 74, client 160)    |
+| `pnpm build`                                  | gruen, Client-Bundle 362 kB (109 kB gzip), CSS 22,7 kB |
+| `pnpm format:check`                           | gruen                                                  |
+
+**Diese Aenderung hat keinen Test.** Beides sind reine CSS-Aenderungen, und
+jsdom loest keine Animationen auf — ein Test haette hier nur behauptet, dass
+eine Klasse gesetzt ist. Belegt ist es stattdessen im Browser: die Werte unten
+sind aus dem laufenden Client abgelesen (`getComputedStyle` auf der Spitze der
+Welle, Echtzeitmessung fuer den Reduce-Fall), nicht nachgerechnet. Der
+Reduce-Test hat seine Regeln aus dem geladenen Stylesheet gezogen statt sie
+nachzubauen, damit er den Code prueft und nicht meine Vorstellung davon.
+
+### Die beiden offenen Fragen von letztem Mal, beantwortet
+
+**„Wirken 240 ms schnell genug?" — ja, und zwar weil die Kurve vorne liegt.**
+`cubic-bezier(0.12, 0.72, 0.16, 1)` ist so stark vorne lastig, dass die Marke
+nach etwa der Haelfte der Zeit praktisch angekommen ist; der Rest gehoert dem
+Einrasten. Bei 45 ms steht sie noch links, geschert und in die Laenge gezogen,
+bei 100 ms rauscht sie heran, bei 170 ms sitzt sie. Das liest sich als
+Schnappen und nicht als Reinrutschen. Die Zahl bleibt.
+
+**„Ist die Welle sichtbar oder nur messbar?" — sichtbar, und das war das
+Problem.** Siehe unten.
+
+### Getroffene Entscheidungen
+
+**Der Hub der Welle ist ein Anteil der Ruhelage, kein fester Betrag.** Vorher
+stand im Keyframe `calc(var(--rest) + 0.34)` — fuer jedes Hex derselbe Aufschlag.
+Das klang richtig und war es nicht, weil die Ruhelage eben nicht ueberall
+dieselbe ist: in der Mitte (0,40) ist der Aufschlag nicht ganz das Doppelte, am
+Rand (0,06) fast das Siebenfache. Gemessen:
+
+|       | Ruhelage | Spitze alt | Faktor alt | Spitze neu | Faktor neu |
+| ----- | -------- | ---------- | ---------- | ---------- | ---------- |
+| Mitte | 0,40     | 0,74       | 1,85x      | 0,74       | 1,85x      |
+| Rand  | 0,06     | 0,40       | 6,67x      | 0,111      | 1,85x      |
+
+Das Rand-Hex erreichte auf seiner Spitze genau die Helligkeit, die das Zentrum
+in Ruhe hat. Die Welle wurde nach aussen also lauter statt leiser — ein
+Aufprall, der beim Wandern kraeftiger wird, erzaehlt das Gegenteil eines
+Aufpralls. Dazu kam, dass ihr lautester Moment (Rand-Spitze bei 666 ms) genau
+dorthin fiel, wo die Menueeintraege landen (320 bis 750 ms): der Hintergrund
+schrie im selben Augenblick, in dem die Bedienelemente ankamen, und das ist
+Regel 4 auf den Kopf gestellt. Jetzt steht dort `calc(var(--rest) * 1.85)`, und
+die Strichstaerke folgt derselben Logik (`calc(0.012 + var(--rest) * 0.045)`).
+In der Mitte aendert sich damit nichts, am Rand zerfaellt die Welle so, wie sich
+das Feld selbst nach aussen verliert.
+
+**Das Heben rechnet das CSS aus `--rest`, es gibt keine zweite Variable.**
+`HexField.tsx` musste dafuer nicht angefasst werden — die Ruhelage steht ohnehin
+schon am Element, und der Hub ist eine Funktion davon. Eine eigene `--lift`
+waere dieselbe Auskunft ein zweites Mal und beim naechsten Anfassen die
+Gelegenheit, dass die beiden auseinanderlaufen.
+
+**`prefers-reduced-motion` schaltete die Choreografie nicht ab — nur ihre
+Geschwindigkeit.** Der Block in `index.css` setzte `animation-duration` und
+`transition-duration` auf 0,01 ms, aber nicht die **Verzoegerung**. Mit
+`backwards` heisst eine ueberlebende Verzoegerung: das Element haengt in seiner
+Anfangsstellung fest, und die heisst bei einem Eingang „unsichtbar". Gemessen in
+Echtzeit, bevor es behoben war:
+
+```
+t =   4 ms   0 von 3 Eintraegen sichtbar
+t = 333 ms   1
+t = 396 ms   2
+t = 459 ms   3
+```
+
+Also eine knappe halbe Sekunde leere Flaeche und dann ein dreifaches
+Aufploppen — keine Animation mehr, aber immer noch eine Choreografie, und
+genau die war abbestellt worden. Der Block kuerzt jetzt auch
+`animation-delay`, und zwar auf **-1 ms**: negativ, damit die Animation schon
+vorbei ist, bevor das erste Bild gezeichnet wird. Null waere nur fast richtig,
+das liesse den Anfangszustand noch ein Bild lang stehen. `!important` schlaegt
+dabei auch das `style`-Attribut — noetig, weil die Verzoegerung der Hexe von
+`HexField.tsx` genau dort landet. Nach der Aenderung stehen bei t = 0 alle drei
+Eintraege und der Untertitel da.
+
+**Die falsche Aussage ist korrigiert, nicht stillschweigend ersetzt.** In
+`MenuScreen.tsx` stand, bei `prefers-reduced-motion` stehe die Flaeche „sofort
+fertig da", und im Abschnitt davor in dieser Datei sinngemaess dasselbe. Das
+war schlicht nicht wahr. Der Kommentar sagt jetzt, was stattdessen passierte
+und warum die Schlussstellung allein nicht genuegt — eine Falle, die man
+zweimal stellt, wenn man nur den Code repariert und die Begruendung stehen
+laesst.
+
+### Abweichungen vom Plan
+
+Keine — es gab keinen Plan ausser „ansehen und die Zahlen anfassen". Angefasst
+wurden am Ende nicht die Zahlen, sondern zwei Regeln dahinter; die Zeitwerte
+haben sich im Ansehen bestaetigt.
+
+### Offene Punkte
+
+- **Nur in einem Browser und einem Fenster gesehen** (Chrome, breites Fenster).
+  Das schmale Handy-Fenster aus Regel 7 ist fuer diesen Bildschirm noch
+  ungeprueft.
+- **Der echte Reduce-Modus ist nicht geschaltet worden.** Geprueft wurde mit
+  den Regeln aus dem eigenen Stylesheet, angewandt ohne das Media-Query — das
+  prueft die Deklarationen, nicht das Umschalten des Systems.
+- Aus dem Abschnitt davor bleiben offen: **der Startbildschirm mit dem
+  gesetzten Titel** und **der Schwanz des „Q"**. Beide unveraendert.
+
+### Naechste Etappe
+
+Unveraendert **Etappe 7: Auth** — Registrierung, Login, Gast-Account
+beanspruchen.
