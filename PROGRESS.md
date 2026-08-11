@@ -1220,3 +1220,111 @@ Form wie bei der Wuerfelschale.
 
 Keine neuen. Der Nutzer hat weitere Menuearbeit angekuendigt; was genau, steht
 noch nicht fest.
+
+## Die Ankunft: eine gezeichnete Wortmarke und eine Choreografie ✅
+
+Stand: 2026-08-02, Branch `etappe-4-online`. Die angekuendigte Menuearbeit. Der
+Bildschirm bekommt einen Titel, der ihm gehoert, und einen Eingang.
+
+### Abnahme
+
+| Pruefung                                      | Ergebnis                                               |
+| --------------------------------------------- | ------------------------------------------------------ |
+| `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                                  |
+| `pnpm test`                                   | 726 Tests gruen (shared 492, server 74, client 160)    |
+| `pnpm build`                                  | gruen, Client-Bundle 362 kB (109 kB gzip), CSS 22,6 kB |
+| `pnpm format:check`                           | gruen                                                  |
+
+Nicht geprueft: **wie sich die Animation im Browser anfuehlt.** Es stand keine
+Browsersteuerung zur Verfuegung. Die Buchstabenformen und die Flugpose wurden
+gerastert und angesehen (ein eigener Scanline-Rasterer im Scratchpad, kein
+Bestandteil des Projekts); die Zeitverhaeltnisse sind gerechnet, nicht gesehen.
+Wer sie das erste Mal laufen sieht, sollte auf zwei Dinge achten: ob 240 ms
+schnell genug wirken und ob die Welle im Hexfeld sichtbar oder nur messbar ist.
+
+### Getroffene Entscheidungen
+
+**Der Titel ist gezeichnet, nicht gesetzt — und damit bleibt Regel 3 heil.**
+Der Wunsch war „eine bessere Schriftart fuer das Logo", und Regel 3 verbietet
+den Font-Download. Die drei Wege waren: einen Subset-Font mitbuendeln (haette
+die Regel aufgeweicht), die Systemschrift nur staerker setzen (haette kaum
+etwas geaendert), oder die zehn Buchstaben zeichnen. Es sind jetzt zehn Pfade in
+`Wordmark.tsx` — kein Font, kein Download, keine Regel gebogen.
+
+**Die Schrift ist aus demselben Winkel geschnitten wie das Brett.** Das ist der
+Grund, warum das Zeichnen nicht nur der billigste Ausweg war, sondern der
+bessere Entwurf: wo eine normale Schrift rundet, hat diese eine Fase. C, O, Q,
+S und U bekommen abgeschraegte Ecken statt Boegen; E, N, I und T sind ohnehin
+eckig. Damit ist der Titel nicht „eine Schrift, die zum Spiel passt", sondern
+aus demselben Material wie das Hexfeld dahinter, das schon mit den Funktionen
+des Bretts gezeichnet wird. Ein Raster haelt alle zehn zusammen: Versalhoehe
+100, Stammbreite 17 ueberall, Fase 17 aussen und 10 im Innenraum. Wer einen
+Buchstaben aendert, haelt diese drei Zahlen ein — eine Fase von 12 an einer
+Stelle sieht nicht nach Variante aus, sondern nach Versehen.
+
+**Regel 5 gilt weiter, der Eingang ist keine Ausnahme davon.** „Bewegung
+erklaert einen Zustandswechsel oder entfaellt" — der Eingang _ist_ ein
+Zustandswechsel: vorher war nichts da, jetzt ist die Anwendung da. Deshalb
+schnellt die Marke herein und rastet ein, der Aufprall laeuft einmal als Welle
+durchs Hexfeld, die Wege fallen von oben nach. Danach steht alles still. Was
+ausdruecklich nicht gebaut wurde, obwohl es angeboten war: Dauerbewegung,
+Atmen, Parallaxe am Mauszeiger. Das waere Dekoration und faellt unter denselben
+Satz. Der Kommentar in `MenuScreen.tsx`, der bisher „ohne Bewegung, mit
+Absicht" sagte, sagt jetzt, warum es diese eine gibt.
+
+**`backwards` statt `both`, und diesmal aus zwei Gruenden.** Der bekannte:
+`prefers-reduced-motion` setzt die Dauer auf 0.01 ms, die Animation steht also
+sofort an ihrem Ende — ein Ende darf deshalb nie „unsichtbar" heissen. Der
+neue: `both` laesst die Schlussbildmarke fuer immer stehen. Der Eingang der
+Menueeintraege endet auf `translateY(0)`, und das haette jedes spaetere
+`transform` beim Hover ueberstimmt — die Knoepfe haetten sich nach dem
+Eingang nicht mehr geruehrt. Das ist beim Schreiben aufgefallen, nicht beim
+Testen; ein Test darauf gibt es nicht, weil jsdom keine Animationen aufloest.
+
+**Die Falle mit dem Praesentationsattribut waere fast ein zweites Mal
+zugeschnappt.** In `CLAUDE.md` steht seit `.road { stroke: transparent }`, dass
+eine CSS-Regel immer das gleichnamige SVG-Praesentationsattribut schlaegt. Die
+Buchstabengruppen tragen ihre Position als `transform`-Attribut — eine
+CSS-Animation auf derselben Gruppe haette alle zehn Buchstaben auf x = 0
+uebereinandergelegt. Die Animation laeuft deshalb auf dem `path` in der Gruppe.
+`Wordmark.test.tsx` haelt genau das fest: Attribut auf der Gruppe, kein
+Inline-`transform`, genau ein `path` darin.
+
+**Die Ruhelage jedes Hex steht als Variable am Element.** Die Welle hebt jedes
+Hex kurz aus seiner Deckkraft und laesst es zurueckfallen. Damit sie weiss,
+wohin zurueck, gibt `HexField.tsx` die aus dem Abstand gerechnete Ruhelage als
+`--rest` mit; die Keyframes beginnen und enden dort. Ohne das fiele die Flaeche
+nach der Welle auf null. Dieselbe Zahl steuert die Verzoegerung — deshalb
+laeuft die Welle als Ring nach aussen und blinkt nicht als ganze Flaeche.
+
+**Der Platz in der Reihe ist eine Zahl, keine Klasse.** `MenuScreen.tsx` gibt
+jedem Eintrag `--i`, das CSS rechnet daraus die Verzoegerung. Vier Klassen fuer
+vier Verzoegerungen waeren dieselbe Auskunft, nur haendisch gepflegt — und beim
+fuenften Eintrag vergessen. „Weiterspielen" schiebt die drei Wege eine Stufe
+weiter, damit nie zwei Eintraege gleichzeitig fallen; ein Test haelt beide
+Faelle fest.
+
+### Abweichungen vom Plan
+
+Die Wortmarke hat eine Eigenschaft `animated`, die nur das Hauptmenue setzt.
+Das ist Vorbau im Sinne von Regel 5, nicht im Sinne von „fuer spaeter": stuende
+die Marke irgendwo sonst, duerfte sie dort nicht bei jedem Aufruf wieder
+losfliegen. Die Voreinstellung ist deshalb „steht einfach da".
+
+### Offene Punkte
+
+- **Die Animation ist ungesehen.** Siehe Abnahme. Die Zahlen (240 ms Flug,
+  8 ms Versatz je Buchstabe, 65 ms zwischen den Eintraegen) sind ein Entwurf
+  und sollen nach dem ersten Ansehen angefasst werden, nicht verteidigt.
+- **Der Startbildschirm traegt weiter den gesetzten Titel.** Er koennte die
+  Wortmarke bekommen, aber kleiner und ohne Eingang. Bewusst nicht
+  mitgemacht — das war nicht die Aufgabe, und ein zweiter Ort fuer dieselbe
+  Marke will erst entschieden sein.
+- **Der Schwanz des „Q" endet auf der Grundlinie**, statt darunter
+  auszulaufen. Bei 744 Einheiten Wortbreite liest es sich als Q; wer die Marke
+  einmal sehr gross setzt, sollte noch einmal hinsehen.
+
+### Naechste Etappe
+
+Unveraendert **Etappe 7: Auth** — Registrierung, Login, Gast-Account
+beanspruchen.

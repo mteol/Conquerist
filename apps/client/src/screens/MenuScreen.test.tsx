@@ -48,4 +48,47 @@ describe('Hauptmenue', () => {
     expect(field).not.toBeNull();
     expect(field?.querySelectorAll('polygon').length).toBeGreaterThan(50);
   });
+
+  it('traegt den Titel als gezeichnete Wortmarke, den Namen trotzdem als Text', () => {
+    const { container } = render(<MenuScreen onChoose={vi.fn()} />);
+
+    // Die Ueberschrift heisst weiter „Conquerist" - aus Pfaddaten laesst sich
+    // kein zugaenglicher Name ableiten, also steht er unsichtbar daneben.
+    const heading = screen.getByRole('heading', { name: 'Conquerist' });
+    expect(heading.querySelector('.wordmark--enter')).not.toBeNull();
+    expect(container.querySelectorAll('.wordmark__letter').length).toBe(10);
+  });
+
+  it('laesst den Aufprall von innen nach aussen laufen, nicht ueberall zugleich', () => {
+    const { container } = render(<MenuScreen onChoose={vi.fn()} />);
+
+    const delays = [...container.querySelectorAll<HTMLElement>('.hexfield polygon')].map((hex) =>
+      Number.parseInt(hex.style.animationDelay, 10),
+    );
+
+    // Das mittlere Hex wird zuerst erreicht, das aeusserste zuletzt. Waeren
+    // alle Verzoegerungen gleich, blinkte die Flaeche statt zu schwingen.
+    expect(Math.min(...delays)).toBeLessThan(Math.max(...delays));
+    expect(new Set(delays).size).toBeGreaterThan(3);
+
+    // Und jedes Hex kennt seine Ruhelage - die Welle beginnt und endet dort,
+    // wo das Hex ohnehin liegt. Ohne `--rest` faellt es danach auf null.
+    const first = container.querySelector<HTMLElement>('.hexfield polygon');
+    expect(Number(first?.style.getPropertyValue('--rest'))).toBeGreaterThan(0);
+  });
+
+  it('gibt jedem Weg seinen Platz in der Reihe, auch mit Weiterspielen davor', () => {
+    const { container, rerender } = render(<MenuScreen onChoose={vi.fn()} />);
+    const order = () =>
+      [...container.querySelectorAll<HTMLElement>('.menu__entry')].map((entry) =>
+        entry.style.getPropertyValue('--i'),
+      );
+
+    expect(order()).toEqual(['0', '1', '2']);
+
+    // „Weiterspielen" rueckt vor die drei Wege und schiebt sie eine Stufe
+    // weiter - sonst fielen zwei Eintraege gleichzeitig.
+    rerender(<MenuScreen onChoose={vi.fn()} openGames={2} />);
+    expect(order()).toEqual(['0', '1', '2', '3']);
+  });
 });

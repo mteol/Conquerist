@@ -82,6 +82,25 @@ body {
 
 /* --- Wiederkehrende Bausteine -------------------------------------------- */
 
+/*
+ * Text, der nur fuer Vorlesegeraete da ist.
+ *
+ * Gebraucht, wo eine Ueberschrift gezeichnet und nicht gesetzt ist: die
+ * Wortmarke ist ein SVG, und aus Pfaddaten laesst sich kein Name ableiten.
+ * Nicht `display: none` - das nimmt den Text auch aus der Vorlesereihenfolge.
+ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .eyebrow {
   font-size: 0.68rem;
   font-weight: 700;
@@ -138,6 +157,34 @@ body {
  * Funktionen des Bretts, nicht als Muster. Darueber liegt derselbe
  * Tiefsee-Verlauf wie auf den anderen Bildschirmen, damit die Mitte traegt und
  * die Raender sich verlieren.
+ *
+ * ## Die Ankunft
+ *
+ * Der Bildschirm hatte bewusst keine Bewegung. Der Eingang ist die Ausnahme,
+ * und Regel 5 traegt sie: vorher war nichts da, jetzt ist die Anwendung da -
+ * das ist ein Zustandswechsel, und er wird gezeigt.
+ *
+ *     0 ms   Wortmarke steht links ausserhalb, geschert und in die Laenge
+ *            gezogen (die Verzerrung ist die Geschwindigkeit, nicht Zierat)
+ *   0-240    schnellt herein, harte Verzoegerung statt weichem Ausschwingen
+ *   ~200     rastet ein: kurzer Ueberschuss, dann Stauchung zurueck
+ *   200-480  der Aufprall laeuft als Welle durchs Hexfeld, von innen nach
+ *            aussen (`IMPACT_MS` und `TRAVEL_MS` in `HexField.tsx`)
+ *   260      der Untertitel blendet auf
+ *   320+     die Wege fallen von oben nach, 65 ms auseinander
+ *   danach   Ruhe. Nur Hover und Klick antworten noch.
+ *
+ * **Alle vier Animationen sind Eingaenge und laufen mit `backwards`, nicht mit
+ * `both`.** Zwei Gruende, beide schon einmal teuer gewesen:
+ *
+ * 1. `both` laesst die Schlussbildmarke fuer immer stehen. Der Eingang der
+ *    Eintraege endet auf `translateY(0)` - das haette jedes spaetere
+ *    `transform` beim Hover ueberstimmt, und der Knopf haette sich nicht mehr
+ *    geruehrt.
+ * 2. Bei `prefers-reduced-motion` laeuft die Dauer auf 0.01 ms. Mit
+ *    `backwards` steht danach die Ruhelage da - fertig und sichtbar. Das ist
+ *    genau die Falle aus `CLAUDE.md`: eine abgeschaltete Animation steht
+ *    sofort an ihrem Ende, und ein Ende darf deshalb nie „unsichtbar" heissen.
  */
 
 .menu {
@@ -160,6 +207,31 @@ body {
   stroke-width: 0.012;
 }
 
+/*
+ * Jedes Hex liegt in seiner Ruhelage und wird einmal davon weggehoben. Die
+ * Ruhelage steht als `--rest` am Element (aus dem Abstand zur Mitte gerechnet),
+ * damit die Welle sie kennt: sie beginnt und endet dort, wo das Hex ohnehin
+ * liegt. Die Verzoegerung je Hex kommt aus demselben Abstand - deshalb laeuft
+ * sie als Ring nach aussen und nicht als Blinken der ganzen Flaeche.
+ */
+.hexfield polygon {
+  opacity: var(--rest);
+  animation: hex-impact 620ms ease-out backwards;
+}
+
+@keyframes hex-impact {
+  0%,
+  100% {
+    opacity: var(--rest);
+    stroke-width: 0.012;
+  }
+
+  30% {
+    opacity: calc(var(--rest) + 0.34);
+    stroke-width: 0.03;
+  }
+}
+
 .menu__inner {
   position: relative;
   display: flex;
@@ -171,25 +243,104 @@ body {
 }
 
 /*
- * Der Titel in derselben Setzung wie auf dem Startbildschirm, nur groesser:
- * hoher Gewichtssprung, sehr enge Laufweite, Versalien. Kein Webfont - die
- * Persoenlichkeit kommt aus der Setzung (Regel 3).
+ * Die Ueberschrift traegt keinen Text mehr, sondern die gezeichnete Wortmarke
+ * (`Wordmark.tsx`) und daneben denselben Namen unsichtbar fuer Vorlesegeraete.
+ * Deshalb hier keine Schriftsetzung - es gibt nichts zu setzen.
  */
-.menu__brand h1 {
+.menu__title {
   margin: 0;
-  font-size: clamp(3.2rem, 11vw, 7rem);
-  font-weight: 800;
-  letter-spacing: -0.05em;
-  line-height: 0.9;
-  text-transform: uppercase;
-  color: var(--parchment);
+  line-height: 0;
+}
+
+.wordmark {
+  display: block;
+  width: min(78vw, 42rem);
+  height: auto;
+  fill: var(--parchment);
+}
+
+/*
+ * Der Zap. Der Drehpunkt liegt rechts: was sich nach rechts bewegt, wird nach
+ * hinten in die Laenge gezogen und nicht nach vorne. Beim Einrasten staucht
+ * dieselbe Achse zurueck - der Aufprall sitzt vorne.
+ */
+.wordmark--enter {
+  transform-origin: 100% 50%;
+  animation: wordmark-zap 240ms cubic-bezier(0.12, 0.72, 0.16, 1) backwards;
+}
+
+@keyframes wordmark-zap {
+  0% {
+    transform: translate3d(-128%, 0, 0) skewX(-16deg) scaleX(1.4);
+    opacity: 0;
+  }
+
+  45% {
+    opacity: 1;
+  }
+
+  72% {
+    transform: translate3d(2.2%, 0, 0) skewX(3deg) scaleX(1.05) scaleY(0.98);
+    opacity: 1;
+  }
+
+  88% {
+    transform: translate3d(-0.6%, 0, 0) scaleX(0.975) scaleY(1.035);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+/*
+ * Der Nachschlag je Buchstabe - sie landen 8 ms versetzt, damit das Wort
+ * hereinschnellt statt hereinzurutschen.
+ *
+ * **Das laeuft auf dem `path`, nicht auf der `g`.** Die Gruppe traegt ihre
+ * Position als `transform`-Attribut, und eine CSS-Regel schlaegt immer das
+ * gleichnamige SVG-Praesentationsattribut - die Animation haette alle zehn
+ * Buchstaben auf x = 0 uebereinandergelegt. Dieselbe Falle wie damals bei
+ * `.road { stroke: transparent }`.
+ */
+.wordmark--enter .wordmark__letter > path {
+  animation: wordmark-whip 240ms cubic-bezier(0.1, 0.75, 0.18, 1) backwards;
+  animation-delay: calc(var(--i) * 8ms);
+}
+
+@keyframes wordmark-whip {
+  0% {
+    transform: translateX(-55px);
+  }
+
+  70% {
+    transform: translateX(7px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
 }
 
 .menu__lead {
-  margin: 0.9rem 0 0;
+  margin: 1.1rem 0 0;
   color: var(--on-sea-muted);
   font-size: 0.9rem;
   letter-spacing: 0.02em;
+  animation: menu-rise 320ms ease-out 260ms backwards;
+}
+
+@keyframes menu-rise {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .menu__entries {
@@ -202,8 +353,14 @@ body {
 /*
  * Drei gleichwertige Zeilen. Keine wird hervorgehoben - welcher Weg der
  * richtige ist, weiss der Spieler und nicht der Bildschirm.
+ *
+ * Sie fallen von oben nach, in ihrer Lesereihenfolge. Der Platz in der Reihe
+ * kommt als `--i` aus `MenuScreen.tsx`; eine Klasse je Verzoegerung waere
+ * dieselbe Auskunft, nur haendisch gepflegt.
  */
 .menu__entry {
+  position: relative;
+  overflow: hidden;
   padding: 0.85rem 1.2rem;
   border: 1px solid rgb(233 225 207 / 22%);
   border-radius: var(--radius);
@@ -215,12 +372,53 @@ body {
   cursor: pointer;
   transition:
     background 140ms ease,
-    border-color 140ms ease;
+    border-color 140ms ease,
+    transform 140ms ease;
+  animation: menu-drop 300ms cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
+  animation-delay: calc(320ms + var(--i, 0) * 65ms);
 }
 
-.menu__entry:hover {
+@keyframes menu-drop {
+  from {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/*
+ * Die Antwort auf den Zeiger ist ein Balken, der aus der Kante waechst, und
+ * ein Ruck von zwei Pixeln - kein Leuchten. Boldness wird an einer Stelle
+ * ausgegeben (Regel 4), und diese Flaeche ist nicht die Stelle.
+ */
+.menu__entry::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--accent);
+  transform: scaleY(0);
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.menu__entry:hover,
+.menu__entry:focus-visible {
   border-color: rgb(233 225 207 / 45%);
   background: rgb(233 225 207 / 14%);
+  transform: translateX(2px);
+}
+
+.menu__entry:hover::before,
+.menu__entry:focus-visible::before {
+  transform: scaleY(1);
+}
+
+.menu__entry:active {
+  transform: translateX(2px) scale(0.985);
 }
 
 /* Weiterspielen steht oben und traegt als einziges den Akzent - es ist kein

@@ -1,4 +1,4 @@
-import { useMemo, type JSX } from 'react';
+import { useMemo, type CSSProperties, type JSX } from 'react';
 import type { Hex } from '@conquerist/shared';
 import { hexCenter, hexCorners } from '../board/layout';
 
@@ -14,13 +14,33 @@ import { hexCenter, hexCorners } from '../board/layout';
  * Nur Umrisse, keine Flaechen: der Hintergrund traegt keine Information und
  * darf deshalb nichts behaupten. Was leuchtet, sind die drei Eintraege davor.
  *
- * **Ohne Bewegung.** Ein driftendes Raster erklaert keinen Zustandswechsel und
- * faellt damit unter Regel 5 - es waere genau die Dekoration, die der
- * Design-Abschnitt ausschliesst.
+ * **Die eine Bewegung.** Wenn die Wortmarke einrastet, laeuft einmal eine Welle
+ * vom Zentrum nach aussen - jedes Hex hellt kurz auf und faellt zurueck. Das
+ * ist der Aufprall und sonst nichts: das Feld driftet nicht, atmet nicht und
+ * folgt keinem Mauszeiger. Ein driftendes Raster erklaert keinen
+ * Zustandswechsel und faellt unter Regel 5; ein Aufprall, den man sieht, ist
+ * der Zustandswechsel.
+ *
+ * Der Abstand zur Mitte steuert beides - wie deutlich ein Hex in Ruhe ist und
+ * wann die Welle es erreicht. Beides aus derselben Zahl, damit es nicht zwei
+ * Vorstellungen davon gibt, wo die Mitte liegt.
  */
 
 /** Wie weit das Feld reicht, in Ringen um die Mitte. Sechs fuellen jeden Bildschirm. */
 const RINGS = 6;
+
+/**
+ * Wann die Welle losgeht - genau dann, wenn die Wortmarke einrastet.
+ *
+ * Die Zahl steht auch in `index.css` am Einrasten der Marke. Sie hier zu
+ * verdoppeln ist der Preis dafuer, dass die Verzoegerung je Hex gerechnet
+ * werden muss; eine CSS-Variable koennte `animation-delay` nicht pro Element
+ * aus dem Abstand ableiten.
+ */
+const IMPACT_MS = 200;
+
+/** Wie lange die Welle vom Zentrum bis zum Rand braucht. */
+const TRAVEL_MS = 280;
 
 /** Alle Hexe bis zu diesem Abstand von der Mitte - die uebliche Ringformel. */
 function fieldOf(rings: number): Hex[] {
@@ -36,23 +56,33 @@ function fieldOf(rings: number): Hex[] {
 }
 
 export function HexField(): JSX.Element {
-  const paths = useMemo(
-    () =>
-      fieldOf(RINGS).map((hex) => {
-        const center = hexCenter(hex);
-        const points = hexCorners(hex)
-          .map((corner) => `${corner.x.toFixed(4)},${corner.y.toFixed(4)}`)
-          .join(' ');
+  const paths = useMemo(() => {
+    const hexes = fieldOf(RINGS).map((hex) => {
+      const center = hexCenter(hex);
+      const points = hexCorners(hex)
+        .map((corner) => `${corner.x.toFixed(4)},${corner.y.toFixed(4)}`)
+        .join(' ');
 
+      return { key: `${hex.q},${hex.r}`, points, distance: Math.hypot(center.x, center.y) };
+    });
+
+    const reach = Math.max(...hexes.map((entry) => entry.distance), 1);
+
+    return hexes.map((entry) => {
+      const share = entry.distance / reach;
+
+      return {
+        key: entry.key,
+        points: entry.points,
         // Die Entfernung zur Mitte steuert, wie deutlich ein Hex noch ist:
         // aussen verliert sich das Feld, statt an einer Kante aufzuhoeren.
-        const distance = Math.hypot(center.x, center.y);
-        return { key: `${hex.q},${hex.r}`, points, distance };
-      }),
-    [],
-  );
-
-  const reach = Math.max(...paths.map((entry) => entry.distance), 1);
+        // Die Ruhelage steht als Variable am Element, weil die Welle sie
+        // braucht - sie beginnt und endet dort, wo das Hex ohnehin liegt.
+        rest: Math.max(0.06, 0.4 - share * 0.36),
+        delay: IMPACT_MS + share * TRAVEL_MS,
+      };
+    });
+  }, []);
 
   return (
     <svg
@@ -65,7 +95,12 @@ export function HexField(): JSX.Element {
         <polygon
           key={entry.key}
           points={entry.points}
-          style={{ opacity: Math.max(0.06, 0.4 - (entry.distance / reach) * 0.36) }}
+          style={
+            {
+              '--rest': entry.rest.toFixed(3),
+              animationDelay: `${entry.delay.toFixed(0)}ms`,
+            } as CSSProperties
+          }
         />
       ))}
     </svg>
