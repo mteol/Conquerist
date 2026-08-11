@@ -79,11 +79,18 @@ export class Users {
 
   createGuest(name: string): HelloResult {
     const id = randomUUID();
-    this.database
-      .prepare('INSERT INTO users (id, name, is_guest, created_at) VALUES (?, ?, 1, ?)')
-      .run(id, name, Date.now());
 
-    const { token, tokenHash } = this.sessions.issue(id);
+    // Beide Schreibvorgaenge in EINER Transaktion: sonst bliebe bei einem
+    // Fehler in sessions.issue() die users-Zeile stehen - ein Gast, zu dem es
+    // nie ein Geheimnis geben wird und der damit fuer immer unerreichbar ist.
+    const { token, tokenHash } = this.database.transaction(() => {
+      this.database
+        .prepare('INSERT INTO users (id, name, is_guest, created_at) VALUES (?, ?, 1, ?)')
+        .run(id, name, Date.now());
+
+      return this.sessions.issue(id);
+    })();
+
     return { user: { id, name, isGuest: true }, secret: token, tokenHash };
   }
 

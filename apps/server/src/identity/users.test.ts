@@ -65,6 +65,18 @@ describe('Identitaet', () => {
     expect(created.tokenHash).toHaveLength(64);
   });
 
+  it('nimmt die halbe Gast-Zeile zurueck, wenn die Sitzung nicht angelegt werden kann', () => {
+    // sessions faellt kuenstlich weg: sessions.issue() wirft dann beim INSERT.
+    // Ohne Transaktion bliebe die users-Zeile stehen - ein Gast ohne
+    // Geheimnis, den niemand je wieder erreichen kann.
+    const database = openDatabase(':memory:');
+    const store = new Users(database, new Sessions(database));
+    database.exec('DROP TABLE sessions');
+
+    expect(() => store.createGuest('Anna')).toThrow();
+    expect(store.count()).toBe(0);
+  });
+
   it('findet ein Konto an seinem Login, aber nicht an fremder Schreibweise', () => {
     const database = openDatabase(':memory:');
     const store = new Users(database, new Sessions(database));
