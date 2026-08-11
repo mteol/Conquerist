@@ -2,7 +2,7 @@
 import type { JSX } from 'react';
 import { act } from 'react';
 import { describe, expect, it } from 'vitest';
-import { AUTH_LOGIN, HELLO } from '@conquerist/shared';
+import { AUTH_LOGIN, AUTH_LOGOUT, AUTH_REGISTER, HELLO, MY_ROOMS } from '@conquerist/shared';
 import { render, screen } from '../test/dom';
 import { loadSecret } from '../net/session';
 import type { SocketLike } from '../net/types';
@@ -109,6 +109,22 @@ function Probe(): JSX.Element {
         }}
       >
         Anmelden
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void online.register({ login: 'bob', password: 'langgenug1' });
+        }}
+      >
+        Registrieren
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void online.logout();
+        }}
+      >
+        Abmelden
       </button>
     </div>
   );
@@ -223,5 +239,82 @@ describe('Online-Partie', () => {
         payload: { login: 'anna', password: 'langgenug1' },
       }),
     );
+  });
+
+  it('legt ein Konto an und holt danach die Partienliste neu', async () => {
+    render(<Probe />);
+
+    await act(async () => {
+      socket.onopen?.({});
+    });
+    await act(async () => {
+      socket.reply(HELLO, { userId: 'u1', name: 'Gast', isGuest: true });
+    });
+    const roomsBefore = socket.countOf(MY_ROOMS);
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Registrieren' }).click();
+    });
+    await act(async () => {
+      socket.reply(AUTH_REGISTER, {
+        userId: 'u2',
+        name: 'Bob',
+        isGuest: false,
+        login: 'bob',
+        secret: 'neu',
+      });
+    });
+
+    expect(screen.getByTestId('login').textContent).toBe('bob');
+    expect(socket.sent).toContainEqual(
+      expect.objectContaining({
+        type: AUTH_REGISTER,
+        payload: { login: 'bob', password: 'langgenug1' },
+      }),
+    );
+    // Die Kontoerstellung schickt genau eine `auth.register`-Anfrage - eine
+    // vertauschte Konstante (etwa `AUTH_LOGIN`) faende diese Antwort nicht.
+    expect(socket.countOf(AUTH_REGISTER)).toBe(1);
+    expect(socket.countOf(MY_ROOMS)).toBe(roomsBefore + 1);
+  });
+
+  it('meldet ab, schickt ein leeres Payload und holt danach die Partienliste neu', async () => {
+    await connectedInRoom();
+    const roomsBefore = socket.countOf(MY_ROOMS);
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Abmelden' }).click();
+    });
+    await act(async () => {
+      socket.reply(AUTH_LOGOUT, { userId: 'u3', name: 'Gast', isGuest: true });
+    });
+
+    expect(screen.getByTestId('gast').textContent).toBe('true');
+    expect(socket.sent).toContainEqual(expect.objectContaining({ type: AUTH_LOGOUT, payload: {} }));
+    expect(socket.countOf(MY_ROOMS)).toBe(roomsBefore + 1);
+  });
+
+  it('behaelt das alte Geheimnis, wenn die Anmeldung keins zurueckgibt', async () => {
+    // Ein wiederkehrendes Geraet: das Geheimnis ist schon da, der Server
+    // erkennt die Sitzung und schickt kein neues.
+    window.localStorage.setItem('conquerist.secret', 'alt');
+
+    render(<Probe />);
+    await act(async () => {
+      socket.onopen?.({});
+    });
+    await act(async () => {
+      socket.reply(HELLO, { userId: 'u1', name: 'Gast', isGuest: true });
+    });
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Anmelden' }).click();
+    });
+    await act(async () => {
+      socket.reply(AUTH_LOGIN, { userId: 'u1', name: 'Anna', isGuest: false, login: 'anna' });
+    });
+
+    expect(screen.getByTestId('login').textContent).toBe('anna');
+    expect(loadSecret()).toBe('alt');
   });
 });
