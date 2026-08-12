@@ -11,6 +11,7 @@ import { Users } from './identity/users.js';
 import { Sessions } from './identity/sessions.js';
 import { Accounts } from './identity/accounts.js';
 import { RoomRegistry } from './rooms/registry.js';
+import { createRoomClock } from './rooms/clock.js';
 import { SqliteRoomStore } from './rooms/sqliteStore.js';
 import { SinkHub } from './ws/sinks.js';
 
@@ -39,6 +40,14 @@ async function main(): Promise<void> {
     users,
     sinks: new SinkHub(),
   };
+
+  /*
+   * Der Wecker haengt an denselben Abhaengigkeiten und wird fuer jeden
+   * geladenen Raum einmal gestellt: eine Frist, die waehrend des Stillstands
+   * abgelaufen ist, ist damit beim ersten Lauf faellig.
+   */
+  const clock = createRoomClock(deps);
+  for (const room of deps.registry.all) clock.arm(room.code);
   // Dieselbe Sessions-Instanz wie oben - Accounts und Users teilen sich eine
   // Sitzungstabelle, sonst saehen sie unterschiedliche Anmeldungen.
   const accounts = new Accounts(users, sessions);
@@ -52,7 +61,7 @@ async function main(): Promise<void> {
   });
 
   registerPingHandler(router);
-  registerRoomHandlers(router, deps);
+  registerRoomHandlers(router, { ...deps, clock });
   registerAuthHandlers(router, { accounts, users, registry: deps.registry, sinks: deps.sinks });
 
   // Reihenfolge: den upgrade-Listener registrieren, BEVOR gelauscht wird.
@@ -62,7 +71,7 @@ async function main(): Promise<void> {
     router,
     log: app.log,
     onClosed: (session, events) => {
-      handleDisconnect(deps, session, events);
+      handleDisconnect({ ...deps, clock }, session, events);
     },
   });
 
@@ -72,6 +81,9 @@ async function main(): Promise<void> {
     shuttingDown = true;
 
     app.log.info({ signal, openConnections: ws.hub.size }, 'Server fahrt herunter');
+    // Ein Timer auf einen Raum, den es gleich nicht mehr gibt, haelt den
+    // Prozess offen.
+    clock.disarmAll();
     await ws.close();
     await app.close();
     process.exit(0);

@@ -7,15 +7,19 @@ import {
   LEAVE_ROOM,
   MY_ROOMS,
   START_GAME,
+  awaitsResponse,
   describeTransition,
+  hasAutomaticDecline,
   isSystemAction,
   stampAction,
+  type GameAction,
   type Seat,
 } from '@conquerist/shared';
 import { broadcastGame, broadcastRoom } from '../../rooms/broadcast.js';
 import { summaryOf } from '../../rooms/summary.js';
 import {
   applyAction,
+  applySystemAction,
   configureRoom,
   joinRoom,
   leaveRoom,
@@ -23,6 +27,7 @@ import {
   startGame,
 } from '../../rooms/room.js';
 import type { Room } from '../../rooms/room.js';
+import type { RoomClock } from '../../rooms/clock.js';
 import type { RoomRegistry } from '../../rooms/registry.js';
 import type { Users } from '../../identity/users.js';
 import type { EventSink } from '../events.js';
@@ -47,10 +52,39 @@ export interface RoomHandlerDeps {
   readonly registry: RoomRegistry;
   readonly users: Users;
   readonly sinks: SinkHub;
+  /**
+   * Der Wecker. Optional, damit Tests ohne ihn auskommen - ohne Wecker laeuft
+   * nur keine Frist ab, alles andere bleibt gleich.
+   */
+  readonly clock?: RoomClock;
 }
 
 export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDeps): void {
   const { registry, users, sinks } = deps;
+
+  /**
+   * Einen Zug einwerfen, den der Server selbst ausloest.
+   *
+   * Immer denselben Weg: anwenden, ablegen samt Log, verteilen. Ohne diese
+   * Zusammenfassung stuende die Dreierfolge an drei Stellen, und die vierte
+   * vergaesse das Log.
+   */
+  const system = (room: Room, action: GameAction): boolean => {
+    const before = room.game;
+    const acted = applySystemAction(room, action);
+    if (!acted.ok) return false;
+
+    registry.update(acted.room.code, acted.room, action);
+
+    const entry =
+      before === null || acted.room.game === null
+        ? undefined
+        : describeTransition(before, action, acted.room.game, seatsOf(acted.room));
+
+    broadcastGame(acted.room, sinks.map, entry);
+    deps.clock?.arm(acted.room.code);
+    return true;
+  };
 
   router.register(HELLO, (payload, context) => {
     /*
@@ -86,7 +120,19 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
       const reconnected = setConnected(existing, result.user.id, true);
       registry.update(reconnected.code, reconnected);
       broadcastRoom(reconnected, sinks.map);
-      broadcastGame(reconnected, sinks.map);
+
+      /*
+       * Das Angebot steht noch und traegt seine automatische Ablehnung: sie
+       * faellt weg, er darf wieder antworten. Gesprochenes bleibt stehen -
+       * `applyRejoinTrade` ruehrt eine Ablehnung von Hand nicht an.
+       */
+      const game = reconnected.game;
+      const revived =
+        game !== null &&
+        hasAutomaticDecline(game, result.user.id) &&
+        system(reconnected, { type: 'rejoinTrade', player: result.user.id });
+
+      if (!revived) broadcastGame(reconnected, sinks.map);
     }
 
     return result.secret === undefined
@@ -184,6 +230,7 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     registry.update(started.room.code, started.room);
     broadcastRoom(started.room, sinks.map);
     broadcastGame(started.room, sinks.map);
+    deps.clock?.arm(started.room.code);
 
     return {};
   });
@@ -216,6 +263,8 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
         : describeTransition(before, action, acted.room.game, seatsOf(room));
 
     broadcastGame(acted.room, sinks.map, entry);
+    // Der Zug kann eine Frist geoeffnet, verlaengert oder beendet haben.
+    deps.clock?.arm(acted.room.code);
     return {};
   });
 }
@@ -242,6 +291,28 @@ export function handleDisconnect(deps: RoomHandlerDeps, session: Session, sink: 
     const next = setConnected(room, userId, false);
     registry.update(next.code, next);
     broadcastRoom(next, sinks.map);
+
+    /*
+     * Wer waehrend eines offenen Angebots wegbricht, lehnt vorlaeufig ab -
+     * sonst wartet der Tisch auf jemanden, der nicht mehr da ist. Vorlaeufig,
+     * weil die Rueckkehr diese Ablehnung wieder wegnimmt.
+     */
+    const game = next.game;
+    if (game === null || !awaitsResponse(game, userId)) continue;
+
+    const action: GameAction = { type: 'dropFromTrade', player: userId };
+    const acted = applySystemAction(next, action);
+    if (!acted.ok) continue;
+
+    registry.update(acted.room.code, acted.room, action);
+
+    const entry =
+      acted.room.game === null
+        ? undefined
+        : describeTransition(game, action, acted.room.game, seatsOf(acted.room));
+
+    broadcastGame(acted.room, sinks.map, entry);
+    deps.clock?.arm(acted.room.code);
   }
 }
 
