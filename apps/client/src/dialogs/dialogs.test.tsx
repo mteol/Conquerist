@@ -61,6 +61,8 @@ describe('TradeDialog', () => {
         player={player}
         rateFor={rateFor}
         canTrade={(give, receive) => give !== receive}
+        canOffer={false}
+        onOffer={vi.fn()}
         onConfirm={onConfirm}
         onClose={vi.fn()}
       />,
@@ -177,5 +179,75 @@ describe('AccountDialog', () => {
     );
 
     expect(screen.getByText('Dieser Benutzername ist vergeben.')).toBeTruthy();
+  });
+});
+
+describe('TradeDialog, Reiter Spieler', () => {
+  const props = {
+    player,
+    rateFor: () => 4,
+    canTrade: () => true,
+    onConfirm: vi.fn(),
+    onClose: vi.fn(),
+  };
+
+  it('zeigt die Reiter nicht, wenn kein Angebot moeglich waere', () => {
+    render(<TradeDialog {...props} canOffer={false} onOffer={vi.fn()} />);
+
+    expect(screen.queryByRole('tab', { name: 'Spieler' })).toBeNull();
+  });
+
+  it('schickt die gewaehlten Mengen hinaus', async () => {
+    const onOffer = vi.fn();
+    render(<TradeDialog {...props} canOffer onOffer={onOffer} />);
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Spieler' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Lehm mehr anbieten' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Erz mehr verlangen' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Angebot auf den Tisch legen' }));
+
+    expect(onOffer).toHaveBeenCalledWith(
+      { brick: 1, lumber: 0, wool: 0, grain: 0, ore: 0 },
+      { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 },
+    );
+  });
+
+  it('haelt den Knopf gesperrt, solange eine Seite leer ist', async () => {
+    render(<TradeDialog {...props} canOffer onOffer={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Spieler' }));
+    expect(screen.getByRole('button', { name: 'Angebot auf den Tisch legen' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Lehm mehr anbieten' }));
+    expect(screen.getByRole('button', { name: 'Angebot auf den Tisch legen' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+  });
+
+  it('sperrt den Knopf, wenn dieselbe Sorte auf beiden Seiten stuende', async () => {
+    render(<TradeDialog {...props} canOffer onOffer={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Spieler' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Lehm mehr anbieten' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Lehm mehr verlangen' }));
+
+    expect(screen.getByRole('button', { name: 'Angebot auf den Tisch legen' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+  });
+
+  it('gibt nicht mehr her, als auf der Hand liegt', async () => {
+    render(<TradeDialog {...props} canOffer onOffer={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Spieler' }));
+    // Der Spieler haelt kein Erz.
+    await userEvent.click(screen.getByRole('button', { name: 'Erz mehr anbieten' }));
+
+    expect(screen.getByTestId('give-ore').textContent).toBe('0');
   });
 });

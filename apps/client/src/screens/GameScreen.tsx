@@ -324,6 +324,13 @@ export function GameScreen({
                 action.receive === receive,
             )
           }
+          canOffer={view.canOfferTrade}
+          onOffer={(give, want) => {
+            // `at` ist online wirkungslos - der Server stempelt neu. Lokal ist
+            // es der echte Zeitpunkt, aus dem die Frist entsteht.
+            onAct({ type: 'offerTrade', player: view.you, give, want, at: Date.now() });
+            setTradeOpen(false);
+          }}
           onConfirm={(give, receive) => {
             const action = targets.trades.find(
               (candidate) =>

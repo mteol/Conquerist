@@ -2178,3 +2178,47 @@ body {
   color: #f0a094;
   font-size: 0.875rem;
 }
+
+/* Reiterleiste im Handelsfenster: Bank oder Spieler. */
+.tabs {
+  display: flex;
+  gap: 0.3rem;
+  margin: 0 0 0.7rem;
+  padding: 0.2rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 999px;
+  background: var(--parchment-2);
+}
+
+.tabs__tab {
+  flex: 1;
+  padding: 0.35rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.tabs__tab[aria-selected='true'] {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+/*
+ * Die beiden Mengenspalten eines Angebots. Nebeneinander, solange Platz ist -
+ * im schmalen Fenster untereinander, damit kein Schrittzaehler abgeschnitten
+ * wird.
+ */
+.trade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.6rem;
+}
+
+.trade .cards {
+  margin: 0;
+}
