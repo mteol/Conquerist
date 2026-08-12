@@ -9,6 +9,7 @@ import { replay } from './replay.js';
 import { EMPTY_RESOURCES, countResources } from './resources.js';
 import { discardCountFor } from './robber.js';
 import { victoryPointsOf } from './scoring.js';
+import { giving, hand, testGame } from './fixtures.js';
 import { createGame } from './setup.js';
 import type { GameState } from './state.js';
 
@@ -216,5 +217,92 @@ describe('Eine ganze Partie', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.message).toContain('Aktion 3');
+  });
+});
+
+/**
+ * Der Spielerhandel im Durchlauf.
+ *
+ * Der eigentliche Beleg steht in der letzten Zeile: `replay` aus Startzustand
+ * und Aktionsfolge ergibt denselben Zustand. Das ist die Begruendung dafuer,
+ * dass Angebot und Frist im `GameState` liegen und nicht im Raum - waeren sie
+ * dort, koennte diese Gleichheit gar nicht gelten.
+ */
+describe('Spielerhandel', () => {
+  function table(): GameState {
+    return giving(giving(testGame(), 'p1', { lumber: 3 }), 'p2', { ore: 2 });
+  }
+
+  it('spielt Angebot, Ablehnung, Zusage und Zuschlag - und ist danach wiederherstellbar', () => {
+    const start = table();
+    const actions: GameAction[] = [
+      {
+        type: 'offerTrade',
+        player: 'p1',
+        give: hand({ lumber: 2 }),
+        want: hand({ ore: 1 }),
+        at: 5,
+      },
+      { type: 'respondTrade', player: 'p3', response: 'declined' },
+      { type: 'respondTrade', player: 'p2', response: 'accepted' },
+      { type: 'acceptTrade', player: 'p1', partner: 'p2' },
+    ];
+
+    const played = actions.reduce<GameState>((state, action) => {
+      const result = reduce(state, action);
+      if (!result.ok) throw new Error(`${action.type}: ${result.error.message}`);
+      return result.state;
+    }, start);
+
+    expect(played.phase).toEqual({ kind: 'main' });
+    expect(countResources(played.players[0]!.resources)).toBe(2);
+
+    const restored = replay(start, actions);
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) return;
+    expect(restored.state).toEqual(played);
+  });
+
+  it('stellt ein offenes Angebot samt Frist wieder her', () => {
+    const start = table();
+    const actions: GameAction[] = [
+      {
+        type: 'offerTrade',
+        player: 'p1',
+        give: hand({ lumber: 2 }),
+        want: hand({ ore: 1 }),
+        at: 5,
+      },
+    ];
+
+    const restored = replay(start, actions);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) return;
+    expect(restored.state.phase.kind).toBe('tradePending');
+    if (restored.state.phase.kind !== 'tradePending') return;
+    expect(restored.state.phase.expiresAt).toBe(5 + start.rules.tradeOfferMs);
+  });
+
+  it('haelt die Kartenzahl im Spiel konstant - ein Tausch schafft nichts', () => {
+    const start = table();
+    const before = totalCards(start);
+
+    const actions: GameAction[] = [
+      {
+        type: 'offerTrade',
+        player: 'p1',
+        give: hand({ lumber: 2 }),
+        want: hand({ ore: 1 }),
+        at: 0,
+      },
+      { type: 'respondTrade', player: 'p2', response: 'accepted' },
+      { type: 'acceptTrade', player: 'p1', partner: 'p2' },
+    ];
+
+    const restored = replay(start, actions);
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) return;
+    expect(totalCards(restored.state)).toBe(before);
   });
 });

@@ -8,7 +8,7 @@ import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
 import { describeTransition } from './log.js';
 import { yieldTotal } from './dice.js';
-import { CENTER_VERTEX, giving, testGame } from './fixtures.js';
+import { CENTER_VERTEX, giving, hand, testGame } from './fixtures.js';
 import type { GameAction } from './actions.js';
 import type { GameState } from './state.js';
 
@@ -86,5 +86,64 @@ describe('Verlaufssaetze', () => {
     const after = apply(before, action);
 
     expect(describeTransition(before, action, after, [])).toContain('p1');
+  });
+});
+
+describe('Verlaufssaetze zum Spielerhandel', () => {
+  const offer: GameAction = {
+    type: 'offerTrade',
+    player: 'p1',
+    give: hand({ lumber: 2 }),
+    want: hand({ ore: 1 }),
+    at: 0,
+  };
+
+  /** p1 bietet, p2 kann zahlen. */
+  function table(): GameState {
+    return giving(giving(testGame(), 'p1', { lumber: 3 }), 'p2', { ore: 2 });
+  }
+
+  function step(state: GameState, action: GameAction): { state: GameState; entry: string } {
+    const result = reduce(state, action);
+    if (!result.ok) throw new Error(`${action.type}: ${result.error.message}`);
+    return {
+      state: result.state,
+      entry: describeTransition(state, action, result.state, testSeats),
+    };
+  }
+
+  it('nennt beide Seiten beim Angebot', () => {
+    expect(step(table(), offer).entry).toContain('bietet');
+  });
+
+  it('nennt den Partner beim Zuschlag', () => {
+    const offered = step(table(), offer);
+    const answered = step(offered.state, {
+      type: 'respondTrade',
+      player: 'p2',
+      response: 'accepted',
+    });
+    const done = step(answered.state, { type: 'acceptTrade', player: 'p1', partner: 'p2' });
+
+    expect(answered.entry).toBe('p2 nimmt das Angebot an');
+    expect(done.entry).toBe('p1 tauscht mit p2');
+  });
+
+  it('nennt den Fristablauf mit dem Anbieter', () => {
+    const offered = step(table(), offer);
+    const due = offered.state.phase.kind === 'tradePending' ? offered.state.phase.expiresAt : 0;
+
+    expect(step(offered.state, { type: 'timeout', player: 'p1', at: due }).entry).toContain(
+      'abgelaufen',
+    );
+  });
+
+  it('nennt Weggehen und Wiederkommen', () => {
+    const offered = step(table(), offer);
+    const gone = step(offered.state, { type: 'dropFromTrade', player: 'p2' });
+    const back = step(gone.state, { type: 'rejoinTrade', player: 'p2' });
+
+    expect(gone.entry).toContain('nicht mehr da');
+    expect(back.entry).toContain('zurueck');
   });
 });
