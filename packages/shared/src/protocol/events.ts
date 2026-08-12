@@ -51,6 +51,14 @@ export const GameEventSchema = z.object({
   actions: z.array(GameActionSchema),
   /** Verlaufssatz zum Zug, der gerade geschehen ist. Fehlt beim ersten Stand. */
   entry: z.string().min(1).optional(),
+  /**
+   * Die Serveruhr beim Senden.
+   *
+   * Der Client rechnet daraus seinen Versatz und stellt Fristen in seiner
+   * eigenen Zeit dar. Ohne das zeigte eine falsch gehende Rechneruhr eine
+   * Frist, die laengst abgelaufen ist - oder eine, die nie endet.
+   */
+  sentAt: z.number().int().min(0),
 });
 
 export const OverEventSchema = z.object({

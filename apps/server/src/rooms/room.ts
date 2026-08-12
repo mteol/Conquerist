@@ -205,6 +205,23 @@ export function applyAction(room: Room, userId: string, action: GameAction): Roo
   return ok({ ...room, game: result.state, version: room.version + 1 });
 }
 
+/**
+ * Einen Zug anwenden, den der Server selbst ausloest.
+ *
+ * Ohne Absenderpruefung - genau das ist der Unterschied zu `applyAction`:
+ * `dropFromTrade` und `rejoinTrade` sprechen ueber einen anderen Spieler, und
+ * `timeout` ist niemandes Absicht. Erreichbar ist dieser Eingang nur von innen;
+ * der Nachrichten-Handler weist diese Aktionsarten von aussen ab.
+ */
+export function applySystemAction(room: Room, action: GameAction): RoomResult {
+  if (room.game === null) return fail('Die Partie hat noch nicht begonnen');
+
+  const result = reduce(room.game, action);
+  if (!result.ok) return fail(result.error.message);
+
+  return ok({ ...room, game: result.state, version: room.version + 1 });
+}
+
 function withSeats(room: Room, seats: readonly RoomSeat[]): Room {
   return { ...room, seats, version: room.version + 1 };
 }

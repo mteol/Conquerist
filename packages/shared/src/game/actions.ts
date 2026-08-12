@@ -159,3 +159,29 @@ export const GameActionSchema = z.discriminatedUnion('type', [
 export type GameAction = z.infer<typeof GameActionSchema>;
 
 export type GameActionType = GameAction['type'];
+
+/**
+ * Aktionen, die kein Spieler schickt.
+ *
+ * Zwei von ihnen sprechen **ueber** einen anderen Spieler, die dritte ist das
+ * Ende einer Uhr. Der gewoehnliche Eingang prueft, dass Absender und
+ * `player`-Feld dieselbe Person sind - diese drei kaemen dort nie durch und
+ * sollen es auch nicht.
+ */
+export const SYSTEM_ACTION_TYPES = ['timeout', 'dropFromTrade', 'rejoinTrade'] as const;
+
+export function isSystemAction(action: GameAction): boolean {
+  return (SYSTEM_ACTION_TYPES as readonly string[]).includes(action.type);
+}
+
+/**
+ * Setzt den Zeitpunkt einer Aktion auf die Uhr des Aufrufers.
+ *
+ * Der Server ruft das vor `reduce` und vor dem Log auf: was ein Client an `at`
+ * mitgeschickt hat, ist damit wirkungslos, und der geloggte Wert ist derselbe,
+ * aus dem die Frist entstanden ist - `replay` ergibt sie wieder. In der lokalen
+ * Partie stempelt der Client selbst; dort ist niemand zu betruegen.
+ */
+export function stampAction(action: GameAction, at: number): GameAction {
+  return 'at' in action ? { ...action, at } : action;
+}

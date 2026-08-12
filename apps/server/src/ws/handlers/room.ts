@@ -8,6 +8,8 @@ import {
   MY_ROOMS,
   START_GAME,
   describeTransition,
+  isSystemAction,
+  stampAction,
   type Seat,
 } from '@conquerist/shared';
 import { broadcastGame, broadcastRoom } from '../../rooms/broadcast.js';
@@ -191,19 +193,27 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     const room = requireRoom(registry.get(context.session.roomCode ?? ''));
     const before = room.game;
 
-    const acted = applyAction(room, user.id, payload.action);
+    if (isSystemAction(payload.action)) {
+      throw new RejectedError('Diesen Zug loest der Server aus, nicht ein Spieler');
+    }
+
+    // Der Zeitpunkt kommt vom Server, nie vom Client - und geht in genau dieser
+    // Form ins Log, damit `replay` dieselbe Frist wieder ergibt.
+    const action = stampAction(payload.action, Date.now());
+
+    const acted = applyAction(room, user.id, action);
     if (!acted.ok) throw new RejectedError(acted.error);
 
     // Die Aktion geht mit ins Log - aus ihr und dem Startzustand entsteht die
     // Partie nach einem Neustart wieder.
-    registry.update(acted.room.code, acted.room, payload.action);
+    registry.update(acted.room.code, acted.room, action);
 
     // Der Verlaufssatz entsteht aus vorher/nachher und nicht aus der Absicht -
     // er kann damit nicht von dem abweichen, was wirklich geschehen ist.
     const entry =
       before === null || acted.room.game === null
         ? undefined
-        : describeTransition(before, payload.action, acted.room.game, seatsOf(room));
+        : describeTransition(before, action, acted.room.game, seatsOf(room));
 
     broadcastGame(acted.room, sinks.map, entry);
     return {};

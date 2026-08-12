@@ -53,6 +53,9 @@ export function broadcastGame(room: Room, sinks: Sinks, entry?: string): void {
     color: seat.color,
   }));
   const connected = new Map(room.seats.map((seat) => [seat.userId, seat.connected]));
+  // Einmal je Broadcast, nicht je Empfaenger: alle sollen denselben Bezugspunkt
+  // bekommen, sonst rechnete jeder Client einen leicht anderen Versatz aus.
+  const sentAt = Date.now();
 
   for (const seat of room.seats) {
     const targets = sinks.get(seat.userId) ?? [];
@@ -62,6 +65,7 @@ export function broadcastGame(room: Room, sinks: Sinks, entry?: string): void {
       version: room.version,
       view: playerViewOf(game, seat.userId, seats, room.version, connected),
       actions: legalActions(game, seat.userId),
+      sentAt,
       ...(entry === undefined ? {} : { entry }),
     };
 

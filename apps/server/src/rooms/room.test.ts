@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { legalActions, setupPlayer } from '@conquerist/shared';
+import {
+  legalActions,
+  setupPlayer,
+  stampAction,
+  type GameAction,
+  type GameState,
+} from '@conquerist/shared';
 import {
   applyAction,
+  applySystemAction,
   configureRoom,
   createRoom,
   joinRoom,
@@ -138,5 +145,83 @@ describe('Raum', () => {
     const afterLeave = leaveRoom(started.room, 'u2');
     expect(afterLeave.seats).toHaveLength(3);
     expect(afterLeave.seats.find((seat) => seat.userId === 'u2')?.connected).toBe(false);
+  });
+});
+
+describe('Zeit und Systemzuege', () => {
+  /** Eine laufende Partie in der Hauptphase, u1 am Zug und mit drei Holz. */
+  function inMainPhase(): Room {
+    const started = startGame(withThree(), 'u1');
+    if (!started.ok) throw new Error(started.error);
+    const game = started.room.game!;
+
+    const running: GameState = {
+      ...game,
+      phase: { kind: 'main' },
+      currentPlayerIndex: 0,
+      players: game.players.map((player, index) =>
+        index === 0 ? { ...player, resources: { ...player.resources, lumber: 3 } } : player,
+      ),
+    };
+
+    return { ...started.room, game: running };
+  }
+
+  const offer = (at: number): GameAction => ({
+    type: 'offerTrade',
+    player: 'u1',
+    give: { brick: 0, lumber: 2, wool: 0, grain: 0, ore: 0 },
+    want: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 },
+    at,
+  });
+
+  function withOpenOffer(): Room {
+    const acted = applyAction(inMainPhase(), 'u1', stampAction(offer(5), 10_000));
+    if (!acted.ok) throw new Error(acted.error);
+    return acted.room;
+  }
+
+  it('rechnet die Frist aus der gestempelten Zeit, nicht aus der mitgeschickten', () => {
+    const room = withOpenOffer();
+    const game = room.game!;
+
+    expect(game.phase.kind).toBe('tradePending');
+    if (game.phase.kind !== 'tradePending') return;
+    expect(game.phase.expiresAt).toBe(10_000 + game.rules.tradeOfferMs);
+  });
+
+  it('weist einen Zug fuer einen anderen Spieler ab - auch einen Systemzug', () => {
+    const room = withOpenOffer();
+
+    // `dropFromTrade` spricht ueber u2, kaeme aber ueber die Verbindung von u1.
+    const rejected = applyAction(room, 'u1', { type: 'dropFromTrade', player: 'u2' });
+
+    expect(rejected.ok).toBe(false);
+  });
+
+  it('nimmt denselben Zug ueber den Systemeingang an', () => {
+    const room = withOpenOffer();
+
+    const accepted = applySystemAction(room, { type: 'dropFromTrade', player: 'u2' });
+
+    expect(accepted.ok).toBe(true);
+    if (!accepted.ok) return;
+    const phase = accepted.room.game!.phase;
+    expect(phase.kind).toBe('tradePending');
+    if (phase.kind !== 'tradePending') return;
+    expect(phase.responses.u2).toEqual({ kind: 'declined', automatic: true });
+  });
+
+  it('laesst die Frist nicht abkuerzen, solange sie laeuft', () => {
+    const room = withOpenOffer();
+
+    expect(applySystemAction(room, { type: 'timeout', player: 'u1', at: 10_001 }).ok).toBe(false);
+    expect(
+      applySystemAction(room, {
+        type: 'timeout',
+        player: 'u1',
+        at: 10_000 + room.game!.rules.tradeOfferMs,
+      }).ok,
+    ).toBe(true);
   });
 });
