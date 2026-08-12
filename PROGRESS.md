@@ -1741,12 +1741,57 @@ Testsitze `p1`/`p2` statt „Spieler 1"; und das Repo hat kein `jest-dom`, also
 `toHaveProperty('disabled', true)` statt `toBeDisabled()`. In allen drei Faellen
 war die Erwartung falsch, nicht der Code.
 
+### Im Browser gesehen (nachgetragen 2026-08-12)
+
+Drei Tabs, drei Urspruenge (`localhost:5173` fuer den Vite-Client,
+`127.0.0.1:8080` und `localhost:8080` fuer den vom Server ausgelieferten Build)
+— verschiedene Origins heisst getrennter `localStorage` und damit drei echte
+Identitaeten in einem Browser.
+
+Gesehen und bestaetigt:
+
+- Die **zwei Reiter** „Bank | Spieler" im Handelsfenster, der Spieler-Reiter mit
+  Mengenspalten, Obergrenze aus der eigenen Hand („von 1") und gesperrtem Knopf,
+  solange eine Seite leer ist.
+- Das **Angebot beim Mitspieler**: „Anna bietet an / 1 Lehm fuer 1 Holz" samt
+  Countdown („Noch 54 Sekunden").
+- **Annehmen gesperrt mit ehrlicher Begruendung** („Dir fehlt, was dafuer
+  verlangt wird.") bei dem, der nicht zahlen kann — waehrend der Tisch nur eine
+  gewoehnliche Ablehnung sieht. Regel 4, sichtbar.
+- **Ablehnen** und die Verlaufssaetze („Gast lehnt das Angebot ab").
+- **Fristablauf im Browser**, dreimal: „Die Zeit fuer Annas Angebot ist
+  abgelaufen", eingeworfen vom Wecker des Servers.
+- Ein Angebot, auf das **niemand antworten konnte, weil zwei Tabs weg waren**,
+  blieb bis zur Frist stehen statt sofort zu sterben — und die Statusecke sagte
+  dazu „Gast und Gast sind gerade getrennt."
+
+### Zwei Fehler, die erst der Browser gezeigt hat
+
+**Der Handelsknopf hing allein an den Bankgeschaeften** — `disabled={targets.trades.length === 0}`
+in `ActionPanel.tsx`. Wer weniger als vier gleiche Karten hielt, also fast jeder,
+der handeln moechte, kam gar nicht erst an den neuen Reiter. Das war ein Fehler
+**dieser Etappe**: die Dialogtests pruefen den Dialog, nicht den Weg dorthin.
+Behoben, indem `canOfferTrade` durch `GameView` bis in den Knopf durchgereicht
+wird; zwei Tests halten beide Richtungen fest (Commit `99c7aea`).
+
+**`createRoom` und `joinRoom` haben sich ohne Geheimnis neu angemeldet**
+(`useOnlineGame.ts`). Der Server legt dann einen neuen Gast an und schaltet die
+Sitzung auf ihn um: der Raum gehoerte jemandem, dessen Geheimnis niemand
+behalten hat. Sichtbar dreifach — der Gastgeber bekam seinen eigenen
+„Partie starten"-Knopf nicht, sein Sitz stand als „verbunden" statt „du" da, und
+nach einem Neuladen fand `room.mine` fuer das gespeicherte Geheimnis nichts
+mehr. Der Fehler stammt aus **Etappe 5** (`git log -L` zeigt auf `73cae49`),
+nicht aus dieser Etappe, blockierte aber den Durchlauf vollstaendig. Behoben und
+mit drei Tests festgehalten (Commit `aa87a8e`).
+
 ### Offene Punkte
 
-- **Der Durchlauf im Browser steht noch aus** — aber nur noch fuer das
-  Aussehen. Das Verhalten ist am laufenden Server durchgespielt (siehe oben);
-  ungesehen sind die zwei Reiter im Handelsfenster, die Antwortliste des
-  Anbieters, der laufende Countdown und das schmale Fenster.
+- **Vom Browser-Durchlauf fehlen noch zwei Bilder:** die Antwortliste des
+  Anbieters mit dem Knopf „Mit … tauschen", und das Gegenangebot-Formular im
+  Angebotsdialog. Beide sind durch Komponententests gedeckt, aber nicht
+  gesehen — im Durchlauf lief dreimal die Frist ab, bevor ein Mitspieler
+  antworten konnte (zweimal fehlte ihm der verlangte Rohstoff, einmal fror der
+  Tab ein). Ebenfalls ungesehen: das schmale Fenster.
 - **Verliert der Anbieter die Verbindung, steht die Partie**, bis er
   wiederkommt. Die Frist raeumt zwar das Angebot ab, aber der Zug bleibt bei
   ihm. Das ist heute schon so, wenn jemand mitten in `main` verschwindet.
