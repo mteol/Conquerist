@@ -53,6 +53,11 @@ export const RuleViolationCode = {
   INVALID_TRADE: 'INVALID_TRADE',
   /** Die Bank hat die gewuenschte Ressource nicht mehr. */
   BANK_EMPTY: 'BANK_EMPTY',
+
+  /** Nur der Anbieter darf zuschlagen oder zurueckziehen. */
+  NOT_THE_OFFERER: 'NOT_THE_OFFERER',
+  /** Dieser Spieler hat auf das Angebot schon geantwortet. */
+  ALREADY_RESPONDED: 'ALREADY_RESPONDED',
 } as const;
 
 export type RuleViolationCode = (typeof RuleViolationCode)[keyof typeof RuleViolationCode];

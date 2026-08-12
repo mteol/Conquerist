@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { RuleViolationCode } from './errors.js';
 import { giving, hand, testGame } from './fixtures.js';
-import { applyOfferTrade, canOfferAnything, canOfferTrade } from './playerTrade.js';
+import {
+  applyOfferTrade,
+  applyRespondTrade,
+  awaitsResponse,
+  canOfferAnything,
+  canOfferTrade,
+  canRespondTrade,
+} from './playerTrade.js';
 import { reduce } from './reducer.js';
 import type { GameState } from './state.js';
 
@@ -108,5 +115,84 @@ describe('das offene Angebot sperrt den Zug', () => {
     });
 
     expect(result.ok).toBe(false);
+  });
+});
+
+/** Ein offenes Angebot: p1 bietet 2 Holz fuer 1 Erz, p2 und p3 koennen zahlen. */
+function tableWithOffer(): GameState {
+  const rich = giving(giving(offerer({ lumber: 3 }), 'p2', { ore: 2 }), 'p3', { ore: 2 });
+  const result = applyOfferTrade(rich, 'p1', TWO_LUMBER, ONE_ORE, 0);
+  if (!result.ok) throw new Error('Angebot wurde abgelehnt');
+  return result.state;
+}
+
+describe('canRespondTrade', () => {
+  it('laesst einen Mitspieler zusagen, der zahlen kann', () => {
+    expect(canRespondTrade(tableWithOffer(), 'p2', 'accepted')).toBeNull();
+  });
+
+  it('laesst jeden ablehnen, auch ohne die verlangten Karten', () => {
+    const poor = giving(tableWithOffer(), 'p2', {});
+
+    expect(canRespondTrade(poor, 'p2', 'declined')).toBeNull();
+  });
+
+  it('sperrt die Zusage dessen, der nicht zahlen kann', () => {
+    const poor = giving(tableWithOffer(), 'p2', {});
+
+    expect(canRespondTrade(poor, 'p2', 'accepted')?.code).toBe(
+      RuleViolationCode.INSUFFICIENT_RESOURCES,
+    );
+  });
+
+  it('laesst den Anbieter nicht auf sein eigenes Angebot antworten', () => {
+    expect(canRespondTrade(tableWithOffer(), 'p1', 'accepted')?.code).toBe(
+      RuleViolationCode.NOT_THE_OFFERER,
+    );
+  });
+
+  it('nimmt keine zweite Antwort an', () => {
+    const once = applyRespondTrade(tableWithOffer(), 'p2', 'declined');
+    if (!once.ok) throw new Error('erste Antwort wurde abgelehnt');
+
+    expect(canRespondTrade(once.state, 'p2', 'accepted')?.code).toBe(
+      RuleViolationCode.ALREADY_RESPONDED,
+    );
+  });
+});
+
+describe('das Angebot verfaellt, wenn alle von Hand ablehnen', () => {
+  it('bleibt offen, solange noch jemand ueberlegt', () => {
+    const first = applyRespondTrade(tableWithOffer(), 'p2', 'declined');
+    if (!first.ok) throw new Error('Antwort wurde abgelehnt');
+
+    expect(first.state.phase.kind).toBe('tradePending');
+  });
+
+  it('geht zurueck in die Hauptphase, sobald der letzte ablehnt', () => {
+    const first = applyRespondTrade(tableWithOffer(), 'p2', 'declined');
+    if (!first.ok) throw new Error('Antwort wurde abgelehnt');
+    const second = applyRespondTrade(first.state, 'p3', 'declined');
+    if (!second.ok) throw new Error('Antwort wurde abgelehnt');
+
+    expect(second.state.phase).toEqual({ kind: 'main' });
+  });
+
+  it('bleibt offen, wenn jemand zugesagt hat', () => {
+    const first = applyRespondTrade(tableWithOffer(), 'p2', 'accepted');
+    if (!first.ok) throw new Error('Antwort wurde abgelehnt');
+    const second = applyRespondTrade(first.state, 'p3', 'declined');
+    if (!second.ok) throw new Error('Antwort wurde abgelehnt');
+
+    expect(second.state.phase.kind).toBe('tradePending');
+  });
+});
+
+describe('awaitsResponse', () => {
+  it('gilt fuer Mitspieler ohne Antwort und fuer den Anbieter nie', () => {
+    const state = tableWithOffer();
+
+    expect(awaitsResponse(state, 'p2')).toBe(true);
+    expect(awaitsResponse(state, 'p1')).toBe(false);
   });
 });

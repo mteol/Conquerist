@@ -99,6 +99,11 @@ function describeAction(
     case 'offerTrade':
       return `${who} bietet ${resourceList(action.give)} fuer ${resourceList(action.want)}`;
 
+    case 'respondTrade':
+      return action.response === 'accepted'
+        ? `${who} nimmt das Angebot an`
+        : `${who} lehnt das Angebot ab`;
+
     case 'endTurn':
       return `${who} beendet den Zug`;
   }

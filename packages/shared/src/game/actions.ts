@@ -103,6 +103,13 @@ export const GameActionSchema = z.discriminatedUnion('type', [
     at: z.number().int().min(0),
   }),
 
+  /** Antwort eines Mitspielers auf ein offenes Angebot. */
+  z.object({
+    ...Base,
+    type: z.literal('respondTrade'),
+    response: z.enum(['accepted', 'declined']),
+  }),
+
   z.object({ ...Base, type: z.literal('endTurn') }),
 ]);
 
