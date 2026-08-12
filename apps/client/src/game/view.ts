@@ -136,6 +136,19 @@ export function actingPlayers(view: PhaseSource): readonly PlayerId[] {
     }
     case 'discardPending':
       return view.phase.pending;
+    case 'tradePending': {
+      const { offer, responses } = view.phase;
+      /*
+       * Erst die, die noch nicht geantwortet haben, dann der Anbieter. In der
+       * lokalen Partie wandert der Bildschirm damit von selbst durch die Runde
+       * und kommt zum Auswaehlen zurueck - dieselbe Mechanik wie beim Abwerfen.
+       */
+      const waiting = view.players
+        .map((player) => player.id)
+        .filter((id) => id !== offer.from && responses[id] === undefined);
+
+      return [...waiting, offer.from];
+    }
     case 'finished':
       return [];
     default:
@@ -161,6 +174,8 @@ function phaseTextOf(view: PlayerView): string {
       return `${currentName()} versetzt den Raeuber`;
     case 'main':
       return `${currentName()} ist am Zug`;
+    case 'tradePending':
+      return `${nameOf(view.phase.offer.from)} bietet einen Tausch an`;
     case 'finished':
       return `${nameOf(view.phase.winner)} hat gewonnen`;
   }

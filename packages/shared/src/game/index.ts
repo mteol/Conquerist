@@ -26,4 +26,5 @@ export * from './scoring.js';
 export * from './setup.js';
 export * from './state.js';
 export * from './trade.js';
+export * from './tradeOffer.js';
 export * from './yield.js';

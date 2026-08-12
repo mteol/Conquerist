@@ -74,6 +74,11 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
       // Siehe Kopfkommentar: die Auswahl trifft der Spieler selbst.
       return [];
 
+    case 'tradePending':
+      // Solange es keine Aktionen fuer diese Phase gibt, ist die leere Liste
+      // die richtige Antwort - nicht ein Platzhalter, sondern der Stand.
+      return [];
+
     case 'robberPending': {
       if (state.players[state.currentPlayerIndex]?.id !== player) return [];
 

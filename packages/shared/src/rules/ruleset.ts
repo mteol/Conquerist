@@ -76,6 +76,17 @@ export const RuleSetSchema = z.object({
   /** Ab wie vielen Handkarten bei einer Sieben abgeworfen wird. */
   handLimitBeforeDiscard: z.number().int().min(1),
 
+  /**
+   * Wie lange ein Angebot an die Mitspieler auf dem Tisch liegt, in
+   * Millisekunden.
+   *
+   * Mit Vorgabe, aus genau dem Grund, den der Block darunter fuer `dice` und
+   * `robberRoll` nennt: das RuleSet jeder laufenden Partie liegt seit Etappe 6
+   * als JSON in der Datenbank, und ein Pflichtfeld ohne Vorgabe faende dort
+   * kein Gegenstueck.
+   */
+  tradeOfferMs: z.number().int().min(1_000).default(60_000),
+
   /*
    * Die beiden Wuerfelfelder tragen einen Vorgabewert, und der ist keine
    * Bequemlichkeit: seit Etappe 6 liegt der Startzustand einer Partie samt
@@ -142,6 +153,7 @@ export const CLASSIC_RULES: RuleSet = {
     monopoly: 2,
   },
   handLimitBeforeDiscard: 7,
+  tradeOfferMs: 60_000,
 
   dice: CLASSIC_DICE,
   robberRoll: 7,

@@ -90,3 +90,30 @@ describe('Anzeigemodell', () => {
     expect(gameViewOf(playerViewOf(rolling, ids[0]!, seats, 1)).phaseText).toContain('wuerfeln');
   });
 });
+
+describe('actingPlayers in tradePending', () => {
+  const offerPhase = (responses: Record<string, unknown>) => ({
+    phase: {
+      kind: 'tradePending' as const,
+      offer: {
+        from: ids[0]!,
+        give: { brick: 0, lumber: 2, wool: 0, grain: 0, ore: 0 },
+        want: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 },
+      },
+      responses,
+      expiresAt: 1_000,
+    },
+    players: ids.map((id) => ({ id })),
+    currentPlayerIndex: 0,
+  });
+
+  it('nennt erst die Wartenden, dann den Anbieter', () => {
+    expect(actingPlayers(offerPhase({}) as never)).toEqual([ids[1], ids[2], ids[0]]);
+  });
+
+  it('laesst weg, wer schon geantwortet hat', () => {
+    const responses = { [ids[1]!]: { kind: 'accepted' } };
+
+    expect(actingPlayers(offerPhase(responses) as never)).toEqual([ids[2], ids[0]]);
+  });
+});
