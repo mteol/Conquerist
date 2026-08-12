@@ -1,5 +1,6 @@
 import type { ResourceAmounts } from '../rules/index.js';
 import { RESOURCE_IDS } from '../scenario/index.js';
+import { deadlineOf } from './deadline.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { Phase } from './phase.js';
 import type { PlayerId } from './player.js';
@@ -433,6 +434,31 @@ export function canWithdrawTrade(state: GameState, player: PlayerId): RuleViolat
 
 export function applyWithdrawTrade(state: GameState, player: PlayerId): ReduceResult {
   const problem = canWithdrawTrade(state, player);
+  if (problem !== null) return rejected(problem);
+
+  return ok({ ...state, phase: { kind: 'main' } });
+}
+
+/**
+ * Der Fristablauf.
+ *
+ * Keine Absicht eines Spielers, sondern das Ende einer Uhr - deshalb wirft nur
+ * der Server diese Aktion ein. Geprueft wird trotzdem gegen den Zustand: eine
+ * Frist, die noch laeuft, laesst sich nicht abkuerzen, auch nicht vom Server.
+ */
+export function canTimeout(state: GameState, at: number): RuleViolation | null {
+  const due = deadlineOf(state);
+  if (due === null) {
+    return violation(RuleViolationCode.WRONG_PHASE, 'Gerade laeuft keine Frist');
+  }
+
+  return at >= due.at
+    ? null
+    : violation(RuleViolationCode.DEADLINE_NOT_REACHED, 'Die Frist laeuft noch');
+}
+
+export function applyTimeout(state: GameState, at: number): ReduceResult {
+  const problem = canTimeout(state, at);
   if (problem !== null) return rejected(problem);
 
   return ok({ ...state, phase: { kind: 'main' } });

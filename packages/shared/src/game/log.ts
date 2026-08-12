@@ -112,6 +112,9 @@ function describeAction(
     case 'withdrawTrade':
       return `${who} nimmt das Angebot zurueck`;
 
+    case 'timeout':
+      return `Die Zeit fuer ${who}s Angebot ist abgelaufen`;
+
     case 'endTurn':
       return `${who} beendet den Zug`;
   }

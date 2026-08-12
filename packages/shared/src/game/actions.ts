@@ -133,6 +133,14 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   /** Der Anbieter nimmt sein Angebot zurueck. */
   z.object({ ...Base, type: z.literal('withdrawTrade') }),
 
+  /**
+   * Eine Frist ist abgelaufen. **Nur der Server wirft das ein** - der Handler
+   * weist die Aktion ab, wenn sie von einem Client kommt.
+   *
+   * `player` ist, wem die Frist gehoerte: beim Angebot der Anbieter.
+   */
+  z.object({ ...Base, type: z.literal('timeout'), at: z.number().int().min(0) }),
+
   z.object({ ...Base, type: z.literal('endTurn') }),
 ]);
 

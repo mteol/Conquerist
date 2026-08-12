@@ -13,6 +13,7 @@ import {
   applyCounterTrade,
   applyOfferTrade,
   applyRespondTrade,
+  applyTimeout,
   applyWithdrawTrade,
 } from './playerTrade.js';
 import { applyTradeWithBank } from './trade.js';
@@ -58,7 +59,7 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
     'offerTrade',
     'endTurn',
   ],
-  tradePending: ['respondTrade', 'counterTrade', 'acceptTrade', 'withdrawTrade'],
+  tradePending: ['respondTrade', 'counterTrade', 'acceptTrade', 'withdrawTrade', 'timeout'],
   finished: [],
 };
 
@@ -205,6 +206,8 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
       return applyAcceptTrade(state, action.player, action.partner);
     case 'withdrawTrade':
       return applyWithdrawTrade(state, action.player);
+    case 'timeout':
+      return applyTimeout(state, action.at);
     case 'endTurn':
       return endTurn(state);
   }

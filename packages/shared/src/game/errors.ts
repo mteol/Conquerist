@@ -60,6 +60,8 @@ export const RuleViolationCode = {
   ALREADY_RESPONDED: 'ALREADY_RESPONDED',
   /** Der genannte Partner hat weder zugesagt noch gekontert. */
   PARTNER_DID_NOT_ACCEPT: 'PARTNER_DID_NOT_ACCEPT',
+  /** Die Frist laeuft noch - es gibt nichts abzulaeuten. */
+  DEADLINE_NOT_REACHED: 'DEADLINE_NOT_REACHED',
 } as const;
 
 export type RuleViolationCode = (typeof RuleViolationCode)[keyof typeof RuleViolationCode];
