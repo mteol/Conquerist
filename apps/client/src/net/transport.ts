@@ -79,13 +79,21 @@ export class RequestTimeoutError extends TransportError {
   }
 }
 
-/** Der Server hat mit `ok: false` geantwortet. */
+/**
+ * Der Server hat mit `ok: false` geantwortet.
+ *
+ * Die Meldung ist der Text des Servers, unveraendert - er ist fuer den Spieler
+ * geschrieben (`router.ts` sagt das ausdruecklich) und wird von der Oberflaeche
+ * unveraendert angezeigt. Der Protokollcode gehoert nicht davor: „REJECTED: Du
+ * hast nicht genug Lehm" nennt dem Spieler eine Vokabel, die ihm nichts sagt.
+ * Er bleibt als Feld erhalten, fuer Diagnose und Fallunterscheidung.
+ */
 export class ServerError extends TransportError {
   constructor(
     readonly protocolCode: string,
     detail: string,
   ) {
-    super('SERVER_ERROR', `${protocolCode}: ${detail}`);
+    super('SERVER_ERROR', detail);
   }
 }
 
