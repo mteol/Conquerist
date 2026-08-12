@@ -16,6 +16,7 @@ export * from './legal.js';
 export * from './log.js';
 export * from './phase.js';
 export * from './player.js';
+export * from './playerTrade.js';
 export * from './playerView.js';
 export * from './reducer.js';
 export * from './replay.js';

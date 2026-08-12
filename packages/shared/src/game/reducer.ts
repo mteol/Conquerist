@@ -8,6 +8,7 @@ import { recomputeLongestRoad } from './roads.js';
 import { hasWon } from './scoring.js';
 import { applySetupRoad, applySetupSettlement, setupPlayer } from './setup.js';
 import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './state.js';
+import { applyOfferTrade } from './playerTrade.js';
 import { applyTradeWithBank } from './trade.js';
 import {
   applyBuyDevelopmentCard,
@@ -48,8 +49,10 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
     'playRoadBuilding',
     'playYearOfPlenty',
     'playMonopoly',
+    'offerTrade',
     'endTurn',
   ],
+  tradePending: [],
   finished: [],
 };
 
@@ -57,6 +60,9 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
 function actorFor(state: GameState): PlayerId | null {
   if (state.phase.kind === 'setup') return setupPlayer(state);
   if (state.phase.kind === 'discardPending') return null;
+  // Wie beim Abwerfen handeln mehrere: der Anbieter und seine Mitspieler. Wer
+  // genau was darf, prueft `playerTrade.ts`.
+  if (state.phase.kind === 'tradePending') return null;
   return state.players[state.currentPlayerIndex]?.id ?? null;
 }
 
@@ -183,6 +189,8 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
       return applyPlayYearOfPlenty(state, action.player, action.picks);
     case 'playMonopoly':
       return applyPlayMonopoly(state, action.player, action.resource);
+    case 'offerTrade':
+      return applyOfferTrade(state, action.player, action.give, action.want, action.at);
     case 'endTurn':
       return endTurn(state);
   }

@@ -13,10 +13,10 @@ import { PlayerIdSchema } from './player.js';
  * Gruendungsphase und beim Abwerfen ist ohnehin nicht immer der Spieler am Zug
  * derjenige, der handeln muss.
  *
- * Was hier fehlt und fehlen soll: Handel zwischen Spielern und
- * Entwicklungskarten (Etappe 8). Wuerfelergebnisse stehen ebenfalls nicht drin -
- * der Client schickt Absichten, keine Ergebnisse (Regel 3), und der Wurf
- * entsteht aus dem Zufallszustand im `GameState`.
+ * Handel zwischen Spielern kam mit Etappe 8 dazu: `offerTrade` und was darauf
+ * folgt. Wuerfelergebnisse stehen weiterhin nicht drin - der Client schickt
+ * Absichten, keine Ergebnisse (Regel 3), und der Wurf entsteht aus dem
+ * Zufallszustand im `GameState`.
  */
 
 const Base = { player: PlayerIdSchema };
@@ -86,6 +86,21 @@ export const GameActionSchema = z.discriminatedUnion('type', [
     type: z.literal('tradeWithBank'),
     give: ResourceIdSchema,
     receive: ResourceIdSchema,
+  }),
+
+  /**
+   * Ein Angebot an den Tisch: diese Mengen gegen jene.
+   *
+   * `at` ist der Zeitpunkt, aus dem die Frist entsteht. Der **Server**
+   * ueberschreibt ihn mit seiner eigenen Uhr, bevor der Zug die Logik erreicht -
+   * ein Client, der sich zehn Minuten stempelt, hat damit keine Wirkung.
+   */
+  z.object({
+    ...Base,
+    type: z.literal('offerTrade'),
+    give: ResourceAmountsSchema,
+    want: ResourceAmountsSchema,
+    at: z.number().int().min(0),
   }),
 
   z.object({ ...Base, type: z.literal('endTurn') }),

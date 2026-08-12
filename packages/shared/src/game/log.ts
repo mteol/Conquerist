@@ -96,6 +96,9 @@ function describeAction(
     case 'tradeWithBank':
       return `${who} tauscht ${RESOURCE_LABELS[action.give]} gegen ${RESOURCE_LABELS[action.receive]}`;
 
+    case 'offerTrade':
+      return `${who} bietet ${resourceList(action.give)} fuer ${resourceList(action.want)}`;
+
     case 'endTurn':
       return `${who} beendet den Zug`;
   }
