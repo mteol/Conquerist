@@ -21,6 +21,7 @@ import { StatusPanel } from '../panels/StatusPanel';
 import { TablePanel } from '../panels/TablePanel';
 import { DiscardDialog } from '../dialogs/DiscardDialog';
 import { TradeDialog } from '../dialogs/TradeDialog';
+import { TradeOfferDialog } from '../dialogs/TradeOfferDialog';
 import { VictimDialog } from '../dialogs/VictimDialog';
 import type { LogEntry } from '../game/hotseat';
 
@@ -63,6 +64,13 @@ export interface GameScreenProps {
    * Hand seines Vorgaengers vorfinden. Deshalb einstellbar und nicht gesetzt.
    */
   readonly concealBetweenTurns?: boolean;
+  /**
+   * Serveruhr minus eigene Uhr. Lokal null - dort ist es dieselbe Uhr.
+   *
+   * Fristen stehen als Serverzeit im Zustand; ohne den Versatz zeigte eine
+   * falsch gehende Rechneruhr eine Frist, die es so nie gab.
+   */
+  readonly clockOffset?: number;
 }
 
 export function GameScreen({
@@ -75,6 +83,7 @@ export function GameScreen({
   onLeave,
   offline = false,
   concealBetweenTurns = false,
+  clockOffset = 0,
 }: GameScreenProps): JSX.Element {
   const [tradeOpen, setTradeOpen] = useState(false);
   const [robberHex, setRobberHex] = useState<string | null>(null);
@@ -311,6 +320,12 @@ export function GameScreen({
           }}
         />
       ) : null}
+
+      {/*
+        Kein Knopf davor: solange ein Angebot liegt, geht ohnehin nichts
+        anderes - der Dialog ist der Zustand und nicht eine Ansicht davon.
+      */}
+      <TradeOfferDialog view={view} actions={actions} clockOffset={clockOffset} onAct={onAct} />
 
       {tradeOpen && you !== undefined ? (
         <TradeDialog

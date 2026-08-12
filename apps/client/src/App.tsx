@@ -217,6 +217,7 @@ function Online({
           void online.act(action);
         }}
         onDismissError={online.dismissError}
+        clockOffset={online.state.clockOffset}
         offline={online.connection.status !== 'open'}
         onLeave={() => {
           void online.leaveRoom();

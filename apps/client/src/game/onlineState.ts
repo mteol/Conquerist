@@ -25,6 +25,14 @@ export interface OnlineState {
   readonly lastError: string | null;
   /** Gesetzt, wenn der Server die Partie beendet hat. */
   readonly over: OverEvent | null;
+  /**
+   * Serveruhr minus eigene Uhr, aus `sentAt` des letzten Standes.
+   *
+   * Fristen stehen als Serverzeit im Zustand. Ohne diesen Versatz zeigte eine
+   * um zwei Minuten falsch gehende Rechneruhr eine Frist, die laengst
+   * abgelaufen ist - oder eine, die nie endet.
+   */
+  readonly clockOffset: number;
 }
 
 export const emptyOnlineState: OnlineState = {
@@ -34,6 +42,7 @@ export const emptyOnlineState: OnlineState = {
   log: [],
   lastError: null,
   over: null,
+  clockOffset: 0,
 };
 
 export type OnlineEvent =
@@ -69,6 +78,8 @@ export function onlineReducer(state: OnlineState, event: OnlineEvent): OnlineSta
         ...state,
         view: event.payload.view,
         actions: event.payload.actions,
+        // Je Stand neu gerechnet: eine Uhr, die nachgeht, holt damit auf.
+        clockOffset: event.payload.sentAt - Date.now(),
         log:
           entry === undefined
             ? state.log
