@@ -76,6 +76,8 @@ export function TradeOfferDialog({
   const [counterGive, setCounterGive] = useState<ResourceAmounts>(NO_AMOUNTS);
   const [counterWant, setCounterWant] = useState<ResourceAmounts>(NO_AMOUNTS);
   const [countering, setCountering] = useState(false);
+  /** Das Angebot, zu dem die drei Werte darueber gehoeren. Siehe unten. */
+  const [answeredOffer, setAnsweredOffer] = useState<string | null>(null);
 
   useEffect(() => {
     setLeft(secondsLeft(expiresAt, clockOffset));
@@ -87,6 +89,28 @@ export function TradeOfferDialog({
       clearInterval(handle);
     };
   }, [expiresAt, clockOffset]);
+
+  /*
+   * Ein angefangenes Gegenangebot gehoert dem Angebot, auf das es antwortet.
+   *
+   * Der Dialog wird nicht ausgehaengt, wenn die Runde endet - er gibt nur
+   * `null` zurueck. Ohne dieses Zuruecksetzen stuenden beim naechsten Angebot
+   * noch die alten Mengen im Formular, moeglicherweise aus einer Hand, die es
+   * inzwischen nicht mehr hergibt. Der Server weist das ab; angeboten haette es
+   * der Client trotzdem, und ein Knopf fuer eine Handlung, die es nicht gibt,
+   * ist eine Luege.
+   */
+  const answersTo =
+    trade === null
+      ? null
+      : `${trade.offer.from}|${resourceList(trade.offer.give)}|${resourceList(trade.offer.want)}`;
+
+  if (answeredOffer !== answersTo) {
+    setAnsweredOffer(answersTo);
+    setCountering(false);
+    setCounterGive(NO_AMOUNTS);
+    setCounterWant(NO_AMOUNTS);
+  }
 
   if (trade === null) return null;
 
