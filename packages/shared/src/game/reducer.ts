@@ -11,7 +11,9 @@ import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './s
 import {
   applyAcceptTrade,
   applyCounterTrade,
+  applyDropFromTrade,
   applyOfferTrade,
+  applyRejoinTrade,
   applyRespondTrade,
   applyTimeout,
   applyWithdrawTrade,
@@ -59,7 +61,15 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
     'offerTrade',
     'endTurn',
   ],
-  tradePending: ['respondTrade', 'counterTrade', 'acceptTrade', 'withdrawTrade', 'timeout'],
+  tradePending: [
+    'respondTrade',
+    'counterTrade',
+    'acceptTrade',
+    'withdrawTrade',
+    'timeout',
+    'dropFromTrade',
+    'rejoinTrade',
+  ],
   finished: [],
 };
 
@@ -208,6 +218,10 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
       return applyWithdrawTrade(state, action.player);
     case 'timeout':
       return applyTimeout(state, action.at);
+    case 'dropFromTrade':
+      return applyDropFromTrade(state, action.player);
+    case 'rejoinTrade':
+      return applyRejoinTrade(state, action.player);
     case 'endTurn':
       return endTurn(state);
   }

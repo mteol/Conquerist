@@ -115,6 +115,11 @@ function describeAction(
     case 'timeout':
       return `Die Zeit fuer ${who}s Angebot ist abgelaufen`;
 
+    case 'dropFromTrade':
+      return `${who} ist nicht mehr da und antwortet nicht`;
+    case 'rejoinTrade':
+      return `${who} ist zurueck und kann noch antworten`;
+
     case 'endTurn':
       return `${who} beendet den Zug`;
   }

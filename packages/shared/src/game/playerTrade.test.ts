@@ -6,7 +6,9 @@ import { giving, hand, testGame } from './fixtures.js';
 import {
   applyAcceptTrade,
   applyCounterTrade,
+  applyDropFromTrade,
   applyOfferTrade,
+  applyRejoinTrade,
   applyRespondTrade,
   applyTimeout,
   applyWithdrawTrade,
@@ -17,6 +19,7 @@ import {
   canOfferTrade,
   canRespondTrade,
   canTimeout,
+  hasAutomaticDecline,
   termsFor,
 } from './playerTrade.js';
 import { reduce } from './reducer.js';
@@ -430,5 +433,70 @@ describe('timeout', () => {
     if (!result.ok) return;
     expect(resourcesOf(result.state, 'p1')).toEqual(resourcesOf(state, 'p1'));
     expect(resourcesOf(result.state, 'p2')).toEqual(resourcesOf(state, 'p2'));
+  });
+});
+
+describe('dropFromTrade', () => {
+  it('traegt eine automatische Ablehnung ein', () => {
+    const result = applyDropFromTrade(tableWithOffer(), 'p2');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.state.phase.kind !== 'tradePending') return;
+    expect(result.state.phase.responses.p2).toEqual({ kind: 'declined', automatic: true });
+  });
+
+  it('haelt das Angebot offen, auch wenn damit alle abgelehnt haben', () => {
+    const first = applyDropFromTrade(tableWithOffer(), 'p2');
+    if (!first.ok) throw new Error('Abmeldung wurde abgelehnt');
+    const second = applyRespondTrade(first.state, 'p3', 'declined');
+
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    // Eine automatische Ablehnung ist kein Nein - der Weggebrochene kann
+    // zurueckkommen und noch antworten.
+    expect(second.state.phase.kind).toBe('tradePending');
+  });
+
+  it('ruehrt eine Antwort von Hand nicht an', () => {
+    const said = applyRespondTrade(tableWithOffer(), 'p2', 'accepted');
+    if (!said.ok) throw new Error('Antwort wurde abgelehnt');
+
+    const result = applyDropFromTrade(said.state, 'p2');
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe(RuleViolationCode.ALREADY_RESPONDED);
+  });
+});
+
+describe('rejoinTrade', () => {
+  it('nimmt die automatische Ablehnung zurueck', () => {
+    const gone = applyDropFromTrade(tableWithOffer(), 'p2');
+    if (!gone.ok) throw new Error('Abmeldung wurde abgelehnt');
+
+    const result = applyRejoinTrade(gone.state, 'p2');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.state.phase.kind !== 'tradePending') return;
+    expect(result.state.phase.responses.p2).toBeUndefined();
+  });
+
+  it('laesst eine Ablehnung von Hand stehen', () => {
+    const said = applyRespondTrade(tableWithOffer(), 'p2', 'declined');
+    if (!said.ok) throw new Error('Antwort wurde abgelehnt');
+
+    const result = applyRejoinTrade(said.state, 'p2');
+
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe('hasAutomaticDecline', () => {
+  it('erkennt genau die automatische Ablehnung', () => {
+    const gone = applyDropFromTrade(tableWithOffer(), 'p2');
+    if (!gone.ok) throw new Error('Abmeldung wurde abgelehnt');
+
+    expect(hasAutomaticDecline(gone.state, 'p2')).toBe(true);
+    expect(hasAutomaticDecline(gone.state, 'p3')).toBe(false);
   });
 });

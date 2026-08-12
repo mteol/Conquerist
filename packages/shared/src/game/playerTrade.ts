@@ -463,3 +463,54 @@ export function applyTimeout(state: GameState, at: number): ReduceResult {
 
   return ok({ ...state, phase: { kind: 'main' } });
 }
+
+/** Ob dieser Spieler eine Ablehnung traegt, die er nie ausgesprochen hat. */
+export function hasAutomaticDecline(state: GameState, player: PlayerId): boolean {
+  const answer = openTrade(state)?.responses[player];
+
+  return answer?.kind === 'declined' && answer.automatic;
+}
+
+/**
+ * Wer die Verbindung verliert, lehnt ab - vorlaeufig.
+ *
+ * Der Spielzustand kennt keine Verbindungen; der Raum kennt sie. Deshalb kommt
+ * der Abbruch als Aktion vom Server herein und nicht als heimliches Wissen in
+ * der Regel. Wer schon von Hand geantwortet hat, bleibt unangetastet - er hat
+ * gesprochen, und Gesprochenes wird nicht ueberschrieben.
+ */
+export function applyDropFromTrade(state: GameState, player: PlayerId): ReduceResult {
+  const problem = checkResponder(state, player);
+  if (problem !== null) return rejected(problem);
+
+  return withResponse(state, player, { kind: 'declined', automatic: true });
+}
+
+/**
+ * Wer zurueckkommt, darf wieder antworten.
+ *
+ * Nimmt ausschliesslich die automatische Ablehnung zurueck - eine von Hand
+ * gesprochene ueberlebt jedes Weg und Wieder-da.
+ */
+export function applyRejoinTrade(state: GameState, player: PlayerId): ReduceResult {
+  const trade = openTrade(state);
+  if (trade === null) {
+    return rejected(
+      violation(RuleViolationCode.WRONG_PHASE, 'Es liegt gerade kein Angebot auf dem Tisch'),
+    );
+  }
+
+  if (!hasAutomaticDecline(state, player)) {
+    return rejected(
+      violation(
+        RuleViolationCode.ALREADY_RESPONDED,
+        `${player} traegt keine automatische Ablehnung`,
+      ),
+    );
+  }
+
+  const responses = { ...trade.responses };
+  delete responses[player];
+
+  return ok({ ...state, phase: { ...trade, responses } });
+}

@@ -141,6 +141,18 @@ export const GameActionSchema = z.discriminatedUnion('type', [
    */
   z.object({ ...Base, type: z.literal('timeout'), at: z.number().int().min(0) }),
 
+  /**
+   * Verbindungsverlust waehrend eines Angebots. **Nur vom Server.**
+   *
+   * `player` ist der Weggebrochene, nicht der Absender - genau deshalb kann
+   * diese Aktion nicht ueber den gewoehnlichen Eingang kommen, der prueft, dass
+   * beide dieselbe Person sind.
+   */
+  z.object({ ...Base, type: z.literal('dropFromTrade') }),
+
+  /** Rueckkehr waehrend desselben Angebots. **Nur vom Server.** */
+  z.object({ ...Base, type: z.literal('rejoinTrade') }),
+
   z.object({ ...Base, type: z.literal('endTurn') }),
 ]);
 
