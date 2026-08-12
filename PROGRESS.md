@@ -1791,7 +1791,9 @@ mit drei Tests festgehalten (Commit `aa87a8e`).
   Angebotsdialog. Beide sind durch Komponententests gedeckt, aber nicht
   gesehen — im Durchlauf lief dreimal die Frist ab, bevor ein Mitspieler
   antworten konnte (zweimal fehlte ihm der verlangte Rohstoff, einmal fror der
-  Tab ein). Ebenfalls ungesehen: das schmale Fenster.
+  Tab ein). Ebenfalls ungesehen: das schmale Fenster. **Uebergabe dazu:**
+  `docs/superpowers/plans/2026-08-12-etappe-8-browser-nachtrag.md` — Aufbau mit
+  drei Ursprüngen, die Fallen, und der Ablauf, der zum Ziel führt.
 - **Verliert der Anbieter die Verbindung, steht die Partie**, bis er
   wiederkommt. Die Frist raeumt zwar das Angebot ab, aber der Zug bleibt bei
   ihm. Das ist heute schon so, wenn jemand mitten in `main` verschwindet.
