@@ -254,3 +254,48 @@ export function applyRespondTrade(
     response === 'accepted' ? { kind: 'accepted' } : { kind: 'declined', automatic: false },
   );
 }
+
+/**
+ * Ein Gegenangebot ist die Antwort dieses Spielers - nicht ein zweites Angebot.
+ *
+ * Geprueft wird nur, was der Konternde selbst aufbringen muss. Ob der Anbieter
+ * zahlen koennte, bleibt offen bis zum Zuschlag: eine Ablehnung aus diesem
+ * Grund verriete etwas ueber seine verdeckte Hand.
+ */
+export function canCounterTrade(
+  state: GameState,
+  player: PlayerId,
+  give: ResourceAmounts,
+  want: ResourceAmounts,
+): RuleViolation | null {
+  const problem = checkResponder(state, player);
+  if (problem !== null) return problem;
+
+  return checkShape(findPlayer(state, player)!, give, want);
+}
+
+export function applyCounterTrade(
+  state: GameState,
+  player: PlayerId,
+  give: ResourceAmounts,
+  want: ResourceAmounts,
+  at: number,
+): ReduceResult {
+  const problem = canCounterTrade(state, player, give, want);
+  if (problem !== null) return rejected(problem);
+
+  const answered = withResponse(state, player, { kind: 'countered', give, want });
+  if (!answered.ok) return answered;
+
+  /*
+   * Die Frist laeuft neu. Ein Gegenangebot ist eine neue Frage an den Anbieter,
+   * und er soll dieselbe Bedenkzeit haben wie der Tisch vorher.
+   */
+  const trade = openTrade(answered.state);
+  if (trade === null) return answered;
+
+  return ok({
+    ...answered.state,
+    phase: { ...trade, expiresAt: at + state.rules.tradeOfferMs },
+  });
+}

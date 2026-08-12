@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { RuleViolationCode } from './errors.js';
 import { giving, hand, testGame } from './fixtures.js';
 import {
+  applyCounterTrade,
   applyOfferTrade,
   applyRespondTrade,
   awaitsResponse,
+  canCounterTrade,
   canOfferAnything,
   canOfferTrade,
   canRespondTrade,
@@ -194,5 +196,72 @@ describe('awaitsResponse', () => {
 
     expect(awaitsResponse(state, 'p2')).toBe(true);
     expect(awaitsResponse(state, 'p1')).toBe(false);
+  });
+});
+
+describe('canCounterTrade', () => {
+  it('nimmt ein Gegenangebot an, das der Konternde decken kann', () => {
+    expect(
+      canCounterTrade(tableWithOffer(), 'p2', hand({ ore: 1 }), hand({ lumber: 3 })),
+    ).toBeNull();
+  });
+
+  it('lehnt ein Gegenangebot ab, das der Konternde nicht decken kann', () => {
+    expect(
+      canCounterTrade(tableWithOffer(), 'p2', hand({ ore: 5 }), hand({ lumber: 3 }))?.code,
+    ).toBe(RuleViolationCode.INSUFFICIENT_RESOURCES);
+  });
+
+  it('prueft dieselbe Form wie beim Angebot', () => {
+    expect(canCounterTrade(tableWithOffer(), 'p2', hand({ ore: 1 }), hand())?.code).toBe(
+      RuleViolationCode.INVALID_TRADE,
+    );
+  });
+
+  /*
+   * Ob der Anbieter das Gegenangebot bezahlen koennte, wird hier NICHT geprueft:
+   * eine Ablehnung aus diesem Grund verriete dem Konternden etwas ueber die
+   * verdeckte Hand des Anbieters. Geprueft wird es beim Zuschlag.
+   */
+  it('fragt nicht, ob der Anbieter zahlen koennte', () => {
+    const brokeOfferer = giving(tableWithOffer(), 'p1', { lumber: 2 });
+
+    expect(canCounterTrade(brokeOfferer, 'p2', hand({ ore: 1 }), hand({ lumber: 9 }))).toBeNull();
+  });
+});
+
+describe('applyCounterTrade', () => {
+  it('traegt das Gegenangebot als Antwort ein und setzt die Frist neu', () => {
+    const state = tableWithOffer();
+    const before = state.phase.kind === 'tradePending' ? state.phase.expiresAt : 0;
+
+    const result = applyCounterTrade(state, 'p2', hand({ ore: 1 }), hand({ lumber: 3 }), 30_000);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.state.phase.kind !== 'tradePending') return;
+    expect(result.state.phase.responses.p2).toEqual({
+      kind: 'countered',
+      give: hand({ ore: 1 }),
+      want: hand({ lumber: 3 }),
+    });
+    expect(result.state.phase.expiresAt).toBe(30_000 + result.state.rules.tradeOfferMs);
+    expect(result.state.phase.expiresAt).toBeGreaterThan(before);
+  });
+
+  it('haelt das Angebot offen, auch wenn alle anderen abgelehnt haben', () => {
+    const declined = applyRespondTrade(tableWithOffer(), 'p3', 'declined');
+    if (!declined.ok) throw new Error('Antwort wurde abgelehnt');
+
+    const result = applyCounterTrade(
+      declined.state,
+      'p2',
+      hand({ ore: 1 }),
+      hand({ lumber: 3 }),
+      0,
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.phase.kind).toBe('tradePending');
   });
 });

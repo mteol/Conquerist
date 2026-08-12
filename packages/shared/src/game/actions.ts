@@ -110,6 +110,20 @@ export const GameActionSchema = z.discriminatedUnion('type', [
     response: z.enum(['accepted', 'declined']),
   }),
 
+  /**
+   * Gegenangebot: die Antwort dieses Spielers mit eigenen Mengen.
+   *
+   * `give` und `want` stehen aus **seiner** Sicht - er gibt `give` und will
+   * `want`. Ein Gegenangebot setzt die Frist neu, deshalb wieder ein `at`.
+   */
+  z.object({
+    ...Base,
+    type: z.literal('counterTrade'),
+    give: ResourceAmountsSchema,
+    want: ResourceAmountsSchema,
+    at: z.number().int().min(0),
+  }),
+
   z.object({ ...Base, type: z.literal('endTurn') }),
 ]);
 
