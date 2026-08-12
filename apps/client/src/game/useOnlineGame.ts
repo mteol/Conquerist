@@ -249,25 +249,47 @@ export function useOnlineGame(
     if (name !== '') storeName(name);
   }, []);
 
+  /**
+   * Den Anzeigenamen setzen, **ohne die Identitaet zu wechseln**.
+   *
+   * Das Geheimnis muss mit. Ohne es legt der Server einen neuen Gast an und
+   * schaltet die Sitzung auf ihn um - der Raum gehoerte dann jemandem, dessen
+   * Geheimnis nie jemand behalten hat. Sichtbar wurde das gleich dreifach: der
+   * Gastgeber sah seinen eigenen Startknopf nicht (`hostId` passte zu keiner
+   * bekannten Id), sein Sitz stand als „verbunden" statt „du" da, und nach
+   * einem Neuladen war die Partie unerreichbar, weil `room.mine` fuer das
+   * gespeicherte Geheimnis nichts mehr fand.
+   *
+   * Die Antwort geht durch `adopt` - schickt der Server doch ein neues
+   * Geheimnis, wird es behalten statt weggeworfen.
+   */
+  const identify = useCallback(
+    async (name: string): Promise<void> => {
+      const secret = loadSecret();
+      adopt(await send(HELLO, { ...(secret === null ? {} : { secret }), name }));
+    },
+    [adopt, send],
+  );
+
   const createRoom = useCallback(
     async (seatCount: number, seed: string, name: string): Promise<string> => {
       remember(name);
-      await send(HELLO, { name });
+      await identify(name);
       const { code } = await send(CREATE_ROOM, { seatCount, seed });
       codeRef.current = code;
       return code;
     },
-    [remember, send],
+    [remember, identify, send],
   );
 
   const joinRoom = useCallback(
     async (code: string, name: string): Promise<void> => {
       remember(name);
-      await send(HELLO, { name });
+      await identify(name);
       const joined = await send(JOIN_ROOM, { code });
       codeRef.current = joined.code;
     },
-    [remember, send],
+    [remember, identify, send],
   );
 
   const leaveRoom = useCallback(async (): Promise<void> => {

@@ -105,6 +105,22 @@ function Probe(): JSX.Element {
       <button
         type="button"
         onClick={() => {
+          void online.createRoom(3, 'abc', 'Anna');
+        }}
+      >
+        Partie anlegen
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void online.joinRoom('K7X2', 'Anna');
+        }}
+      >
+        Partie beitreten
+      </button>
+      <button
+        type="button"
+        onClick={() => {
           void online.login({ login: 'anna', password: 'langgenug1' });
         }}
       >
@@ -316,5 +332,69 @@ describe('Online-Partie', () => {
 
     expect(screen.getByTestId('login').textContent).toBe('anna');
     expect(loadSecret()).toBe('alt');
+  });
+});
+
+describe('Identitaet beim Anlegen und Beitreten', () => {
+  /**
+   * Der Fehler, den diese Tests festhalten: `createRoom` und `joinRoom` haben
+   * sich ohne Geheimnis neu angemeldet. Der Server legt dann einen neuen Gast
+   * an und schaltet die Sitzung auf ihn um - der Raum gehoerte danach jemandem,
+   * dessen Geheimnis niemand behalten hat. Sichtbar war das daran, dass der
+   * Gastgeber seinen eigenen Startknopf nicht bekam.
+   *
+   * Jeder Test spielt seinen Ablauf zu Ende: eine offene Anfrage wird beim
+   * Abraeumen abgelehnt und traegt sonst einen unbehandelten Fehler nach.
+   */
+  const lastHello = () => socket.sent.filter((entry) => entry.type === HELLO).at(-1);
+
+  it('schickt beim Anlegen das gespeicherte Geheimnis mit', async () => {
+    await connectedInRoom();
+    const before = socket.countOf(HELLO);
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Partie anlegen' }).click();
+    });
+    await act(async () => {
+      socket.reply('hello', { userId: 'u1', name: 'Anna', isGuest: true });
+    });
+    await act(async () => {
+      socket.reply('room.create', { code: 'A1B2' });
+    });
+
+    expect(socket.countOf(HELLO)).toBe(before + 1);
+    expect(lastHello()?.payload).toEqual({ secret: 'geheim', name: 'Anna' });
+  });
+
+  it('schickt beim Beitreten das gespeicherte Geheimnis mit', async () => {
+    await connectedInRoom();
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Partie beitreten' }).click();
+    });
+    await act(async () => {
+      socket.reply('hello', { userId: 'u1', name: 'Anna', isGuest: true });
+    });
+    await act(async () => {
+      socket.reply('room.join', { code: 'K7X2' });
+    });
+
+    expect(lastHello()?.payload).toEqual({ secret: 'geheim', name: 'Anna' });
+  });
+
+  it('behaelt ein neues Geheimnis, wenn der Server doch eines schickt', async () => {
+    await connectedInRoom();
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Partie anlegen' }).click();
+    });
+    await act(async () => {
+      socket.reply('hello', { userId: 'u9', secret: 'neu', name: 'Anna', isGuest: true });
+    });
+    await act(async () => {
+      socket.reply('room.create', { code: 'A1B2' });
+    });
+
+    expect(loadSecret()).toBe('neu');
   });
 });
