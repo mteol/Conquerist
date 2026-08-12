@@ -149,12 +149,12 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
 5. ✅ Client-Anbindung, State-Filtering, Reconnect
 6. ✅ Persistence: Action-Log, „Deine Partien"
 7. ✅ Auth: Registrierung, Login, Gast-Account beanspruchen
-8. Handel, Entwicklungskarten
+8. ✅ Handel, Entwicklungskarten
 9. Docker + Coolify
 10. Erweiterungen
 
 ## Aktueller Stand
-Etappen 0 bis 7 fertig. 0–3 liegen in `main`, 4–7 auf `etappe-4-online`.
+Etappen 0 bis 8 fertig. 0–3 liegen in `main`, 4–8 auf `etappe-4-online`.
 Ein Serverneustart kostet keine Partie mehr: gespeichert wird der Startzustand
 plus das Action-Log, wiederhergestellt per `replay` — **kein Snapshot**, das ist
 gemessen (4000 Züge = 19 ms).
@@ -169,6 +169,21 @@ Migrationsliste (`MIGRATIONS` in `apps/server/src/db/database.ts`, gezählt
 (Etappe 4–6, eingefroren) und `stepSessionsAndAccounts` (Etappe 7, `sessions`
 plus der Umbau von `users`).
 
+Seit Etappe 8 gibt es Handel zwischen Spielern, und mit ihm **Zeit als
+Infrastruktur**. Ein Angebot ist eine eigene Phase (`tradePending`) und
+blockiert den Zug; Mitspieler sagen zu, lehnen ab oder kontern, der Anbieter
+wählt den Partner. Die Frist steht als `expiresAt` im Zustand, gespeist aus
+einem `at`, das die Aktion mitbringt und **der Server stempelt**
+(`stampAction`) — der Reducer liest nie eine Uhr (Regel 2). Ihr Ablauf ist eine
+gewöhnliche Aktion (`timeout`), eingeworfen vom Wecker je Raum
+(`apps/server/src/rooms/clock.ts`), der dafür nur `deadlineOf(state)` liest.
+Ein zweites Zeitlimit später (Abwurffrist, Zugzeit) kostet ein Feld in seiner
+Phase und einen Zweig in `deadlineOf`.
+
+Drei Aktionen kommen **nur** vom Server: `timeout`, `dropFromTrade`,
+`rejoinTrade`. Sie laufen über `applySystemAction` (ohne Absenderprüfung), und
+der ACT-Handler weist sie ab, wenn ein Client sie schickt.
+
 Was in `shared` schon steht:
 - `protocol/` — Envelope, Registry, Ping (Etappe 0)
 - `random/` — Seed-basierter PRNG als unveränderlicher Wert, Shuffle
@@ -182,6 +197,11 @@ Was in `shared` schon steht:
   Dazu seit Etappe 4: `playerView.ts` (die Geheimhaltungsgrenze), `log.ts`
   (Verlaufssätze — der Server baut sie), `labels.ts` (die deutschen Wörter;
   die **Farben** blieben im Client neben `index.css`)
+
+Dazu seit Etappe 8: `tradeOffer.ts` (die Datentypen des Angebots — eigene
+Datei, damit `phase.ts` sie ohne Ladezirkel importieren kann), `playerTrade.ts`
+(alle Regeln des Spielerhandels) und `deadline.ts` (`deadlineOf` — die einzige
+Stelle, an der jemand nachsieht, ob eine Uhr läuft).
 
 Regeln liegen je in eigener Datei, jeweils als `can…` (nur prüfen) und
 `apply…` (prüfen und anwenden). `legalActions` benutzt dieselben `can…` —

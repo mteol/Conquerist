@@ -1586,3 +1586,151 @@ gelaufen.
 **Etappe 8 — Handel zwischen Spielern.** Entwicklungskarten sind bereits aus
 Etappe 8 vorgezogen (siehe weiter oben in dieser Datei); was bleibt, ist der
 Tausch zwischen zwei Spielern selbst.
+
+## Etappe 8 — Handel zwischen Spielern ✅
+
+Stand: 2026-08-12, Branch `etappe-4-online`, aufsetzend auf `903b327`.
+
+Entwicklungskarten waren schon vorgezogen (siehe weiter oben); was fehlte, war
+der Tausch ueber den Tisch. Fuenfzehn Aufgaben: die Phase und ihre Datentypen,
+die fuenf Zuege der Verhandlung, die Frist als Infrastruktur, Verbindungsverlust
+und Rueckkehr, Aktionsliste und Sicht, der Wecker im Server, zwei Dialoge im
+Client und die lokale Uhr.
+
+Entwurf und Plan liegen in
+`docs/superpowers/specs/2026-08-12-etappe-8-handel-design.md` und
+`docs/superpowers/plans/2026-08-12-etappe-8-handel.md`.
+
+### Abnahme
+
+| Pruefung                                      | Ergebnis                                                      |
+| --------------------------------------------- | ------------------------------------------------------------- |
+| `pnpm typecheck` (`tsc -b`, alle drei Pakete) | gruen                                                         |
+| `pnpm test`                                   | 886 Tests gruen (shared 568, server 121, client 197)          |
+| `pnpm build`                                  | gruen, Client-Bundle 380,33 kB (113,25 kB gzip), CSS 24,94 kB |
+| `pnpm format:check`                           | gruen                                                         |
+
+Zum Vergleich der Stand aus Etappe 7: 785 Tests, Bundle 366,55 kB. Der Handel
+kostet also 101 Tests und 13,8 kB.
+
+**Nicht in dieser Tabelle: der Durchlauf im Browser.** Siehe „Offene Punkte" —
+er steht zum Zeitpunkt dieses Commits noch aus.
+
+### Getroffene Entscheidungen
+
+**Das Angebot ist eine Phase, kein Feld daneben.** Ein offenes Angebot
+blockiert Bauen, Bankhandel, Kartenkauf und Zugende. Stuende es als Feld neben
+`phase: 'main'`, waere diese Sperre eine zweite Regel neben `PHASE_ACTIONS` —
+zwei Wahrheiten ueber denselben Sachverhalt. Als Knoten im Automaten aus
+`phase.ts` ist es dieselbe Regel wie jede andere Phasensperre. `actorFor` gibt
+fuer `tradePending` `null` zurueck, genau wie fuer `discardPending`: es handeln
+mehrere, und wer genau was darf, prueft `playerTrade.ts`.
+
+**Das Angebot lebt im `GameState`, nicht im Raum.** Der Gegenentwurf waere, das
+Verhandeln im Server zu halten und nur den fertigen Tausch als Aktion zu
+fuehren. Er scheitert dreifach: lokal gibt es keinen Raum (also keinen Handel),
+ein Serverneustart verloere jedes offene Angebot, und der Server muesste die
+Angebotsregeln ein zweites Mal auslegen. Der Beleg steht als Test in
+`game.integration.test.ts`: `replay` aus Startzustand und Aktionsfolge ergibt
+ein offenes Angebot **samt Frist** wieder.
+
+**Zeit kommt als Daten herein, nie aus einer Uhr im Reducer.** Regel 2 verbietet
+`Date.now()` in der Logik. Gebaut wurde deshalb: `expiresAt` im Zustand,
+gespeist aus einem `at` an der Aktion; `deadlineOf(state)` als einzige Stelle,
+an der jemand nachsieht, ob eine Uhr laeuft; und `timeout` als gewoehnliche
+Aktion, die nur gilt, wenn die Frist wirklich um ist. Ein zweites Zeitlimit
+(Abwurffrist, Zugzeit) braucht ein Feld in seiner Phase und einen Zweig in
+`deadlineOf` — sonst nichts.
+
+**Der Zeitstempel kommt vom Server, immer.** `stampAction` ueberschreibt `at`,
+bevor `reduce` laeuft **und bevor der Zug ins Log geht**. Beides ist noetig:
+ohne das erste koennte sich ein Client eine Frist von zehn Minuten stempeln,
+ohne das zweite ergaebe `replay` nach einem Neustart eine andere Frist als die,
+die wirklich galt.
+
+**Drei Aktionen kommen nur vom Server.** `timeout` ist niemandes Absicht;
+`dropFromTrade` und `rejoinTrade` sprechen **ueber** einen anderen Spieler. Sie
+kaemen durch `applyAction` gar nicht durch, weil der prueft, dass Absender und
+`player`-Feld dieselbe Person sind — deshalb ein zweiter Eingang
+`applySystemAction` ohne diese Pruefung, und im ACT-Handler eine Abweisung fuer
+den Fall, dass ein Client es trotzdem versucht.
+
+**Ein Angebot verfaellt nur an lauter Neins von Hand.** Ist auch nur eine
+Ablehnung automatisch entstanden (Verbindungsverlust), bleibt es bis zur Frist
+offen. Ohne diese Unterscheidung toetete ein Abbruch von zwei Sekunden genau
+das Angebot, das gerade wiederkommen sollte. `TradeResponse` traegt dafuer ein
+`automatic`-Feld, und `rejoinTrade` nimmt ausschliesslich solche Ablehnungen
+zurueck — Gesprochenes bleibt stehen.
+
+**`tradeOfferMs` bekommt eine Vorgabe, und das ist keine Bequemlichkeit.** Seit
+Etappe 6 liegt das RuleSet jeder laufenden Partie als JSON in der Datenbank. Ein
+Pflichtfeld ohne `.default` liesse `GameStateSchema.safeParse` an jedem
+gespeicherten Spielstand scheitern, und jede laufende Partie waere beim
+naechsten Serverstart weg. Dieselbe Falle, vor der die Datei bei `dice` und
+`robberRoll` schon warnt.
+
+**Gegenangebote sammeln sich, sie ersetzen nicht.** Ein Gegenangebot ist die
+Antwort dieses Spielers; das Original bleibt stehen, und der Anbieter waehlt am
+Ende zwischen Zusagen und Gegenangeboten. Der Gegenentwurf (Rollentausch) liesse
+die uebrigen Spieler aus der Runde fallen und koennte beliebig hin- und
+hergehen. `acceptTrade` traegt deshalb **keine Mengen**: bei einer Zusage gelten
+die des Angebots, bei einem Gegenangebot dessen eigene — beides steht im
+Zustand, und ein Client, der die Mengen mitschickte, koennte sie erfinden.
+
+**Beim Gegenangebot wird nicht geprueft, ob der Anbieter zahlen koennte.** Eine
+Ablehnung aus diesem Grund verriete dem Konternden etwas ueber eine verdeckte
+Hand. Geprueft wird es beim Zuschlag, wo ohnehin beide Seiten geprueft werden.
+Aus demselben Grund entscheidet die Zusagen-Pruefung nur ueber die **eigene**
+Aktionsliste: wer nicht zahlen kann, sieht einen gesperrten Knopf, der Tisch
+sieht eine gewoehnliche Ablehnung.
+
+**`GameEvent` traegt jetzt ein `sentAt`.** Fristen stehen als Serverzeit im
+Zustand. Ohne einen Bezugspunkt zeigte eine um zwei Minuten falsch gehende
+Rechneruhr eine Frist, die laengst abgelaufen ist — oder eine, die nie endet.
+Der Client rechnet je Stand seinen Versatz neu; gestempelt wird einmal je
+Broadcast und nicht je Empfaenger, damit alle denselben Bezugspunkt bekommen.
+
+**Die lokale Partie bekommt denselben Wecker.** `useHotseatGame` stempelt seine
+Aktionen selbst und wirft `timeout` ein, wenn die Frist um ist. Die Alternative
+waere gewesen, den Countdown lokal auszublenden — dann haette die lokale Partie
+eine Frist im Zustand, die niemand vollstreckt, und der Dialog zeigte eine Uhr,
+die nichts bedeutet.
+
+**Eine Komponente fuer beide Mengenwahlen.** `TradeAmounts` traegt das Angebot
+im Handelsfenster und das Gegenangebot im Angebotsdialog. Zweimal dasselbe
+Formular waere zweimal dieselbe Sperre gewesen — und beim naechsten Mal nur an
+einer Stelle gepflegt.
+
+### Abweichungen vom Plan
+
+Keine am Verhalten. Drei Kleinigkeiten an den Tests, alle waehrend der
+Umsetzung aufgefallen: `replay` gibt ein `ReduceResult` zurueck und keinen
+`GameState` (die Planvorlage hatte das falsch); `log.test.ts` benennt seine
+Testsitze `p1`/`p2` statt „Spieler 1"; und das Repo hat kein `jest-dom`, also
+`toHaveProperty('disabled', true)` statt `toBeDisabled()`. In allen drei Faellen
+war die Erwartung falsch, nicht der Code.
+
+### Offene Punkte
+
+- **Der Durchlauf im Browser steht noch aus.** Zu pruefen: Angebot legen (der
+  Zug ist blockiert), ablehnen und annehmen, Gegenangebot mit sichtbar
+  zurueckspringender Frist, ein Angebot ablaufen lassen, ein Fenster mitten im
+  Angebot schliessen (Ablehnung erscheint) und wieder oeffnen (sie ist weg),
+  ein Serverneustart mit abgelaufener Frist, und das schmale Fenster.
+- **Verliert der Anbieter die Verbindung, steht die Partie**, bis er
+  wiederkommt. Die Frist raeumt zwar das Angebot ab, aber der Zug bleibt bei
+  ihm. Das ist heute schon so, wenn jemand mitten in `main` verschwindet.
+- **Kein Gegenangebot auf ein Gegenangebot.** Der Anbieter entscheidet, oder es
+  verfaellt.
+- **Kein Handel ausserhalb des eigenen Zugs.** Wer nicht am Zug ist, kann nur
+  antworten.
+- **Die Frist gilt dem Angebot, nicht dem Zug.** Wer gar nichts tut, blockiert
+  die Partie weiterhin unbegrenzt — das braeuchte eine Zugzeit, und die
+  Infrastruktur dafuer steht mit dieser Etappe bereit.
+- **`tradeOfferMs` ist je RuleSet fest**, nicht je Raum einstellbar.
+
+### Naechste Etappe
+
+**Etappe 9 — Docker und Coolify.** Damit wird der Server oeffentlich
+erreichbar; die beiden Punkte, die Etappe 7 dafuer vorgemerkt hat (Rate-Limit
+auf `auth.login`, Sitzungsablauf), gehoeren dann dazu.
