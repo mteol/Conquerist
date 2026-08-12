@@ -1616,6 +1616,37 @@ kostet also 101 Tests und 13,8 kB.
 **Nicht in dieser Tabelle: der Durchlauf im Browser.** Siehe „Offene Punkte" —
 er steht zum Zeitpunkt dieses Commits noch aus.
 
+### Am laufenden Server durchgespielt (nachgetragen 2026-08-12)
+
+Der Browser blieb aus (die Chrome-Erweiterung war nicht verbunden), aber der
+**laufende Server** wurde ueber drei echte WebSocket-Verbindungen durchgefahren
+— kein Mock, kein Testdouble, derselbe Prozess, den `pnpm dev` startet.
+Bestaetigt hat das genau die Punkte, die kein Komponententest erreicht:
+
+- Der Server **stempelt `at`**: mitgeschickt wurde `at: 0`, die Frist stand
+  danach 60 s in der Zukunft. Ohne den Stempel laege sie im Jahr 1970.
+- Ein offenes Angebot **blockiert den Zug** — `endTurn` kam zurueck mit
+  „endTurn passt nicht in die Phase tradePending".
+- Der Mitspieler bekommt genau zwei `respondTrade` in seiner Aktionsliste.
+- Ein **Gegenangebot verlaengert die Frist**: gemessene 1209 ms nach 1200 ms
+  Wartezeit, gerechnet auf der Serveruhr.
+- **Verbindungsabbruch** traegt die automatische Ablehnung ein, der
+  **Reconnect** mit demselben Geheimnis nimmt sie wieder heraus — und der
+  Zurueckgekehrte hat „Annehmen" wieder in seiner Liste.
+- Der **Zuschlag** bewegt je eine Karte in jede Richtung; der Verlauf lautete
+  „Ben ist nicht mehr da … | Ben ist zurueck … | Ben nimmt das Angebot an |
+  Anna tauscht mit Ben".
+- Der **Wecker** hat nach 60 s von selbst zugeschlagen: „Die Zeit fuer Annas
+  Angebot ist abgelaufen".
+- **Neustart mit abgelaufener Frist**: Angebot angelegt, Server beendet, Frist
+  im Aus verstreichen lassen, Server wieder gestartet — der Raum kam aus der
+  Datenbank zurueck und stand sofort wieder in `main`. Der erste Weckerlauf war
+  faellig, genau wie oben behauptet.
+
+Gelaufen ist das gegen eine eigene Datenbankdatei; die echte `data/` wurde
+nicht angefasst. Was damit **weiterhin ungeprueft** ist, ist ausschliesslich
+das Aussehen: Reiter, Antwortliste, Countdown, schmales Fenster.
+
 ### Getroffene Entscheidungen
 
 **Das Angebot ist eine Phase, kein Feld daneben.** Ein offenes Angebot
@@ -1712,11 +1743,10 @@ war die Erwartung falsch, nicht der Code.
 
 ### Offene Punkte
 
-- **Der Durchlauf im Browser steht noch aus.** Zu pruefen: Angebot legen (der
-  Zug ist blockiert), ablehnen und annehmen, Gegenangebot mit sichtbar
-  zurueckspringender Frist, ein Angebot ablaufen lassen, ein Fenster mitten im
-  Angebot schliessen (Ablehnung erscheint) und wieder oeffnen (sie ist weg),
-  ein Serverneustart mit abgelaufener Frist, und das schmale Fenster.
+- **Der Durchlauf im Browser steht noch aus** — aber nur noch fuer das
+  Aussehen. Das Verhalten ist am laufenden Server durchgespielt (siehe oben);
+  ungesehen sind die zwei Reiter im Handelsfenster, die Antwortliste des
+  Anbieters, der laufende Countdown und das schmale Fenster.
 - **Verliert der Anbieter die Verbindung, steht die Partie**, bis er
   wiederkommt. Die Frist raeumt zwar das Angebot ab, aber der Zug bleibt bei
   ihm. Das ist heute schon so, wenn jemand mitten in `main` verschwindet.
