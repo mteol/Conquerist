@@ -83,6 +83,58 @@ describe('ActionPanel', () => {
     expect(screen.getByRole('button', { name: 'Zug beenden' })).toHaveProperty('disabled', true);
   });
 
+  /*
+   * Der Fehler, den dieser Test festhaelt: der Knopf hing allein an
+   * `targets.trades`, also an den Bankgeschaeften. Wer zu wenige Karten fuer
+   * die Bank hatte - der Normalfall, wenn man handeln moechte -, kam gar nicht
+   * erst an den Reiter fuer den Spielerhandel.
+   */
+  it('oeffnet den Handel auch ohne Bankgeschaeft, wenn ein Angebot moeglich waere', () => {
+    const state = afterSetup();
+    const rolled = reduce(state, { type: 'rollDice', player: setupPlayer(state) ?? ids[0]! });
+    const after = rolled.ok ? rolled.state : state;
+    const view = gameViewOf(
+      playerViewOf(after, after.players[after.currentPlayerIndex]!.id, seats, 2),
+    );
+    const targets = actionTargets(after, view.currentPlayerId);
+
+    render(
+      <ActionPanel
+        view={{ ...view, canOfferTrade: true }}
+        targets={{ ...targets, trades: [] }}
+        error={null}
+        onRoll={vi.fn()}
+        onEndTurn={vi.fn()}
+        onOpenTrade={vi.fn()}
+        onBuyCard={vi.fn()}
+        onDismissError={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', false);
+  });
+
+  it('sperrt den Handel, wenn weder Bank noch Mitspieler in Frage kommen', () => {
+    const state = afterSetup();
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
+    const targets = actionTargets(state, view.currentPlayerId);
+
+    render(
+      <ActionPanel
+        view={{ ...view, canOfferTrade: false }}
+        targets={{ ...targets, trades: [] }}
+        error={null}
+        onRoll={vi.fn()}
+        onEndTurn={vi.fn()}
+        onOpenTrade={vi.fn()}
+        onBuyCard={vi.fn()}
+        onDismissError={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', true);
+  });
+
   it('zeigt den Ablehnungsgrund und laesst ihn wegraeumen', async () => {
     const state = afterSetup();
     const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));

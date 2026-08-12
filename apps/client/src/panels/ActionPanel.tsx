@@ -51,7 +51,14 @@ export function ActionPanel({
         <button
           type="button"
           className="button"
-          disabled={targets.trades.length === 0}
+          /*
+           * Zwei Wege hinter einem Knopf: der Bankkurs steht in der
+           * Aktionsliste, das Angebot an die Mitspieler nicht (es braucht
+           * Mengen). Wer nur `targets.trades` prueft, sperrt den Spielerhandel
+           * genau dann aus, wenn jemand zu wenige Karten fuer die Bank hat -
+           * also fast immer dann, wenn er handeln moechte.
+           */
+          disabled={targets.trades.length === 0 && !view.canOfferTrade}
           onClick={onOpenTrade}
         >
           Handel

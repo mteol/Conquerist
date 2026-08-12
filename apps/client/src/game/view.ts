@@ -72,6 +72,14 @@ export interface GameView {
   readonly largestArmy: PlayerView['largestArmy'];
   /** Wie viele Entwicklungskarten der Stapel noch hergibt. */
   readonly deckLeft: number;
+  /**
+   * Ob dieser Spieler jetzt ein Angebot an die Mitspieler machen duerfte.
+   *
+   * Kommt unveraendert aus der `PlayerView` - die Aktionsliste kann es nicht
+   * sagen, weil ein Angebot Mengen braucht und jede Kombination ueber fuenf
+   * Sorten ein eigener Eintrag waere.
+   */
+  readonly canOfferTrade: boolean;
   /** Wer zusieht. Seine Karten sind die einzigen, die offen liegen. */
   readonly you: PlayerId;
   /**
@@ -244,6 +252,7 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     longestRoad: view.longestRoad,
     largestArmy: view.largestArmy,
     deckLeft: view.deckLeft,
+    canOfferTrade: view.canOfferTrade,
     you: view.you,
     gains,
   };
