@@ -58,6 +58,8 @@ export const RuleViolationCode = {
   NOT_THE_OFFERER: 'NOT_THE_OFFERER',
   /** Dieser Spieler hat auf das Angebot schon geantwortet. */
   ALREADY_RESPONDED: 'ALREADY_RESPONDED',
+  /** Der genannte Partner hat weder zugesagt noch gekontert. */
+  PARTNER_DID_NOT_ACCEPT: 'PARTNER_DID_NOT_ACCEPT',
 } as const;
 
 export type RuleViolationCode = (typeof RuleViolationCode)[keyof typeof RuleViolationCode];

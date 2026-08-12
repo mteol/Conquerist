@@ -8,7 +8,13 @@ import { recomputeLongestRoad } from './roads.js';
 import { hasWon } from './scoring.js';
 import { applySetupRoad, applySetupSettlement, setupPlayer } from './setup.js';
 import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './state.js';
-import { applyCounterTrade, applyOfferTrade, applyRespondTrade } from './playerTrade.js';
+import {
+  applyAcceptTrade,
+  applyCounterTrade,
+  applyOfferTrade,
+  applyRespondTrade,
+  applyWithdrawTrade,
+} from './playerTrade.js';
 import { applyTradeWithBank } from './trade.js';
 import {
   applyBuyDevelopmentCard,
@@ -52,7 +58,7 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
     'offerTrade',
     'endTurn',
   ],
-  tradePending: ['respondTrade', 'counterTrade'],
+  tradePending: ['respondTrade', 'counterTrade', 'acceptTrade', 'withdrawTrade'],
   finished: [],
 };
 
@@ -195,6 +201,10 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
       return applyRespondTrade(state, action.player, action.response);
     case 'counterTrade':
       return applyCounterTrade(state, action.player, action.give, action.want, action.at);
+    case 'acceptTrade':
+      return applyAcceptTrade(state, action.player, action.partner);
+    case 'withdrawTrade':
+      return applyWithdrawTrade(state, action.player);
     case 'endTurn':
       return endTurn(state);
   }

@@ -3,14 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { RuleViolationCode } from './errors.js';
 import { giving, hand, testGame } from './fixtures.js';
 import {
+  applyAcceptTrade,
   applyCounterTrade,
   applyOfferTrade,
   applyRespondTrade,
+  applyWithdrawTrade,
   awaitsResponse,
+  canAcceptTrade,
   canCounterTrade,
   canOfferAnything,
   canOfferTrade,
   canRespondTrade,
+  termsFor,
 } from './playerTrade.js';
 import { reduce } from './reducer.js';
 import type { GameState } from './state.js';
@@ -263,5 +267,123 @@ describe('applyCounterTrade', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.phase.kind).toBe('tradePending');
+  });
+});
+
+function resourcesOf(state: GameState, id: string) {
+  return state.players.find((player) => player.id === id)!.resources;
+}
+
+describe('acceptTrade auf eine Zusage', () => {
+  function accepted(): GameState {
+    const answered = applyRespondTrade(tableWithOffer(), 'p2', 'accepted');
+    if (!answered.ok) throw new Error('Antwort wurde abgelehnt');
+    return answered.state;
+  }
+
+  it('bewegt genau die Mengen des Angebots', () => {
+    const result = applyAcceptTrade(accepted(), 'p1', 'p2');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(resourcesOf(result.state, 'p1')).toEqual(hand({ lumber: 1, ore: 1 }));
+    expect(resourcesOf(result.state, 'p2')).toEqual(hand({ lumber: 2, ore: 1 }));
+  });
+
+  it('laesst die Bank unberuehrt - das ist kein Bankgeschaeft', () => {
+    const before = accepted();
+    const result = applyAcceptTrade(before, 'p1', 'p2');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.bank).toEqual(before.bank);
+  });
+
+  it('gibt den Zug zurueck in die Hauptphase', () => {
+    const result = applyAcceptTrade(accepted(), 'p1', 'p2');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.phase).toEqual({ kind: 'main' });
+  });
+
+  it('nimmt nur vom Anbieter einen Zuschlag an', () => {
+    expect(canAcceptTrade(accepted(), 'p3', 'p2')?.code).toBe(RuleViolationCode.NOT_THE_OFFERER);
+  });
+
+  it('lehnt einen Zuschlag an jemanden ohne Zusage ab', () => {
+    expect(canAcceptTrade(accepted(), 'p1', 'p3')?.code).toBe(
+      RuleViolationCode.PARTNER_DID_NOT_ACCEPT,
+    );
+  });
+});
+
+describe('acceptTrade auf ein Gegenangebot', () => {
+  function countered(): GameState {
+    const answered = applyCounterTrade(
+      tableWithOffer(),
+      'p2',
+      hand({ ore: 2 }),
+      hand({ lumber: 3 }),
+      0,
+    );
+    if (!answered.ok) throw new Error('Gegenangebot wurde abgelehnt');
+    return answered.state;
+  }
+
+  it('bewegt die Mengen des Gegenangebots, nicht die des Originals', () => {
+    const result = applyAcceptTrade(countered(), 'p1', 'p2');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(resourcesOf(result.state, 'p1')).toEqual(hand({ ore: 2 }));
+    expect(resourcesOf(result.state, 'p2')).toEqual(hand({ lumber: 3 }));
+  });
+
+  it('lehnt ab, wenn der Anbieter das Gegenangebot nicht decken kann', () => {
+    const greedy = applyCounterTrade(
+      tableWithOffer(),
+      'p2',
+      hand({ ore: 1 }),
+      hand({ lumber: 9 }),
+      0,
+    );
+    if (!greedy.ok) throw new Error('Gegenangebot wurde abgelehnt');
+
+    expect(canAcceptTrade(greedy.state, 'p1', 'p2')?.code).toBe(
+      RuleViolationCode.INSUFFICIENT_RESOURCES,
+    );
+  });
+});
+
+describe('termsFor', () => {
+  it('kennt bei einer Zusage die Seiten des Originalangebots', () => {
+    const answered = applyRespondTrade(tableWithOffer(), 'p2', 'accepted');
+    if (!answered.ok) throw new Error('Antwort wurde abgelehnt');
+
+    expect(termsFor(answered.state, 'p2')).toEqual({
+      partnerGives: ONE_ORE,
+      partnerGets: TWO_LUMBER,
+    });
+  });
+});
+
+describe('withdrawTrade', () => {
+  it('raeumt das Angebot ab, ohne etwas zu bewegen', () => {
+    const before = tableWithOffer();
+    const result = applyWithdrawTrade(before, 'p1');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.phase).toEqual({ kind: 'main' });
+    expect(resourcesOf(result.state, 'p1')).toEqual(resourcesOf(before, 'p1'));
+  });
+
+  it('nimmt das nur vom Anbieter an', () => {
+    const result = applyWithdrawTrade(tableWithOffer(), 'p2');
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe(RuleViolationCode.NOT_THE_OFFERER);
   });
 });

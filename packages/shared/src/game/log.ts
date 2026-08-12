@@ -107,6 +107,11 @@ function describeAction(
         ? `${who} nimmt das Angebot an`
         : `${who} lehnt das Angebot ab`;
 
+    case 'acceptTrade':
+      return `${who} tauscht mit ${nameOf(action.partner)}`;
+    case 'withdrawTrade':
+      return `${who} nimmt das Angebot zurueck`;
+
     case 'endTurn':
       return `${who} beendet den Zug`;
   }

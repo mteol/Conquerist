@@ -3,8 +3,15 @@ import { RESOURCE_IDS } from '../scenario/index.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { Phase } from './phase.js';
 import type { PlayerId } from './player.js';
-import { canAfford, countResources } from './resources.js';
-import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './state.js';
+import { addResources, canAfford, countResources, subtractResources } from './resources.js';
+import {
+  findPlayer,
+  ok,
+  rejected,
+  withPlayer,
+  type GameState,
+  type ReduceResult,
+} from './state.js';
 import type { TradeResponse } from './tradeOffer.js';
 
 /**
@@ -298,4 +305,135 @@ export function applyCounterTrade(
     ...answered.state,
     phase: { ...trade, expiresAt: at + state.rules.tradeOfferMs },
   });
+}
+
+/**
+ * Was beim Zuschlag mit diesem Partner in welche Richtung geht.
+ *
+ * Bei einer Zusage gelten die Seiten des Angebots, bei einem Gegenangebot
+ * dessen eigene. Deshalb traegt `acceptTrade` keine Mengen: sie stehen bereits
+ * im Zustand, und ein Client, der sie mitschickte, koennte sie erfinden.
+ */
+export function termsFor(
+  state: GameState,
+  partner: PlayerId,
+): { readonly partnerGives: ResourceAmounts; readonly partnerGets: ResourceAmounts } | null {
+  const trade = openTrade(state);
+  if (trade === null) return null;
+
+  const answer = trade.responses[partner];
+  if (answer === undefined) return null;
+
+  if (answer.kind === 'accepted') {
+    return { partnerGives: trade.offer.want, partnerGets: trade.offer.give };
+  }
+  if (answer.kind === 'countered') {
+    return { partnerGives: answer.give, partnerGets: answer.want };
+  }
+
+  return null;
+}
+
+export function canAcceptTrade(
+  state: GameState,
+  player: PlayerId,
+  partner: PlayerId,
+): RuleViolation | null {
+  const trade = openTrade(state);
+  if (trade === null) {
+    return violation(RuleViolationCode.WRONG_PHASE, 'Es liegt gerade kein Angebot auf dem Tisch');
+  }
+
+  if (player !== trade.offer.from) {
+    return violation(RuleViolationCode.NOT_THE_OFFERER, 'Nur der Anbieter schlaegt zu');
+  }
+
+  const terms = termsFor(state, partner);
+  if (terms === null) {
+    return violation(
+      RuleViolationCode.PARTNER_DID_NOT_ACCEPT,
+      `${partner} hat weder zugesagt noch gekontert`,
+    );
+  }
+
+  const owner = findPlayer(state, player);
+  const other = findPlayer(state, partner);
+  if (owner === undefined || other === undefined) {
+    return violation(RuleViolationCode.UNKNOWN_PLAYER, 'Einer der beiden sitzt nicht am Tisch');
+  }
+
+  /*
+   * Waehrend `tradePending` kann sich an keiner Hand etwas aendern - trotzdem
+   * geprueft. Eine Regel, die sich auf eine andere verlaesst, wird beim
+   * naechsten Umbau still falsch.
+   */
+  if (!canAfford(owner.resources, terms.partnerGets)) {
+    return violation(
+      RuleViolationCode.INSUFFICIENT_RESOURCES,
+      'Der Anbieter kann diesen Tausch nicht mehr decken',
+    );
+  }
+  if (!canAfford(other.resources, terms.partnerGives)) {
+    return violation(
+      RuleViolationCode.INSUFFICIENT_RESOURCES,
+      `${partner} kann diesen Tausch nicht mehr decken`,
+    );
+  }
+
+  return null;
+}
+
+export function applyAcceptTrade(
+  state: GameState,
+  player: PlayerId,
+  partner: PlayerId,
+): ReduceResult {
+  const problem = canAcceptTrade(state, player, partner);
+  if (problem !== null) return rejected(problem);
+
+  const terms = termsFor(state, partner)!;
+
+  // Erst der Anbieter, dann der Partner - `withPlayer` gibt die Spielerliste
+  // zurueck, nicht den Zustand, deshalb zwei Schritte statt zweier Kopien.
+  const afterOfferer = withPlayer(state, player, (entry) => ({
+    ...entry,
+    resources: addResources(
+      subtractResources(entry.resources, terms.partnerGets),
+      terms.partnerGives,
+    ),
+  }));
+
+  return ok({
+    ...state,
+    players: afterOfferer.map((entry) =>
+      entry.id === partner
+        ? {
+            ...entry,
+            resources: addResources(
+              subtractResources(entry.resources, terms.partnerGives),
+              terms.partnerGets,
+            ),
+          }
+        : entry,
+    ),
+    phase: { kind: 'main' },
+  });
+}
+
+export function canWithdrawTrade(state: GameState, player: PlayerId): RuleViolation | null {
+  const trade = openTrade(state);
+  if (trade === null) {
+    return violation(RuleViolationCode.WRONG_PHASE, 'Es liegt gerade kein Angebot auf dem Tisch');
+  }
+
+  return player === trade.offer.from
+    ? null
+    : violation(RuleViolationCode.NOT_THE_OFFERER, 'Nur der Anbieter nimmt sein Angebot zurueck');
+}
+
+export function applyWithdrawTrade(state: GameState, player: PlayerId): ReduceResult {
+  const problem = canWithdrawTrade(state, player);
+  if (problem !== null) return rejected(problem);
+
+  return ok({ ...state, phase: { kind: 'main' } });
 }

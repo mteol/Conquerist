@@ -124,6 +124,15 @@ export const GameActionSchema = z.discriminatedUnion('type', [
     at: z.number().int().min(0),
   }),
 
+  /**
+   * Zuschlag an einen Partner. **Ohne Mengen** - die stehen in seiner Antwort,
+   * je nachdem ob er zugesagt oder gekontert hat.
+   */
+  z.object({ ...Base, type: z.literal('acceptTrade'), partner: PlayerIdSchema }),
+
+  /** Der Anbieter nimmt sein Angebot zurueck. */
+  z.object({ ...Base, type: z.literal('withdrawTrade') }),
+
   z.object({ ...Base, type: z.literal('endTurn') }),
 ]);
 
