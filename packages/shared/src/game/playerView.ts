@@ -6,6 +6,7 @@ import type { Seat } from '../seats.js';
 import { DevelopmentCardIdSchema, DevelopmentCardSchema } from './development.js';
 import { RollSchema } from './dice.js';
 import { playableDevelopmentCards, roadBuildingTargets } from './legal.js';
+import { canOfferAnything } from './playerTrade.js';
 import { PhaseSchema } from './phase.js';
 import { PlayerIdSchema } from './player.js';
 import { countResources } from './resources.js';
@@ -90,6 +91,14 @@ export const PlayerViewSchema = z.object({
    * zulaessig war, prueft trotzdem der Reducer.
    */
   playableCards: z.array(DevelopmentCardIdSchema),
+  /**
+   * Ob der Empfaenger jetzt ein Angebot an die Mitspieler machen duerfte.
+   *
+   * Steht hier und nicht in der Aktionsliste, weil ein Angebot Mengen braucht -
+   * jede Kombination ueber fuenf Sorten aufzuzaehlen waeren Tausende
+   * Eintraege, dieselbe Begruendung wie beim Abwerfen.
+   */
+  canOfferTrade: z.boolean(),
   /**
    * Wo der Strassenbau hinkoennte: je moeglicher erster Kante die Kanten, die
    * danach noch gingen. Gerechnet auf dem Server - Anschluss ist eine Regel.
@@ -176,6 +185,7 @@ export function playerViewOf(
     deckLeft: state.deck.length,
     developmentPlayed: state.developmentPlayed,
     playableCards: playableDevelopmentCards(state, viewer),
+    canOfferTrade: canOfferAnything(state, viewer),
     roadBuildingTargets: roadBuildingTargets(state, viewer),
     lastRoll: state.lastRoll,
     turn: state.turn,

@@ -12,6 +12,7 @@ import {
   testGame,
 } from './fixtures.js';
 import { legalActions } from './legal.js';
+import { applyOfferTrade, applyRespondTrade } from './playerTrade.js';
 import { reduce } from './reducer.js';
 import { createGame } from './setup.js';
 import type { GameState } from './state.js';
@@ -166,5 +167,47 @@ describe('legalActions', () => {
 
     const cities = legalActions(state, 'p1').filter((action) => action.type === 'buildCity');
     expect(cities).toEqual([]);
+  });
+});
+
+describe('legalActions in tradePending', () => {
+  function offered(): GameState {
+    const rich = giving(giving(testGame(), 'p1', { lumber: 3 }), 'p2', { ore: 2 });
+    const result = applyOfferTrade(rich, 'p1', hand({ lumber: 2 }), hand({ ore: 1 }), 0);
+    if (!result.ok) throw new Error('Angebot wurde abgelehnt');
+    return result.state;
+  }
+
+  it('bietet dem Mitspieler mit Karten beide Antworten an', () => {
+    const types = legalActions(offered(), 'p2').map((action) => action.type);
+
+    expect(types).toEqual(['respondTrade', 'respondTrade']);
+  });
+
+  it('bietet dem Mitspieler ohne die verlangten Karten nur die Ablehnung an', () => {
+    const poor = giving(offered(), 'p2', {});
+
+    expect(legalActions(poor, 'p2')).toEqual([
+      { type: 'respondTrade', player: 'p2', response: 'declined' },
+    ]);
+  });
+
+  it('gibt dem Anbieter das Zuruecknehmen und keinen Zuschlag ohne Zusage', () => {
+    expect(legalActions(offered(), 'p1')).toEqual([{ type: 'withdrawTrade', player: 'p1' }]);
+  });
+
+  it('gibt dem Anbieter je Zusage einen Zuschlag', () => {
+    const answered = applyRespondTrade(offered(), 'p2', 'accepted');
+    if (!answered.ok) throw new Error('Antwort wurde abgelehnt');
+
+    expect(legalActions(answered.state, 'p1')).toEqual([
+      { type: 'acceptTrade', player: 'p1', partner: 'p2' },
+      { type: 'withdrawTrade', player: 'p1' },
+    ]);
+  });
+
+  it('nennt jedem nur, was reduce von ihm auch annimmt', () => {
+    expectAllAccepted(offered(), 'p2');
+    expectAllAccepted(offered(), 'p1');
   });
 });

@@ -191,3 +191,15 @@ describe('PlayerView', () => {
     expect(view.rules.developmentDeck.monopoly).toBe(2);
   });
 });
+
+describe('canOfferTrade in der Sicht', () => {
+  it('steht beim Spieler am Zug mit Karten, bei den anderen nicht', () => {
+    const state = afterSetup();
+    const current = state.players[state.currentPlayerIndex]!.id;
+    const other = state.players.find((player) => player.id !== current)!.id;
+
+    // Nach der Gruendung hat jeder Karten - der am Zug darf anbieten.
+    expect(playerViewOf(state, current, seats, 0).canOfferTrade).toBe(state.phase.kind === 'main');
+    expect(playerViewOf(state, other, seats, 0).canOfferTrade).toBe(false);
+  });
+});

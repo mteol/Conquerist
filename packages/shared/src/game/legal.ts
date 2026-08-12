@@ -10,6 +10,7 @@ import {
   canPlaceSettlementAt,
 } from './build.js';
 import type { PlayerId } from './player.js';
+import { canAcceptTrade, canRespondTrade } from './playerTrade.js';
 import { canMoveRobber, victimsAt } from './robber.js';
 import { setupPlayer } from './setup.js';
 import type { GameState } from './state.js';
@@ -74,10 +75,34 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
       // Siehe Kopfkommentar: die Auswahl trifft der Spieler selbst.
       return [];
 
-    case 'tradePending':
-      // Solange es keine Aktionen fuer diese Phase gibt, ist die leere Liste
-      // die richtige Antwort - nicht ein Platzhalter, sondern der Stand.
-      return [];
+    case 'tradePending': {
+      const trade = state.phase;
+
+      if (player === trade.offer.from) {
+        for (const other of state.players) {
+          if (other.id === trade.offer.from) continue;
+          if (canAcceptTrade(state, player, other.id) === null) {
+            actions.push({ type: 'acceptTrade', player, partner: other.id });
+          }
+        }
+        actions.push({ type: 'withdrawTrade', player });
+        return actions;
+      }
+
+      for (const response of ['accepted', 'declined'] as const) {
+        if (canRespondTrade(state, player, response) === null) {
+          actions.push({ type: 'respondTrade', player, response });
+        }
+      }
+      return actions;
+
+      /*
+       * Nicht aufgezaehlt: `counterTrade` - jede Mengenkombination waere ein
+       * eigener Eintrag, dieselbe Begruendung wie bei `offerTrade`. Und
+       * `timeout`, `dropFromTrade`, `rejoinTrade`, weil sie niemandes Absicht
+       * sind, sondern vom Server kommen.
+       */
+    }
 
     case 'robberPending': {
       if (state.players[state.currentPlayerIndex]?.id !== player) return [];
