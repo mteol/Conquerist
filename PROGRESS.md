@@ -1784,16 +1784,113 @@ mehr. Der Fehler stammt aus **Etappe 5** (`git log -L` zeigt auf `73cae49`),
 nicht aus dieser Etappe, blockierte aber den Durchlauf vollstaendig. Behoben und
 mit drei Tests festgehalten (Commit `aa87a8e`).
 
+## Etappe 8 — Browser-Nachtrag (2026-08-12, `etappe-4-online`)
+
+Der Rest des Browser-Durchlaufs, den die Uebergabe
+`docs/superpowers/plans/2026-08-12-etappe-8-browser-nachtrag.md` beschrieben
+hat. Sie ist damit erledigt und geloescht.
+
+**Abnahme** — gemessen nach den beiden Korrekturen weiter unten:
+
+| Schritt             | Ergebnis                                                    |
+| ------------------- | ----------------------------------------------------------- |
+| `pnpm typecheck`    | sauber                                                      |
+| `pnpm test`         | **894** gruen (shared 568, server 121, client 205; +3 neue) |
+| `pnpm build`        | `index.js` 380,59 kB, gzip 113,33 kB; CSS 24,94 kB          |
+| `pnpm format:check` | sauber                                                      |
+
+**Warum es diesmal klappte: die Frist wurde vorher hochgesetzt.** Beim ersten
+Anlauf lief dreimal die 60-Sekunden-Frist ab, bevor jemand antworten konnte.
+Statt schnell zu sein, stand `tradeOfferMs` fuer den Durchlauf auf einer Stunde
+und wurde vor dem Commit zurueckgedreht — `git diff` auf `ruleset.ts` ist leer.
+Der Countdown zeigte dabei „Noch 3599 Sekunden", was nebenbei belegt, dass er
+den Wert aus dem RuleSet liest und nicht aus einer eigenen Zahl.
+
+### Die zwei fehlenden Bilder — gesehen
+
+Der Aufbau war der aus der Uebergabe: drei Tabs, drei Urspruenge, drei echte
+Identitaeten. Anna stand vom ersten Bild an als „du" am Tisch, und das
+Handelsfenster oeffnete, obwohl sie keine vier gleichen Karten fuer ein
+Bankgeschaeft hielt — `aa87a8e` und `99c7aea` tragen also auch im Browser.
+
+Gelegt wurde **1 Korn fuer 1 Lehm**, und zwar mit Absicht so: Lehm hielten
+beide Mitspieler, damit „Annehmen" bei keinem zu Recht gesperrt war und die
+Antwortliste **beide** Antwortarten nebeneinander zeigen konnte.
+
+- **Die Antwortliste des Anbieters** mit `⇄ Gast bietet 1 Holz fuer 1 Korn` und
+  `✓ Gast nimmt an`, jede Zeile mit eigenem Knopf „Mit … tauschen".
+- **Das Gegenangebot-Formular** im Angebotsdialog: Angebotskopf, Countdown, der
+  Satz „Dein Gegenangebot ersetzt deine Antwort — und gibt allen neue
+  Bedenkzeit", darunter dieselbe Mengenwahl wie im Handelsfenster.
+- **Der Zuschlag auf das Gegenangebot.** Bewusst dieses statt der Zusage
+  gewaehlt: Annas Hand ging von `L1 H0 W0 K2 E0` auf `L1 H1 W0 K1 E0`, also
+  1 Korn gegen 1 Holz — die Mengen des _Gegenangebots_, nicht die des Originals
+  (das lautete 1 Korn fuer 1 **Lehm**). Damit ist im Betrieb belegt, was der
+  Entwurf behauptet: `acceptTrade` traegt keine Mengen, sie kommen aus dem
+  Zustand. Der nicht gewaehlte Mitspieler behielt seine Karten unveraendert.
+
+### Das schmale Fenster — gemessen statt fotografiert
+
+**Ein Bild davon gibt es nicht.** Das Chrome-Fenster liess sich in dieser
+Umgebung nicht unter 1920 px bringen; die Fernsteuerung meldete Erfolg und
+bewirkte nichts, ein Popup mit fester Breite fing der Blocker ab.
+
+Entscheidbar war die Frage trotzdem, denn **auf den Angebotsdialog wirkt keine
+einzige Media Query** — die beiden im Projekt (`index.css:530` bei `26rem`,
+`index.css:802` bei `62rem`) gelten der Konto-Ecke und dem Startbildschirm. Das
+Verhalten des Dialogs haengt allein an Containerbreiten (`.modal__box`
+`min-width: min(22rem, 100%)`, `.trade` `auto-fit/minmax(15rem, 1fr)`, `.cards`
+`flex-wrap`). Bei auf 360-px-Geometrie gezwungenem Container:
+
+- Dialogbreite 328 px, **kein Ueberlauf** an irgendeinem Element
+- `.trade` klappt auf **eine** Spalte, „Du gibst" ueber „Du moechtest"
+- die fuenf Rohstoffkacheln brechen auf **zwei** Zeilen um
+- die Antwortzeile wird zweizeilig (33 → 57 px), ihr Knopf bleibt innerhalb
+
+Was das **nicht** deckt, sind die beiden echten Viewport-Breakpoints. Sie
+bleiben ungesehen und stehen unten als offener Punkt.
+
+### Zwei Fehler, die erst der zweite Durchlauf gezeigt hat
+
+**Ein angefangenes Gegenangebot ueberlebte das Ende seiner Runde.** Beim
+zweiten Angebot stand im Formular eines Mitspielers noch „1 Holz" — aus einer
+Hand, die inzwischen keins mehr hielt —, und „Gegenangebot abschicken" war
+offen. Der Grund: `TradeOfferDialog` gibt bei fremder Phase `null` **zurueck**,
+wird dabei aber nicht ausgehaengt, also ueberleben `countering`, `counterGive`
+und `counterWant`. Die Obergrenze („von 0") wurde nachgefuehrt, die _gewaehlte_
+Menge nicht neu geklemmt. Der Server hat abgewiesen, es ist also kein
+Datenschaden — aber der Client bot eine Handlung an, die es nicht gibt, und das
+ist genau das, was die Hausregel „der Client kennt keine Regel" verhindern
+soll. Behoben, indem der Dialog die drei Werte zuruecksetzt, sobald sich das
+Angebot aendert, auf das sie antworten. Fehler **dieser Etappe**; zwei Tests
+halten beide Wege fest (neues Angebot, und Runde dazwischen vorbei).
+
+**Die Abweisung erschien als roher Protokollcode.** Auf dem Bildschirm stand
+`REJECTED: Angeboten werden kann nur, was auf der Hand liegt`. Quelle war
+`net/transport.ts`, wo `ServerError` seine Meldung als `` `${code}: ${detail}` ``
+zusammensetzte; die Oberflaeche zeigt sie unveraendert. Dabei schreibt der
+Server seine Ablehnungstexte ausdruecklich fuer den Spieler (`router.ts`, der
+`RejectedError`-Zweig) — der Client machte sie mit dem Praefix kaputt.
+`ServerError.message` ist jetzt der Text des Servers; der Code bleibt als Feld
+`protocolCode` fuer Diagnose und Fallunterscheidung. Fehler aus **Etappe 5**,
+trifft aber jede Abweisung im ganzen Spiel, deshalb hier miterledigt. Ein
+bestehender Test hielt das alte Format fest (`toThrow(/INVALID_PAYLOAD/)`) und
+wurde mit umgeschrieben — er beschrieb den Fehler, nicht die Absicht.
+
+**Nachgetragen zur Ehrlichkeit:** Die erste Korrektur ist im Browser gefunden,
+aber nur im Test wieder geprueft worden; die zweite ebenso. Nach den Aenderungen
+lief kein dritter Durchlauf mehr.
+
 ### Offene Punkte
 
-- **Vom Browser-Durchlauf fehlen noch zwei Bilder:** die Antwortliste des
-  Anbieters mit dem Knopf „Mit … tauschen", und das Gegenangebot-Formular im
-  Angebotsdialog. Beide sind durch Komponententests gedeckt, aber nicht
-  gesehen — im Durchlauf lief dreimal die Frist ab, bevor ein Mitspieler
-  antworten konnte (zweimal fehlte ihm der verlangte Rohstoff, einmal fror der
-  Tab ein). Ebenfalls ungesehen: das schmale Fenster. **Uebergabe dazu:**
-  `docs/superpowers/plans/2026-08-12-etappe-8-browser-nachtrag.md` — Aufbau mit
-  drei Ursprüngen, die Fallen, und der Ablauf, der zum Ziel führt.
+- **Die zwei Viewport-Breakpoints sind weiterhin ungesehen** (`26rem`
+  Konto-Ecke, `62rem` Startbildschirm). Der Angebotsdialog ist bei 360 px
+  vermessen und in Ordnung, aber gemessen ist nicht angeschaut.
+- **Die Schrittknoepfe der Mengenwahl messen 22 × 22 px** (`.cards__stepper
+button`, `1.4rem`). Das ist bei jeder Fensterbreite so und liegt unter dem,
+  was ein Finger auf einem Handy sicher trifft. Aufgefallen beim Vermessen der
+  schmalen Ansicht; nicht geaendert, weil es eine Entwurfsentscheidung ist und
+  keine Korrektur.
 - **Verliert der Anbieter die Verbindung, steht die Partie**, bis er
   wiederkommt. Die Frist raeumt zwar das Angebot ab, aber der Zug bleibt bei
   ihm. Das ist heute schon so, wenn jemand mitten in `main` verschwindet.

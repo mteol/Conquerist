@@ -133,6 +133,18 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
   fester Effekt.** Die Aufprallwelle hob jedes Hex um `+0.34` — in der Mitte
   nicht ganz das Doppelte, am Rand fast das Siebenfache, also nach außen hin
   lauter statt leiser. Wer eine Ruhelage anhebt, rechnet in Anteilen davon.
+- **Eine Komponente, die `null` zurückgibt, ist nicht ausgehängt.** Ihr Zustand
+  lebt weiter. Der Angebotsdialog hielt deshalb ein angefangenes Gegenangebot
+  über das Ende der Handelsrunde hinweg fest — beim nächsten Angebot standen
+  noch die alten Mengen im Formular, aus einer Hand, die sie nicht mehr hergab,
+  und der Absendeknopf war offen. Wer Zustand hält, der zu *einem* Vorgang
+  gehört, setzt ihn zurück, sobald sich der Vorgang ändert; „wird ja neu
+  gerendert" heißt nicht „fängt neu an".
+- **Ein Protokollcode gehört nicht in einen Satz für den Spieler.**
+  `ServerError` klebte den Code vor die Meldung, und auf dem Bildschirm stand
+  „REJECTED: Angeboten werden kann nur, was auf der Hand liegt". Der Server
+  schreibt seine Ablehnungstexte für Menschen; der Code bleibt als Feld am
+  Fehler, für Diagnose — nicht als Präfix.
 - **Ein einmal veröffentlichter Migrationsschritt wird nie wieder angefasst.**
   Er beschreibt den Stand, den es einmal gab. Wer ihn ändert, gibt Bestands-
   und Neudatenbanken verschiedene Schemata — deren `user_version` steht auf
@@ -179,6 +191,10 @@ gewöhnliche Aktion (`timeout`), eingeworfen vom Wecker je Raum
 (`apps/server/src/rooms/clock.ts`), der dafür nur `deadlineOf(state)` liest.
 Ein zweites Zeitlimit später (Abwurffrist, Zugzeit) kostet ein Feld in seiner
 Phase und einen Zweig in `deadlineOf`.
+
+Etappe 8 ist im Browser durchgespielt, samt Gegenangebot und Zuschlag; der
+Nachtrag dazu steht in `PROGRESS.md`. Ungesehen bleiben die zwei
+Viewport-Breakpoints (`26rem`, `62rem`).
 
 Drei Aktionen kommen **nur** vom Server: `timeout`, `dropFromTrade`,
 `rejoinTrade`. Sie laufen über `applySystemAction` (ohne Absenderprüfung), und
