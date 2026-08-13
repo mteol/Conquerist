@@ -3,9 +3,13 @@
 # ---------------------------------------------------------------------------
 # Bau-Stufe
 #
-# Debian statt Alpine: better-sqlite3 ist ein natives Modul und wird gegen
-# glibc vorgebaut ausgeliefert. Auf musl gaebe es keine passende Binary, und
-# jeder Build muesste sie uebersetzen - oder scheiterte an der fehlenden
+# Debian statt Alpine: better-sqlite3 ist ein natives Modul, und fuer Node 24
+# auf linux/x64 gibt es davon keine vorgebaute Binary - es wird uebersetzt.
+# Auf glibc geht das ohne Zusatzarbeit, auf musl nicht.
+#
+# Der erste Build hat genau daran gehangen ("gyp ERR! find Python"): das
+# slim-Image bringt keinen Compiler mit. Die Werkzeuge stehen deshalb hier und
+# nur hier - die Laufzeitstufe bekommt die fertige .node-Datei und bleibt ohne
 # Toolchain.
 # ---------------------------------------------------------------------------
 FROM node:24-bookworm-slim AS build
@@ -13,6 +17,12 @@ FROM node:24-bookworm-slim AS build
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
+
+# Vor dem Kopieren der Manifeste: diese Schicht aendert sich nie und bleibt
+# damit ueber jeden weiteren Build im Cache.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 make g++ \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
