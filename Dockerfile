@@ -58,13 +58,17 @@ RUN pnpm --filter @conquerist/server --prod deploy --legacy /out/apps/server
 # static.ts ihn relativ zum Server-dist sucht.
 RUN mkdir -p /out/apps/client && cp -r /app/apps/client/dist /out/apps/client/dist
 
-# Der Beweis, dass die Aufloesung traegt, BEVOR ein Container damit startet.
-# Schlaegt sie fehl, faellt der Build mit einer lesbaren Zeile um, statt dass
-# spaeter ein Container im Sekundentakt neu startet.
-RUN cd /out/apps/server && node --input-type=module -e "\
-import('@conquerist/shared') \
-  .then((m) => console.log('shared aufloesbar,', Object.keys(m).length, 'Exporte')) \
-  .catch((error) => { console.error(error.message); process.exit(1); })"
+# @conquerist/shared als echtes Verzeichnis statt als Symlink in den virtuellen
+# Store.
+#
+# pnpm legt es als Link ab; im Laufzeit-Image war es danach nicht aufloesbar.
+# Ein Link mehr oder weniger ist hier keine Ersparnis wert: das Paket besteht
+# aus einem dist-Ordner und einer package.json, und seine einzige
+# Abhaengigkeit (zod) haengt ohnehin direkt am Server.
+RUN rm -rf /out/apps/server/node_modules/@conquerist/shared \
+ && mkdir -p /out/apps/server/node_modules/@conquerist/shared \
+ && cp -r /app/packages/shared/package.json /app/packages/shared/dist \
+          /out/apps/server/node_modules/@conquerist/shared/
 
 # ---------------------------------------------------------------------------
 # Laufzeit-Stufe
@@ -83,6 +87,16 @@ WORKDIR /out
 # `chown -R` schriebe jede kopierte Datei ein zweites Mal in eine neue Schicht
 # und verdoppelte damit den Platzbedarf des groessten Teils im Image.
 COPY --from=build --chown=node:node /out /out
+
+# Die Probe an der Stelle, an der sie etwas beweist: hier gibt es /app nicht
+# mehr, also kann kein Link nach draussen die Aufloesung retten. Geprueft wird
+# jede Laufzeit-Abhaengigkeit, nicht nur die erste - better-sqlite3 laedt dabei
+# seine uebersetzte .node-Datei, was zugleich belegt, dass sie den Umzug
+# ueberstanden hat. Schlaegt etwas fehl, faellt der BUILD um, statt einen
+# Container zu liefern, der im Sekundentakt neu startet.
+RUN cd /out/apps/server && node --input-type=module -e "\
+const namen = ['@conquerist/shared', 'fastify', '@fastify/static', 'ws', 'better-sqlite3', 'zod']; \
+for (const name of namen) { await import(name); console.log('aufloesbar:', name); }"
 
 # Das Volume kommt spaeter nach /data. Der Ordner gehoert `node`, damit ein
 # frisch angelegtes Docker-Volume diese Rechte beim ersten Einhaengen erbt.
