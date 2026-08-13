@@ -104,13 +104,18 @@ RUN mkdir -p /data && chown node:node /data
 USER node
 
 ENV HOST=0.0.0.0
-ENV PORT=8080
+# 8477 statt 8080, und zwar ueberall dieselbe Zahl: Host-Port, Container-Port
+# und das Port-Feld in Coolify. Im Container koennte nichts kollidieren - er
+# hat seinen eigenen Netzwerk-Namensraum -, aber drei Stellen mit zwei
+# verschiedenen Zahlen sind eine Verwechslung, die irgendwann passiert.
+# 8080 ist auf dem Zielhost ausserdem als totes Traefik-Mapping vergeben.
+ENV PORT=8477
 ENV DATABASE_FILE=/data/conquerist.db
-EXPOSE 8080
+EXPOSE 8477
 
 # Das slim-Image hat weder curl noch wget - also mit Bordmitteln.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8080)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8477)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 # Exec-Form: node ist PID 1 und bekommt SIGTERM, also greift das Herunterfahren
 # aus server.ts (Wecker abraeumen, Verbindungen schliessen, App schliessen).

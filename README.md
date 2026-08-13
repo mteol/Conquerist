@@ -135,8 +135,13 @@ Das ist keine Bequemlichkeit, sondern der Grund, warum keine Origin-Liste
 gepflegt werden muss — siehe unten.
 
 **Anwendung anlegen:** Build Pack `Dockerfile`, Branch `main`, Base Directory
-`/`, Port **8080**, „Is it a static site?" aus. Das Dockerfile liegt in der
+`/`, Port **8477**, „Is it a static site?" aus. Das Dockerfile liegt in der
 Repository-Wurzel.
+
+In der Entwicklung bleibt es bei **8080** (`config.ts`, `vite.config.ts`);
+8477 gilt nur im Container. Der Grund ist der Zielhost: dort ist 8080 bereits
+vergeben, und wenn schon eine andere Zahl, dann ueberall dieselbe — Host-Port,
+Container-Port und Port-Feld.
 
 **Umgebungsvariablen:**
 
@@ -144,8 +149,15 @@ Repository-Wurzel.
 | --------------- | --------------------- | ------------------------------------------------------- |
 | `NODE_ENV`      | `production`          | Log-Level `info` statt `debug`                          |
 | `HOST`          | `0.0.0.0`             | der Default `127.0.0.1` waere im Container unerreichbar |
-| `PORT`          | `8080`                | derselbe Wert wie im Port-Feld der Anwendung            |
+| `PORT`          | `8477`                | derselbe Wert wie im Port-Feld der Anwendung            |
 | `DATABASE_FILE` | `/data/conquerist.db` | zeigt auf das Volume, nicht ins Containerdateisystem    |
+
+**Ohne Domain, nur im Heimnetz:** unter _Ports Mappings_ `8477:8477`
+eintragen. Dann laeuft der Verkehr direkt an den Container, ohne Traefik und
+ohne TLS, erreichbar unter `http://<server-ip>:8477`. Die Origin-Regel traegt
+auch das: Host und Origin sind dieselben. **Achtung:** mit einem Port-Mapping
+kann Coolify nicht rollierend tauschen — beim Redeploy ist die Anwendung
+kurz weg, und eine laufende Partie verliert ihre Verbindung.
 
 **`CLIENT_ORIGIN` bleibt ungesetzt.** `isAllowedOrigin` vergleicht Host und
 Port, nicht das Schema: der Browser sendet `https://…`, der Server sieht intern
