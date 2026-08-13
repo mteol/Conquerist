@@ -44,7 +44,27 @@ RUN pnpm build
 
 # Die Produktionsabhaengigkeiten fuer den Server allein, samt
 # @conquerist/shared und dessen dist.
-RUN pnpm --filter @conquerist/server --prod deploy --legacy /deploy
+#
+# Das Ziel ist /out/apps/server und NICHT irgendein Ordner, der spaeter
+# umbenannt wird: pnpm legt @conquerist/shared als Symlink in den virtuellen
+# Store unterhalb des Zielordners. Wer diesen Ordner im Laufzeit-Image an eine
+# andere Stelle kopiert, bekommt einen toten Link - und Node sagt dazu nur
+# "Cannot find package '@conquerist/shared'". Genau daran ist der zweite
+# Deployment-Versuch gestorben. Also heisst der Pfad hier schon so, wie er
+# drueben heissen wird.
+RUN pnpm --filter @conquerist/server --prod deploy --legacy /out/apps/server
+
+# Der gebaute Client daneben - dieselbe Anordnung wie im Repository, weil
+# static.ts ihn relativ zum Server-dist sucht.
+RUN mkdir -p /out/apps/client && cp -r /app/apps/client/dist /out/apps/client/dist
+
+# Der Beweis, dass die Aufloesung traegt, BEVOR ein Container damit startet.
+# Schlaegt sie fehl, faellt der Build mit einer lesbaren Zeile um, statt dass
+# spaeter ein Container im Sekundentakt neu startet.
+RUN cd /out/apps/server && node --input-type=module -e "\
+import('@conquerist/shared') \
+  .then((m) => console.log('shared aufloesbar,', Object.keys(m).length, 'Exporte')) \
+  .catch((error) => { console.error(error.message); process.exit(1); })"
 
 # ---------------------------------------------------------------------------
 # Laufzeit-Stufe
@@ -52,19 +72,21 @@ RUN pnpm --filter @conquerist/server --prod deploy --legacy /deploy
 FROM node:24-bookworm-slim AS runtime
 
 ENV NODE_ENV=production
-WORKDIR /app
+WORKDIR /out
 
-# Die Anordnung ist Pflicht, nicht Geschmack: static.ts sucht den Client ueber
-# resolve(<server>/dist, '../../client/dist'). Liegt er woanders, startet der
-# Server ohne Fehler und liefert still nur die API aus.
-COPY --from=build /deploy/node_modules ./apps/server/node_modules
-COPY --from=build /app/apps/server/dist ./apps/server/dist
-COPY --from=build /app/apps/server/package.json ./apps/server/package.json
-COPY --from=build /app/apps/client/dist ./apps/client/dist
+# Ein einziges COPY, und der Pfad bleibt derselbe wie in der Bau-Stufe. Genau
+# darauf beruht, dass die Symlinks in node_modules noch zeigen, wohin sie
+# sollen. Die Anordnung darin ist die des Repositorys: apps/server/dist neben
+# apps/client/dist, weil static.ts den Client relativ zum Server-dist sucht.
+#
+# Die Eigentuemerschaft steht am COPY und nicht in einem chown danach: ein
+# `chown -R` schriebe jede kopierte Datei ein zweites Mal in eine neue Schicht
+# und verdoppelte damit den Platzbedarf des groessten Teils im Image.
+COPY --from=build --chown=node:node /out /out
 
 # Das Volume kommt spaeter nach /data. Der Ordner gehoert `node`, damit ein
 # frisch angelegtes Docker-Volume diese Rechte beim ersten Einhaengen erbt.
-RUN mkdir -p /data && chown -R node:node /data /app
+RUN mkdir -p /data && chown node:node /data
 USER node
 
 ENV HOST=0.0.0.0
