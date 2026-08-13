@@ -28,6 +28,12 @@ async function main(): Promise<void> {
   const sessions = new Sessions(database);
   const users = new Users(database, sessions);
 
+  // Abgelaufene Sitzungen einmal beim Start wegraeumen. Im Betrieb faellt jede
+  // abgelaufene Zeile ohnehin beim naechsten Nachsehen weg - das hier erwischt
+  // die, deren Besitzer nie wiederkommt.
+  const purged = sessions.purgeExpired();
+  if (purged > 0) app.log.info({ purged }, 'Abgelaufene Sitzungen weggeraeumt');
+
   const deps = {
     // Aus dem, was auf der Platte liegt: ein Neustart kostet keine Partie.
     registry: RoomRegistry.load(store, {

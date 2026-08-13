@@ -220,3 +220,53 @@ describe('Migration auf sessions', () => {
     expect(() => insert.run('u2', 'Andere', 'anna', 2)).toThrow();
   });
 });
+
+describe('Migration auf ablaufende Sitzungen', () => {
+  /** Eine Datenbank auf dem Stand von Etappe 7: sessions ohne expires_at. */
+  function withoutExpiry(): AppDatabase {
+    const database = new Database(':memory:');
+    database.exec(`
+      CREATE TABLE users (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL, is_guest INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL, login TEXT, password_hash TEXT, email TEXT
+      );
+      CREATE TABLE sessions (
+        token_hash TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at INTEGER NOT NULL
+      );
+    `);
+    database.pragma('user_version = 2'); // Schritte 0 und 1 gelten als gelaufen
+    return database;
+  }
+
+  it('gibt bestehenden Sitzungen eine Frist aus ihrem created_at', () => {
+    const database = withoutExpiry();
+    database
+      .prepare('INSERT INTO users (id, name, created_at) VALUES (?,?,?)')
+      .run('u1', 'Anna', 1000);
+    database
+      .prepare('INSERT INTO sessions (token_hash, user_id, created_at) VALUES (?,?,?)')
+      .run('hash-von-anna', 'u1', 1000);
+
+    migrate(database);
+
+    const row = database
+      .prepare('SELECT expires_at FROM sessions WHERE token_hash = ?')
+      .get('hash-von-anna') as { expires_at: number } | undefined;
+
+    // 60 Tage in Millisekunden, aus created_at heraus - nicht aus der Uhr.
+    expect(row?.expires_at).toBe(1000 + 5_184_000_000);
+  });
+
+  it('zaehlt user_version auf drei hoch', () => {
+    const database = withoutExpiry();
+
+    migrate(database);
+
+    const [{ user_version: version }] = database.pragma('user_version') as [
+      { user_version: number },
+    ];
+    expect(version).toBe(3);
+  });
+});

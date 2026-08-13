@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { openDatabase } from '../db/database.js';
-import { Sessions } from './sessions.js';
+import type { AppDatabase } from '../db/database.js';
+import { REFRESH_AFTER_MS, SESSION_TTL_MS, Sessions } from './sessions.js';
 
 function fixture(): { sessions: Sessions; userId: string } {
   const database = openDatabase(':memory:');
@@ -58,5 +59,89 @@ describe('Sitzungen', () => {
 
     expect(sessions.userIdOf(laptop.token)).toBeUndefined();
     expect(sessions.userIdOf(handy.token)).toBe(userId);
+  });
+});
+
+/** Eine Uhr, die stillsteht, bis man sie weiterdreht. */
+function clockAt(start: number) {
+  let current = start;
+  return {
+    now: () => current,
+    advance: (ms: number) => {
+      current += ms;
+    },
+  };
+}
+
+function fixtureWithClock(start: number) {
+  const database = openDatabase(':memory:');
+  database
+    .prepare('INSERT INTO users (id, name, is_guest, created_at) VALUES (?,?,1,?)')
+    .run('u1', 'Anna', start);
+  const clock = clockAt(start);
+  const sessions = new Sessions(database, { now: clock.now });
+  return { database, sessions, clock, userId: 'u1' };
+}
+
+function expiryOf(database: AppDatabase, tokenHash: string): number {
+  const row = database
+    .prepare('SELECT expires_at FROM sessions WHERE token_hash = ?')
+    .get(tokenHash) as { expires_at: number };
+  return row.expires_at;
+}
+
+describe('Sitzungen laufen ab', () => {
+  it('kennt ein Token nach Ablauf der Frist nicht mehr', () => {
+    const { sessions, clock, userId } = fixtureWithClock(1_000_000);
+    const { token } = sessions.issue(userId);
+
+    clock.advance(SESSION_TTL_MS + 1);
+
+    expect(sessions.userIdOf(token)).toBeUndefined();
+  });
+
+  it('raeumt die abgelaufene Zeile beim Nachsehen gleich weg', () => {
+    const { database, sessions, clock, userId } = fixtureWithClock(1_000_000);
+    const { token } = sessions.issue(userId);
+
+    clock.advance(SESSION_TTL_MS + 1);
+    sessions.userIdOf(token);
+
+    const row = database.prepare('SELECT COUNT(*) AS n FROM sessions').get() as { n: number };
+    expect(row.n).toBe(0);
+  });
+
+  it('schreibt bei einer frischen Sitzung nicht bei jeder Verwendung', () => {
+    const { database, sessions, clock, userId } = fixtureWithClock(1_000_000);
+    const { token, tokenHash } = sessions.issue(userId);
+    const before = expiryOf(database, tokenHash);
+
+    clock.advance(60_000); // eine Minute spaeter
+    sessions.userIdOf(token);
+
+    expect(expiryOf(database, tokenHash)).toBe(before);
+  });
+
+  it('verlaengert die Frist, wenn die letzte Verwendung mehr als einen Tag her ist', () => {
+    const { database, sessions, clock, userId } = fixtureWithClock(1_000_000);
+    const { token, tokenHash } = sessions.issue(userId);
+
+    clock.advance(REFRESH_AFTER_MS + 1);
+    sessions.userIdOf(token);
+
+    expect(expiryOf(database, tokenHash)).toBe(1_000_000 + REFRESH_AFTER_MS + 1 + SESSION_TTL_MS);
+  });
+
+  it('raeumt beim Aufraeumen nur die abgelaufenen Zeilen weg', () => {
+    const { database, sessions, clock, userId } = fixtureWithClock(1_000_000);
+    sessions.issue(userId); // laeuft ab
+    clock.advance(SESSION_TTL_MS - 1_000);
+    sessions.issue(userId); // bleibt
+    clock.advance(2_000);
+
+    expect(sessions.purgeExpired()).toBe(1);
+
+    const row = database.prepare('SELECT COUNT(*) AS n FROM sessions').get() as { n: number };
+    expect(row.n).toBe(1);
   });
 });

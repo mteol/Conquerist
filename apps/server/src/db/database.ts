@@ -49,6 +49,7 @@ export function openDatabase(file: string): AppDatabase {
 const MIGRATIONS: readonly ((database: AppDatabase) => void)[] = [
   stepInitialSchema,
   stepSessionsAndAccounts,
+  stepSessionExpiry,
 ];
 
 export function migrate(database: AppDatabase): void {
@@ -202,5 +203,30 @@ function stepSessionsAndAccounts(database: AppDatabase): void {
     CREATE UNIQUE INDEX users_login ON users(login);
     CREATE UNIQUE INDEX users_email ON users(email);
     CREATE INDEX sessions_user ON sessions(user_id);
+  `);
+}
+
+/**
+ * Etappe 9: Sitzungen laufen ab.
+ *
+ * Bestehende Zeilen bekommen ihre Frist aus `created_at` und nicht aus der
+ * Uhr: ein Migrationsschritt ohne Uhr liefert auf jedem Bestand dasselbe
+ * Ergebnis, auch wenn er Jahre spaeter auf einer Sicherungskopie laeuft. Die
+ * Folge ist gewollt - eine Sitzung, die aelter als 60 Tage ist und seither
+ * nicht benutzt wurde, ist nach diesem Schritt abgelaufen.
+ *
+ * Die 60 Tage stehen hier als Zahl und nicht als Import von SESSION_TTL_MS.
+ * Ein Schritt, der eine Konstante liest, aendert sein Ergebnis, sobald jemand
+ * die Konstante aendert - und waere damit nicht mehr der Schritt, der einmal
+ * veroeffentlicht wurde.
+ */
+function stepSessionExpiry(database: AppDatabase): void {
+  database.exec(`
+    ALTER TABLE sessions ADD COLUMN expires_at INTEGER NOT NULL DEFAULT 0;
+
+    UPDATE sessions SET expires_at = created_at + 5184000000;
+
+    /* Fuer purgeExpired: der einzige Zugriff, der nicht ueber den Schluessel geht. */
+    CREATE INDEX sessions_expires ON sessions(expires_at);
   `);
 }
