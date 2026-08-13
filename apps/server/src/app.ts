@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import type { ServerConfig } from './config.js';
+import { registerClient } from './static.js';
 
 /**
  * Baut die Fastify-Instanz, ohne zu lauschen.
@@ -22,6 +23,10 @@ export function buildApp(config: ServerConfig): FastifyInstance {
     uptimeSeconds: Math.round(process.uptime()),
     now: Date.now(),
   }));
+
+  // Nach den Routen: der Rueckfall auf `index.html` darf `/health` nicht
+  // verdecken.
+  registerClient(app);
 
   return app;
 }

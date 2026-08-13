@@ -12,6 +12,9 @@ vite.config.ts.timestamp-*
 .env.local
 .env.*.local
 
+# SQLite-Datei samt WAL-Begleitern (Etappe 4)
+data/
+
 .DS_Store
 Thumbs.db
 .idea/

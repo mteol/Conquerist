@@ -44,8 +44,20 @@ describe('CLASSIC_RULES', () => {
 
   it('haelt die bekannten Werte des Basisspiels', () => {
     expect(CLASSIC_RULES.victoryPointGoal).toBe(10);
-    expect(CLASSIC_RULES.victoryPoints).toEqual({ settlement: 1, city: 2, longestRoad: 2 });
+    expect(CLASSIC_RULES.victoryPoints).toEqual({
+      settlement: 1,
+      city: 2,
+      longestRoad: 2,
+      largestArmy: 2,
+      developmentCard: 1,
+    });
     expect(CLASSIC_RULES.longestRoadMinimum).toBe(5);
+    expect(CLASSIC_RULES.largestArmyMinimum).toBe(3);
+
+    // 25 Karten wie in der Schachtel.
+    const deck = CLASSIC_RULES.developmentDeck;
+    expect(Object.values(deck).reduce((sum, count) => sum + count, 0)).toBe(25);
+    expect(deck.knight).toBe(14);
     expect(CLASSIC_RULES.handLimitBeforeDiscard).toBe(7);
     expect(CLASSIC_RULES.pieceStock).toEqual({ road: 15, settlement: 5, city: 4 });
     expect(CLASSIC_RULES.buildCosts.settlement).toEqual({

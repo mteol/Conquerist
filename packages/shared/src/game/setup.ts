@@ -1,9 +1,10 @@
 import type { EdgeId, VertexId } from '../geometry/index.js';
-import { createRng } from '../random/index.js';
+import { createRng, shuffle, type Rng } from '../random/index.js';
 import type { RuleSet } from '../rules/index.js';
 import type { ScenarioDefinition } from '../scenario/index.js';
 import { boardOf } from './board.js';
 import { canPlaceRoadAt, canPlaceSettlementAt } from './build.js';
+import { buildDeck, type DevelopmentCardId } from './development.js';
 import { RuleViolationCode, violation } from './errors.js';
 import { setupPlacementCount, setupPlayerIndex } from './phase.js';
 import type { PlayerId } from './player.js';
@@ -48,6 +49,8 @@ export function createGame(
       id,
       resources: { ...EMPTY_RESOURCES },
       piecesLeft: { ...rules.pieceStock },
+      developmentCards: [],
+      playedKnights: 0,
     })),
     currentPlayerIndex: 0,
     phase: { kind: 'setup', placement: 0, settlement: null },
@@ -56,10 +59,24 @@ export function createGame(
     robber: scenario.robberStart,
     bank: { ...rules.resourceBank },
     longestRoad: { holder: null, length: 0 },
-    rng: createRng(seed),
+    largestArmy: { holder: null, size: 0 },
+    ...deckAndRng(rules, seed),
+    developmentPlayed: false,
     lastRoll: null,
     turn: 0,
   };
+}
+
+/**
+ * Der gemischte Stapel und der Zufallszustand danach.
+ *
+ * Beides zusammen, weil das Mischen den PRNG verbraucht: gaebe es zwei
+ * Aufrufe, koennte einer den Fortschritt des anderen vergessen, und die Partie
+ * wuerfelte je nach Reihenfolge anders. Der Seed bleibt die einzige Quelle.
+ */
+function deckAndRng(rules: RuleSet, seed: string): { deck: DevelopmentCardId[]; rng: Rng } {
+  const [deck, rng] = shuffle(buildDeck(rules.developmentDeck), createRng(seed));
+  return { deck, rng };
 }
 
 /** Setzt eine Gruendungssiedlung - kostenlos, ohne Anschluss, mit Abstandsregel. */

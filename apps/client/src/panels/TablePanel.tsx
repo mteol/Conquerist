@@ -1,22 +1,24 @@
 import type { JSX } from 'react';
 import { RESOURCE_IDS } from '@conquerist/shared';
 import { RESOURCE_LABELS } from '../game/labels';
-import type { GameView, PlayerView } from '../game/view';
+import type { GameView, PlayerRow as PlayerRowData } from '../game/view';
 
 /**
  * Der Tisch: wer sitzt da, wie viele Punkte, was auf der Hand.
  *
- * Der Schalter verdeckt fremde Haende und zeigt nur noch die Anzahl. Er ist
- * mehr als Bequemlichkeit: die verdeckte Ansicht ist genau die Projektion, die
- * ab Etappe 5 `PlayerView` heisst - dann serverseitig und nicht abschaltbar.
+ * Der Schalter „Fremde Haende verdecken" ist mit Etappe 4 verschwunden, und
+ * das ist der Punkt: verdeckt ist keine Ansichtssache mehr, sondern der
+ * Zustand. Was hier steht, ist genau das, was der Server geschickt hat -
+ * `resources === null` heisst „gehoert jemand anderem", nicht „ausgeblendet".
+ *
+ * Getrennte Mitspieler werden benannt statt eingefaerbt: eine Farbe allein
+ * traegt keine Information, die jemand sonst nicht mitbekommt.
  */
 export interface TablePanelProps {
   readonly view: GameView;
-  readonly conceal: boolean;
-  readonly onConcealChange: (value: boolean) => void;
 }
 
-export function TablePanel({ view, conceal, onConcealChange }: TablePanelProps): JSX.Element {
+export function TablePanel({ view }: TablePanelProps): JSX.Element {
   return (
     <section className="panel panel--table">
       <h2 className="panel__title">Tisch</h2>
@@ -26,17 +28,10 @@ export function TablePanel({ view, conceal, onConcealChange }: TablePanelProps):
           key={player.id}
           player={player}
           acting={view.actingPlayers.includes(player.id)}
+          isYou={player.id === view.you}
+          gained={view.gains.get(player.id) ?? 0}
         />
       ))}
-
-      <label className="panel__toggle">
-        <input
-          type="checkbox"
-          checked={conceal}
-          onChange={(event) => onConcealChange(event.currentTarget.checked)}
-        />
-        Fremde Haende verdecken
-      </label>
     </section>
   );
 }
@@ -44,9 +39,14 @@ export function TablePanel({ view, conceal, onConcealChange }: TablePanelProps):
 function PlayerRow({
   player,
   acting,
+  isYou,
+  gained,
 }: {
-  readonly player: PlayerView;
+  readonly player: PlayerRowData;
   readonly acting: boolean;
+  readonly isYou: boolean;
+  /** Karten seit dem vorigen Stand; 0 heisst: nichts zu zeigen. */
+  readonly gained: number;
 }): JSX.Element {
   const hand = player.resources;
 
@@ -56,7 +56,10 @@ function PlayerRow({
       style={{ borderLeftColor: player.color }}
       data-testid={`seat-${player.id}`}
     >
-      <span className="seat__name">{player.name}</span>
+      <span className="seat__name">
+        {player.name}
+        {isYou ? ' (du)' : ''}
+      </span>
       <span className="seat__points">{player.victoryPoints} SP</span>
 
       {hand === null ? (
@@ -71,9 +74,23 @@ function PlayerRow({
         </span>
       )}
 
+      {/*
+       * Der Zuwachs steigt beim Erscheinen kurz auf - und bleibt dann stehen,
+       * bis der naechste Stand kommt. Er verblasst NICHT von selbst: wer
+       * `prefers-reduced-motion` gesetzt hat, saehe sonst gar nichts, weil eine
+       * abgeschaltete Animation sofort an ihrem Ende steht.
+       */}
+      {gained > 0 ? (
+        <span className="seat__gain" data-testid={`gain-${player.id}`}>
+          +{gained}
+        </span>
+      ) : null}
+
       {player.mustDiscard > 0 ? (
         <span className="seat__pending">wirft {player.mustDiscard} ab</span>
       ) : null}
+
+      {player.connected ? null : <span className="seat__pending">getrennt</span>}
     </div>
   );
 }

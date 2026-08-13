@@ -1,5 +1,44 @@
 import type { z } from 'zod';
+import {
+  AUTH_LOGIN,
+  AUTH_LOGOUT,
+  AUTH_ME,
+  AUTH_OK,
+  AUTH_REGISTER,
+  AuthResponseSchema,
+  EmptyAuthRequestSchema,
+  LoginRequestSchema,
+  RegisterRequestSchema,
+} from './auth.js';
 import { PING, PONG, PingRequestSchema, PongResponseSchema } from './ping.js';
+import {
+  ACT,
+  ACT_OK,
+  ActRequestSchema,
+  CONFIGURE_ROOM,
+  CREATE_ROOM,
+  ConfigureRoomRequestSchema,
+  CreateRoomRequestSchema,
+  ROOM_CONFIGURED,
+  EmptyRequestSchema,
+  EmptyResponseSchema,
+  GAME_STARTED,
+  HELLO,
+  HELLO_OK,
+  HelloRequestSchema,
+  HelloResponseSchema,
+  JOIN_ROOM,
+  JoinRoomRequestSchema,
+  LEAVE_ROOM,
+  MY_ROOMS,
+  MY_ROOMS_OK,
+  MyRoomsResponseSchema,
+  ROOM_CREATED,
+  ROOM_JOINED,
+  ROOM_LEFT,
+  RoomCodeResponseSchema,
+  START_GAME,
+} from './room.js';
 
 /**
  * Protokoll-Registry: die einzige Quelle fuer Request- und Response-Typen.
@@ -25,6 +64,66 @@ export const protocol = {
     responseType: PONG,
     request: PingRequestSchema,
     response: PongResponseSchema,
+  },
+  [HELLO]: {
+    responseType: HELLO_OK,
+    request: HelloRequestSchema,
+    response: HelloResponseSchema,
+  },
+  [CREATE_ROOM]: {
+    responseType: ROOM_CREATED,
+    request: CreateRoomRequestSchema,
+    response: RoomCodeResponseSchema,
+  },
+  [JOIN_ROOM]: {
+    responseType: ROOM_JOINED,
+    request: JoinRoomRequestSchema,
+    response: RoomCodeResponseSchema,
+  },
+  [LEAVE_ROOM]: {
+    responseType: ROOM_LEFT,
+    request: EmptyRequestSchema,
+    response: EmptyResponseSchema,
+  },
+  [MY_ROOMS]: {
+    responseType: MY_ROOMS_OK,
+    request: EmptyRequestSchema,
+    response: MyRoomsResponseSchema,
+  },
+  [CONFIGURE_ROOM]: {
+    responseType: ROOM_CONFIGURED,
+    request: ConfigureRoomRequestSchema,
+    response: EmptyResponseSchema,
+  },
+  [START_GAME]: {
+    responseType: GAME_STARTED,
+    request: EmptyRequestSchema,
+    response: EmptyResponseSchema,
+  },
+  [ACT]: {
+    responseType: ACT_OK,
+    request: ActRequestSchema,
+    response: EmptyResponseSchema,
+  },
+  [AUTH_REGISTER]: {
+    responseType: AUTH_OK,
+    request: RegisterRequestSchema,
+    response: AuthResponseSchema,
+  },
+  [AUTH_LOGIN]: {
+    responseType: AUTH_OK,
+    request: LoginRequestSchema,
+    response: AuthResponseSchema,
+  },
+  [AUTH_LOGOUT]: {
+    responseType: AUTH_OK,
+    request: EmptyAuthRequestSchema,
+    response: AuthResponseSchema,
+  },
+  [AUTH_ME]: {
+    responseType: AUTH_OK,
+    request: EmptyAuthRequestSchema,
+    response: AuthResponseSchema,
   },
 } as const satisfies ProtocolMap;
 

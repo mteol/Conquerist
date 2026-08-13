@@ -1,3 +1,4 @@
+import type { EdgeId } from '../geometry/index.js';
 import { RESOURCE_IDS } from '../scenario/index.js';
 import type { GameAction } from './actions.js';
 import { boardOf } from './board.js';
@@ -9,10 +10,17 @@ import {
   canPlaceSettlementAt,
 } from './build.js';
 import type { PlayerId } from './player.js';
+import { canAcceptTrade, canRespondTrade } from './playerTrade.js';
 import { canMoveRobber, victimsAt } from './robber.js';
 import { setupPlayer } from './setup.js';
 import type { GameState } from './state.js';
 import { canTradeWithBank } from './trade.js';
+import {
+  applyPlayRoadBuilding,
+  canBuyDevelopmentCard,
+  canPlayDevelopmentCard,
+} from './developmentRules.js';
+import { DEVELOPMENT_CARD_IDS, type DevelopmentCardId } from './development.js';
 
 /**
  * Was dieser Spieler gerade tun darf.
@@ -67,6 +75,35 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
       // Siehe Kopfkommentar: die Auswahl trifft der Spieler selbst.
       return [];
 
+    case 'tradePending': {
+      const trade = state.phase;
+
+      if (player === trade.offer.from) {
+        for (const other of state.players) {
+          if (other.id === trade.offer.from) continue;
+          if (canAcceptTrade(state, player, other.id) === null) {
+            actions.push({ type: 'acceptTrade', player, partner: other.id });
+          }
+        }
+        actions.push({ type: 'withdrawTrade', player });
+        return actions;
+      }
+
+      for (const response of ['accepted', 'declined'] as const) {
+        if (canRespondTrade(state, player, response) === null) {
+          actions.push({ type: 'respondTrade', player, response });
+        }
+      }
+      return actions;
+
+      /*
+       * Nicht aufgezaehlt: `counterTrade` - jede Mengenkombination waere ein
+       * eigener Eintrag, dieselbe Begruendung wie bei `offerTrade`. Und
+       * `timeout`, `dropFromTrade`, `rejoinTrade`, weil sie niemandes Absicht
+       * sind, sondern vom Server kommen.
+       */
+    }
+
     case 'robberPending': {
       if (state.players[state.currentPlayerIndex]?.id !== player) return [];
 
@@ -107,8 +144,88 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
         }
       }
 
+      if (canBuyDevelopmentCard(state, player) === null) {
+        actions.push({ type: 'buyDevelopmentCard', player });
+      }
+      if (canPlayDevelopmentCard(state, player, 'knight') === null) {
+        actions.push({ type: 'playKnight', player });
+      }
+
+      /*
+       * Strassenbau, Erfindung und Monopol stehen hier bewusst NICHT als
+       * fertige Zuege - wie bei `discard` waeren es dutzende Kombinationen
+       * (jedes Kantenpaar, jedes Rohstoffpaar, jede Sorte). Die Auswahl trifft
+       * der Spieler im Dialog; ob sie zulaessig war, prueft trotzdem der
+       * Reducer. Damit die Oberflaeche die Karten ueberhaupt anbieten kann,
+       * sagt `playableDevelopmentCards`, welche jetzt gingen.
+       */
+
       actions.push({ type: 'endTurn', player });
       return actions;
     }
   }
+}
+
+/**
+ * Welche Entwicklungskarten dieser Spieler jetzt ausspielen koennte.
+ *
+ * Getrennt von `legalActions`, weil drei der fuenf Karten eine Auswahl
+ * brauchen, die der Spieler trifft - genau wie beim Abwerfen. Die Liste sagt
+ * der Oberflaeche, welchen Knopf sie ueberhaupt anbieten darf; die Regel
+ * dahinter ist dieselbe `canPlayDevelopmentCard`, die auch der Reducer nimmt.
+ */
+export function playableDevelopmentCards(state: GameState, player: PlayerId): DevelopmentCardId[] {
+  return DEVELOPMENT_CARD_IDS.filter(
+    (card) => canPlayDevelopmentCard(state, player, card) === null,
+  );
+}
+
+/**
+ * Wo der Strassenbau seine zwei Strassen hinlegen koennte.
+ *
+ * Eine Karte je moeglicher **erster** Kante, und dazu die Kanten, die danach
+ * noch gingen. Die zweite haengt von der ersten ab - sie darf an sie
+ * anschliessen -, und genau deshalb steht hier eine Zuordnung und keine flache
+ * Liste.
+ *
+ * Gerechnet wird das hier und nicht im Browser: die Anschlussregel ist eine
+ * Regel, und der Client kennt keine. Er liest die Zuordnung ab und klickt.
+ * Teuer ist es nicht - ein Spieler hat selten mehr als ein Dutzend
+ * anschlussfaehige Kanten.
+ */
+export function roadBuildingTargets(state: GameState, player: PlayerId): Record<EdgeId, EdgeId[]> {
+  if (canPlayDevelopmentCard(state, player, 'roadBuilding') !== null) return {};
+
+  const board = boardOf(state.scenario);
+  const targets: Record<EdgeId, EdgeId[]> = {};
+
+  for (const first of board.topology.edges) {
+    const placed = applyPlayRoadBuilding(state, player, [first]);
+    if (!placed.ok) continue;
+
+    // Die zweite Kante wird gegen den Zustand NACH der ersten geprueft - sonst
+    // fehlte genau der Anschluss, den die erste gerade geschaffen hat.
+    const after = placed.state;
+    targets[first] = board.topology.edges.filter(
+      (second) => second !== first && canPlaceFreeRoad(after, player, second),
+    );
+  }
+
+  return targets;
+}
+
+/** Ob dort eine kostenlose Strasse liegen koennte - ohne sie zu legen. */
+function canPlaceFreeRoad(state: GameState, player: PlayerId, edge: EdgeId): boolean {
+  if (canPlaceRoadAt(state, edge) !== null) return false;
+
+  const owner = state.players.find((entry) => entry.id === player);
+  if (owner === undefined || (owner.piecesLeft.road ?? 0) <= 0) return false;
+
+  const board = boardOf(state.scenario);
+  return (board.topology.edgeVertices.get(edge) ?? []).some((vertex) => {
+    if (state.buildings[vertex]?.owner === player) return true;
+    return (board.topology.vertexEdges.get(vertex) ?? []).some(
+      (other) => other !== edge && state.roads[other] === player,
+    );
+  });
 }

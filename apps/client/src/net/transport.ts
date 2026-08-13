@@ -12,6 +12,7 @@ import type {
   ConnectionListener,
   ConnectionState,
   ConnectionStatus,
+  ServerEventListener,
   SocketFactory,
   SocketLike,
 } from './types';
@@ -78,13 +79,21 @@ export class RequestTimeoutError extends TransportError {
   }
 }
 
-/** Der Server hat mit `ok: false` geantwortet. */
+/**
+ * Der Server hat mit `ok: false` geantwortet.
+ *
+ * Die Meldung ist der Text des Servers, unveraendert - er ist fuer den Spieler
+ * geschrieben (`router.ts` sagt das ausdruecklich) und wird von der Oberflaeche
+ * unveraendert angezeigt. Der Protokollcode gehoert nicht davor: „REJECTED: Du
+ * hast nicht genug Lehm" nennt dem Spieler eine Vokabel, die ihm nichts sagt.
+ * Er bleibt als Feld erhalten, fuer Diagnose und Fallunterscheidung.
+ */
 export class ServerError extends TransportError {
   constructor(
     readonly protocolCode: string,
     detail: string,
   ) {
-    super('SERVER_ERROR', `${protocolCode}: ${detail}`);
+    super('SERVER_ERROR', detail);
   }
 }
 
@@ -127,6 +136,7 @@ export class Transport {
   private readonly rtt: RttEstimator;
   private readonly pending = new Map<string, PendingRequest>();
   private readonly listeners = new Set<ConnectionListener>();
+  private readonly eventListeners = new Set<ServerEventListener>();
 
   private socket: SocketLike | null = null;
   private disposed = false;
@@ -192,6 +202,21 @@ export class Transport {
     listener(this.state);
     return () => {
       this.listeners.delete(listener);
+    };
+  }
+
+  /**
+   * Meldet einen Listener fuer Nachrichten ohne Anfrage an.
+   *
+   * Seit Etappe 4 kommt der Spielstand so herein: der Server schickt ihn, wenn
+   * sich etwas geaendert hat, und nicht, weil jemand gefragt hat. Anders als
+   * `subscribe` gibt es hier nichts, womit sofort gerufen werden koennte - ein
+   * Ereignis ist ein Zeitpunkt und kein Zustand.
+   */
+  subscribeEvents(listener: ServerEventListener): () => void {
+    this.eventListeners.add(listener);
+    return () => {
+      this.eventListeners.delete(listener);
     };
   }
 
@@ -291,6 +316,7 @@ export class Transport {
     this.detachEnvironmentListeners();
     this.close('Transport verworfen');
     this.listeners.clear();
+    this.eventListeners.clear();
   }
 
   // ------------------------------------------------------------------- intern
@@ -369,8 +395,15 @@ export class Transport {
     const message = parsed.data;
 
     if (message.replyTo === undefined) {
-      // Broadcast ohne Korrelation. Ab Etappe 5 landen hier State-Updates.
-      this.log('unkorrelierte Nachricht', { type: message.type });
+      // Nachricht ohne Anfrage - seit Etappe 4 der Weg, auf dem Raum- und
+      // Spielstand hereinkommen. Die Payload wird hier NICHT gedeutet: welches
+      // Schema gilt, weiss die Ereignis-Registry, und der Transport soll vom
+      // Spiel nichts wissen.
+      if (message.ok) {
+        for (const listener of [...this.eventListeners]) listener(message.type, message.payload);
+      } else {
+        this.log('Fehler ohne Anfrage', { type: message.type });
+      }
       return;
     }
 

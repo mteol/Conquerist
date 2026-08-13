@@ -1,0 +1,16 @@
+# Was nicht in den Build-Kontext gehoert.
+#
+# Die wichtigste Zeile ist `data`: dort liegt die lokale SQLite-Datei samt
+# ihren Raeumen, und ohne diesen Ausschluss waere sie Teil des Images.
+
+node_modules
+**/node_modules
+dist
+**/dist
+data
+.git
+.github
+.superpowers
+coverage
+*.tsbuildinfo
+docs

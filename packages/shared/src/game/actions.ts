@@ -13,10 +13,10 @@ import { PlayerIdSchema } from './player.js';
  * Gruendungsphase und beim Abwerfen ist ohnehin nicht immer der Spieler am Zug
  * derjenige, der handeln muss.
  *
- * Was hier fehlt und fehlen soll: Handel zwischen Spielern und
- * Entwicklungskarten (Etappe 8). Wuerfelergebnisse stehen ebenfalls nicht drin -
- * der Client schickt Absichten, keine Ergebnisse (Regel 3), und der Wurf
- * entsteht aus dem Zufallszustand im `GameState`.
+ * Handel zwischen Spielern kam mit Etappe 8 dazu: `offerTrade` und was darauf
+ * folgt. Wuerfelergebnisse stehen weiterhin nicht drin - der Client schickt
+ * Absichten, keine Ergebnisse (Regel 3), und der Wurf entsteht aus dem
+ * Zufallszustand im `GameState`.
  */
 
 const Base = { player: PlayerIdSchema };
@@ -52,6 +52,35 @@ export const GameActionSchema = z.discriminatedUnion('type', [
    * den erreichbaren Haefen abgeleitet - der beste verfuegbare Kurs gilt
    * automatisch. Sonst koennte ein Client sich selbst einen Kurs ausdenken.
    */
+  /** Eine Entwicklungskarte kaufen. Was man zieht, entscheidet der Stapel. */
+  z.object({ ...Base, type: z.literal('buyDevelopmentCard') }),
+
+  /**
+   * Ritter ausspielen: der Raeuber zieht weiter.
+   *
+   * Ohne Feld und ohne Opfer - das kommt als eigener `moveRobber`, sobald die
+   * Phase auf `robberPending` steht. Eine Aktion, die zwei Dinge auf einmal
+   * tut, muesste beide Regeln in sich tragen.
+   */
+  z.object({ ...Base, type: z.literal('playKnight') }),
+
+  /** Strassenbau: eine oder zwei Strassen umsonst. */
+  z.object({
+    ...Base,
+    type: z.literal('playRoadBuilding'),
+    edges: z.array(z.string()).min(1).max(2),
+  }),
+
+  /** Erfindung: genau zwei Rohstoffe aus der Bank. */
+  z.object({
+    ...Base,
+    type: z.literal('playYearOfPlenty'),
+    picks: z.array(ResourceIdSchema).length(2),
+  }),
+
+  /** Monopol: alle geben diesen Rohstoff ab. */
+  z.object({ ...Base, type: z.literal('playMonopoly'), resource: ResourceIdSchema }),
+
   z.object({
     ...Base,
     type: z.literal('tradeWithBank'),
@@ -59,9 +88,100 @@ export const GameActionSchema = z.discriminatedUnion('type', [
     receive: ResourceIdSchema,
   }),
 
+  /**
+   * Ein Angebot an den Tisch: diese Mengen gegen jene.
+   *
+   * `at` ist der Zeitpunkt, aus dem die Frist entsteht. Der **Server**
+   * ueberschreibt ihn mit seiner eigenen Uhr, bevor der Zug die Logik erreicht -
+   * ein Client, der sich zehn Minuten stempelt, hat damit keine Wirkung.
+   */
+  z.object({
+    ...Base,
+    type: z.literal('offerTrade'),
+    give: ResourceAmountsSchema,
+    want: ResourceAmountsSchema,
+    at: z.number().int().min(0),
+  }),
+
+  /** Antwort eines Mitspielers auf ein offenes Angebot. */
+  z.object({
+    ...Base,
+    type: z.literal('respondTrade'),
+    response: z.enum(['accepted', 'declined']),
+  }),
+
+  /**
+   * Gegenangebot: die Antwort dieses Spielers mit eigenen Mengen.
+   *
+   * `give` und `want` stehen aus **seiner** Sicht - er gibt `give` und will
+   * `want`. Ein Gegenangebot setzt die Frist neu, deshalb wieder ein `at`.
+   */
+  z.object({
+    ...Base,
+    type: z.literal('counterTrade'),
+    give: ResourceAmountsSchema,
+    want: ResourceAmountsSchema,
+    at: z.number().int().min(0),
+  }),
+
+  /**
+   * Zuschlag an einen Partner. **Ohne Mengen** - die stehen in seiner Antwort,
+   * je nachdem ob er zugesagt oder gekontert hat.
+   */
+  z.object({ ...Base, type: z.literal('acceptTrade'), partner: PlayerIdSchema }),
+
+  /** Der Anbieter nimmt sein Angebot zurueck. */
+  z.object({ ...Base, type: z.literal('withdrawTrade') }),
+
+  /**
+   * Eine Frist ist abgelaufen. **Nur der Server wirft das ein** - der Handler
+   * weist die Aktion ab, wenn sie von einem Client kommt.
+   *
+   * `player` ist, wem die Frist gehoerte: beim Angebot der Anbieter.
+   */
+  z.object({ ...Base, type: z.literal('timeout'), at: z.number().int().min(0) }),
+
+  /**
+   * Verbindungsverlust waehrend eines Angebots. **Nur vom Server.**
+   *
+   * `player` ist der Weggebrochene, nicht der Absender - genau deshalb kann
+   * diese Aktion nicht ueber den gewoehnlichen Eingang kommen, der prueft, dass
+   * beide dieselbe Person sind.
+   */
+  z.object({ ...Base, type: z.literal('dropFromTrade') }),
+
+  /** Rueckkehr waehrend desselben Angebots. **Nur vom Server.** */
+  z.object({ ...Base, type: z.literal('rejoinTrade') }),
+
   z.object({ ...Base, type: z.literal('endTurn') }),
 ]);
 
 export type GameAction = z.infer<typeof GameActionSchema>;
 
 export type GameActionType = GameAction['type'];
+
+/**
+ * Aktionen, die kein Spieler schickt.
+ *
+ * Zwei von ihnen sprechen **ueber** einen anderen Spieler, die dritte ist das
+ * Ende einer Uhr. Der gewoehnliche Eingang prueft, dass Absender und
+ * `player`-Feld dieselbe Person sind - diese drei kaemen dort nie durch und
+ * sollen es auch nicht.
+ */
+export const SYSTEM_ACTION_TYPES = ['timeout', 'dropFromTrade', 'rejoinTrade'] as const;
+
+export function isSystemAction(action: GameAction): boolean {
+  return (SYSTEM_ACTION_TYPES as readonly string[]).includes(action.type);
+}
+
+/**
+ * Setzt den Zeitpunkt einer Aktion auf die Uhr des Aufrufers.
+ *
+ * Der Server ruft das vor `reduce` und vor dem Log auf: was ein Client an `at`
+ * mitgeschickt hat, ist damit wirkungslos, und der geloggte Wert ist derselbe,
+ * aus dem die Frist entstanden ist - `replay` ergibt sie wieder. In der lokalen
+ * Partie stempelt der Client selbst; dort ist niemand zu betruegen.
+ */
+export function stampAction(action: GameAction, at: number): GameAction {
+  return 'at' in action ? { ...action, at } : action;
+}

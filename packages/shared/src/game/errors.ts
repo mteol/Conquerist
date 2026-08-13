@@ -53,6 +53,15 @@ export const RuleViolationCode = {
   INVALID_TRADE: 'INVALID_TRADE',
   /** Die Bank hat die gewuenschte Ressource nicht mehr. */
   BANK_EMPTY: 'BANK_EMPTY',
+
+  /** Nur der Anbieter darf zuschlagen oder zurueckziehen. */
+  NOT_THE_OFFERER: 'NOT_THE_OFFERER',
+  /** Dieser Spieler hat auf das Angebot schon geantwortet. */
+  ALREADY_RESPONDED: 'ALREADY_RESPONDED',
+  /** Der genannte Partner hat weder zugesagt noch gekontert. */
+  PARTNER_DID_NOT_ACCEPT: 'PARTNER_DID_NOT_ACCEPT',
+  /** Die Frist laeuft noch - es gibt nichts abzulaeuten. */
+  DEADLINE_NOT_REACHED: 'DEADLINE_NOT_REACHED',
 } as const;
 
 export type RuleViolationCode = (typeof RuleViolationCode)[keyof typeof RuleViolationCode];

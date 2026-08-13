@@ -70,17 +70,55 @@ body {
   outline-offset: 2px;
 }
 
+/*
+ * Bewegung abbestellt heisst: die Flaeche steht fertig da, nicht sie laeuft
+ * schneller ab.
+ *
+ * **Die Dauer allein genuegt nicht.** Eine Verzoegerung, die stehen bleibt,
+ * haelt das Element mit `backwards` in seiner Anfangsstellung fest - und die
+ * heisst bei einem Eingang „unsichtbar". Gemessen am Hauptmenue, bevor
+ * `animation-delay` hier stand: die drei Eintraege sprangen bei 333, 396 und
+ * 459 ms nacheinander ins Bild. Also keine Animation mehr, aber immer noch
+ * eine Choreografie - genau das, was hier abbestellt wurde.
+ *
+ * Die Verzoegerung ist deshalb negativ: die Animation ist damit schon vorbei,
+ * bevor das erste Bild gezeichnet wird. Eine Verzoegerung von null waere nur
+ * fast richtig - sie liesse den Anfangszustand noch ein Bild lang stehen.
+ * `!important` schlaegt auch das `style`-Attribut, und genau dort steht die
+ * Verzoegerung der Hexe (`HexField.tsx`).
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: -1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
   }
 }
 
 /* --- Wiederkehrende Bausteine -------------------------------------------- */
+
+/*
+ * Text, der nur fuer Vorlesegeraete da ist.
+ *
+ * Gebraucht, wo eine Ueberschrift gezeichnet und nicht gesetzt ist: die
+ * Wortmarke ist ein SVG, und aus Pfaddaten laesst sich kein Name ableiten.
+ * Nicht `display: none` - das nimmt den Text auch aus der Vorlesereihenfolge.
+ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 
 .eyebrow {
   font-size: 0.68rem;
@@ -130,6 +168,377 @@ body {
   font-weight: 500;
 }
 
+/* --- Hauptmenue ----------------------------------------------------------- *
+ *
+ * Die erste Flaeche. Sie traegt einen Titel, drei Wege und sonst nichts.
+ *
+ * Der Hintergrund ist das Hexfeld aus `HexField.tsx` - gezeichnet mit den
+ * Funktionen des Bretts, nicht als Muster. Darueber liegt derselbe
+ * Tiefsee-Verlauf wie auf den anderen Bildschirmen, damit die Mitte traegt und
+ * die Raender sich verlieren.
+ *
+ * ## Die Ankunft
+ *
+ * Der Bildschirm hatte bewusst keine Bewegung. Der Eingang ist die Ausnahme,
+ * und Regel 5 traegt sie: vorher war nichts da, jetzt ist die Anwendung da -
+ * das ist ein Zustandswechsel, und er wird gezeigt.
+ *
+ *     0 ms   Wortmarke steht links ausserhalb, geschert und in die Laenge
+ *            gezogen (die Verzerrung ist die Geschwindigkeit, nicht Zierat)
+ *   0-240    schnellt herein, harte Verzoegerung statt weichem Ausschwingen
+ *   ~200     rastet ein: kurzer Ueberschuss, dann Stauchung zurueck
+ *   200-480  der Aufprall laeuft als Welle durchs Hexfeld, von innen nach
+ *            aussen (`IMPACT_MS` und `TRAVEL_MS` in `HexField.tsx`)
+ *   260      der Untertitel blendet auf
+ *   320+     die Wege fallen von oben nach, 65 ms auseinander
+ *   danach   Ruhe. Nur Hover und Klick antworten noch.
+ *
+ * **Alle vier Animationen sind Eingaenge und laufen mit `backwards`, nicht mit
+ * `both`.** Zwei Gruende, beide schon einmal teuer gewesen:
+ *
+ * 1. `both` laesst die Schlussbildmarke fuer immer stehen. Der Eingang der
+ *    Eintraege endet auf `translateY(0)` - das haette jedes spaetere
+ *    `transform` beim Hover ueberstimmt, und der Knopf haette sich nicht mehr
+ *    geruehrt.
+ * 2. Bei `prefers-reduced-motion` laeuft die Dauer auf 0.01 ms. Mit
+ *    `backwards` steht danach die Ruhelage da - fertig und sichtbar. Das ist
+ *    genau die Falle aus `CLAUDE.md`: eine abgeschaltete Animation steht
+ *    sofort an ihrem Ende, und ein Ende darf deshalb nie „unsichtbar" heissen.
+ */
+
+.menu {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 70% at 50% 45%, var(--sea-700) 0%, transparent 65%), var(--sea-900);
+}
+
+.hexfield {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--on-sea);
+  stroke-width: 0.012;
+}
+
+/*
+ * Jedes Hex liegt in seiner Ruhelage und wird einmal davon weggehoben. Die
+ * Ruhelage steht als `--rest` am Element (aus dem Abstand zur Mitte gerechnet),
+ * damit die Welle sie kennt: sie beginnt und endet dort, wo das Hex ohnehin
+ * liegt. Die Verzoegerung je Hex kommt aus demselben Abstand - deshalb laeuft
+ * sie als Ring nach aussen und nicht als Blinken der ganzen Flaeche.
+ */
+.hexfield polygon {
+  opacity: var(--rest);
+  animation: hex-impact 620ms ease-out backwards;
+}
+
+/*
+ * Der Hub ist ein Anteil der Ruhelage, kein fester Betrag.
+ *
+ * Vorher stand hier `+ 0.34` fuer jedes Hex gleich. Das klang richtig und war
+ * es nicht: in der Mitte (Ruhelage 0,40) ist das nicht ganz das Doppelte, am
+ * Rand (0,06) fast das Siebenfache. Die Welle wurde nach aussen hin lauter,
+ * und das Rand-Hex erreichte auf seiner Spitze genau die Helligkeit, die das
+ * Zentrum in Ruhe hat. Ein Aufprall, der beim Wandern kraeftiger wird,
+ * erzaehlt das Gegenteil eines Aufpralls - und sein lautester Moment fiel
+ * ausgerechnet dorthin, wo die Menueeintraege landen.
+ *
+ * Mit dem Faktor hebt die Welle jedes Hex um denselben Anteil dessen, was es
+ * ohnehin hergibt. Sie zerfaellt damit nach aussen genau so, wie sich das Feld
+ * selbst nach aussen verliert - dieselbe Zahl regiert beides. In der Mitte
+ * bleibt alles, wie es war (0,40 auf 0,74; Strich 0,012 auf 0,030).
+ */
+@keyframes hex-impact {
+  0%,
+  100% {
+    opacity: var(--rest);
+    stroke-width: 0.012;
+  }
+
+  30% {
+    opacity: calc(var(--rest) * 1.85);
+    stroke-width: calc(0.012 + var(--rest) * 0.045);
+  }
+}
+
+.menu__inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2rem, 6vh, 3.5rem);
+  align-items: center;
+  padding: 2rem 1.25rem;
+  /* Oben so viel Luft, wie die Konto-Ecke hoch ist - sonst laeuft die
+     Wortmarke im schmalen Fenster darunter hindurch. */
+  padding-top: 4rem;
+  text-align: center;
+}
+
+/*
+ * Die Ueberschrift traegt keinen Text mehr, sondern die gezeichnete Wortmarke
+ * (`Wordmark.tsx`) und daneben denselben Namen unsichtbar fuer Vorlesegeraete.
+ * Deshalb hier keine Schriftsetzung - es gibt nichts zu setzen.
+ */
+.menu__title {
+  margin: 0;
+  line-height: 0;
+}
+
+.wordmark {
+  display: block;
+  width: min(78vw, 42rem);
+  height: auto;
+  fill: var(--parchment);
+}
+
+/*
+ * Der Zap. Der Drehpunkt liegt rechts: was sich nach rechts bewegt, wird nach
+ * hinten in die Laenge gezogen und nicht nach vorne. Beim Einrasten staucht
+ * dieselbe Achse zurueck - der Aufprall sitzt vorne.
+ */
+.wordmark--enter {
+  transform-origin: 100% 50%;
+  animation: wordmark-zap 240ms cubic-bezier(0.12, 0.72, 0.16, 1) backwards;
+}
+
+@keyframes wordmark-zap {
+  0% {
+    transform: translate3d(-128%, 0, 0) skewX(-16deg) scaleX(1.4);
+    opacity: 0;
+  }
+
+  45% {
+    opacity: 1;
+  }
+
+  72% {
+    transform: translate3d(2.2%, 0, 0) skewX(3deg) scaleX(1.05) scaleY(0.98);
+    opacity: 1;
+  }
+
+  88% {
+    transform: translate3d(-0.6%, 0, 0) scaleX(0.975) scaleY(1.035);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+/*
+ * Der Nachschlag je Buchstabe - sie landen 8 ms versetzt, damit das Wort
+ * hereinschnellt statt hereinzurutschen.
+ *
+ * **Das laeuft auf dem `path`, nicht auf der `g`.** Die Gruppe traegt ihre
+ * Position als `transform`-Attribut, und eine CSS-Regel schlaegt immer das
+ * gleichnamige SVG-Praesentationsattribut - die Animation haette alle zehn
+ * Buchstaben auf x = 0 uebereinandergelegt. Dieselbe Falle wie damals bei
+ * `.road { stroke: transparent }`.
+ */
+.wordmark--enter .wordmark__letter > path {
+  animation: wordmark-whip 240ms cubic-bezier(0.1, 0.75, 0.18, 1) backwards;
+  animation-delay: calc(var(--i) * 8ms);
+}
+
+@keyframes wordmark-whip {
+  0% {
+    transform: translateX(-55px);
+  }
+
+  70% {
+    transform: translateX(7px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.menu__lead {
+  margin: 1.1rem 0 0;
+  color: var(--on-sea-muted);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  animation: menu-rise 320ms ease-out 260ms backwards;
+}
+
+@keyframes menu-rise {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.menu__entries {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(100%, 22rem);
+}
+
+/*
+ * Drei gleichwertige Zeilen. Keine wird hervorgehoben - welcher Weg der
+ * richtige ist, weiss der Spieler und nicht der Bildschirm.
+ *
+ * Sie fallen von oben nach, in ihrer Lesereihenfolge. Der Platz in der Reihe
+ * kommt als `--i` aus `MenuScreen.tsx`; eine Klasse je Verzoegerung waere
+ * dieselbe Auskunft, nur haendisch gepflegt.
+ */
+.menu__entry {
+  position: relative;
+  overflow: hidden;
+  padding: 0.85rem 1.2rem;
+  border: 1px solid rgb(233 225 207 / 22%);
+  border-radius: var(--radius);
+  background: rgb(233 225 207 / 7%);
+  color: var(--on-sea);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+  animation: menu-drop 300ms cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
+  animation-delay: calc(320ms + var(--i, 0) * 65ms);
+}
+
+@keyframes menu-drop {
+  from {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/*
+ * Die Antwort auf den Zeiger ist ein Balken, der aus der Kante waechst, und
+ * ein Ruck von zwei Pixeln - kein Leuchten. Boldness wird an einer Stelle
+ * ausgegeben (Regel 4), und diese Flaeche ist nicht die Stelle.
+ */
+.menu__entry::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--accent);
+  transform: scaleY(0);
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.menu__entry:hover,
+.menu__entry:focus-visible {
+  border-color: rgb(233 225 207 / 45%);
+  background: rgb(233 225 207 / 14%);
+  transform: translateX(2px);
+}
+
+.menu__entry:hover::before,
+.menu__entry:focus-visible::before {
+  transform: scaleY(1);
+}
+
+.menu__entry:active {
+  transform: translateX(2px) scale(0.985);
+}
+
+/* Weiterspielen steht oben und traegt als einziges den Akzent - es ist kein
+   vierter Weg, sondern die Rueckkehr in etwas Angefangenes. */
+.menu__entry--resume {
+  border-color: var(--accent);
+  background: rgb(224 179 74 / 14%);
+}
+
+/*
+ * Die Konto-Ecke.
+ *
+ * Der Menuebildschirm hatte bisher keine Randzone - alles sass mittig auf dem
+ * Hexfeld. Diese fuehrt eine ein, und zwar so leise wie moeglich: Kleinlabel-
+ * Setzung, gedaempfte Farbe, keine Flaeche.
+ *
+ * Sie faellt als letztes in die bestehende Choreografie ein, mit derselben
+ * `menu-drop`-Animation und derselben Rechnung wie `.menu__entry` - sonst
+ * liefe hier eine zweite Taktung neben der ersten.
+ */
+.corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  /* Ohne das bricht der Inhalt im schmalen Fenster nicht um, er wird von
+     `.menu`s `overflow: hidden` abgeschnitten - „Anmelden" waere dann nicht
+     nur unsichtbar, sondern unklickbar (Regel 7). `flex-end`, damit
+     umgebrochene Zeilen weiter an der Kante haengen, an der die Ecke sitzt. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.9rem;
+  align-items: baseline;
+  padding: 1.1rem 1.4rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  animation: menu-drop 300ms cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
+  animation-delay: calc(320ms + var(--i, 4) * 65ms);
+}
+
+.corner__who {
+  color: var(--on-sea-muted);
+}
+
+.corner__action {
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid rgb(233 225 207 / 30%);
+  background: none;
+  color: var(--on-sea);
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  transition: border-color 140ms ease;
+}
+
+.corner__action:hover {
+  border-bottom-color: var(--on-sea);
+}
+
+/*
+ * Unter 26rem (~416px) wird aus dem Umbruch der Regelfall, nicht die
+ * Ausnahme: „Gast" plus zwei Aktionen passen dort nicht mehr in eine Zeile.
+ * Engere Masse halten die Ecke trotzdem klein, und `.menu__inner` bekommt
+ * mehr Luft nach oben - sonst liefe die Wortmarke unter die jetzt hoehere,
+ * zweizeilige Ecke. Beides gehoert zusammen, weil eine hoehere Ecke ohne
+ * mehr Abstand denselben Fehler nur verschiebt statt ihn zu beheben.
+ */
+@media (max-width: 26rem) {
+  .corner {
+    gap: 0.5rem;
+    padding: 0.75rem 0.9rem;
+    font-size: 0.72rem;
+  }
+
+  .menu__inner {
+    padding-top: 6rem;
+  }
+}
+
 /* --- Startbildschirm ------------------------------------------------------ */
 
 /*
@@ -152,6 +561,23 @@ body {
   gap: 1.15rem;
   padding: clamp(1.5rem, 4vw, 3rem);
   overflow-y: auto;
+}
+
+/* Zurueck ins Menue: leise, aber immer an derselben Stelle. */
+.start__back {
+  display: block;
+  margin-bottom: 0.6rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-sea-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.start__back:hover {
+  color: var(--on-sea);
 }
 
 .start__brand h1 {
@@ -391,6 +817,528 @@ body {
   }
 }
 
+/*
+ * Die zwei Wege in eine Partie.
+ *
+ * Beide bekommen dieselbe Kachel und dieselbe Beschriftung - keiner ist der
+ * empfohlene. Was sie unterscheidet, steht in den Verben („erstellen" gegen
+ * „starten") und nicht in einer Hervorhebung.
+ */
+.way {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid rgb(233 225 207 / 12%);
+  border-radius: var(--radius);
+  background: rgb(0 0 0 / 16%);
+}
+
+.way__lead {
+  margin: 0;
+  color: var(--on-sea-muted);
+  font-size: 0.875rem;
+}
+
+.way > input {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid rgb(233 225 207 / 18%);
+  border-radius: 8px;
+  background: rgb(0 0 0 / 22%);
+  color: var(--on-sea);
+  font: inherit;
+}
+
+/* „oder" als Trennlinie, die das Wort traegt - nicht als Wort ueber einer Linie. */
+.way__or {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  margin: 0.15rem 0;
+  color: var(--on-sea-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.way__or::before,
+.way__or::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: rgb(233 225 207 / 14%);
+}
+
+/* --- Handkarten ----------------------------------------------------------- *
+ *
+ * Ein Stapel je Ressource. Die Kartenfarbe ist die Gelaendefarbe vom Brett -
+ * wer Lehm sucht, sucht die Farbe der Huegel. Die Zahl steht als Plakette in
+ * der Ecke, statt gezaehlt zu werden; die Stapeltiefe darunter gibt trotzdem
+ * den schnellen Eindruck.
+ */
+
+.hand {
+  width: 14.5rem;
+  padding: 0.6rem 0.7rem 0.7rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--radius);
+  background: var(--parchment);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.hand__head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.hand__head .panel__title {
+  margin: 0;
+}
+
+.hand__total {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.hand__empty {
+  margin: 0.35rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+
+.hand__stacks {
+  display: flex;
+  gap: 0.25rem;
+  /* Oben Luft fuer die Stapeltiefe, die nach oben aus der Karte herausragt. */
+  margin: 0.65rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Fuenf Stapel muessen nebeneinander passen, auch bei voller Hand:
+ * 5 x 2.3rem + 4 x 0.25rem = 12.5rem, plus 1.4rem Innenabstand.
+ */
+.card {
+  position: relative;
+  width: 2.3rem;
+}
+
+/*
+ * Die Karten dahinter: nur Andeutung, nie Traeger einer Information.
+ *
+ * Versatz ausschliesslich nach oben. Seitlich waere er huebscher, wuerde aber
+ * bei fuenf Stapeln aus dem Panel herauslaufen - und ein Stapel, der seinen
+ * Nachbarn ueberlappt, sagt etwas, das nicht stimmt.
+ */
+.card__behind {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2.9rem;
+  border: 1px solid rgb(22 32 42 / 45%);
+  border-radius: 5px;
+  opacity: 0.5;
+}
+
+.card__face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 2.9rem;
+  border: 1px solid rgb(22 32 42 / 65%);
+  border-radius: 5px;
+}
+
+.card__glyph {
+  width: 1.6rem;
+  height: 1.6rem;
+  fill: rgb(22 32 42 / 82%);
+}
+
+/* Bruchkanten im Erz: Linien, keine Flaechen. */
+.card__glyph-cut {
+  fill: none;
+  stroke: rgb(240 230 210 / 55%);
+  stroke-width: 1.1;
+}
+
+.card__count {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  min-width: 1.15rem;
+  padding: 0 0.2rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--parchment);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.card__name {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+/* Zugedeckt: drei Rueckseiten und die Einladung, hinzusehen. */
+.hand__cover {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 0.45rem;
+}
+
+.hand__backs {
+  display: flex;
+}
+
+.hand__backs span {
+  width: 1.5rem;
+  height: 2.2rem;
+  border: 1px solid rgb(22 32 42 / 65%);
+  border-radius: 4px;
+  background: repeating-linear-gradient(45deg, var(--sea-700) 0 3px, var(--sea-800) 3px 6px);
+}
+
+.hand__backs span + span {
+  margin-left: -0.9rem;
+}
+
+/*
+ * Die eigenen Partien.
+ *
+ * Jede Karte traegt die Sitzreihe als dieselben Spielsteine wie der
+ * Wartebereich, in denselben Farben: man erkennt seinen Tisch an der
+ * Aufstellung, bevor man den Code gelesen hat. Ein leerer Umriss heisst hier
+ * „gerade nicht da" - dieselbe Form, dieselbe Bedeutung wie dort.
+ */
+.resume {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resume__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgb(233 225 207 / 14%);
+  border-radius: var(--radius);
+  background: rgb(0 0 0 / 22%);
+}
+
+.resume__head {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.resume__code {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--parchment);
+}
+
+.resume__state {
+  color: var(--on-sea-muted);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.resume__seats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--on-sea-muted);
+}
+
+.resume__seat {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+/*
+ * Entwicklungskarten.
+ *
+ * **Pergament statt Gelaendefarbe.** Rohstoffe kommen vom Brett,
+ * Entwicklungskarten von der Bank - man soll am Material sehen, woher etwas
+ * stammt, ohne die Beschriftung zu lesen. Was dieser Zug nicht hergibt, liegt
+ * blass da: die Regel wird sichtbar, statt erst beim Klick als Absage
+ * aufzutauchen.
+ */
+.devcards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.devcard {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 5px;
+  background: var(--parchment-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.devcard--ready {
+  opacity: 1;
+  cursor: pointer;
+  /* Der einzige Unterschied, den man von weitem sieht. */
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.devcard__count {
+  margin-left: 0.3rem;
+  color: var(--ink-muted);
+}
+
+/* Rohstoffe waehlen - Erfindung und Monopol. */
+.pick {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0.4rem;
+}
+
+.pick__card {
+  display: grid;
+  place-items: center;
+  gap: 0.15rem;
+  width: 3.1rem;
+  padding: 0.4rem 0.2rem;
+  border: 1px solid rgb(22 32 42 / 55%);
+  border-radius: 6px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.62rem;
+  cursor: pointer;
+}
+
+.pick__card:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pick__chosen {
+  margin: 0 0 0.6rem;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+
+/*
+ * Ein Modus, der ueber dem Brett laeuft.
+ *
+ * Oben statt unten: unten liegt die Ablage, und was gerade zu tun ist, soll
+ * nicht dorthin, wo man ohnehin schon hinsieht.
+ */
+.mode {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  z-index: 6;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--sea-800);
+  box-shadow: var(--shadow);
+  font-size: 0.85rem;
+  transform: translateX(-50%);
+}
+
+/* --- Wartebereich --------------------------------------------------------- *
+ *
+ * Der Code ist das groesste Element der Anwendung - groesser als der Titel auf
+ * dem Startbildschirm, und das mit Absicht: hier wird er vorgelesen. Weite
+ * Sperrung, damit die vier Zeichen einzeln ankommen, und Tabellenziffern, damit
+ * K7X2 und M8Y3 gleich breit sind.
+ *
+ * Alles andere ist bewusst still. Der Tisch traegt die eine auffaellige Idee:
+ * ein freier Platz steht als gestrichelter Stein in der Farbe, die er bekommen
+ * wird.
+ */
+
+.lobby {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  align-items: center;
+  min-height: 100vh;
+  padding: clamp(1.5rem, 5vw, 4rem) 1.25rem;
+  background:
+    radial-gradient(120% 80% at 50% 0%, var(--sea-700) 0%, transparent 62%), var(--sea-900);
+}
+
+.lobby__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+
+.lobby__code {
+  margin: 0;
+  font-size: clamp(3.5rem, 14vw, 7rem);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  /* Die Sperrung haengt rechts nach - der eingerueckte Ausgleich zentriert. */
+  text-indent: 0.16em;
+  line-height: 1;
+  color: var(--parchment);
+}
+
+.lobby__lead {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--on-sea-muted);
+}
+
+.lobby__invite {
+  display: flex;
+  gap: 0.5rem;
+  width: min(100%, 34rem);
+}
+
+.lobby__invite input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgb(233 225 207 / 18%);
+  border-radius: 8px;
+  background: rgb(0 0 0 / 22%);
+  color: var(--on-sea);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.lobby__table {
+  width: min(100%, 34rem);
+}
+
+.lobby__seats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lobby__seat {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid rgb(233 225 207 / 12%);
+  border-radius: var(--radius);
+  background: rgb(0 0 0 / 18%);
+}
+
+/* Der leere Platz: gestrichelt wie der Stein darin, und leiser als ein Sitz. */
+.lobby__seat--open {
+  border-style: dashed;
+  border-color: rgb(233 225 207 / 16%);
+  background: transparent;
+  color: var(--on-sea-muted);
+}
+
+.lobby__name {
+  flex: 1 1 auto;
+  font-weight: 650;
+}
+
+.lobby__status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--on-sea-muted);
+}
+
+.piece--seat {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+/*
+ * Die Tischgroesse wird am Tisch eingestellt, nicht daneben.
+ *
+ * Deshalb stehen die beiden Knoepfe direkt unter der Sitzliste und nicht in
+ * einem eigenen Kasten: was sie veraendern, steht unmittelbar darueber, und der
+ * gestrichelte Umriss ist das Ergebnis.
+ */
+.lobby__resize {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.lobby__setting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: center;
+  width: min(100%, 34rem);
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid rgb(233 225 207 / 12%);
+  border-radius: var(--radius);
+  background: rgb(0 0 0 / 16%);
+  text-align: center;
+}
+
+.lobby__seed {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--parchment);
+  overflow-wrap: anywhere;
+}
+
+.lobby__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.lobby__hint {
+  margin: 0;
+  color: var(--on-sea-muted);
+  font-size: 0.875rem;
+}
+
 /* --- Spielbildschirm ------------------------------------------------------ */
 
 .game {
@@ -410,7 +1358,7 @@ body {
  */
 .board-area {
   position: absolute;
-  inset: 0.75rem 15.5rem 5.5rem 15.5rem;
+  inset: 0.75rem 15.5rem 11rem 15.5rem;
 }
 
 .board {
@@ -441,9 +1389,25 @@ body {
   text-align: right;
 }
 
-.panel--actions {
+/*
+ * Unten links stapeln sich Hand und Aktionen.
+ *
+ * Beide gehoeren zusammen: was man tun kann, haengt daran, was man hat. Sie
+ * teilen sich deshalb eine Spalte, statt getrennt in zwei Ecken zu schweben -
+ * der Blick springt sonst zwischen ihnen hin und her.
+ */
+.tray {
+  position: absolute;
   bottom: 0.75rem;
   left: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.tray .panel--actions {
+  position: static;
 }
 
 .panel--log {
@@ -544,6 +1508,60 @@ body {
   font-size: 0.7rem;
 }
 
+@keyframes rise {
+  from {
+    transform: translateY(0.35rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/*
+ * Was seit dem vorigen Stand dazugekommen ist.
+ *
+ * Steigt beim Erscheinen kurz auf und bleibt dann stehen, bis der naechste
+ * Stand kommt - es verblasst NICHT von selbst. Eine abgeschaltete Animation
+ * steht sofort an ihrem Ende; ein ausblendender Chip waere fuer alle mit
+ * `prefers-reduced-motion` von Anfang an unsichtbar.
+ */
+.seat__gain {
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--ok);
+  color: #f4f9f5;
+  font-size: 0.7rem;
+  font-weight: 700;
+  animation: rise 220ms ease-out;
+}
+
+/*
+ * Verbindung weg: eine ruhige Schicht statt eines eingefrorenen Bildes.
+ *
+ * Das Brett bleibt lesbar - man soll weiterschauen koennen, nur nicht mehr
+ * klicken. Die Erklaerung steht im Text und nicht in der Truebung.
+ */
+.offline {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgb(11 31 42 / 55%);
+  backdrop-filter: blur(1px);
+}
+
+.offline__text {
+  padding: 0.6rem 1rem;
+  border: 1px solid rgb(233 225 207 / 18%);
+  border-radius: var(--radius);
+  background: var(--sea-800);
+  color: var(--on-sea);
+  font-weight: 650;
+}
+
 .status__phase {
   font-weight: 650;
 }
@@ -553,28 +1571,169 @@ body {
   font-size: 0.75rem;
 }
 
-.status__dice {
+/*
+ * Der Wuerfelbecher.
+ *
+ * Er hat den Knopf „Wuerfeln" ersetzt und steht deshalb dort, wo der Knopf
+ * stand: oben in der Aktionsleiste, als erstes im Ablauf eines Zuges. Die
+ * Wuerfel selbst sind heller als das Pergament ringsum - sie sind das eine
+ * Stueck Spielmaterial in dieser Leiste, alles andere ist Bedienung.
+ */
+.dice-tray {
   display: flex;
-  gap: 0.3rem;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: flex-start;
+  margin-bottom: 0.55rem;
+}
+
+.dice {
+  display: flex;
+  gap: 0.4rem;
   align-items: center;
-  justify-content: flex-end;
-  margin-top: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: default;
+}
+
+.dice__faces {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.dice__total {
+  min-width: 1.4rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Die Aufforderung in Worten - und nicht nur in Bewegung.
+ *
+ * Die Zeile steht auch leer da: sonst waechst die Leiste um ihre Hoehe, sobald
+ * jemand am Zug ist, und schiebt Hand und Karten darunter weg.
+ */
+.dice__call {
+  min-height: 1rem;
+  padding-left: 0.55rem;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Wer werfen darf, hat einen Knopf vor sich - alle anderen eine Anzeige. */
+.dice--waiting {
+  border-color: var(--parchment-edge);
+  background: rgb(255 255 255 / 45%);
+  cursor: pointer;
 }
 
 .die {
   display: grid;
+  grid-template-columns: repeat(3, 1fr);
   place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0.22rem;
   border: 1px solid var(--parchment-edge);
-  border-radius: 5px;
+  border-radius: 6px;
   background: #fbf6ea;
+  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 8%);
   font-weight: 700;
 }
 
-.status__sum {
-  color: var(--ink-muted);
+.die--numeral {
+  display: grid;
+  place-items: center;
+  font-size: 1.05rem;
+}
+
+/* Vor dem ersten Wurf: ein Wuerfel, der noch nichts zeigt. */
+.die--blank {
+  opacity: 0.45;
+}
+
+.die__pip {
+  width: 0.32rem;
+  height: 0.32rem;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.die__pip--empty {
+  background: transparent;
+}
+
+/*
+ * Zwei Bewegungen, und jede erklaert einen Zustandswechsel (Regel 5).
+ *
+ * Das Atmen haengt genau an „du musst werfen" und hoert auf, sobald das nicht
+ * mehr gilt. Das Fallen zeigt, dass ein neuer Wurf liegt; es laeuft an, weil
+ * die Klasse dazukommt, und ist nach einem Zug wieder weg.
+ *
+ * Beide enden in ihrer Ruhelage. Das ist bei `prefers-reduced-motion` der
+ * ganze Punkt: die globale Regel oben schaltet Animationen auf einen
+ * Augenblick, sie stehen dann sofort an ihrem Ende - und das muss der normale
+ * Wuerfel sein, nicht ein aufgeblasener oder halb gedrehter.
+ */
+@keyframes dice-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.07);
+  }
+}
+
+.dice--waiting .dice__faces {
+  animation: dice-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes dice-fall {
+  from {
+    transform: scale(0.72) rotate(-9deg);
+  }
+
+  to {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.dice--fell .die {
+  animation: dice-fall 260ms ease-out;
+}
+
+/*
+ * Zwei Staerken fuer dieselbe Sache.
+ *
+ * Wer nur weg ist, steht klein und grau da. Wartet die Partie auf ihn, bekommt
+ * der Satz eine Kante - er erklaert dann, warum nichts passiert, und das ist
+ * eine andere Nachricht als „ist gerade nicht da".
+ */
+.status__waiting {
+  margin: 0.45rem 0 0;
+  padding-left: 0.5rem;
+  border-left: 3px solid var(--warn);
   font-size: 0.75rem;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.status__away {
+  margin: 0.35rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+  text-align: right;
 }
 
 .log {
@@ -643,10 +1802,45 @@ body {
   dominant-baseline: central;
 }
 
+/*
+ * Bewegung, und zwar nur dort, wo sich der Zustand aendert.
+ *
+ * Der Raeuber gleitet, weil man sehen soll, WOHER er kam - eine Sieben ist die
+ * unangenehmste Stelle im Spiel, und wer sie verpasst, sucht danach das halbe
+ * Brett ab. Ein neues Bauwerk waechst kurz auf, weil der eigene Zug sich
+ * bestaetigen darf. Mehr bewegt sich auf dem Brett nicht: alles andere waere
+ * Dekoration, und die faellt nach Regel 5 in CLAUDE.md weg.
+ *
+ * Die globale `prefers-reduced-motion`-Regel weiter oben schaltet beides ab.
+ * Das darf sie, weil keine dieser Bewegungen etwas erzaehlt, das nicht auch
+ * ohne sie am Bildschirm steht.
+ */
+.robber {
+  transition: transform 300ms ease;
+}
+
 .robber circle {
   fill: #24211d;
   stroke: #0c0b0a;
   stroke-width: 0.02;
+}
+
+@keyframes settle {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.building {
+  /* Ohne fill-box waere der Ursprung die Ecke des SVG, nicht die des Bauwerks. */
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: settle 180ms ease-out;
 }
 
 /*
@@ -732,12 +1926,53 @@ body {
   font-size: 0.85rem;
 }
 
+.modal__hint--warn {
+  color: var(--warn);
+}
+
 .modal__rate b {
   color: var(--ink);
 }
 
+.modal__problem {
+  margin: 0.6rem 0 0;
+  color: var(--bad);
+  font-size: 0.85rem;
+}
+
 .modal__box .button {
   margin: 0.35rem 0.2rem 0;
+}
+
+/* Beschriftetes Eingabefeld in Dialogen - Konto anlegen/anmelden. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.6rem 0 0;
+  text-align: left;
+}
+
+.field > span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.field input {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 8px;
+  background: var(--parchment-2);
+  color: var(--ink);
+  font: inherit;
+}
+
+.field__note {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
 }
 
 .cards {
@@ -942,4 +2177,102 @@ body {
   margin: 0;
   color: #f0a094;
   font-size: 0.875rem;
+}
+
+/* Reiterleiste im Handelsfenster: Bank oder Spieler. */
+.tabs {
+  display: flex;
+  gap: 0.3rem;
+  margin: 0 0 0.7rem;
+  padding: 0.2rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 999px;
+  background: var(--parchment-2);
+}
+
+.tabs__tab {
+  flex: 1;
+  padding: 0.35rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.tabs__tab[aria-selected='true'] {
+  background: var(--accent);
+  color: var(--ink);
+}
+
+/*
+ * Die beiden Mengenspalten eines Angebots. Nebeneinander, solange Platz ist -
+ * im schmalen Fenster untereinander, damit kein Schrittzaehler abgeschnitten
+ * wird.
+ */
+.trade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.6rem;
+}
+
+.trade .cards {
+  margin: 0;
+}
+
+/*
+ * Das Angebot auf dem Tisch.
+ *
+ * Ein Eingang, kein Ausgang: eine Animation, die etwas ausblendet, steht bei
+ * `prefers-reduced-motion` sofort an ihrem Ende - und ein Ende, das
+ * „unsichtbar" heisst, verschluckt die Information (siehe CLAUDE.md).
+ */
+@keyframes offer-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+.modal__box--enter {
+  animation: offer-enter 220ms ease-out both;
+}
+
+.offer__terms {
+  margin: 0 0 0.3rem;
+  font-size: 1.05rem;
+}
+
+.offer__clock {
+  margin: 0 0 0.8rem;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  /* In einem Spiel, in dem dauernd Zahlen verglichen werden, springt keine. */
+  font-variant-numeric: tabular-nums;
+}
+
+.offer__answers {
+  margin: 0 0 0.8rem;
+  padding: 0;
+  list-style: none;
+}
+
+.offer__answer {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--parchment-edge);
+  font-size: 0.88rem;
+}
+
+.offer__answer:last-child {
+  border-bottom: 0;
+}
+
+.offer__answer .button {
+  margin-left: auto;
 }

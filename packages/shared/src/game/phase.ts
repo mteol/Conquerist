@@ -1,16 +1,20 @@
 import { z } from 'zod';
 
 import { PlayerIdSchema } from './player.js';
+import { TradeOfferSchema, TradeResponseSchema } from './tradeOffer.js';
 
 /**
  * Der Zugablauf als expliziter Zustandsautomat.
  *
  * ```
  * setup ──► rollPending ──► main ──► (naechster Spieler) rollPending
- *              │                       │
- *              │ Wurf = 7              └──► finished
+ *              │              ▲│       │
+ *              │ Wurf = 7     ││       └──► finished
+ *              ▼              │▼
+ *         discardPending   tradePending
+ *              │              (Angebot liegt, Zug steht still)
  *              ▼
- *         discardPending ──► robberPending ──► main
+ *         robberPending ──► main
  * ```
  *
  * Ohne diese Phasen muesste der Reducer bei jeder eingehenden Aktion neu
@@ -46,6 +50,21 @@ export const PhaseSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('robberPending') }),
   /** Bauen, handeln, Zug beenden. */
   z.object({ kind: z.literal('main') }),
+  /**
+   * Ein Angebot liegt auf dem Tisch und blockiert den Zug.
+   *
+   * Als Phase und nicht als Feld daneben: dass waehrend eines Angebots nicht
+   * gebaut wird, ist damit dieselbe Regel wie jede andere Phasensperre und
+   * keine zweite Wahrheit neben `PHASE_ACTIONS`.
+   */
+  z.object({
+    kind: z.literal('tradePending'),
+    offer: TradeOfferSchema,
+    /** Wer schon geantwortet hat. Wer fehlt, ueberlegt noch. */
+    responses: z.record(z.string(), TradeResponseSchema),
+    /** Unix-ms. Wann das Angebot von selbst verfaellt. */
+    expiresAt: z.number().int().min(0),
+  }),
   /** Das Spiel ist vorbei und nimmt keine Aktion mehr an. */
   z.object({ kind: z.literal('finished'), winner: PlayerIdSchema }),
 ]);

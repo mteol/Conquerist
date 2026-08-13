@@ -23,8 +23,23 @@ export interface Place {
   readonly id: string;
 }
 
+/**
+ * Was das Brett zum Zeichnen braucht - und nicht mehr.
+ *
+ * Genau diese vier Felder, keine Handkarten und kein Zufall. Sowohl ein
+ * `GameState` als auch eine `PlayerView` erfuellen das, und damit zeichnet
+ * dieselbe Komponente die Vorschau auf dem Startbildschirm, die lokale Partie
+ * und die Online-Partie.
+ */
+export interface BoardSource {
+  readonly scenario: GameState['scenario'];
+  readonly buildings: GameState['buildings'];
+  readonly roads: GameState['roads'];
+  readonly robber: GameState['robber'];
+}
+
 export interface BoardSvgProps {
-  readonly state: GameState;
+  readonly state: BoardSource;
   readonly targets: ActionTargets;
   readonly seats: readonly Seat[];
   readonly onPick: (place: Place) => void;
@@ -125,9 +140,21 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
         );
       })}
 
-      <g className="robber" pointerEvents="none" data-testid="robber">
-        <circle cx={robber.x} cy={robber.y} r={0.2} />
-        <circle cx={robber.x} cy={robber.y - 0.16} r={0.1} />
+      {/*
+       * Der Raeuber wird verschoben statt neu gesetzt: `transform` laesst sich
+       * weich uebergehen, `cx`/`cy` nicht zuverlaessig. Sein Feld steht als
+       * `data-hex` daneben - die Endlage ist die Information, der Weg dorthin
+       * ist Beiwerk und faellt bei abgeschalteter Bewegung ersatzlos weg.
+       */}
+      <g
+        className="robber"
+        pointerEvents="none"
+        data-testid="robber"
+        data-hex={state.robber}
+        style={{ transform: `translate(${robber.x}px, ${robber.y}px)` }}
+      >
+        <circle cx={0} cy={0} r={0.2} />
+        <circle cx={0} cy={-0.16} r={0.1} />
       </g>
 
       {board.topology.edges.map((edge) => {
@@ -186,7 +213,7 @@ function VertexMark({
   onPick,
 }: {
   readonly vertex: VertexId;
-  readonly state: GameState;
+  readonly state: BoardSource;
   readonly isTarget: boolean;
   readonly colorOf: (player: PlayerId) => string;
   readonly onPick: (place: Place) => void;
@@ -210,11 +237,14 @@ function VertexMark({
         ) : null
       ) : (
         <circle
-          className="vertex__building"
+          className="vertex__building building"
           cx={point.x}
           cy={point.y}
           r={building.kind === 'city' ? 0.2 : 0.14}
-          fill={colorOf(building.owner)}
+          // Farbe per `style`: eine gleichnamige CSS-Regel schlaegt jedes
+          // SVG-Praesentationsattribut - daran sind in Etappe 3 alle
+          // gebauten Strassen unsichtbar geworden.
+          style={{ fill: colorOf(building.owner) }}
         />
       )}
     </g>

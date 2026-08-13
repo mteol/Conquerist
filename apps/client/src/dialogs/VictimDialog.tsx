@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import type { HexId, PlayerId } from '@conquerist/shared';
-import type { PlayerView } from '../game/view';
+import type { PlayerRow } from '../game/view';
 
 /**
  * Wen der Raeuber bestiehlt.
@@ -11,7 +11,7 @@ import type { PlayerView } from '../game/view';
  */
 export interface VictimDialogProps {
   readonly hex: HexId;
-  readonly victims: readonly PlayerView[];
+  readonly victims: readonly PlayerRow[];
   readonly onChoose: (victim: PlayerId) => void;
   readonly onClose: () => void;
 }

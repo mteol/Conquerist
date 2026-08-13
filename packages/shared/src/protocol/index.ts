@@ -1,4 +1,7 @@
+export * from './auth.js';
 export * from './constants.js';
 export * from './envelope.js';
+export * from './events.js';
 export * from './ping.js';
 export * from './registry.js';
+export * from './room.js';

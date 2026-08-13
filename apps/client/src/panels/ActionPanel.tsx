@@ -1,13 +1,19 @@
 import type { JSX } from 'react';
 import type { ActionTargets } from '../game/targets';
 import type { GameView } from '../game/view';
+import { DiceTray } from './DiceTray';
 
 /**
- * Die Knoepfe, die nicht auf dem Brett liegen.
+ * Die Bedienung, die nicht auf dem Brett liegt.
  *
  * Gesperrt wird nicht nach eigenem Wissen, sondern nach der Klickkarte: was
  * `legalActions` nicht genannt hat, ist grau. Der Handelsknopf oeffnet ein
  * Fenster - der Kurs wird dort abgeleitet und nicht gewaehlt (Regel 3).
+ *
+ * Oben stehen die Wuerfel, und sie sind kein Beiwerk: sie haben den Knopf
+ * „Wuerfeln" ersetzt. Er stand daneben und tat, was sie darstellen - jetzt
+ * wirft man sie. Damit liest sich die Leiste in der Reihenfolge eines Zuges:
+ * werfen, handeln und kaufen, beenden.
  */
 export interface ActionPanelProps {
   readonly view: GameView;
@@ -16,6 +22,7 @@ export interface ActionPanelProps {
   readonly onRoll: () => void;
   readonly onEndTurn: () => void;
   readonly onOpenTrade: () => void;
+  readonly onBuyCard: () => void;
   readonly onDismissError: () => void;
 }
 
@@ -26,21 +33,44 @@ export function ActionPanel({
   onRoll,
   onEndTurn,
   onOpenTrade,
+  onBuyCard,
   onDismissError,
 }: ActionPanelProps): JSX.Element {
   return (
     <section className="panel panel--actions">
+      <DiceTray
+        spec={view.dice}
+        roll={view.lastRoll}
+        total={view.rollTotal}
+        canRoll={targets.roll !== null}
+        fell={view.rolled}
+        onRoll={onRoll}
+      />
+
       <div className="panel__buttons">
-        <button type="button" className="button" disabled={targets.roll === null} onClick={onRoll}>
-          Wuerfeln
+        <button
+          type="button"
+          className="button"
+          /*
+           * Zwei Wege hinter einem Knopf: der Bankkurs steht in der
+           * Aktionsliste, das Angebot an die Mitspieler nicht (es braucht
+           * Mengen). Wer nur `targets.trades` prueft, sperrt den Spielerhandel
+           * genau dann aus, wenn jemand zu wenige Karten fuer die Bank hat -
+           * also fast immer dann, wenn er handeln moechte.
+           */
+          disabled={targets.trades.length === 0 && !view.canOfferTrade}
+          onClick={onOpenTrade}
+        >
+          Handel
         </button>
         <button
           type="button"
           className="button"
-          disabled={targets.trades.length === 0}
-          onClick={onOpenTrade}
+          disabled={targets.buyCard === null}
+          title={`Noch ${view.deckLeft} Karten im Stapel`}
+          onClick={onBuyCard}
         >
-          Handel
+          Karte kaufen
         </button>
         <button
           type="button"

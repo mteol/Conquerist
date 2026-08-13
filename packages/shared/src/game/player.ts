@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { PieceIdSchema, ResourceAmountsSchema } from '../rules/index.js';
+import { DevelopmentCardSchema } from './development.js';
 
 /**
  * Ein Spieler aus Sicht der Spiellogik.
@@ -25,6 +26,14 @@ export const PlayerStateSchema = z.object({
   resources: ResourceAmountsSchema,
   /** Wie viele Teile noch im Vorrat liegen. Aufgebraucht heisst: nicht mehr baubar. */
   piecesLeft: z.record(PieceIdSchema, z.number().int().min(0)),
+  /** Entwicklungskarten auf der Hand. Geheim wie die Ressourcen. */
+  developmentCards: z.array(DevelopmentCardSchema),
+  /**
+   * Ausgespielte Ritter. **Oeffentlich** - sie liegen offen vor dem Spieler und
+   * entscheiden die Groesste Rittermacht. Deshalb eine eigene Zahl und nicht
+   * bloss ein Zaehlen der Handkarten.
+   */
+  playedKnights: z.number().int().min(0),
 });
 
 export type PlayerState = z.infer<typeof PlayerStateSchema>;

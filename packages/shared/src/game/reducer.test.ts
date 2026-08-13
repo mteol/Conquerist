@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createRng } from '../random/index.js';
 import { CLASSIC_RULES } from '../rules/index.js';
 import type { GameAction } from './actions.js';
+import { yieldTotal } from './dice.js';
 import { RuleViolationCode } from './errors.js';
 import { CENTER_EDGE, CENTER_VERTEX, FAR_VERTEX, giving, hand, testGame } from './fixtures.js';
 import { reduce } from './reducer.js';
@@ -21,8 +22,7 @@ function seedRolling(total: number): string {
     const state = testGame({ phase: { kind: 'rollPending' }, rng: createRng(seed) });
     const result = reduce(state, { type: 'rollDice', player: 'p1' });
     if (result.ok && result.state.lastRoll !== null) {
-      const [a, b] = result.state.lastRoll;
-      if (a + b === total) return seed;
+      if (yieldTotal(CLASSIC_RULES.dice, result.state.lastRoll) === total) return seed;
     }
   }
   throw new Error(`Kein Seed mit Wurfsumme ${total} gefunden`);
@@ -112,7 +112,7 @@ describe('reduce - wuerfeln', () => {
     const result = reduce(state, { type: 'rollDice', player: 'p1' });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.state.lastRoll?.[0]! + result.state.lastRoll?.[1]!).toBe(6);
+      expect(yieldTotal(CLASSIC_RULES.dice, result.state.lastRoll!)).toBe(6);
       expect(result.state.phase).toEqual({ kind: 'main' });
       // Chip 6 liegt auf dem Huegelfeld - Lehm.
       expect(result.state.players[0]?.resources).toEqual(hand({ brick: 1 }));

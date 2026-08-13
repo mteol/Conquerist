@@ -6,7 +6,7 @@ import {
   type ResourceId,
 } from '@conquerist/shared';
 import { RESOURCE_LABELS } from '../game/labels';
-import type { PlayerView } from '../game/view';
+import type { PlayerRow } from '../game/view';
 
 /**
  * Abwerfen nach einer Sieben.
@@ -21,7 +21,7 @@ import type { PlayerView } from '../game/view';
  * weitergeht, steht fuer alle im Status- und Aktionspanel.
  */
 export interface DiscardDialogProps {
-  readonly player: PlayerView;
+  readonly player: PlayerRow;
   readonly required: number;
   readonly onConfirm: (resources: ResourceAmounts) => void;
 }

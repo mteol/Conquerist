@@ -212,7 +212,36 @@ describe('Transport - send()', () => {
     });
 
     await expect(promise).rejects.toBeInstanceOf(ServerError);
-    await expect(promise).rejects.toThrow(/INVALID_PAYLOAD/);
+    await expect(promise).rejects.toThrow('kaputt');
+  });
+
+  /*
+   * Der Text einer Ablehnung ist fuer den Spieler geschrieben - der Server sagt
+   * das ausdruecklich (`router.ts`, RejectedError). Wer ihm den Protokollcode
+   * voranstellt, macht daraus „REJECTED: ...", und genau so stand es im
+   * Browser auf dem Bildschirm. Der Code bleibt am Fehler, aber als Feld.
+   */
+  it('reicht den Grund des Servers weiter, ohne den Protokollcode davorzukleben', async () => {
+    const harness = setup();
+    harness.transport.connect();
+    const socket = harness.socket(0);
+    socket.simulateOpen();
+
+    const promise = harness.transport.send(PING, {});
+    socket.deliver({
+      replyTo: socket.lastRequest().id,
+      type: 'error',
+      ok: false,
+      error: { code: 'REJECTED', message: 'Angeboten werden kann nur, was auf der Hand liegt' },
+    });
+
+    const error = await promise.then(
+      () => null,
+      (caught: unknown) => caught as ServerError,
+    );
+
+    expect(error?.message).toBe('Angeboten werden kann nur, was auf der Hand liegt');
+    expect(error?.protocolCode).toBe('REJECTED');
   });
 
   it('ignoriert Antworten, deren Envelope nicht dem Schema entspricht', async () => {

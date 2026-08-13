@@ -6,7 +6,9 @@ import { WS_PATH } from '@conquerist/shared';
 import type { ServerConfig } from '../config.js';
 import { Connection, ConnectionHub } from './connection.js';
 import { startHeartbeat } from './heartbeat.js';
-import type { MessageRouter } from './router.js';
+import type { EventSink } from './events.js';
+import { isAllowedOrigin } from './origin.js';
+import type { MessageRouter, Session } from './router.js';
 
 /** Board-Nachrichten sind klein. Ein Limit verhindert, dass jemand Speicher belegt. */
 const MAX_PAYLOAD_BYTES = 64 * 1024;
@@ -16,6 +18,11 @@ export interface AttachOptions {
   readonly config: ServerConfig;
   readonly router: MessageRouter;
   readonly log: Logger;
+  /**
+   * Wird beim Schliessen einer Verbindung gerufen. Kein Client fragt danach,
+   * deshalb ist es kein Handler - der Tisch muss es trotzdem erfahren.
+   */
+  readonly onClosed?: (session: Session, events: EventSink) => void;
 }
 
 /** Minimale Logger-Form, damit diese Datei nicht an Fastify haengt. */
@@ -38,7 +45,7 @@ export interface WebSocketRuntime {
  * Fenster brauchen wir fuer die Origin-Pruefung.
  */
 export function attachWebSocketServer(options: AttachOptions): WebSocketRuntime {
-  const { httpServer, config, router, log } = options;
+  const { httpServer, config, router, log, onClosed } = options;
 
   const wss = new WebSocketServer({
     noServer: true,
@@ -69,9 +76,13 @@ export function attachWebSocketServer(options: AttachOptions): WebSocketRuntime 
 
     const origin = request.headers.origin;
 
-    if (origin === undefined || !config.clientOrigins.includes(origin)) {
+    if (!isAllowedOrigin(origin, request.headers.host, config.clientOrigins)) {
       log.warn(
-        { origin: origin ?? '(fehlt)', allowed: config.clientOrigins },
+        {
+          origin: origin ?? '(fehlt)',
+          host: request.headers.host ?? '(fehlt)',
+          allowed: config.clientOrigins,
+        },
         'WebSocket-Upgrade abgelehnt: Origin nicht erlaubt',
       );
       rejectUpgrade(socket, 403, 'Forbidden');
@@ -84,7 +95,11 @@ export function attachWebSocketServer(options: AttachOptions): WebSocketRuntime 
   };
 
   function handleConnection(ws: WebSocket, origin: string): void {
-    const connection = new Connection(ws, origin);
+    const connection = new Connection(ws, origin, (type, message) => {
+      // Zurueckgehalten statt verschickt: ein Ereignis, das sein Schema
+      // verletzt, koennte Verdecktes tragen (Regel 4).
+      log.error({ connectionId: connection.id, type, message }, 'Ereignis verletzt sein Schema');
+    });
     hub.add(connection);
     log.info({ connectionId: connection.id, origin, open: hub.size }, 'WebSocket verbunden');
 
@@ -105,6 +120,8 @@ export function attachWebSocketServer(options: AttachOptions): WebSocketRuntime 
         const response = await router.dispatch(data.toString(), {
           connectionId: connection.id,
           receivedAt: Date.now(),
+          session: connection.session,
+          events: connection.events,
         });
 
         connection.send(response);
@@ -117,6 +134,7 @@ export function attachWebSocketServer(options: AttachOptions): WebSocketRuntime 
 
     ws.on('close', (code, reason) => {
       hub.remove(connection);
+      onClosed?.(connection.session, connection.events);
       log.info(
         {
           connectionId: connection.id,

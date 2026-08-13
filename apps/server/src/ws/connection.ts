@@ -1,16 +1,29 @@
 import { randomUUID } from 'node:crypto';
 import type { WebSocket } from 'ws';
 import type { ServerMessage } from '@conquerist/shared';
+import { createEventSender, type EventSink } from './events.js';
+import type { Session } from './router.js';
 
 /**
  * Wrapper um eine einzelne WebSocket-Verbindung.
  *
- * Zweck: die Anwendung soll nie direkt auf einem `ws`-Objekt arbeiten. Ab
- * Etappe 4 haengen hier `userId` und `gameId` dran, ohne dass Router oder
- * Handler angepasst werden muessen.
+ * Zweck: die Anwendung soll nie direkt auf einem `ws`-Objekt arbeiten. Seit
+ * Etappe 4 haengen Sitzung und Ereignissenke hier - beide muessen die einzelne
+ * Nachricht ueberdauern, und die Verbindung ist genau das, was so lange lebt.
  */
 export class Connection {
   readonly id: string;
+
+  /**
+   * Wer an dieser Leitung sitzt. Startet leer; `hello` fuellt sie.
+   *
+   * Der Server liest die Identitaet ausschliesslich hier und nie aus einer
+   * eingehenden Nachricht - sonst koennte sich jeder als jeder ausgeben.
+   */
+  readonly session: Session = { userId: null, roomCode: null, tokenHash: null };
+
+  /** Ungefragtes Senden, jede Nachricht vorher gegen ihr Schema geprueft. */
+  readonly events: EventSink;
 
   /**
    * Heartbeat-Flag auf PROTOKOLL-Ebene (RFC 6455), nicht auf Anwendungsebene.
@@ -26,8 +39,16 @@ export class Connection {
     private readonly socket: WebSocket,
     /** Origin des Browsers, wie im Upgrade geprueft. Fuer Logs. */
     readonly origin: string,
+    /**
+     * Wird gerufen, wenn ein Ereignis sein eigenes Schema verletzt. Es geht
+     * dann NICHT hinaus - der Aufrufer soll es laut protokollieren.
+     */
+    onInvalidEvent: (type: string, message: string) => void = () => undefined,
   ) {
     this.id = randomUUID();
+    this.events = createEventSender((raw) => {
+      if (this.isOpen) this.socket.send(raw);
+    }, onInvalidEvent);
   }
 
   get isOpen(): boolean {

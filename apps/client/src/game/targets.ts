@@ -31,6 +31,10 @@ export interface ActionTargets {
   readonly trades: readonly GameAction[];
   readonly roll: GameAction | null;
   readonly endTurn: GameAction | null;
+  /** Eine Entwicklungskarte kaufen - `null`, wenn es gerade nicht geht. */
+  readonly buyCard: GameAction | null;
+  /** Ritter ausspielen. Die drei Karten mit Auswahl stehen nicht hier. */
+  readonly playKnight: GameAction | null;
 }
 
 /** Nichts anklickbar - fuer Spieler, die gerade nicht handeln duerfen. */
@@ -41,24 +45,36 @@ export const EMPTY_TARGETS: ActionTargets = {
   trades: [],
   roll: null,
   endTurn: null,
+  buyCard: null,
+  playKnight: null,
 };
 
-export function actionTargets(state: GameState, player: PlayerId): ActionTargets {
+/**
+ * Sortiert eine fertige Aktionsliste nach Ort.
+ *
+ * Nimmt die Liste entgegen, statt sie selbst zu holen: online kommt sie vom
+ * Server mit, weil `legalActions` den vollen Zustand braucht und der Client ihn
+ * seit Etappe 4 nicht mehr hat. Lokal wie entfernt landet danach dieselbe
+ * Sortierung in denselben Bildschirmen.
+ */
+export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
   const vertices = new Map<VertexId, GameAction>();
   const edges = new Map<EdgeId, GameAction>();
   const hexes = new Map<HexId, GameAction[]>();
   const trades: GameAction[] = [];
   let roll: GameAction | null = null;
   let endTurn: GameAction | null = null;
+  let buyCard: GameAction | null = null;
+  let playKnight: GameAction | null = null;
 
   const claim = <K, V>(map: Map<K, V>, key: K, value: V, what: string): void => {
     if (map.has(key)) {
-      throw new RangeError(`actionTargets: ${what} ${String(key)} ist doppelt belegt`);
+      throw new RangeError(`targetsFrom: ${what} ${String(key)} ist doppelt belegt`);
     }
     map.set(key, value);
   };
 
-  for (const action of legalActions(state, player)) {
+  for (const action of actions) {
     switch (action.type) {
       case 'placeSetupSettlement':
       case 'buildSettlement':
@@ -90,6 +106,22 @@ export function actionTargets(state: GameState, player: PlayerId): ActionTargets
         endTurn = action;
         break;
 
+      case 'buyDevelopmentCard':
+        buyCard = action;
+        break;
+
+      case 'playKnight':
+        playKnight = action;
+        break;
+
+      case 'playRoadBuilding':
+      case 'playYearOfPlenty':
+      case 'playMonopoly':
+        // Wie beim Abwerfen: die Auswahl trifft der Spieler, deshalb zaehlt
+        // `legalActions` diese Zuege gar nicht erst auf. Was spielbar ist,
+        // steht in `view.playableCards`.
+        break;
+
       case 'discard':
         // `legalActions` zaehlt das Abwerfen bewusst nicht auf - bei acht
         // Handkarten gaebe es dutzende gueltige Kombinationen. Der Dialog
@@ -98,5 +130,16 @@ export function actionTargets(state: GameState, player: PlayerId): ActionTargets
     }
   }
 
-  return { vertices, edges, hexes, trades, roll, endTurn };
+  return { vertices, edges, hexes, trades, roll, endTurn, buyCard, playKnight };
+}
+
+/**
+ * Bequemlichkeit fuer die lokale Partie.
+ *
+ * Online kommt die Liste vom Server (`legalActions` braucht den vollen
+ * Zustand und laeuft deshalb dort). Hier wird sie selbst geholt - dieselbe
+ * Funktion, dieselben Regeln, nur ohne Netz.
+ */
+export function actionTargets(state: GameState, player: PlayerId): ActionTargets {
+  return targetsFrom(legalActions(state, player));
 }

@@ -6,16 +6,18 @@ import {
   createGame,
   generateScenario,
   legalActions,
+  playerViewOf,
   reduce,
   setupPlayer,
   type GameState,
 } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
-import { gameView } from '../game/view';
+import { gameViewOf } from '../game/view';
 import { actionTargets } from '../game/targets';
 import { ActionPanel } from './ActionPanel';
 import { TablePanel } from './TablePanel';
+import { StatusPanel } from './StatusPanel';
 
 const scenario = generateScenario(CLASSIC_34, 'panels-probe');
 const seats = defaultSeats(3);
@@ -32,42 +34,33 @@ function afterSetup(): GameState {
 }
 
 describe('TablePanel', () => {
-  it('zeigt offen die Karten aller Spieler', () => {
+  it('zeigt die eigenen Karten offen und von fremden nur die Anzahl', () => {
     const state = afterSetup();
-    const view = gameView(state, seats, { viewer: ids[0]!, conceal: false });
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
 
-    render(<TablePanel view={view} conceal={false} onConcealChange={vi.fn()} />);
+    render(<TablePanel view={view} />);
 
-    expect(screen.getAllByTestId(/^hand-p/)).toHaveLength(3);
-    expect(screen.queryAllByTestId(/^hand-count-/)).toHaveLength(0);
-  });
-
-  it('zeigt verdeckt nur noch Anzahlen - ausser bei sich selbst', () => {
-    const state = afterSetup();
-    const view = gameView(state, seats, { viewer: ids[0]!, conceal: true });
-
-    render(<TablePanel view={view} conceal={true} onConcealChange={vi.fn()} />);
-
+    // Verdeckt ist keine Ansichtssache mehr, sondern der Zustand: genau eine
+    // offene Hand, und die gehoert dem, der zusieht.
     expect(screen.getAllByTestId(/^hand-p/)).toHaveLength(1);
     expect(screen.getAllByTestId(/^hand-count-/)).toHaveLength(2);
   });
 
-  it('meldet das Umschalten weiter', async () => {
+  it('nennt einen getrennten Mitspieler beim Wort statt ihn nur einzufaerben', () => {
     const state = afterSetup();
-    const view = gameView(state, seats, { viewer: ids[0]!, conceal: false });
-    const onConcealChange = vi.fn();
+    const offline = new Map([[ids[1]!, false]]);
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1, offline));
 
-    render(<TablePanel view={view} conceal={false} onConcealChange={onConcealChange} />);
-    await userEvent.click(screen.getByLabelText('Fremde Haende verdecken'));
+    render(<TablePanel view={view} />);
 
-    expect(onConcealChange).toHaveBeenCalledWith(true);
+    expect(screen.getByText('getrennt')).toBeDefined();
   });
 });
 
 describe('ActionPanel', () => {
   it('sperrt Handel und Zugende, solange nicht gewuerfelt ist', () => {
     const state = afterSetup();
-    const view = gameView(state, seats, { viewer: null, conceal: false });
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
     const targets = actionTargets(state, view.currentPlayerId);
 
     render(
@@ -78,18 +71,73 @@ describe('ActionPanel', () => {
         onRoll={vi.fn()}
         onEndTurn={vi.fn()}
         onOpenTrade={vi.fn()}
+        onBuyCard={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Wuerfeln' })).toHaveProperty('disabled', false);
+    // Der Knopf „Wuerfeln" ist weg: geworfen wird an den Wuerfeln selbst.
+    expect(screen.queryByRole('button', { name: 'Wuerfeln' })).toBeNull();
+    expect(screen.getByTestId('dice')).toHaveProperty('disabled', false);
     expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', true);
     expect(screen.getByRole('button', { name: 'Zug beenden' })).toHaveProperty('disabled', true);
   });
 
+  /*
+   * Der Fehler, den dieser Test festhaelt: der Knopf hing allein an
+   * `targets.trades`, also an den Bankgeschaeften. Wer zu wenige Karten fuer
+   * die Bank hatte - der Normalfall, wenn man handeln moechte -, kam gar nicht
+   * erst an den Reiter fuer den Spielerhandel.
+   */
+  it('oeffnet den Handel auch ohne Bankgeschaeft, wenn ein Angebot moeglich waere', () => {
+    const state = afterSetup();
+    const rolled = reduce(state, { type: 'rollDice', player: setupPlayer(state) ?? ids[0]! });
+    const after = rolled.ok ? rolled.state : state;
+    const view = gameViewOf(
+      playerViewOf(after, after.players[after.currentPlayerIndex]!.id, seats, 2),
+    );
+    const targets = actionTargets(after, view.currentPlayerId);
+
+    render(
+      <ActionPanel
+        view={{ ...view, canOfferTrade: true }}
+        targets={{ ...targets, trades: [] }}
+        error={null}
+        onRoll={vi.fn()}
+        onEndTurn={vi.fn()}
+        onOpenTrade={vi.fn()}
+        onBuyCard={vi.fn()}
+        onDismissError={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', false);
+  });
+
+  it('sperrt den Handel, wenn weder Bank noch Mitspieler in Frage kommen', () => {
+    const state = afterSetup();
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
+    const targets = actionTargets(state, view.currentPlayerId);
+
+    render(
+      <ActionPanel
+        view={{ ...view, canOfferTrade: false }}
+        targets={{ ...targets, trades: [] }}
+        error={null}
+        onRoll={vi.fn()}
+        onEndTurn={vi.fn()}
+        onOpenTrade={vi.fn()}
+        onBuyCard={vi.fn()}
+        onDismissError={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', true);
+  });
+
   it('zeigt den Ablehnungsgrund und laesst ihn wegraeumen', async () => {
     const state = afterSetup();
-    const view = gameView(state, seats, { viewer: null, conceal: false });
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
     const onDismissError = vi.fn();
 
     render(
@@ -100,6 +148,7 @@ describe('ActionPanel', () => {
         onRoll={vi.fn()}
         onEndTurn={vi.fn()}
         onOpenTrade={vi.fn()}
+        onBuyCard={vi.fn()}
         onDismissError={onDismissError}
       />,
     );
@@ -109,3 +158,34 @@ describe('ActionPanel', () => {
     expect(onDismissError).toHaveBeenCalled();
   });
 });
+
+describe('StatusPanel', () => {
+  it('nennt eine Trennung klein, solange sie niemanden aufhaelt', () => {
+    const state = afterSetup();
+    // Getrennt ist jemand, der gerade nicht dran ist.
+    const idle = state.players.find((player) => player.id !== actingId(state))!.id;
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1, new Map([[idle, false]])));
+
+    render(<StatusPanel view={view} />);
+
+    expect(screen.getByTestId('away').textContent).toContain('getrennt');
+    expect(screen.queryByTestId('waiting-for')).toBeNull();
+  });
+
+  it('erklaert es deutlich, wenn die Partie auf einen Getrennten wartet', () => {
+    const state = afterSetup();
+    const acting = actingId(state);
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1, new Map([[acting, false]])));
+
+    render(<StatusPanel view={view} />);
+
+    // Ohne diesen Satz sucht man den Fehler bei sich, wenn nichts mehr geht.
+    expect(screen.getByTestId('waiting-for').textContent).toContain('Wartet auf');
+    expect(screen.queryByTestId('away')).toBeNull();
+  });
+});
+
+/** Wer gerade handeln darf - nach der Gruendung der Spieler am Zug. */
+function actingId(state: GameState): string {
+  return state.players[state.currentPlayerIndex]!.id;
+}

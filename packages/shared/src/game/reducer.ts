@@ -1,6 +1,6 @@
-import { nextInt } from '../random/index.js';
 import type { GameAction } from './actions.js';
 import { applyBuildCity, applyBuildRoad, applyBuildSettlement } from './build.js';
+import { rollAll, yieldTotal } from './dice.js';
 import { RuleViolationCode, violation } from './errors.js';
 import type { PlayerId } from './player.js';
 import { applyDiscard, applyMoveRobber, playersMustDiscard } from './robber.js';
@@ -8,7 +8,24 @@ import { recomputeLongestRoad } from './roads.js';
 import { hasWon } from './scoring.js';
 import { applySetupRoad, applySetupSettlement, setupPlayer } from './setup.js';
 import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './state.js';
+import {
+  applyAcceptTrade,
+  applyCounterTrade,
+  applyDropFromTrade,
+  applyOfferTrade,
+  applyRejoinTrade,
+  applyRespondTrade,
+  applyTimeout,
+  applyWithdrawTrade,
+} from './playerTrade.js';
 import { applyTradeWithBank } from './trade.js';
+import {
+  applyBuyDevelopmentCard,
+  applyPlayKnight,
+  applyPlayMonopoly,
+  applyPlayRoadBuilding,
+  applyPlayYearOfPlenty,
+} from './developmentRules.js';
 import { distributeYield } from './yield.js';
 
 /**
@@ -31,7 +48,28 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
   rollPending: ['rollDice'],
   discardPending: ['discard'],
   robberPending: ['moveRobber'],
-  main: ['buildRoad', 'buildSettlement', 'buildCity', 'tradeWithBank', 'endTurn'],
+  main: [
+    'buildRoad',
+    'buildSettlement',
+    'buildCity',
+    'tradeWithBank',
+    'buyDevelopmentCard',
+    'playKnight',
+    'playRoadBuilding',
+    'playYearOfPlenty',
+    'playMonopoly',
+    'offerTrade',
+    'endTurn',
+  ],
+  tradePending: [
+    'respondTrade',
+    'counterTrade',
+    'acceptTrade',
+    'withdrawTrade',
+    'timeout',
+    'dropFromTrade',
+    'rejoinTrade',
+  ],
   finished: [],
 };
 
@@ -39,25 +77,26 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
 function actorFor(state: GameState): PlayerId | null {
   if (state.phase.kind === 'setup') return setupPlayer(state);
   if (state.phase.kind === 'discardPending') return null;
+  // Wie beim Abwerfen handeln mehrere: der Anbieter und seine Mitspieler. Wer
+  // genau was darf, prueft `playerTrade.ts`.
+  if (state.phase.kind === 'tradePending') return null;
   return state.players[state.currentPlayerIndex]?.id ?? null;
 }
 
 /**
  * Wuerfelt und schaltet weiter.
  *
- * Zwei Wuerfel einzeln zu ziehen ist kein Zierat: die Summe allein haette eine
- * andere Verteilung, und der Wurf soll in Etappe 3 als zwei Wuerfel auf dem
- * Tisch liegen.
+ * Womit gewuerfelt wird und welche Summe den Raeuber ruft, steht im RuleSet und
+ * nicht hier - hier steht nur, was danach passiert. Das ist die Grenze, an der
+ * eine Erweiterung mit einem dritten Wuerfel keinen Codepfad mehr braucht.
  */
 function rollDice(state: GameState): ReduceResult {
-  const [first, afterFirst] = nextInt(state.rng, 6);
-  const [second, afterSecond] = nextInt(afterFirst, 6);
+  const [roll, rng] = rollAll(state.rules.dice, state.rng);
 
-  const dice: [number, number] = [first + 1, second + 1];
-  const total = dice[0] + dice[1];
-  const rolled: GameState = { ...state, rng: afterSecond, lastRoll: dice };
+  const total = yieldTotal(state.rules.dice, roll);
+  const rolled: GameState = { ...state, rng, lastRoll: roll };
 
-  if (total !== 7) {
+  if (total !== state.rules.robberRoll) {
     return ok({ ...distributeYield(rolled, total), phase: { kind: 'main' } });
   }
 
@@ -77,6 +116,9 @@ function endTurn(state: GameState): ReduceResult {
     currentPlayerIndex: next,
     phase: { kind: 'rollPending' },
     turn: next === 0 ? state.turn + 1 : state.turn,
+    // Die Sperre gilt je Zug, nicht je Runde: der Naechste darf wieder eine
+    // Karte spielen.
+    developmentPlayed: false,
   });
 }
 
@@ -99,7 +141,7 @@ export function reduce(state: GameState, action: GameAction): ReduceResult {
     return rejected(
       violation(
         RuleViolationCode.GAME_OVER,
-        `${state.phase.winner} hat gewonnen - das Spiel nimmt keine Zuege mehr an`,
+        `${state.phase.winner} hat gewonnen - die Partie nimmt keine Zuege mehr an`,
       ),
     );
   }
@@ -154,6 +196,32 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
       return applyBuildCity(state, action.player, action.vertex);
     case 'tradeWithBank':
       return applyTradeWithBank(state, action.player, action.give, action.receive);
+    case 'buyDevelopmentCard':
+      return applyBuyDevelopmentCard(state, action.player);
+    case 'playKnight':
+      return applyPlayKnight(state, action.player);
+    case 'playRoadBuilding':
+      return applyPlayRoadBuilding(state, action.player, action.edges);
+    case 'playYearOfPlenty':
+      return applyPlayYearOfPlenty(state, action.player, action.picks);
+    case 'playMonopoly':
+      return applyPlayMonopoly(state, action.player, action.resource);
+    case 'offerTrade':
+      return applyOfferTrade(state, action.player, action.give, action.want, action.at);
+    case 'respondTrade':
+      return applyRespondTrade(state, action.player, action.response);
+    case 'counterTrade':
+      return applyCounterTrade(state, action.player, action.give, action.want, action.at);
+    case 'acceptTrade':
+      return applyAcceptTrade(state, action.player, action.partner);
+    case 'withdrawTrade':
+      return applyWithdrawTrade(state, action.player);
+    case 'timeout':
+      return applyTimeout(state, action.at);
+    case 'dropFromTrade':
+      return applyDropFromTrade(state, action.player);
+    case 'rejoinTrade':
+      return applyRejoinTrade(state, action.player);
     case 'endTurn':
       return endTurn(state);
   }
