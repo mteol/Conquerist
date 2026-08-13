@@ -127,3 +127,43 @@ Liste ist nur fuer den Dev-Proxy noetig.
 
 Die Konfiguration wird beim Start per Zod validiert; ein falscher Wert beendet
 den Prozess mit einer lesbaren Meldung statt spaeter als `NaN` aufzutauchen.
+
+## Deployment (Coolify)
+
+Ein Container traegt beides: der Server liefert den gebauten Client mit aus.
+Das ist keine Bequemlichkeit, sondern der Grund, warum keine Origin-Liste
+gepflegt werden muss — siehe unten.
+
+**Anwendung anlegen:** Build Pack `Dockerfile`, Branch `main`, Base Directory
+`/`, Port **8080**, „Is it a static site?" aus. Das Dockerfile liegt in der
+Repository-Wurzel.
+
+**Umgebungsvariablen:**
+
+| Variable        | Wert                  | Warum                                                   |
+| --------------- | --------------------- | ------------------------------------------------------- |
+| `NODE_ENV`      | `production`          | Log-Level `info` statt `debug`                          |
+| `HOST`          | `0.0.0.0`             | der Default `127.0.0.1` waere im Container unerreichbar |
+| `PORT`          | `8080`                | derselbe Wert wie im Port-Feld der Anwendung            |
+| `DATABASE_FILE` | `/data/conquerist.db` | zeigt auf das Volume, nicht ins Containerdateisystem    |
+
+**`CLIENT_ORIGIN` bleibt ungesetzt.** `isAllowedOrigin` vergleicht Host und
+Port, nicht das Schema: der Browser sendet `https://…`, der Server sieht intern
+`http`, und gleicher Ursprung stimmt trotzdem, solange der Proxy den
+urspruenglichen `Host` durchreicht. Die Domain gehoert deshalb in keine Liste.
+
+**Persistent Storage: ein _Volume_ auf `/data`**, ausdruecklich kein Bind
+Mount. Das Image legt `/data` an und uebereignet es dem Benutzer `node`; ein
+frisch angelegtes Volume erbt diese Rechte beim ersten Einhaengen, ein Bind
+Mount auf ein Host-Verzeichnis nicht — dort gehoert der Ordner root, und der
+Server stirbt mit `unable to open database file`.
+
+**Health-Check:** `GET /health` antwortet ohne Datenbankzugriff; das Dockerfile
+bringt einen `HEALTHCHECK` mit, der ihn alle 30 Sekunden abfragt.
+
+**Ein Redeploy kostet keine Partie.** Gespeichert werden Startzustand und
+Action-Log, wiederhergestellt wird per `replay` — beides liegt auf dem Volume.
+Der Container darf jederzeit ersetzt werden, solange das Volume bleibt.
+
+**Nur eine Instanz.** Raumverzeichnis, Wecker und die Anmelde-Drossel liegen im
+Speicher des Prozesses; zwei Replicas haetten zwei verschiedene Wahrheiten.
