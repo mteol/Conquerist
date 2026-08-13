@@ -145,6 +145,17 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
   „REJECTED: Angeboten werden kann nur, was auf der Hand liegt". Der Server
   schreibt seine Ablehnungstexte für Menschen; der Code bleibt als Feld am
   Fehler, für Diagnose — nicht als Präfix.
+- **Eine Probe an der falschen Stelle ist schlimmer als keine.** Gegen einen
+  Startfehler im Container kam ein `RUN import(...)` ins Dockerfile — aber in
+  die **Bau**-Stufe, wo der Workspace unter `/app` noch liegt. Dort konnte ein
+  Symlink nach draußen die Auflösung retten, die in der Laufzeitstufe
+  scheiterte: der Build war grün, der Container startete trotzdem nicht, und
+  die Probe hatte den Verdacht sogar noch entkräftet. Wer etwas nachweisen
+  will, weist es in der Umgebung nach, in der es gelten soll.
+- **`pnpm deploy` legt Workspace-Pakete als Symlink in seinen virtuellen
+  Store.** Wird der Zielordner danach woanders hinkopiert, zeigt der Link ins
+  Leere, und Node sagt dazu nur „Cannot find package". Deshalb heißt der Pfad
+  im Dockerfile schon in der Bau-Stufe so, wie er drüben heißen wird.
 - **Ein einmal veröffentlichter Migrationsschritt wird nie wieder angefasst.**
   Er beschreibt den Stand, den es einmal gab. Wer ihn ändert, gibt Bestands-
   und Neudatenbanken verschiedene Schemata — deren `user_version` steht auf
@@ -162,11 +173,29 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
 6. ✅ Persistence: Action-Log, „Deine Partien"
 7. ✅ Auth: Registrierung, Login, Gast-Account beanspruchen
 8. ✅ Handel, Entwicklungskarten
-9. Docker + Coolify
+9. ✅ Docker + Coolify
 10. Erweiterungen
 
 ## Aktueller Stand
-Etappen 0 bis 8 fertig. 0–3 liegen in `main`, 4–8 auf `etappe-4-online`.
+Etappen 0 bis 9 fertig, und seit Etappe 9 liegt **alles in `main`** — der
+Merge der Kette 4–9 (`7872f27`) hat den Rückstand aufgelöst, den `main` seit
+Etappe 3 hatte. Coolify baut diesen Branch.
+
+Das Spiel läuft als **ein** Container: der Server liefert den gebauten Client
+mit aus, und genau daran hängt die Origin-Regel (gleicher Ursprung, deshalb
+keine Domain im Code und kein `CLIENT_ORIGIN` in Produktion). Die SQLite-Datei
+gehört auf ein Volume unter `/data`; im Container hört der Server auf **8477**,
+in der Entwicklung weiterhin auf 8080. Die Einstellungen stehen in `README.md`
+unter „Deployment (Coolify)", die Geschichte der drei Fehlschläge in
+`PROGRESS.md`.
+
+Seit Etappe 9 laufen **Sitzungen ab**: gleitend, 60 Tage Untätigkeit, jede
+Verwendung setzt neu an (`SESSION_TTL_MS` in `identity/sessions.ts`, dritter
+Migrationsschritt `stepSessionExpiry`). Gleitend deshalb, weil dieselbe Tabelle
+die Gast-Identitäten trägt — eine absolute Frist nähme einem Gast mitten im
+Betrieb seine Partien. Dazu drosselt `identity/loginThrottle.ts` die Anmeldung:
+zehn Fehlversuche je **Login-Name** in fünfzehn Minuten, danach ein Satz mit
+Wartezeit. Je Name und nicht je IP, weil hinter dem Proxy alle dieselbe haben.
 Ein Serverneustart kostet keine Partie mehr: gespeichert wird der Startzustand
 plus das Action-Log, wiederhergestellt per `replay` — **kein Snapshot**, das ist
 gemessen (4000 Züge = 19 ms).

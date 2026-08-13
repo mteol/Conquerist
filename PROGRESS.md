@@ -1908,3 +1908,175 @@ button`, `1.4rem`). Das ist bei jeder Fensterbreite so und liegt unter dem,
 **Etappe 9 — Docker und Coolify.** Damit wird der Server oeffentlich
 erreichbar; die beiden Punkte, die Etappe 7 dafuer vorgemerkt hat (Rate-Limit
 auf `auth.login`, Sitzungsablauf), gehoeren dann dazu.
+
+## Etappe 9 — Docker und Coolify ✅
+
+Stand: 2026-08-13, Branch `etappe-9-deployment`, danach nach `main` gemergt
+(`7738246` Entwurf, `a29da6d` Plan, `59f3956` Sitzungsfrist, `7281ee3` Drossel,
+`fb6e7d0` Verdrahtung, `3fa8b74` Dockerfile, `7872f27` Merge der Etappen 4–9
+nach `main`, `46c9d23`/`c59f46d`/`ab31362` die drei Korrekturen aus den
+Deployment-Versuchen, `646babe` der Port).
+
+**Abnahme** — gemessen auf dem Stand von `646babe`:
+
+| Schritt             | Ergebnis                                                    |
+| ------------------- | ----------------------------------------------------------- |
+| `pnpm typecheck`    | sauber                                                      |
+| `pnpm test`         | **915** gruen (shared 568, server **142**, client 205; +21) |
+| `pnpm build`        | `index.js` 380,59 kB, gzip 113,33 kB; CSS 24,94 kB          |
+| `pnpm format:check` | sauber                                                      |
+| Deployment          | Coolify v4.1.2, Container `Running (healthy)`               |
+
+Die 21 neuen Tests: 7 zur Sitzungsfrist (davon 2 zum Migrationsschritt), 6 zur
+Drossel, 4 zu ihrer Verdrahtung in `Accounts.login`, 4 zu `loadConfig`.
+
+### Getroffene Entscheidungen
+
+**Ein Container, nicht zwei.** Der Server liefert den gebauten Client mit aus,
+wie es `static.ts` seit Etappe 4 vorsieht. Die verbreitete Aufteilung (nginx
+fuer die Dateien, Node fuer die API) haette genau das zerlegt, was die
+Origin-Regel zusammenhaelt: `isAllowedOrigin` erlaubt den Upgrade, wenn Seite
+und Server denselben Ursprung haben. Zwei Container heissen zwei Urspruenge und
+damit wieder eine gepflegte `CLIENT_ORIGIN`-Liste.
+
+**In Produktion ist `CLIENT_ORIGIN` leer, und die Domain steht nirgends im
+Code.** `isAllowedOrigin` vergleicht `new URL(origin).host === host`
+(`ws/origin.ts:26`), also Host und Port — **nicht das Schema**. Hinter einer
+TLS-Terminierung sendet der Browser `https://`, der Server sieht intern `http`,
+und der Vergleich stimmt trotzdem. Dasselbe traegt im Heimnetz ueber
+`http://<ip>:8477`. Nachgeprueft vor dem Bauen, nicht gehofft.
+
+**Die Sitzungsfrist ist gleitend, weil `sessions` auch Gaeste traegt.**
+`users.hello(secret)` schlaegt das Geheimnis in derselben Tabelle nach. Eine
+absolute Frist haette einem Gast mitten im Betrieb seine Identitaet und damit
+seine Partien genommen; gleitend trifft sie nur den, der 60 Tage nicht da war.
+Verlaengert wird gedrosselt — hoechstens einmal am Tag je Sitzung, denn wie
+lange die letzte Verwendung her ist, steht bereits in `expires_at`. Ein
+`last_used_at` daneben waere ein zweites Feld fuer dieselbe Auskunft.
+
+**Der Client musste dafuer nicht angefasst werden.** Ein abgelaufenes
+Geheimnis laesst `hello` werfen, und genau diesen Fall raeumt
+`useOnlineGame.ts:212-219` seit Etappe 5 ab: Geheimnis vergessen, ohne
+Geheimnis neu gruessen. Ein abgelaufener Gast wird also wieder ein Gast.
+
+**Der Migrationsschritt kennt keine Uhr.** `stepSessionExpiry` fuellt
+`expires_at` aus `created_at` und traegt die 60 Tage als Zahl, nicht als Import
+von `SESSION_TTL_MS`. Ein Schritt, der eine Konstante liest, aendert sein
+Ergebnis, sobald jemand die Konstante aendert — und waere dann nicht mehr der
+Schritt, der einmal veroeffentlicht wurde. Am echten lokalen Bestand
+durchgelaufen: `user_version: 3`, 25 Sitzungen mit Frist, die frueheste faellig
+am 1. Oktober 2026 (60 Tage nach dem 2. August, an dem die ersten Gaeste
+entstanden).
+
+**Das Rate-Limit zaehlt je Login-Name, nicht je Absender.** Hinter Coolifys
+Proxy haben alle Spieler dieselbe IP; ein Zaehler darauf traefe entweder alle
+oder niemanden. Gezaehlt wird auch ein Name, den es gar nicht gibt — sonst
+verriete die Drossel, welche Konten existieren, und machte den `DUMMY_HASH` in
+`accounts.ts` zunichte, der genau dafuer dasteht. Weil damit der Angreifer die
+Schluessel waehlt, hat die Tabelle eine Obergrenze. Am laufenden Server
+durchgespielt: Versuche 1 bis 10 „Benutzername oder Passwort stimmt nicht.",
+der elfte „Zu viele Fehlversuche. Bitte in 15 Minuten erneut versuchen." — der
+Protokollcode steht daneben, nicht davor (die Lehre aus dem Etappe-8-Nachtrag).
+
+**Die Drossel sitzt vor der KDF.** Eine gesperrte Anmeldung soll nicht auch
+noch `scrypt` bezahlen. `recordSuccess` steht direkt nach dem Passwortvergleich
+und nicht nach der Gast-Warnung: dass jemand die Bestaetigung fuer seine
+offenen Gastpartien noch nicht gegeben hat, ist kein Fehlversuch.
+
+**Der Port ist ueberall dieselbe Zahl.** Im Container koennte nichts
+kollidieren — er hat seinen eigenen Netzwerk-Namensraum —, aber Host-Port,
+Container-Port und das Port-Feld in Coolify sind drei Stellen, und zwei
+verschiedene Zahlen darin sind eine Verwechslung, die irgendwann passiert. Auf
+dem Zielhost war 8080 als totes Traefik-Mapping vergeben, 8090 gehoert
+`linkedin-dash-web`, 8000 dem Coolify-Dashboard; es wurde 8477. **In der
+Entwicklung bleibt es bei 8080**, dort haengen `config.ts` und der Vite-Proxy
+daran, und die Zahl ist frei.
+
+### Vier Anlaeufe, drei Fehler — und was sie gelehrt haben
+
+Auf dem Entwicklungsrechner ist kein Docker installiert. Das Dockerfile wurde
+also geschrieben, ohne es bauen zu koennen; der erste Build war der auf
+Coolify. Das war eine bewusste Entscheidung (der Plan sagt es vorher), und sie
+hat drei Runden gekostet:
+
+**1. `gyp ERR! find Python`.** Der Entwurf behauptete, `better-sqlite3` werde
+„gegen glibc vorgebaut ausgeliefert" — fuer Node 24 auf linux/x64 gibt es
+diese Binary nicht, es faellt auf `node-gyp` zurueck, und das slim-Image bringt
+keinen Compiler mit. Die Wahl von Debian statt Alpine blieb richtig, aber aus
+dem anderen Grund: uebersetzen geht auf glibc ohne Zusatzarbeit. `python3`,
+`make` und `g++` stehen jetzt in der Bau-Stufe, vor dem Kopieren der
+Manifeste, damit die Schicht im Cache bleibt; die Laufzeitstufe bekommt nur die
+fertige `.node`-Datei.
+
+**2. `Cannot find package '@conquerist/shared'`.** Der Build lief, der
+Container startete nicht. `pnpm deploy` legt das Workspace-Paket als **Symlink**
+in seinen virtuellen Store unterhalb des Zielordners; das Dockerfile kopierte
+diesen Ordner im Laufzeit-Image an eine andere Stelle, und danach zeigte der
+Link ins Leere. Ohne Docker liess sich das trotzdem nachsehen — `pnpm deploy`
+braucht keins, und die Struktur im Ausgabeordner beantwortete die Frage in
+dreissig Sekunden.
+
+**3. Die Probe an der falschen Stelle ist schlimmer als keine.** Gegen Fehler 2
+kam ein Auflaufversuch ins Dockerfile: `import('@conquerist/shared')` als
+`RUN`. Er stand in der **Bau**-Stufe, wo der Workspace unter `/app` noch liegt —
+also konnte ein Link nach draussen die Aufloesung retten, die drueben
+scheiterte. Der Build war gruen, der Container startete wieder nicht. Die Probe
+steht jetzt hinter dem `COPY` in der Laufzeit-Stufe und prueft **jede**
+Laufzeit-Abhaengigkeit, nicht nur die erste; `better-sqlite3` laedt dabei seine
+uebersetzte `.node`-Datei, was zugleich zeigt, dass sie den Umzug ueberstanden
+hat. Dazu liegt `@conquerist/shared` jetzt als echtes Verzeichnis in
+`node_modules` — das Paket ist ein `dist`-Ordner und eine `package.json`, seine
+einzige Abhaengigkeit haengt ohnehin direkt am Server, der Link war keine
+Ersparnis wert.
+
+Dazu zwei Stolpersteine ohne Codeanteil: der Host-Port 8080 war belegt
+(`Bind for :::8080 failed: port is already allocated`), und mit einem
+Port-Mapping kann Coolify **nicht rollierend tauschen** — es entfernt den alten
+Container, bevor der neue steht. Beim Wechsel ist die Anwendung also kurz weg,
+und eine laufende Partie verliert ihre Verbindung.
+
+### Abweichungen vom Plan
+
+- **Der Plan nannte zwei Aufrufer von `new Accounts(...)`, es sind drei.**
+  `ws/handlers/auth.test.ts` baut sich seine eigene Fixture; der Compiler fand
+  es, aber erst nach dem Testlauf. Ein `grep` beim Planschreiben haette es
+  vorher gezeigt.
+- **Ein lokaler `pnpm deploy --prod`-Versuch stellte den Workspace auf
+  Produktionsabhaengigkeiten um**, worauf `pnpm` die `node_modules` aufraeumen
+  wollte und ohne Terminal abbrach. Mit `pnpm install` repariert, danach die
+  Abnahme erneut gemessen.
+- **Der Durchlauf endete im Heimnetz statt unter einer Domain.** Der Server
+  steht hinter einem Router ohne Portfreigabe; erreichbar ist er ueber
+  `http://192.168.178.22:8477` per Port-Mapping, also **ohne Traefik und ohne
+  TLS**. Der Plan sah HTTPS unter eigener Domain vor; das bleibt offen.
+
+### Offene Punkte
+
+- **Der Browser-Durchlauf ist unvollstaendig.** Gesehen sind die Seite und
+  eine offene Verbindung im Heimnetz. **Nicht** nachgestellt: eine Partie zu
+  zweit mit Handel, ein Redeploy mit ueberlebender Partie, und die Drossel im
+  Browser (sie ist am laufenden Dev-Server ueber das Protokoll belegt, nicht
+  ueber die Oberflaeche).
+- **Ob ein Volume auf `/data` haengt, ist nicht bestaetigt.** „Healthy" beweist
+  es nicht: das Dockerfile setzt `DATABASE_FILE=/data/conquerist.db` selbst und
+  legt `/data` im Image an, der Server schreibt also auch ohne Volume
+  klaglos — nur eben in den Container. Solange das nicht geprueft ist, gilt
+  jede Partie dort als fluechtig.
+- **Kein HTTPS, keine Domain.** Damit laeuft der WebSocket als `ws://`,
+  unverschluesselt im Heimnetz. Beides braucht Portfreigaben (80/443) und
+  einen A-Record; die dynamische IP braeuchte zusaetzlich DynDNS.
+- **Keine Sicherung der Datenbank.** Ein Volume ueberlebt Redeploys, nicht den
+  Verlust des Servers.
+- **Ein Angreifer kann ein bekanntes Konto 15 Minuten aussperren**, indem er
+  zehnmal falsch raet. Bewusster Preis des Zaehlens je Name.
+- **Die Zaehler sind nach einem Neustart weg**, sie liegen im Speicher.
+- **Abgelaufene Sitzungen werden nur beim Start und beim Anfassen geraeumt.**
+- **Nur eine Instanz.** Raumverzeichnis, Wecker und Drossel liegen im Speicher,
+  die Datenbank ist eine Datei.
+- **Die zwei Viewport-Breakpoints aus Etappe 8 sind weiterhin ungesehen.**
+
+### Naechste Etappe
+
+**Etappe 10 — Erweiterungen.** Davor gehoert der Rest dieser Etappe zu Ende
+gebracht: das Volume bestaetigen, die Partie zu zweit ueber das Netz spielen,
+und der Weg nach draussen mit HTTPS.
