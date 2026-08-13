@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AUTH_LOGIN } from '@conquerist/shared';
 import { openDatabase } from '../../db/database.js';
 import { Accounts } from '../../identity/accounts.js';
+import { LoginThrottle } from '../../identity/loginThrottle.js';
 import { Sessions } from '../../identity/sessions.js';
 import { Users } from '../../identity/users.js';
 import { RoomRegistry } from '../../rooms/registry.js';
@@ -14,7 +15,7 @@ function fixture() {
   const database = openDatabase(':memory:');
   const sessions = new Sessions(database);
   const users = new Users(database, sessions);
-  const accounts = new Accounts(users, sessions);
+  const accounts = new Accounts(users, sessions, new LoginThrottle());
   const registry = new RoomRegistry();
   const sinks = new SinkHub();
   const router = new MessageRouter();

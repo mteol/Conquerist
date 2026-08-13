@@ -1,3 +1,4 @@
+import type { LoginThrottle } from './loginThrottle.js';
 import type { Sessions } from './sessions.js';
 import type { User, Users } from './users.js';
 import { hashPassword, verifyPassword } from './password.js';
@@ -49,6 +50,7 @@ export class Accounts {
   constructor(
     private readonly users: Users,
     private readonly sessions: Sessions,
+    private readonly throttle: LoginThrottle,
   ) {}
 
   /**
@@ -109,11 +111,34 @@ export class Accounts {
     currentTokenHash: string | null,
     openGuestGames: number,
   ): Promise<AccountResult> {
+    /*
+     * Zuerst die Drossel, dann erst die KDF: eine gesperrte Anmeldung soll
+     * nicht auch noch scrypt bezahlen. Der Satz ist fuer den Spieler
+     * geschrieben - kein Code, keine Millisekundenzahl.
+     */
+    const verdict = this.throttle.check(input.login);
+    if (verdict.blocked) {
+      const minutes = Math.max(1, Math.ceil(verdict.retryAfterMs / 60_000));
+      throw new AccountError(
+        `Zu viele Fehlversuche. Bitte in ${minutes} Minuten erneut versuchen.`,
+      );
+    }
+
     const account = this.users.byLogin(input.login);
     const stored = account?.passwordHash ?? DUMMY_HASH;
     const matches = await verifyPassword(input.password, stored);
 
-    if (account === undefined || !matches) throw new AccountError(WRONG_CREDENTIALS);
+    if (account === undefined || !matches) {
+      this.throttle.recordFailure(input.login);
+      throw new AccountError(WRONG_CREDENTIALS);
+    }
+
+    /*
+     * Das Passwort stimmte - der Zaehler ist erledigt. Bewusst hier und nicht
+     * erst nach der Gast-Warnung unten: dass jemand die Bestaetigung noch
+     * nicht gegeben hat, ist kein Fehlversuch.
+     */
+    this.throttle.recordSuccess(input.login);
 
     const current = currentUserId === null ? undefined : this.users.byId(currentUserId);
     if (

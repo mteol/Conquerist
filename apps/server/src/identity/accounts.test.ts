@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { openDatabase } from '../db/database.js';
 import { Accounts, AccountError } from './accounts.js';
+import { LOGIN_MAX_FAILURES, LoginThrottle } from './loginThrottle.js';
 import { Sessions } from './sessions.js';
 import { Users } from './users.js';
 
@@ -8,7 +9,8 @@ function fixture() {
   const database = openDatabase(':memory:');
   const sessions = new Sessions(database);
   const users = new Users(database, sessions);
-  return { database, sessions, users, accounts: new Accounts(users, sessions) };
+  const throttle = new LoginThrottle();
+  return { database, sessions, users, throttle, accounts: new Accounts(users, sessions, throttle) };
 }
 
 describe('Konten', () => {
@@ -136,5 +138,61 @@ describe('Konten', () => {
     expect(after.user.isGuest).toBe(true);
     expect(after.secret).toBeTruthy();
     expect(sessions.userIdOf(handy.secret ?? '')).toBeTruthy();
+  });
+});
+
+describe('Anmelden mit Drossel', () => {
+  async function withAccount() {
+    const parts = fixture();
+    await parts.accounts.register({ login: 'anna', password: 'langgenug1' }, null, null);
+    return parts;
+  }
+
+  it('sperrt nach zehn Fehlversuchen und nennt eine Wartezeit', async () => {
+    const { accounts } = await withAccount();
+
+    for (let i = 0; i < LOGIN_MAX_FAILURES; i += 1) {
+      await expect(
+        accounts.login({ login: 'anna', password: 'falsch' }, null, null, 0),
+      ).rejects.toThrow(AccountError);
+    }
+
+    await expect(
+      accounts.login({ login: 'anna', password: 'falsch' }, null, null, 0),
+    ).rejects.toThrow(/Minute/);
+  });
+
+  it('sperrt auch das richtige Passwort, solange die Frist laeuft', async () => {
+    const { accounts } = await withAccount();
+    for (let i = 0; i < LOGIN_MAX_FAILURES; i += 1) {
+      await accounts
+        .login({ login: 'anna', password: 'falsch' }, null, null, 0)
+        .catch(() => undefined);
+    }
+
+    await expect(
+      accounts.login({ login: 'anna', password: 'langgenug1' }, null, null, 0),
+    ).rejects.toThrow(/Fehlversuche/);
+  });
+
+  it('raeumt den Zaehler ab, wenn die Anmeldung gelingt', async () => {
+    const { accounts, throttle } = await withAccount();
+    await accounts
+      .login({ login: 'anna', password: 'falsch' }, null, null, 0)
+      .catch(() => undefined);
+
+    await accounts.login({ login: 'anna', password: 'langgenug1' }, null, null, 0);
+
+    expect(throttle.knows('anna')).toBe(false);
+  });
+
+  it('zaehlt auch einen Namen, den es gar nicht gibt', async () => {
+    const { accounts, throttle } = await withAccount();
+
+    await accounts
+      .login({ login: 'gibtesnicht', password: 'falsch' }, null, null, 0)
+      .catch(() => undefined);
+
+    expect(throttle.knows('gibtesnicht')).toBe(true);
   });
 });

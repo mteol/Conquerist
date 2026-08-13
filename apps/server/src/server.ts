@@ -10,6 +10,7 @@ import { openDatabase } from './db/database.js';
 import { Users } from './identity/users.js';
 import { Sessions } from './identity/sessions.js';
 import { Accounts } from './identity/accounts.js';
+import { LoginThrottle } from './identity/loginThrottle.js';
 import { RoomRegistry } from './rooms/registry.js';
 import { createRoomClock } from './rooms/clock.js';
 import { SqliteRoomStore } from './rooms/sqliteStore.js';
@@ -56,7 +57,9 @@ async function main(): Promise<void> {
   for (const room of deps.registry.all) clock.arm(room.code);
   // Dieselbe Sessions-Instanz wie oben - Accounts und Users teilen sich eine
   // Sitzungstabelle, sonst saehen sie unterschiedliche Anmeldungen.
-  const accounts = new Accounts(users, sessions);
+  // Eine Drossel fuer den ganzen Prozess: zwei Instanzen hiessen zwei getrennte
+  // Zaehlungen und damit die doppelte Zahl an Versuchen.
+  const accounts = new Accounts(users, sessions, new LoginThrottle());
 
   app.log.info({ rooms: deps.registry.all.length }, 'Raeume von der Platte geladen');
 
