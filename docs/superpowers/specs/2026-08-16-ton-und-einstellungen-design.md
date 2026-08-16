@@ -79,15 +79,15 @@ alles klingt voll. Der Empfaenger-Parameter ist dort `null`.
 Sechs neue Module unter `apps/client/src/audio/`, geschnitten entlang der
 Frage, was eine Entscheidung trifft und was nur verdrahtet:
 
-| Datei | Aufgabe | Rein |
-|---|---|---|
-| `cues.ts` | Das Vokabular: `type Cue` als String-Union, 23 Werte | ja |
-| `cueFor.ts` | `(move, situation) => readonly Sound[]` plus die zwei Erheber | ja |
-| `voices.ts` | `Record<Cue, Recipe>` — je Cue ein Rezept als Daten | ja |
-| `samples.ts` | `Partial<Record<Cue, string>>` — die mp3-Ausnahmen | ja |
-| `settings.ts` | Die drei Lautstaerken laden, speichern, pruefen | ja |
-| `engine.ts` | `AudioContext`, drei Gains, Freischaltung, `play` | nein |
-| `useAudio.ts` | React-Kontext; verbindet Engine, Einstellungen, Effekte | Verdrahtung |
+| Datei         | Aufgabe                                                       | Rein        |
+| ------------- | ------------------------------------------------------------- | ----------- |
+| `cues.ts`     | Das Vokabular: `type Cue` als String-Union, 23 Werte          | ja          |
+| `cueFor.ts`   | `(move, situation) => readonly Sound[]` plus die zwei Erheber | ja          |
+| `voices.ts`   | `Record<Cue, Recipe>` — je Cue ein Rezept als Daten           | ja          |
+| `samples.ts`  | `Partial<Record<Cue, string>>` — die mp3-Ausnahmen            | ja          |
+| `settings.ts` | Die drei Lautstaerken laden, speichern, pruefen               | ja          |
+| `engine.ts`   | `AudioContext`, drei Gains, Freischaltung, `play`             | nein        |
+| `useAudio.ts` | React-Kontext; verbindet Engine, Einstellungen, Effekte       | Verdrahtung |
 
 Dazu `apps/client/src/dialogs/SettingsDialog.tsx` und ein Zahnrad-Knopf.
 
@@ -190,13 +190,13 @@ deshalb eine kleine Erhebung — genau die Tatsachen, die ein Klang braucht:
 
 ```ts
 interface Situation {
-  readonly foreign: boolean;      // fremder Zug (online); im Hotseat nie
-  readonly gained: number;        // wie viele Karten sind mir zugelaufen
-  readonly lost: number;          // ... und wie viele weg (Diebstahl)
+  readonly foreign: boolean; // fremder Zug (online); im Hotseat nie
+  readonly gained: number; // wie viele Karten sind mir zugelaufen
+  readonly lost: number; // ... und wie viele weg (Diebstahl)
   readonly becameMyTurn: boolean; // vorher nicht dran, jetzt schon
-  readonly mustDiscard: boolean;  // die Abwurfaufforderung steht jetzt
-  readonly offerToMe: boolean;    // ein Angebot wartet auf meine Antwort
-  readonly finished: boolean;     // die Partie ist mit diesem Zug vorbei
+  readonly mustDiscard: boolean; // die Abwurfaufforderung steht jetzt
+  readonly offerToMe: boolean; // ein Angebot wartet auf meine Antwort
+  readonly finished: boolean; // die Partie ist mit diesem Zug vorbei
   readonly diceTotal: number | null;
 }
 ```
@@ -217,11 +217,11 @@ Test dafuer ist ein Objektliteral und eine Zusicherung.
 
 **Die Betroffenheitsregel** (greift nur bei `foreign`, also nur online):
 
-| Fall | Pegel |
-|---|---|
-| eigener Zug (`move.actor === ich`) | voll |
-| `offerToMe`, `lost > 0`, `becameMyTurn`, `finished` | voll |
-| alles andere von fremd | 0,4 |
+| Fall                                                | Pegel |
+| --------------------------------------------------- | ----- |
+| eigener Zug (`move.actor === ich`)                  | voll  |
+| `offerToMe`, `lost > 0`, `becameMyTurn`, `finished` | voll  |
+| alles andere von fremd                              | 0,4   |
 
 Die zweite Zeile ist der Grund, warum die Erhebung ueberhaupt existiert: „ein
 fremder Zug" und „ein fremder Zug, der mich trifft" klingen verschieden, und
@@ -312,7 +312,7 @@ auf Tiefsee) und **nicht** `.button--ghost`: das ist laut Browser-Durchlauf vom
 `GameEventSchema` bekommt **ein** optionales Feld:
 
 ```ts
-move: z.object({ type: GameActionTypeSchema, actor: z.string().min(1) }).optional()
+move: z.object({ type: GameActionTypeSchema, actor: z.string().min(1) }).optional();
 ```
 
 Ein Objekt statt zweier paralleler Optionale, die immer gemeinsam auftreten
@@ -359,17 +359,17 @@ Medienabfrage fuer „weniger Klang". Die Antwort darauf ist der Dialog.
 
 ## Was geprueft wird
 
-| Prueffall | Ort | Umgebung |
-|---|---|---|
-| `cueFor`: Zug → Cue, eigen vs. fremd, gedaempft vs. voll | client | node |
-| Beide Erheber fuellen dieselbe `Situation` fuer denselben Vorgang | client | node |
-| `situationFromView`: bestohlen, Ertrag, „ich bin dran", Angebot an mich | client | node |
-| `voices`: jeder Cue hat ein Rezept; `dice.land` steigt mit der Augensumme | client | node |
-| Beide Reduzierer legen den richtigen Cue mit steigendem `seq` ab | client | node |
-| Einstellungen: laden, speichern, kaputter Inhalt, gesperrter Speicher | client | node |
-| Dialog: Regler bewegt, Stumm schaltet ohne den Wert zu verlieren | client | jsdom |
-| Delegierter Klick: Knopf klingt, `disabled` nicht, `data-sound` schlaegt durch | client | jsdom |
-| `move` ueberlebt Schema und Broadcast; drei Aufrufe ohne Uebergang senden keins | shared + server | node |
+| Prueffall                                                                       | Ort             | Umgebung |
+| ------------------------------------------------------------------------------- | --------------- | -------- |
+| `cueFor`: Zug → Cue, eigen vs. fremd, gedaempft vs. voll                        | client          | node     |
+| Beide Erheber fuellen dieselbe `Situation` fuer denselben Vorgang               | client          | node     |
+| `situationFromView`: bestohlen, Ertrag, „ich bin dran", Angebot an mich         | client          | node     |
+| `voices`: jeder Cue hat ein Rezept; `dice.land` steigt mit der Augensumme       | client          | node     |
+| Beide Reduzierer legen den richtigen Cue mit steigendem `seq` ab                | client          | node     |
+| Einstellungen: laden, speichern, kaputter Inhalt, gesperrter Speicher           | client          | node     |
+| Dialog: Regler bewegt, Stumm schaltet ohne den Wert zu verlieren                | client          | jsdom    |
+| Delegierter Klick: Knopf klingt, `disabled` nicht, `data-sound` schlaegt durch  | client          | jsdom    |
+| `move` ueberlebt Schema und Broadcast; drei Aufrufe ohne Uebergang senden keins | shared + server | node     |
 
 **`engine.ts` bekommt keinen Test, und das ist Absicht.** Es gibt keinen
 `AudioContext` in node; ein nachgebauter pruefte den Nachbau. Deshalb liegt

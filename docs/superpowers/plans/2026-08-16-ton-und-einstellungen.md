@@ -45,11 +45,13 @@ Der Client erfaehrt online bisher nur einen deutschen Satz. Er bekommt ein Feld
 dazu, das sagt, welcher Zug es war.
 
 **Files:**
+
 - Modify: `packages/shared/src/game/actions.ts` (ans Ende)
 - Modify: `packages/shared/src/protocol/events.ts:59-73`
 - Test: `packages/shared/src/game/actions.test.ts`, `packages/shared/src/protocol/events.test.ts`
 
 **Interfaces:**
+
 - Produces: `GAME_ACTION_TYPES`, `GameActionTypeSchema`, `MoveSchema`,
   `type Move = { type: GameActionType; actor: string }`; `GameEvent.move?: Move`
 
@@ -208,12 +210,14 @@ git commit -m "Der Spielstand sagt jetzt auch, welcher Zug ihn erzeugt hat"
 `describeTransition`-Zeile auf.
 
 **Files:**
+
 - Modify: `apps/server/src/rooms/broadcast.ts:47-75`
 - Modify: `apps/server/src/rooms/clock.ts:66-76`
 - Modify: `apps/server/src/ws/handlers/room.ts:83-88`, `:315-323`, `:366-372`
 - Test: `apps/server/src/rooms/broadcast.test.ts` (anlegen, falls nicht vorhanden)
 
 **Interfaces:**
+
 - Consumes: `Move` aus Task 1
 - Produces: `broadcastGame(room, sinks, transition?: Transition)` mit
   `interface Transition { before: GameState; action: GameAction; after: GameState }`
@@ -335,11 +339,11 @@ export function broadcastGame(room: Room, sinks: Sinks, transition?: Transition)
 `broadcastGame(...)` ersetzen durch:
 
 ```ts
-    broadcastGame(
-      acted.room,
-      deps.sinks.map,
-      acted.room.game === null ? undefined : { before, action, after: acted.room.game },
-    );
+broadcastGame(
+  acted.room,
+  deps.sinks.map,
+  acted.room.game === null ? undefined : { before, action, after: acted.room.game },
+);
 ```
 
 Den nun unbenutzten `describeTransition`-Import und die lokale `seats`-Variable
@@ -349,13 +353,13 @@ entfernen (der Typprueffehler zeigt beides an).
 `before` heisst dort schon so, die Nachher-Seite ist `acted.room.game`:
 
 ```ts
-    broadcastGame(
-      acted.room,
-      sinks.map,
-      before === null || acted.room.game === null
-        ? undefined
-        : { before, action, after: acted.room.game },
-    );
+broadcastGame(
+  acted.room,
+  sinks.map,
+  before === null || acted.room.game === null
+    ? undefined
+    : { before, action, after: acted.room.game },
+);
 ```
 
 An der dritten Stelle (`:366`) heisst die Vorher-Seite `game` statt `before` —
@@ -383,11 +387,13 @@ Reine Datei, kein DOM, kein Ton. Hier steht, **welcher** Klang zu einem Zug
 gehoert und wie laut.
 
 **Files:**
+
 - Create: `apps/client/src/audio/cues.ts`
 - Create: `apps/client/src/audio/cueFor.ts`
 - Test: `apps/client/src/audio/cueFor.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Move` aus Task 1
 - Produces: `type Cue` (23 Werte), `interface Sound { cue: Cue; gain: number; note?: number }`,
   `interface SoundEvent { seq: number; sounds: readonly Sound[] }`, `interface Situation`,
@@ -457,10 +463,7 @@ describe('cueFor', () => {
   });
 
   it('nimmt die Daempfung zurueck, wenn der fremde Zug mich trifft', () => {
-    const robbed = cueFor(
-      { type: 'moveRobber', actor: 'b' },
-      { ...quiet, foreign: true, lost: 1 },
-    );
+    const robbed = cueFor({ type: 'moveRobber', actor: 'b' }, { ...quiet, foreign: true, lost: 1 });
     expect(robbed.every((sound) => sound.gain === 1)).toBe(true);
 
     const offered = cueFor(
@@ -471,15 +474,15 @@ describe('cueFor', () => {
   });
 
   it('meldet den eigenen Zug, das Abwerfen und das Ende zusaetzlich', () => {
-    expect(cues(cueFor({ type: 'endTurn', actor: 'b' }, { ...quiet, becameMyTurn: true }))).toEqual([
-      'turn.mine',
-    ]);
+    expect(cues(cueFor({ type: 'endTurn', actor: 'b' }, { ...quiet, becameMyTurn: true }))).toEqual(
+      ['turn.mine'],
+    );
     expect(
       cues(cueFor({ type: 'rollDice', actor: 'b' }, { ...quiet, diceTotal: 7, mustDiscard: true })),
     ).toContain('discard.required');
-    expect(
-      cues(cueFor({ type: 'buildCity', actor: 'a' }, { ...quiet, finished: true })),
-    ).toContain('game.over');
+    expect(cues(cueFor({ type: 'buildCity', actor: 'a' }, { ...quiet, finished: true }))).toContain(
+      'game.over',
+    );
   });
 
   it('bleibt still, wo Ton nur stoeren wuerde', () => {
@@ -741,10 +744,12 @@ git commit -m "Welcher Zug wie klingt - als reine Funktion, ohne einen Ton"
 Sie fuellen dieselbe `Situation`, jeder aus seiner Welt.
 
 **Files:**
+
 - Create: `apps/client/src/audio/situation.ts`
 - Test: `apps/client/src/audio/situation.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Situation` aus Task 3
 - Produces: `situationFromGame(before: GameState, after: GameState, action: GameAction): Situation`,
   `situationFromView(before: PlayerView | null, after: PlayerView, move: Move): Situation`
@@ -891,8 +896,7 @@ export function situationFromGame(
     gained: Math.max(0, difference),
     lost: action.type === 'moveRobber' ? Math.max(0, -difference) : 0,
     becameMyTurn: false,
-    mustDiscard:
-      after.phase.kind === 'discardPending' && before.phase.kind !== 'discardPending',
+    mustDiscard: after.phase.kind === 'discardPending' && before.phase.kind !== 'discardPending',
     offerToMe: false,
     finished: before.phase.kind !== 'finished' && after.phase.kind === 'finished',
     diceTotal: after.lastRoll === null ? null : yieldTotal(after.rules.dice, after.lastRoll),
@@ -923,8 +927,7 @@ export function situationFromView(
 
   const difference = before === null ? 0 : cardsIn(after) - cardsIn(before);
 
-  const discardsNow =
-    after.phase.kind === 'discardPending' && after.phase.pending.includes(me);
+  const discardsNow = after.phase.kind === 'discardPending' && after.phase.pending.includes(me);
   const discardedBefore =
     before !== null && before.phase.kind === 'discardPending' && before.phase.pending.includes(me);
 
@@ -966,11 +969,13 @@ Jeder Cue bekommt seine Synthesevorschrift als Daten. Kein Ton, kein
 AudioContext — nur Zahlen.
 
 **Files:**
+
 - Create: `apps/client/src/audio/voices.ts`
 - Create: `apps/client/src/audio/samples.ts`
 - Test: `apps/client/src/audio/voices.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Cue`, `Sound` aus Task 3
 - Produces: `type Layer`, `interface Recipe { layers: readonly Layer[] }`,
   `VOICES: Record<Cue, Recipe>`, `recipeFor(sound: Sound): Recipe`,
@@ -1060,7 +1065,12 @@ export type Layer = {
   readonly decay: number;
   readonly gain: number;
 } & (
-  | { readonly kind: 'tone'; readonly wave: OscillatorType; readonly from: number; readonly to?: number }
+  | {
+      readonly kind: 'tone';
+      readonly wave: OscillatorType;
+      readonly from: number;
+      readonly to?: number;
+    }
   | {
       readonly kind: 'noise';
       readonly filter: BiquadFilterType;
@@ -1098,10 +1108,30 @@ const knock = (at: number, gain: number, from: number): Layer => ({
 export const VOICES: Record<Cue, Recipe> = {
   'ui.click': { layers: [knock(0, 0.16, 1800)] },
   'ui.confirm': {
-    layers: [{ kind: 'tone', wave: 'triangle', from: A3 * 2, to: A3 * 3, attack: 2, decay: 90, gain: 0.16 }],
+    layers: [
+      {
+        kind: 'tone',
+        wave: 'triangle',
+        from: A3 * 2,
+        to: A3 * 3,
+        attack: 2,
+        decay: 90,
+        gain: 0.16,
+      },
+    ],
   },
   'ui.cancel': {
-    layers: [{ kind: 'tone', wave: 'triangle', from: A3 * 2, to: A3 * 1.5, attack: 2, decay: 90, gain: 0.14 }],
+    layers: [
+      {
+        kind: 'tone',
+        wave: 'triangle',
+        from: A3 * 2,
+        to: A3 * 1.5,
+        attack: 2,
+        decay: 90,
+        gain: 0.14,
+      },
+    ],
   },
   'ui.error': {
     layers: [
@@ -1110,9 +1140,17 @@ export const VOICES: Record<Cue, Recipe> = {
     ],
   },
 
-  'build.road': { layers: [knock(0, 0.3, 700), { kind: 'tone', wave: 'sine', from: A3, attack: 2, decay: 110, gain: 0.14 }] },
+  'build.road': {
+    layers: [
+      knock(0, 0.3, 700),
+      { kind: 'tone', wave: 'sine', from: A3, attack: 2, decay: 110, gain: 0.14 },
+    ],
+  },
   'build.settlement': {
-    layers: [knock(0, 0.34, 900), { kind: 'tone', wave: 'sine', from: A3 * 1.5, attack: 2, decay: 150, gain: 0.16 }],
+    layers: [
+      knock(0, 0.34, 900),
+      { kind: 'tone', wave: 'sine', from: A3 * 1.5, attack: 2, decay: 150, gain: 0.16 },
+    ],
   },
   'build.city': {
     layers: [
@@ -1124,15 +1162,41 @@ export const VOICES: Record<Cue, Recipe> = {
 
   // Fuenf Ticks, unregelmaessig - regelmaessig klaenge es nach Maschine.
   'dice.roll': {
-    layers: [knock(0, 0.22, 2600), knock(90, 0.18, 2200), knock(170, 0.2, 2900), knock(260, 0.16, 2400), knock(380, 0.14, 3100)],
+    layers: [
+      knock(0, 0.22, 2600),
+      knock(90, 0.18, 2200),
+      knock(170, 0.2, 2900),
+      knock(260, 0.16, 2400),
+      knock(380, 0.14, 3100),
+    ],
   },
   'dice.land': {
-    layers: [{ kind: 'tone', wave: 'triangle', from: A3 * 2, at: 500, attack: 2, decay: 260, gain: 0.26 }],
+    layers: [
+      { kind: 'tone', wave: 'triangle', from: A3 * 2, at: 500, attack: 2, decay: 260, gain: 0.26 },
+    ],
   },
   'dice.seven': {
     layers: [
-      { kind: 'tone', wave: 'sawtooth', from: A3 * 0.75, to: A3 * 0.5, at: 500, attack: 4, decay: 420, gain: 0.24 },
-      { kind: 'noise', filter: 'lowpass', from: 900, to: 300, at: 500, attack: 4, decay: 380, gain: 0.18 },
+      {
+        kind: 'tone',
+        wave: 'sawtooth',
+        from: A3 * 0.75,
+        to: A3 * 0.5,
+        at: 500,
+        attack: 4,
+        decay: 420,
+        gain: 0.24,
+      },
+      {
+        kind: 'noise',
+        filter: 'lowpass',
+        from: 900,
+        to: 300,
+        at: 500,
+        attack: 4,
+        decay: 380,
+        gain: 0.18,
+      },
     ],
   },
 
@@ -1151,23 +1215,57 @@ export const VOICES: Record<Cue, Recipe> = {
     ],
   },
   'robber.steal': {
-    layers: [{ kind: 'noise', filter: 'highpass', from: 1200, to: 4200, attack: 8, decay: 200, gain: 0.2 }],
+    layers: [
+      { kind: 'noise', filter: 'highpass', from: 1200, to: 4200, attack: 8, decay: 200, gain: 0.2 },
+    ],
   },
   'discard.required': {
     layers: [
       { kind: 'tone', wave: 'triangle', from: A3 * 1.5, attack: 3, decay: 140, gain: 0.2 },
-      { kind: 'tone', wave: 'triangle', from: A3 * 1.25, at: 130, attack: 3, decay: 200, gain: 0.2 },
+      {
+        kind: 'tone',
+        wave: 'triangle',
+        from: A3 * 1.25,
+        at: 130,
+        attack: 3,
+        decay: 200,
+        gain: 0.2,
+      },
     ],
   },
 
   'card.buy': {
-    layers: [{ kind: 'noise', filter: 'bandpass', from: 2600, to: 1400, q: 0.8, attack: 6, decay: 180, gain: 0.2 }],
+    layers: [
+      {
+        kind: 'noise',
+        filter: 'bandpass',
+        from: 2600,
+        to: 1400,
+        q: 0.8,
+        attack: 6,
+        decay: 180,
+        gain: 0.2,
+      },
+    ],
   },
   'card.knight': {
-    layers: [knock(0, 0.34, 1500), { kind: 'tone', wave: 'square', from: A3 * 1.5, attack: 2, decay: 130, gain: 0.1 }],
+    layers: [
+      knock(0, 0.34, 1500),
+      { kind: 'tone', wave: 'square', from: A3 * 1.5, attack: 2, decay: 130, gain: 0.1 },
+    ],
   },
   'card.play': {
-    layers: [{ kind: 'tone', wave: 'triangle', from: A3 * 1.5, to: A3 * 2.25, attack: 3, decay: 190, gain: 0.18 }],
+    layers: [
+      {
+        kind: 'tone',
+        wave: 'triangle',
+        from: A3 * 1.5,
+        to: A3 * 2.25,
+        attack: 3,
+        decay: 190,
+        gain: 0.18,
+      },
+    ],
   },
 
   'trade.offer': {
@@ -1189,7 +1287,9 @@ export const VOICES: Record<Cue, Recipe> = {
     ],
   },
   'trade.timeout': {
-    layers: [{ kind: 'tone', wave: 'sine', from: A3, to: A3 * 0.75, attack: 6, decay: 380, gain: 0.16 }],
+    layers: [
+      { kind: 'tone', wave: 'sine', from: A3, to: A3 * 0.75, attack: 6, decay: 380, gain: 0.16 },
+    ],
   },
 
   'turn.mine': {
@@ -1224,7 +1324,11 @@ export function recipeFor(sound: Sound): Recipe {
   return {
     layers: base.layers.map((layer) =>
       layer.kind === 'tone'
-        ? { ...layer, from: layer.from * factor, ...(layer.to === undefined ? {} : { to: layer.to * factor }) }
+        ? {
+            ...layer,
+            from: layer.from * factor,
+            ...(layer.to === undefined ? {} : { to: layer.to * factor }),
+          }
         : layer,
     ),
   };
@@ -1297,9 +1401,11 @@ keine Entscheidung: welcher Cue, welches Rezept, welcher Pegel steht fest, wenn
 sie gerufen wird.
 
 **Files:**
+
 - Create: `apps/client/src/audio/engine.ts`
 
 **Interfaces:**
+
 - Consumes: `Sound`, `recipeFor`, `SAMPLES`, `AudioSettings` (Task 7 liefert den
   Typ; diese Task definiert nur den Verbrauch)
 - Produces: `createEngine(): Engine` mit
@@ -1359,7 +1465,8 @@ export function createEngine(): Engine {
 
     // Safari kennt nur den praefixierten Namen.
     const Ctor: typeof AudioContext | undefined =
-      window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      window.AudioContext ??
+      (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (Ctor === undefined) return false;
 
     context = new Ctor();
@@ -1409,7 +1516,8 @@ export function createEngine(): Engine {
       const osc = ctx.createOscillator();
       osc.type = layer.wave;
       osc.frequency.setValueAtTime(layer.from, start);
-      if (layer.to !== undefined) osc.frequency.exponentialRampToValueAtTime(layer.to, start + attack + decay);
+      if (layer.to !== undefined)
+        osc.frequency.exponentialRampToValueAtTime(layer.to, start + attack + decay);
       osc.connect(envelope);
       osc.start(start);
       osc.stop(start + attack + decay + 0.02);
@@ -1423,7 +1531,8 @@ export function createEngine(): Engine {
       const filter = ctx.createBiquadFilter();
       filter.type = layer.filter;
       filter.frequency.setValueAtTime(layer.from, start);
-      if (layer.to !== undefined) filter.frequency.exponentialRampToValueAtTime(layer.to, start + attack + decay);
+      if (layer.to !== undefined)
+        filter.frequency.exponentialRampToValueAtTime(layer.to, start + attack + decay);
       if (layer.q !== undefined) filter.Q.setValueAtTime(layer.q, start);
       source.connect(filter);
       filter.connect(envelope);
@@ -1439,7 +1548,12 @@ export function createEngine(): Engine {
     voices += 1;
   };
 
-  const playSample = (ctx: AudioContext, target: GainNode, buffer: AudioBuffer, gain: number): void => {
+  const playSample = (
+    ctx: AudioContext,
+    target: GainNode,
+    buffer: AudioBuffer,
+    gain: number,
+  ): void => {
     const envelope = ctx.createGain();
     envelope.gain.setValueAtTime(gain, ctx.currentTime);
     envelope.connect(target);
@@ -1528,10 +1642,12 @@ git commit -m "Die Engine: Rezepte nach WebAudio uebersetzen, mehr tut sie nicht
 ### Task 7: Die Einstellungen
 
 **Files:**
+
 - Create: `apps/client/src/audio/settings.ts`
 - Test: `apps/client/src/audio/settings.test.ts`
 
 **Interfaces:**
+
 - Produces: `type Bus = 'master' | 'sfx' | 'music'`,
   `interface BusSetting { level: number; muted: boolean }`,
   `type AudioSettings = Record<Bus, BusSetting>`, `DEFAULT_AUDIO`,
@@ -1690,11 +1806,13 @@ Beide Reduzierer bekommen ein Feld neben `log`. Sie bleiben rein — abgespielt
 wird erst in Task 9.
 
 **Files:**
+
 - Modify: `apps/client/src/game/hotseat.ts:19-25`, `:56-67`
 - Modify: `apps/client/src/game/onlineState.ts:16-46`, `:71-88`
 - Test: `apps/client/src/game/hotseat.test.ts`, `apps/client/src/game/onlineState.test.ts`
 
 **Interfaces:**
+
 - Consumes: `cueFor`, `situationFromGame`, `situationFromView`, `SoundEvent` (Task 3)
 - Produces: `HotseatState.sound: SoundEvent | null`, `OnlineState.sound: SoundEvent | null`
 
@@ -1773,26 +1891,26 @@ In `startHotseat`: `return { game, actions: [], log: [], lastError: null, sound:
 Im Erfolgszweig von `hotseatReducer`:
 
 ```ts
-  const sounds = cueFor(
-    { type: event.action.type, actor: event.action.player },
-    situationFromGame(state.game, result.state, event.action),
-  );
+const sounds = cueFor(
+  { type: event.action.type, actor: event.action.player },
+  situationFromGame(state.game, result.state, event.action),
+);
 
-  return {
-    game: result.state,
-    actions: [...state.actions, event.action],
-    log: [
-      ...state.log,
-      {
-        turn: result.state.turn,
-        text: describeTransition(state.game, event.action, result.state, seats),
-      },
-    ],
-    lastError: null,
-    // Ein stiller Zug laesst den alten Eintrag stehen; er ist laengst gespielt,
-    // und ein Ruecksetzen auf null waere ein zweiter Anlass fuer denselben Klang.
-    sound: sounds.length === 0 ? state.sound : { seq: state.actions.length + 1, sounds },
-  };
+return {
+  game: result.state,
+  actions: [...state.actions, event.action],
+  log: [
+    ...state.log,
+    {
+      turn: result.state.turn,
+      text: describeTransition(state.game, event.action, result.state, seats),
+    },
+  ],
+  lastError: null,
+  // Ein stiller Zug laesst den alten Eintrag stehen; er ist laengst gespielt,
+  // und ein Ruecksetzen auf null waere ein zweiter Anlass fuer denselben Klang.
+  sound: sounds.length === 0 ? state.sound : { seq: state.actions.length + 1, sounds },
+};
 ```
 
 `apps/client/src/game/onlineState.ts` — analog:
@@ -1809,11 +1927,9 @@ In `emptyOnlineState`: `sound: null,`
 Im `game`-Zweig, nach der Versionsprüfung:
 
 ```ts
-      const move = event.payload.move;
-      const sounds =
-        move === undefined
-          ? []
-          : cueFor(move, situationFromView(state.view, event.payload.view, move));
+const move = event.payload.move;
+const sounds =
+  move === undefined ? [] : cueFor(move, situationFromView(state.view, event.payload.view, move));
 ```
 
 und im zurueckgegebenen Objekt:
@@ -1842,10 +1958,12 @@ git commit -m "Der Klang zum Zug steht im Zustand, nicht in einem Nebeneffekt"
 Hier wird zum ersten Mal wirklich etwas hoerbar.
 
 **Files:**
+
 - Create: `apps/client/src/audio/useAudio.tsx`
 - Test: `apps/client/src/audio/useAudio.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `createEngine`, `loadAudioSettings`, `storeAudioSettings`, `SoundEvent`
 - Produces: `<AudioProvider>`, `useAudio(): { settings, setBus, play }`,
   `useCueSound(event: SoundEvent | null): void`
@@ -2122,12 +2240,14 @@ git commit -m "Ein Listener fuer hundert Knoepfe, und eine Sperre gegen den dopp
 ### Task 10: Der Einstellungen-Dialog und das Zahnrad
 
 **Files:**
+
 - Create: `apps/client/src/dialogs/SettingsDialog.tsx`
 - Create: `apps/client/src/screens/SettingsButton.tsx`
 - Modify: `apps/client/src/index.css` (neuer Abschnitt; `.corner` bekommt Platz)
 - Test: `apps/client/src/dialogs/settings.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useAudio`, `AudioSettings`, `Bus`, `CloseButton`
 - Produces: `<SettingsDialog onClose />`, `<SettingsButton />`
 
@@ -2275,9 +2395,7 @@ export function SettingsDialog({ onClose }: { readonly onClose: () => void }): J
           );
         })}
 
-        <p className="modal__hint">
-          Musik gibt es noch nicht — der Regler wartet auf sie.
-        </p>
+        <p className="modal__hint">Musik gibt es noch nicht — der Regler wartet auf sie.</p>
       </div>
     </div>
   );
@@ -2324,16 +2442,16 @@ export function SettingsButton(): JSX.Element {
 Platz. Bei `.corner` (Zeile ~522) das `padding` aendern:
 
 ```css
-  /* Rechts liegt seit dem Ton das Zahnrad fest verankert. Ohne diesen Platz
+/* Rechts liegt seit dem Ton das Zahnrad fest verankert. Ohne diesen Platz
      laege „Abmelden" darunter - im schmalen Fenster, wo die Ecke umbricht,
      sogar zweizeilig. */
-  padding: 1.1rem 3.6rem 1.1rem 1.4rem;
+padding: 1.1rem 3.6rem 1.1rem 1.4rem;
 ```
 
 und in der Media Query bei `max-width: 26rem`:
 
 ```css
-    padding: 0.75rem 3rem 0.75rem 0.9rem;
+padding: 0.75rem 3rem 0.75rem 0.9rem;
 ```
 
 Neuer Abschnitt:
@@ -2465,6 +2583,7 @@ git commit -m "Ein Zahnrad oben rechts und drei Regler dahinter"
 Jetzt erst klingt das Spiel. Bis hierher war alles Vorbereitung.
 
 **Files:**
+
 - Modify: `apps/client/src/App.tsx:31-39`, `:56-69`, `:235-240`
 - Modify: `apps/client/src/game/useLocalGame.ts:29-53`
 - Modify: `apps/client/src/game/useOnlineGame.ts` (Rueckgabe um `sound` ergaenzen)
@@ -2472,6 +2591,7 @@ Jetzt erst klingt das Spiel. Bis hierher war alles Vorbereitung.
 - Modify: `CLAUDE.md` (Abschnitt „Aktueller Stand")
 
 **Interfaces:**
+
 - Consumes: alles aus Task 1-10
 
 - [ ] **Step 1: Den Ton anschliessen**
@@ -2516,6 +2636,7 @@ Bildschirm da ist — auch im Wartebereich und im Spiel.
 ```bash
 pnpm -w typecheck && pnpm -w test && pnpm -w build && pnpm -w format:check
 ```
+
 Expected: alles gruen.
 
 - [ ] **Step 3: Browser-Durchlauf — mit Ohren**
@@ -2571,6 +2692,7 @@ keine Migration) → Task 1. Barrierefreiheit (`aria-pressed`, `aria-label`,
 sichtbarer Fokus, Ton nie alleiniger Traeger) → Task 10.
 
 **Was der Plan gegenueber der Spec praeziser macht:**
+
 - Die `Situation` hat acht Felder mit festgelegter Bedeutung; die Spec nannte
   sie, ohne jede zu definieren.
 - `discard` klingt wie `robber.steal` (Karten verlassen die Hand, derselbe
