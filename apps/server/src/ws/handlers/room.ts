@@ -10,12 +10,10 @@ import {
   RENAME,
   START_GAME,
   awaitsResponse,
-  describeTransition,
   hasAutomaticDecline,
   isSystemAction,
   stampAction,
   type GameAction,
-  type Seat,
 } from '@conquerist/shared';
 import { broadcastGame, broadcastRoom } from '../../rooms/broadcast.js';
 import { summaryOf } from '../../rooms/summary.js';
@@ -80,12 +78,13 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
 
     registry.update(acted.room.code, acted.room, action);
 
-    const entry =
+    broadcastGame(
+      acted.room,
+      sinks.map,
       before === null || acted.room.game === null
         ? undefined
-        : describeTransition(before, action, acted.room.game, seatsOf(acted.room));
-
-    broadcastGame(acted.room, sinks.map, entry);
+        : { before, action, after: acted.room.game },
+    );
     deps.clock?.arm(acted.room.code);
     return true;
   };
@@ -314,13 +313,16 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     registry.update(acted.room.code, acted.room, action);
 
     // Der Verlaufssatz entsteht aus vorher/nachher und nicht aus der Absicht -
-    // er kann damit nicht von dem abweichen, was wirklich geschehen ist.
-    const entry =
+    // er kann damit nicht von dem abweichen, was wirklich geschehen ist. Wo er
+    // entsteht, steht seit dem Ton in `broadcast.ts`; hier geht nur noch der
+    // Uebergang hinein.
+    broadcastGame(
+      acted.room,
+      sinks.map,
       before === null || acted.room.game === null
         ? undefined
-        : describeTransition(before, action, acted.room.game, seatsOf(room));
-
-    broadcastGame(acted.room, sinks.map, entry);
+        : { before, action, after: acted.room.game },
+    );
     // Der Zug kann eine Frist geoeffnet, verlaengert oder beendet haben.
     deps.clock?.arm(acted.room.code);
     return {};
@@ -364,19 +366,13 @@ export function handleDisconnect(deps: RoomHandlerDeps, session: Session, sink: 
 
     registry.update(acted.room.code, acted.room, action);
 
-    const entry =
-      acted.room.game === null
-        ? undefined
-        : describeTransition(game, action, acted.room.game, seatsOf(acted.room));
-
-    broadcastGame(acted.room, sinks.map, entry);
+    broadcastGame(
+      acted.room,
+      sinks.map,
+      acted.room.game === null ? undefined : { before: game, action, after: acted.room.game },
+    );
     deps.clock?.arm(acted.room.code);
   }
-}
-
-/** Die Sitze eines Raums in der Form, die `shared` kennt. */
-function seatsOf(room: Room): readonly Seat[] {
-  return room.seats.map((seat) => ({ id: seat.userId, name: seat.name, color: seat.color }));
 }
 
 function requireUser(context: RequestContext, users: Users): { id: string; name: string } {

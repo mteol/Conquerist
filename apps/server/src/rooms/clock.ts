@@ -1,4 +1,4 @@
-import { deadlineOf, describeTransition, type GameAction, type Seat } from '@conquerist/shared';
+import { deadlineOf, type GameAction } from '@conquerist/shared';
 import { broadcastGame, type Sinks } from './broadcast.js';
 import type { RoomRegistry } from './registry.js';
 import { applySystemAction } from './room.js';
@@ -63,17 +63,11 @@ export function createRoomClock(deps: RoomClockDeps): RoomClock {
 
     deps.registry.update(acted.room.code, acted.room, action);
 
-    const seats: readonly Seat[] = acted.room.seats.map((seat) => ({
-      id: seat.userId,
-      name: seat.name,
-      color: seat.color,
-    }));
-    const entry =
-      acted.room.game === null
-        ? undefined
-        : describeTransition(before, action, acted.room.game, seats);
-
-    broadcastGame(acted.room, deps.sinks.map, entry);
+    broadcastGame(
+      acted.room,
+      deps.sinks.map,
+      acted.room.game === null ? undefined : { before, action, after: acted.room.game },
+    );
 
     // Der neue Zustand kann eine neue Frist tragen - nachsehen statt annehmen.
     arm(code);
