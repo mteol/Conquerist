@@ -2475,3 +2475,125 @@ Formensprachen auf einem Brett gewesen.
 Unveraendert: diese beiden Durchgaenge im Browser ansehen, zu zweit ueber das
 Netz. Es ist inzwischen die einzige Probe, die noch aussteht - und die einzige,
 die die Haelfte dieser Punkte ueberhaupt beruehrt.
+
+## Ton und Einstellungen (2026-08-16, `etappe-10-ton`)
+
+Das Spiel war stumm. Jetzt hat es 23 Klaenge, einen Einstellungen-Dialog mit
+drei Lautstaerken und in der Online-Partie eine Abstufung: eigene Zuege voll,
+fremde gedaempft, was mich angeht wieder voll.
+
+Entwurf: `docs/superpowers/specs/2026-08-16-ton-und-einstellungen-design.md`,
+Plan: `docs/superpowers/plans/2026-08-16-ton-und-einstellungen.md`.
+
+### Der Fund, der alles bestimmt hat
+
+**Online erfaehrt der Client nie, welcher Zug geschehen ist.** `GameEvent` trug
+`version`, `view`, `actions`, `sentAt` und `entry` - einen fertigen deutschen
+Satz. Der Hotseat hat die `GameAction` in der Hand, online liegt nur Text vor.
+Ohne Eingriff braeuchte der Ton zwei Ableitungen: eine aus der Aktion, eine aus
+einem Satz oder aus dem Zustandsunterschied.
+
+Deshalb traegt `GameEvent` jetzt `move: { type, actor }` - **was** passiert ist.
+Was daraus wird, entscheidet der Empfaenger; eine Ausgabeanweisung gehoerte
+nicht ins Protokoll. `GameActionTypeSchema` ist ein `z.enum` mit zwei
+Waechtern: `satisfies` faengt Tippfehler, ein `AssertNever` faengt vergessene
+Zweige. Der zweite ist **exportiert**, weil `noUnusedLocals` einen lokalen Typ
+verwirft - und ein weggeworfener Waechter waecht nichts. Nachgewiesen: eine
+entfernte Zeile ergab `Type '"buildCity"' does not satisfy the constraint
+'never'`.
+
+Nebenbei faellt eine Kopie weg. `broadcastGame` bekommt statt des fertigen
+Satzes den Uebergang (`{ before, action, after }`) und rechnet `entry` **und**
+`move` selbst aus; vorher rief jede der vier Aufrufstellen `describeTransition`
+eigenhaendig, und die fuenfte Kopie fuer `move` waere dazugekommen. `seatsOf`
+in `ws/handlers/room.ts` ist damit ersatzlos verschwunden.
+
+### Aufbau
+
+Sieben Module unter `apps/client/src/audio/`, geschnitten nach dem, was eine
+Entscheidung trifft, und dem, was nur verdrahtet:
+
+- `cues.ts` - 23 Namen, `Sound`, `SoundEvent`, `Situation`
+- `cueFor.ts` - Zug plus Lage ergibt Klaenge. Rein, 10 Tests, kein DOM.
+- `situation.ts` - **zwei** Erheber, weil der Hotseat `GameState` haelt und
+  online nur `PlayerView` vorliegt. Eine Funktion mit zwei Zustandswelten
+  waeren zwei Funktionen mit einem Namen; dazwischen steht eine Erhebung aus
+  acht Feldern.
+- `voices.ts` - jeder Klang als **Daten** (Schichten aus Oszillator oder
+  gefiltertem Rauschen, Huellkurve in ms). Deshalb braucht das Wuerfelpoltern
+  keinen Sonderfall: fuenf Rauschschichten bei `at: 0, 90, 170, 260, 380`.
+- `samples.ts` - alle 23 Cues als auskommentierte Zeilen. Synthese ist die
+  Voreinstellung; eine mp3 ist die Ausnahme und faellt bei Fehler auf die
+  Synthese zurueck.
+- `settings.ts` - drei Busse, duldsam gelesen wie das Sitzungsgeheimnis.
+- `engine.ts` - die einzige Datei mit WebAudio, **bewusst ohne Test**: in node
+  gibt es keinen `AudioContext`, ein nachgebauter prueft den Nachbau.
+
+Der Klang landet als Feld im Zustand (`sound: { seq, sounds }`), abgespielt
+wird an der Kante. Die Reduzierer bleiben rein (Regel 2).
+
+Knopfklicks fassen **keinen** der rund hundert Knoepfe an: ein delegierter
+`pointerdown`-Listener am Fenster, `closest('button')`, `data-sound` als einzige
+Ausnahme. Derselbe Listener ist die Freischaltung - Browser geben Audio erst
+nach einer Nutzergeste frei, und die erste Geste ist ohnehin ein Klick.
+
+### Was der Browser-Durchlauf gefunden hat
+
+Diesmal **in** der Abnahme und nicht dahinter. Gemessen mit einer Sonde, die
+`AudioContext.createOscillator`/`createBufferSource` umhuellt und mitschreibt,
+was wirklich im Graphen landet.
+
+Bestaetigt: erster Klick erzeugt genau einen Kontext und eine Rauschstimme
+(`ui.click`), keine Autoplay-Warnung. `build.settlement` = ein Klopfen plus
+330 Hz (A3 x 1,5). `dice.land` folgt der Augensumme - 349 Hz bei einer Drei,
+415 Hz bei einer Sechs, 523 Hz bei einer Zehn; die Sieben bekommt stattdessen
+`dice.seven` auf 165 Hz. `moveRobber` = Tiefensweep plus 110 Hz.
+
+Drei Befunde, alle behoben:
+
+1. **Das Zahnrad war eine Sonne.** Ein Kreis mit acht Strahlen ohne Rad
+   herum ist ueberall das Helligkeitssymbol. Ein zweiter Kreis macht aus
+   Strahlen Zaehne.
+2. **Das Zahnrad lag auf dem Verlauf.** Gemessen: Knopf 1519-1553, Panel
+   1478-1556. Es dort liegen zu lassen waere der `.button--ghost`-Fehler
+   gewesen - seine Farbe ist fuer Tiefsee gemischt und auf Pergament kaum
+   sichtbar. Der Verlauf weicht deshalb nach unten aus (`top: 3.3rem`), nicht
+   zur Seite: so bleibt seine Kante an der Bildschirmkante.
+3. **Die Stimmensperre verschluckte den Ertrag.** Der Verlauf meldete
+   „Spieler 1 +2", und kein Blip kam. Ursache: `MAX_VOICES = 8` zaehlte
+   **Schichten**, und ein Wurf kostet allein sechs (Klick plus fuenf Ticks) -
+   alles danach fiel weg. Gezaehlt werden jetzt **Klaenge** (`MAX_CUES = 6`,
+   je Cue eine Uhr ueber seine Dauer). Ein Klang ist eine Einheit; angefangen
+   wird er ganz oder gar nicht.
+
+Dazu eine Luecke zwischen Spec und Code, die erst der Verlaufssatz sichtbar
+gemacht hat: `gain.self` spielte immer dieselbe Dreiklangfigur, versprochen war
+„ein Blip je Karte, bei vier gedeckelt". `Sound.count` kuerzt das Rezept jetzt
+auf die Zahl der Karten - bei „+1" klingt ein Blip, bei „+2" zwei.
+
+Und noch eine Messung: bei 392 px lagen die letzten drei Pixel von „Anmelden"
+unter dem Zahnrad - unsichtbar knapp, dort aber nicht mehr klickbar. Das
+Polster in der schmalen Media Query steht jetzt auf 3,25rem. Nachgemessen bei
+360, 396, 768 und 1280 px: keine Ueberlappung mehr.
+
+### Lehren
+
+- **Ein Effekt unter `StrictMode` laeuft doppelt.** Ohne die `seq`-Sperre in
+  `useCueSound` klaenge in der Entwicklung jeder Zug zweimal, und man suchte
+  den Fehler im Klang statt im Effekt.
+- **Eine Grenze, die die falsche Einheit zaehlt, ist ein Fehler.** Acht
+  Schichten klangen nach „reichlich" und waren weniger als zwei Klaenge.
+- **Der Verlaufssatz ist die beste Probe fuer den Ton.** „+2" gegen zwei Blips
+  ist eine Zusicherung, die man ohne Ohren pruefen kann - und sie hat beide
+  Klangfehler aufgedeckt.
+
+### Offene Punkte
+
+- **Gehoert hat das noch niemand.** Geprueft ist, _dass_ zur richtigen Zeit die
+  richtigen Frequenzen geplant werden, nicht _wie_ es klingt. Ob die 23
+  Rezepte zusammen einen Tisch ergeben, entscheidet das erste Zuhoeren.
+- **Die Abstufung fremder Zuege ist nur im Test belegt**, nicht zu zweit ueber
+  das Netz. Dafuer braucht es zwei Fenster und zwei Konten.
+- **Musik gibt es nicht.** Bus, Regler und Speicher stehen; die Spur ist leer.
+- Der Spielbildschirm hat weiterhin keine einzige Media Query - der
+  Verlaufs-Umzug aendert daran nichts.
