@@ -3,7 +3,15 @@ import { emptyOnlineState, onlineReducer } from './onlineState';
 import type { PlayerView } from '@conquerist/shared';
 
 const view = (version: number): PlayerView =>
-  ({ you: 'u1', version, players: [], turn: 0 }) as unknown as PlayerView;
+  ({
+    you: 'u1',
+    version,
+    players: [{ id: 'u1', cardCount: 0 }],
+    currentPlayerIndex: 0,
+    phase: { kind: 'main' },
+    lastRoll: null,
+    turn: 0,
+  }) as unknown as PlayerView;
 
 describe('Online-Zustand', () => {
   it('uebernimmt einen neueren Stand', () => {
@@ -54,5 +62,33 @@ describe('Online-Zustand', () => {
 
     expect(first.log).toHaveLength(1);
     expect(first.log[0]!.text).toBe('Anna wuerfelt 8');
+  });
+
+  it('macht aus dem gemeldeten Zug einen Klang', () => {
+    const state = onlineReducer(emptyOnlineState, {
+      type: 'game',
+      payload: {
+        version: 4,
+        view: view(4),
+        actions: [],
+        sentAt: 0,
+        entry: 'Ben baut eine Stadt',
+        move: { type: 'buildCity', actor: 'u2' },
+      },
+    });
+
+    expect(state.sound?.sounds.map((sound) => sound.cue)).toEqual(['build.city']);
+    // Der Zug kam von jemand anderem - also gedaempft.
+    expect(state.sound?.sounds[0]!.gain).toBeLessThan(1);
+    expect(state.sound?.seq).toBe(4);
+  });
+
+  it('bleibt still, wenn kein Zug gemeldet wurde', () => {
+    const state = onlineReducer(emptyOnlineState, {
+      type: 'game',
+      payload: { version: 1, view: view(1), actions: [], sentAt: 0 },
+    });
+
+    expect(state.sound).toBeNull();
   });
 });
