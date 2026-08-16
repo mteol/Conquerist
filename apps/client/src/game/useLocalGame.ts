@@ -6,6 +6,7 @@ import {
   type GameState,
   type PlayerView,
 } from '@conquerist/shared';
+import type { SoundEvent } from '../audio/cues';
 import type { Seat } from '../seats';
 import { actingPlayers } from './view';
 import { useHotseatGame } from './useHotseatGame';
@@ -31,6 +32,8 @@ export interface LocalGame {
   readonly actions: readonly GameAction[];
   readonly log: readonly LogEntry[];
   readonly error: string | null;
+  /** Der Klang zum letzten Zug - abgespielt wird er vom Aufrufer. */
+  readonly sound: SoundEvent | null;
   readonly act: (action: GameAction) => void;
   readonly dismissError: () => void;
 }
@@ -49,5 +52,13 @@ export function useLocalGame(game: GameState, seats: readonly Seat[]): LocalGame
 
   const actions = useMemo(() => legalActions(state.game, viewer), [state.game, viewer]);
 
-  return { view, actions, log: state.log, error: state.lastError, act: dispatch, dismissError };
+  return {
+    view,
+    actions,
+    log: state.log,
+    error: state.lastError,
+    sound: state.sound,
+    act: dispatch,
+    dismissError,
+  };
 }

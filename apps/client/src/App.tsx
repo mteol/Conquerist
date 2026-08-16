@@ -1,8 +1,10 @@
 import { useState, type JSX } from 'react';
 import type { GameState } from '@conquerist/shared';
 import type { Seat } from './seats';
+import { AudioProvider, useCueSound } from './audio/useAudio';
 import { AccountDialog } from './dialogs/AccountDialog';
 import { GameScreen } from './screens/GameScreen';
+import { SettingsButton } from './screens/SettingsButton';
 import { LobbyScreen } from './screens/LobbyScreen';
 import { StartScreen, type LocalOptions } from './screens/StartScreen';
 import { MenuScreen, type MenuChoice } from './screens/MenuScreen';
@@ -31,10 +33,22 @@ interface LocalSession {
 export function App(): JSX.Element {
   const [local, setLocal] = useState<LocalSession | null>(null);
 
-  return local === null ? (
-    <Online onStartLocal={(game, seats, options) => setLocal({ game, seats, options })} />
-  ) : (
-    <Local session={local} onLeave={() => setLocal(null)} />
+  /*
+   * Der Ton umschliesst beide Wege, das Zahnrad steht daneben.
+   *
+   * Beides gehoert hierhin und nicht in die Bildschirme: die Lautstaerke gilt
+   * ueberall, und ein Bedienelement, das je Bildschirm eingebaut wird, sitzt
+   * am Ende an drei Stellen leicht verschieden.
+   */
+  return (
+    <AudioProvider>
+      {local === null ? (
+        <Online onStartLocal={(game, seats, options) => setLocal({ game, seats, options })} />
+      ) : (
+        <Local session={local} onLeave={() => setLocal(null)} />
+      )}
+      <SettingsButton />
+    </AudioProvider>
   );
 }
 
@@ -54,6 +68,7 @@ function Local({
   readonly onLeave: () => void;
 }): JSX.Element {
   const game = useLocalGame(session.game, session.seats);
+  useCueSound(game.sound);
 
   return (
     <GameScreen
@@ -76,6 +91,8 @@ function Online({
 }): JSX.Element {
   const online = useOnlineGame();
   const { room, view } = online.state;
+
+  useCueSound(online.state.sound);
 
   /*
    * Welcher Weg gewaehlt wurde. `null` heisst: das Hauptmenue steht.
