@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
+import { DEFAULT_VICTORY_POINT_GOAL, SEAT_COLORS } from '@conquerist/shared';
 import { migrate, openDatabase } from './database.js';
 import type { AppDatabase } from './database.js';
 
@@ -235,6 +236,22 @@ describe('Migration auf ablaufende Sitzungen', () => {
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         created_at INTEGER NOT NULL
       );
+      /*
+       * Raum und Sitze gehoerten zu diesem Stand ebenfalls schon - sie standen
+       * hier nur nicht, solange kein Schritt sie anfasste. Seit Schritt 4 tut
+       * einer das, und eine Nachbildung, in der die Tabelle fehlt, laesst ihn
+       * an etwas scheitern, das es in Wirklichkeit gab.
+       */
+      CREATE TABLE rooms (
+        code TEXT PRIMARY KEY, host_id TEXT NOT NULL REFERENCES users(id),
+        seat_count INTEGER NOT NULL, seed TEXT NOT NULL, version INTEGER NOT NULL,
+        created_at INTEGER NOT NULL, start_state TEXT, finished_at INTEGER
+      );
+      CREATE TABLE room_seats (
+        code TEXT NOT NULL REFERENCES rooms(code) ON DELETE CASCADE,
+        position INTEGER NOT NULL, user_id TEXT NOT NULL REFERENCES users(id),
+        PRIMARY KEY (code, position)
+      );
     `);
     database.pragma('user_version = 2'); // Schritte 0 und 1 gelten als gelaufen
     return database;
@@ -259,7 +276,7 @@ describe('Migration auf ablaufende Sitzungen', () => {
     expect(row?.expires_at).toBe(1000 + 5_184_000_000);
   });
 
-  it('zaehlt user_version auf drei hoch', () => {
+  it('laesst die Liste bis zum letzten Schritt durchlaufen', () => {
     const database = withoutExpiry();
 
     migrate(database);
@@ -267,6 +284,89 @@ describe('Migration auf ablaufende Sitzungen', () => {
     const [{ user_version: version }] = database.pragma('user_version') as [
       { user_version: number },
     ];
-    expect(version).toBe(3);
+    // Nicht mehr auf eine feste Zahl geprueft: die waechst mit jedem Schritt,
+    // und der Test soll den Durchlauf festhalten und nicht die Laenge der Liste.
+    expect(version).toBeGreaterThanOrEqual(4);
+  });
+});
+
+/**
+ * Etappe 10: Farbe am Sitz, Siegpunktziel am Raum.
+ *
+ * Der Bestand bekommt genau das, was vorher galt - die Farbe der Position und
+ * das Ziel aus der Schachtel. Das ist der Punkt, an dem sich ein
+ * Migrationsschritt bewaehrt: eine Datenbank, die vorher lief, muss danach
+ * dasselbe Spiel zeigen und nicht ein leicht anderes.
+ */
+describe('Migration auf gewaehlte Farbe und eingestelltes Ziel', () => {
+  /** Eine Datenbank auf dem Stand von Etappe 9. */
+  function beforeChoice(): AppDatabase {
+    const database = new Database(':memory:');
+    database.exec(`
+      CREATE TABLE users (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL, is_guest INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL, login TEXT, password_hash TEXT, email TEXT
+      );
+      CREATE TABLE sessions (
+        token_hash TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE rooms (
+        code TEXT PRIMARY KEY, host_id TEXT NOT NULL REFERENCES users(id),
+        seat_count INTEGER NOT NULL, seed TEXT NOT NULL, version INTEGER NOT NULL,
+        created_at INTEGER NOT NULL, start_state TEXT, finished_at INTEGER
+      );
+      CREATE TABLE room_seats (
+        code TEXT NOT NULL REFERENCES rooms(code) ON DELETE CASCADE,
+        position INTEGER NOT NULL, user_id TEXT NOT NULL REFERENCES users(id),
+        PRIMARY KEY (code, position)
+      );
+    `);
+    database.pragma('user_version = 3');
+    return database;
+  }
+
+  it('gibt jedem bestehenden Sitz die Farbe, die seine Position bisher ergab', () => {
+    const database = beforeChoice();
+    database.prepare('INSERT INTO users (id, name, created_at) VALUES (?,?,?)').run('u1', 'A', 0);
+    database.prepare('INSERT INTO users (id, name, created_at) VALUES (?,?,?)').run('u2', 'B', 0);
+    database
+      .prepare(
+        'INSERT INTO rooms (code, host_id, seat_count, seed, version, created_at) VALUES (?,?,?,?,?,?)',
+      )
+      .run('K7X2', 'u1', 3, 'abc', 1, 0);
+    database
+      .prepare('INSERT INTO room_seats (code, position, user_id) VALUES (?,?,?)')
+      .run('K7X2', 0, 'u1');
+    database
+      .prepare('INSERT INTO room_seats (code, position, user_id) VALUES (?,?,?)')
+      .run('K7X2', 1, 'u2');
+
+    migrate(database);
+
+    const colors = database
+      .prepare('SELECT position, color FROM room_seats WHERE code = ? ORDER BY position')
+      .all('K7X2') as { position: number; color: string }[];
+
+    expect(colors.map((row) => row.color)).toEqual([SEAT_COLORS[0], SEAT_COLORS[1]]);
+  });
+
+  it('gibt bestehenden Raeumen das Ziel, mit dem sie begonnen haben', () => {
+    const database = beforeChoice();
+    database.prepare('INSERT INTO users (id, name, created_at) VALUES (?,?,?)').run('u1', 'A', 0);
+    database
+      .prepare(
+        'INSERT INTO rooms (code, host_id, seat_count, seed, version, created_at) VALUES (?,?,?,?,?,?)',
+      )
+      .run('K7X2', 'u1', 3, 'abc', 1, 0);
+
+    migrate(database);
+
+    const row = database
+      .prepare('SELECT victory_point_goal FROM rooms WHERE code = ?')
+      .get('K7X2') as { victory_point_goal: number };
+
+    expect(row.victory_point_goal).toBe(DEFAULT_VICTORY_POINT_GOAL);
   });
 });

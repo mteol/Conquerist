@@ -23,6 +23,20 @@ import {
  * Bedienproblem - deshalb wirft der Aufbau dort, statt still die erste zu
  * nehmen.
  */
+/**
+ * Was sich gerade bauen laesst - je Bauteil die Zahl der moeglichen Stellen.
+ *
+ * Seit dem Zwei-Schritt-Bauen ist das die Antwort auf die Frage, ob der Knopf
+ * in der Leiste ueberhaupt etwas anbietet. Eine Zahl und kein `boolean`, weil
+ * „an drei Stellen moeglich" mehr sagt als „moeglich" - und weil eine Null
+ * dieselbe Auskunft ist wie ein `false`, nur ohne zweiten Typ.
+ *
+ * Sie wird abgezaehlt und nicht gerechnet: was hier steht, ist genau das, was
+ * `legalActions` genannt hat. Der Client prueft nirgends selbst, ob jemand das
+ * Holz dafuer hat (Regel: der Client kennt keine Regel).
+ */
+export type BuildableKind = 'road' | 'settlement' | 'city';
+
 export interface ActionTargets {
   readonly vertices: ReadonlyMap<VertexId, GameAction>;
   readonly edges: ReadonlyMap<EdgeId, GameAction>;
@@ -35,6 +49,8 @@ export interface ActionTargets {
   readonly buyCard: GameAction | null;
   /** Ritter ausspielen. Die drei Karten mit Auswahl stehen nicht hier. */
   readonly playKnight: GameAction | null;
+  /** Wie viele Stellen es je Bauteil gibt. Null heisst: der Knopf ist grau. */
+  readonly buildable: Readonly<Record<BuildableKind, number>>;
 }
 
 /** Nichts anklickbar - fuer Spieler, die gerade nicht handeln duerfen. */
@@ -47,7 +63,29 @@ export const EMPTY_TARGETS: ActionTargets = {
   endTurn: null,
   buyCard: null,
   playKnight: null,
+  buildable: { road: 0, settlement: 0, city: 0 },
 };
+
+/**
+ * Welches Bauteil hinter einem Zug steckt - `null`, wenn es keins ist.
+ *
+ * Die Gruendungszuege stehen bewusst nicht hier: sie gehoeren zu keinem Knopf
+ * in der Bauleiste, weil es in der Gruendung nichts zu waehlen gibt. Genau
+ * diese Unterscheidung laesst das Brett in der Gruendung wie bisher leuchten
+ * und in der Hauptphase erst nach einem Druck.
+ */
+export function buildKindOf(action: GameAction): BuildableKind | null {
+  switch (action.type) {
+    case 'buildRoad':
+      return 'road';
+    case 'buildSettlement':
+      return 'settlement';
+    case 'buildCity':
+      return 'city';
+    default:
+      return null;
+  }
+}
 
 /**
  * Sortiert eine fertige Aktionsliste nach Ort.
@@ -66,6 +104,7 @@ export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
   let endTurn: GameAction | null = null;
   let buyCard: GameAction | null = null;
   let playKnight: GameAction | null = null;
+  const buildable: Record<BuildableKind, number> = { road: 0, settlement: 0, city: 0 };
 
   const claim = <K, V>(map: Map<K, V>, key: K, value: V, what: string): void => {
     if (map.has(key)) {
@@ -75,6 +114,9 @@ export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
   };
 
   for (const action of actions) {
+    const kind = buildKindOf(action);
+    if (kind !== null) buildable[kind] += 1;
+
     switch (action.type) {
       case 'placeSetupSettlement':
       case 'buildSettlement':
@@ -130,7 +172,7 @@ export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
     }
   }
 
-  return { vertices, edges, hexes, trades, roll, endTurn, buyCard, playKnight };
+  return { vertices, edges, hexes, trades, roll, endTurn, buyCard, playKnight, buildable };
 }
 
 /**

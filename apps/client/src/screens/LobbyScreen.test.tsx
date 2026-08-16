@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
+import { MAX_VICTORY_POINT_GOAL, SEAT_COLORS } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import { LobbyScreen } from './LobbyScreen';
 
@@ -8,6 +9,7 @@ const room = {
   hostId: 'u1',
   seatCount: 3,
   seed: 'abc',
+  victoryPointGoal: 10,
   started: false,
   seats: [
     { userId: 'u1', name: 'Anna', color: '#c0392b', connected: true },
@@ -24,6 +26,8 @@ function lobby(props: Partial<Parameters<typeof LobbyScreen>[0]> = {}) {
       onStart={vi.fn()}
       onLeave={vi.fn()}
       onConfigure={vi.fn()}
+      onChooseColor={vi.fn()}
+      onRename={vi.fn()}
       {...props}
     />
   );
@@ -77,7 +81,7 @@ describe('Wartebereich', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Platz hinzufügen' }));
 
-    expect(onConfigure).toHaveBeenCalledWith(4, 'abc');
+    expect(onConfigure).toHaveBeenCalledWith(4, 'abc', 10);
   });
 
   it('nimmt einen Platz weg, solange einer frei ist', async () => {
@@ -86,7 +90,7 @@ describe('Wartebereich', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Platz entfernen' }));
 
-    expect(onConfigure).toHaveBeenCalledWith(3, 'abc');
+    expect(onConfigure).toHaveBeenCalledWith(3, 'abc', 10);
   });
 
   it('geht nie unter die kleinste Tischgroesse', () => {
@@ -144,5 +148,95 @@ describe('Wartebereich', () => {
     render(lobby({ room: { ...room, started: true } }));
 
     expect(screen.queryByRole('button', { name: 'Platz hinzufügen' })).toBeNull();
+  });
+});
+
+/**
+ * Was jedem selbst gehoert: Farbe und Name.
+ *
+ * Beides steht ohne `canConfigure` da - der Gastgeber stellt den Tisch ein,
+ * seinen eigenen Platz stellt jeder selbst ein.
+ */
+describe('Der eigene Platz', () => {
+  it('laesst eine freie Farbe waehlen', async () => {
+    const onChooseColor = vi.fn();
+    render(lobby({ onChooseColor }));
+
+    await userEvent.click(screen.getByTestId(`color-${SEAT_COLORS[4]}`));
+
+    expect(onChooseColor).toHaveBeenCalledWith(SEAT_COLORS[4]);
+  });
+
+  it('sperrt Farben, die schon jemand hat, und sagt bei wem', () => {
+    render(lobby({ youId: 'u1' }));
+
+    // Bens Blau ist vergeben, Annas Rot ist ihr eigenes.
+    const bens = screen.getByTestId('color-#2c6fbb');
+    expect(bens).toHaveProperty('disabled', true);
+    expect(bens.getAttribute('title')).toContain('Ben');
+    expect(screen.getByTestId('color-#c0392b')).toHaveProperty('disabled', false);
+  });
+
+  it('nennt jede Farbe beim Namen - ein Fleck allein traegt nichts', () => {
+    render(lobby());
+    expect(screen.getByText('Violett')).toBeDefined();
+  });
+
+  it('schickt den neuen Namen erst, wenn das Feld verlassen wird', async () => {
+    const onRename = vi.fn();
+    render(lobby({ onRename }));
+
+    const field = screen.getByLabelText('Dein Name');
+    await userEvent.clear(field);
+    await userEvent.type(field, 'Annabel');
+    expect(onRename).not.toHaveBeenCalled();
+
+    await userEvent.tab();
+
+    expect(onRename).toHaveBeenCalledWith('Annabel');
+  });
+
+  it('schickt nichts, wenn der Name leer bleibt', async () => {
+    const onRename = vi.fn();
+    render(lobby({ onRename }));
+
+    const field = screen.getByLabelText('Dein Name');
+    await userEvent.clear(field);
+    await userEvent.tab();
+
+    expect(onRename).not.toHaveBeenCalled();
+    // Und im Feld steht wieder der Name, unter dem man am Tisch sitzt.
+    expect(field).toHaveProperty('value', 'Anna');
+  });
+});
+
+describe('Siegpunktziel', () => {
+  it('zeigt das Ziel jedem, auch ohne Einstellrecht', () => {
+    render(lobby({ youId: 'u2' }));
+
+    expect(screen.getByTestId('goal').textContent).toBe('10');
+    expect(screen.queryByRole('button', { name: 'Ein Siegpunkt mehr' })).toBeNull();
+  });
+
+  it('stellt es dem Host um', async () => {
+    const onConfigure = vi.fn();
+    render(lobby({ onConfigure }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ein Siegpunkt mehr' }));
+
+    expect(onConfigure).toHaveBeenCalledWith(3, 'abc', 11);
+  });
+
+  it('geht nicht ueber seine Grenzen hinaus', () => {
+    render(lobby({ room: { ...room, victoryPointGoal: MAX_VICTORY_POINT_GOAL } }));
+
+    expect(screen.getByRole('button', { name: 'Ein Siegpunkt mehr' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(screen.getByRole('button', { name: 'Ein Siegpunkt weniger' })).toHaveProperty(
+      'disabled',
+      false,
+    );
   });
 });

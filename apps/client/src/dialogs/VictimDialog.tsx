@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import type { HexId, PlayerId } from '@conquerist/shared';
 import type { PlayerRow } from '../game/view';
+import { CloseButton } from './CloseButton';
 
 /**
  * Wen der Raeuber bestiehlt.
@@ -20,6 +21,7 @@ export function VictimDialog({ hex, victims, onChoose, onClose }: VictimDialogPr
   return (
     <div className="modal" role="dialog" aria-label="Wen bestehlen?">
       <div className="modal__box">
+        <CloseButton onClose={onClose} label="Wen bestehlen" />
         <h2>Wen bestehlen?</h2>
         <p className="modal__hint">Am Feld {hex} wohnen mehrere mit Karten.</p>
 

@@ -79,4 +79,39 @@ describe('Gebaute Strassen', () => {
     // Auf dem Basisbrett gibt es 72 Kanten; genau eine ist bebaut.
     expect(free).toHaveLength(71);
   });
+
+  /*
+   * Die Kontur ist die Antwort auf „am Brettrand sind die Strassen unsichtbar"
+   * aus dem ersten Playtest. Am Element lag es nicht - gemessen: die
+   * Kuestenkanten liegen in der viewBox, tragen ihre Klasse und ihre Farbe. Es
+   * lag am Untergrund: eine Strasse an der Kueste liegt zur Haelfte auf der
+   * dunklen See, und ein dunkler Streifen darauf verschwindet.
+   *
+   * Geprueft wird die Zeichenreihenfolge: die Kontur muss **vor** der Strasse
+   * kommen, sonst deckt sie sie zu.
+   */
+  it('bekommen eine Kontur, und zwar unter sich', () => {
+    const { state, edge } = withOneRoad();
+
+    render(<BoardSvg state={state} targets={EMPTY_TARGETS} seats={seats} onPick={vi.fn()} />);
+
+    const line = screen.getByTestId(`edge-${edge}`);
+    const casing = document.querySelector('.road__casing')!;
+
+    expect(casing).not.toBeNull();
+    // In SVG entscheidet die Dokumentreihenfolge, was oben liegt: die Kontur
+    // muss davor stehen, sonst deckt sie die Strasse zu.
+    expect(casing.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Und sie liegt genau auf der Strasse, nicht daneben.
+    expect(casing.getAttribute('x1')).toBe(line.getAttribute('x1'));
+    expect(casing.getAttribute('y2')).toBe(line.getAttribute('y2'));
+  });
+
+  it('gibt freien Kanten keine Kontur - sonst waere jede Kante ein Strich', () => {
+    const { state } = withOneRoad();
+
+    render(<BoardSvg state={state} targets={EMPTY_TARGETS} seats={seats} onPick={vi.fn()} />);
+
+    expect(document.querySelectorAll('.road__casing')).toHaveLength(1);
+  });
 });

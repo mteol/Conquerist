@@ -53,16 +53,16 @@ function describeAction(
 
   switch (action.type) {
     case 'placeSetupSettlement':
-      return `${who} setzt die Gruendungssiedlung`;
+      return `${who} setzt die Gründungssiedlung`;
     case 'placeSetupRoad':
-      return `${who} setzt die Gruendungsstrasse`;
+      return `${who} setzt die Gründungsstraße`;
 
     case 'rollDice': {
       const roll = after.lastRoll;
-      if (roll === null) return `${who} wuerfelt`;
+      if (roll === null) return `${who} würfelt`;
       const gains = describeGains(before, after, nameOf);
       const total = yieldTotal(after.rules.dice, roll);
-      return `${who} wuerfelt ${total}${gains === '' ? '' : ` - ${gains}`}`;
+      return `${who} würfelt ${total}${gains === '' ? '' : ` - ${gains}`}`;
     }
 
     case 'discard':
@@ -70,11 +70,11 @@ function describeAction(
 
     case 'moveRobber':
       return action.victim === null
-        ? `${who} versetzt den Raeuber auf ${action.hex}`
-        : `${who} versetzt den Raeuber auf ${action.hex} und bestiehlt ${nameOf(action.victim)}`;
+        ? `${who} versetzt den Räuber auf ${action.hex}`
+        : `${who} versetzt den Räuber auf ${action.hex} und bestiehlt ${nameOf(action.victim)}`;
 
     case 'buildRoad':
-      return `${who} baut eine Strasse`;
+      return `${who} baut eine Straße`;
     case 'buildSettlement':
       return `${who} baut eine Siedlung`;
     case 'buildCity':
@@ -87,7 +87,7 @@ function describeAction(
     case 'playKnight':
       return `${who} spielt einen Ritter`;
     case 'playRoadBuilding':
-      return `${who} spielt Strassenbau und setzt ${action.edges.length === 1 ? 'eine Strasse' : 'zwei Strassen'}`;
+      return `${who} spielt Straßenbau und setzt ${action.edges.length === 1 ? 'eine Straße' : 'zwei Straßen'}`;
     case 'playYearOfPlenty':
       return `${who} spielt Erfindung und nimmt ${action.picks.map((pick) => RESOURCE_LABELS[pick]).join(' und ')}`;
     case 'playMonopoly':
@@ -97,10 +97,10 @@ function describeAction(
       return `${who} tauscht ${RESOURCE_LABELS[action.give]} gegen ${RESOURCE_LABELS[action.receive]}`;
 
     case 'offerTrade':
-      return `${who} bietet ${resourceList(action.give)} fuer ${resourceList(action.want)}`;
+      return `${who} bietet ${resourceList(action.give)} für ${resourceList(action.want)}`;
 
     case 'counterTrade':
-      return `${who} haelt dagegen: ${resourceList(action.give)} fuer ${resourceList(action.want)}`;
+      return `${who} hält dagegen: ${resourceList(action.give)} für ${resourceList(action.want)}`;
 
     case 'respondTrade':
       return action.response === 'accepted'
@@ -109,16 +109,18 @@ function describeAction(
 
     case 'acceptTrade':
       return `${who} tauscht mit ${nameOf(action.partner)}`;
+    case 'rejectCounter':
+      return `${who} schlägt das Gegenangebot von ${nameOf(action.partner)} aus`;
     case 'withdrawTrade':
-      return `${who} nimmt das Angebot zurueck`;
+      return `${who} nimmt das Angebot zurück`;
 
     case 'timeout':
-      return `Die Zeit fuer ${who}s Angebot ist abgelaufen`;
+      return `Die Zeit für ${who}s Angebot ist abgelaufen`;
 
     case 'dropFromTrade':
       return `${who} ist nicht mehr da und antwortet nicht`;
     case 'rejoinTrade':
-      return `${who} ist zurueck und kann noch antworten`;
+      return `${who} ist zurück und kann noch antworten`;
 
     case 'endTurn':
       return `${who} beendet den Zug`;

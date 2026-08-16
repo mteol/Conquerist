@@ -84,10 +84,10 @@ describe('Anzeigemodell', () => {
 
   it('sagt in jeder Phase, was zu tun ist', () => {
     const setup = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
-    expect(gameViewOf(playerViewOf(setup, ids[0]!, seats, 0)).phaseText).toContain('Gruendung');
+    expect(gameViewOf(playerViewOf(setup, ids[0]!, seats, 0)).phaseText).toContain('Gründung');
 
     const rolling = afterSetup();
-    expect(gameViewOf(playerViewOf(rolling, ids[0]!, seats, 1)).phaseText).toContain('wuerfeln');
+    expect(gameViewOf(playerViewOf(rolling, ids[0]!, seats, 1)).phaseText).toContain('würfeln');
   });
 });
 

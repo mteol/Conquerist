@@ -74,7 +74,7 @@ function Online({
 }: {
   readonly onStartLocal: (game: GameState, seats: readonly Seat[], options: LocalOptions) => void;
 }): JSX.Element {
-  const online = useOnlineGame(roomFromLocation());
+  const online = useOnlineGame();
   const { room, view } = online.state;
 
   /*
@@ -201,8 +201,14 @@ function Online({
         onLeave={() => {
           void online.leaveRoom();
         }}
-        onConfigure={(seatCount, seed) => {
-          void online.configureRoom(seatCount, seed);
+        onConfigure={(seatCount, seed, victoryPointGoal) => {
+          void online.configureRoom(seatCount, seed, victoryPointGoal);
+        }}
+        onChooseColor={(color) => {
+          void online.chooseColor(color);
+        }}
+        onRename={(name) => {
+          void online.rename(name);
         }}
       />
     );

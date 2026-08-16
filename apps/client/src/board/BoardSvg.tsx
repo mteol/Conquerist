@@ -10,6 +10,7 @@ import { seatsById, type Seat } from '../seats';
 import { RESOURCE_COLORS, TERRAIN_COLORS, harborLabel } from '../game/labels';
 import type { ActionTargets } from '../game/targets';
 import { edgeMidpoint, edgeSegment, hexCenter, hexCorners, vertexPoint, viewBoxOf } from './layout';
+import { CITY_PATH, SETTLEMENT_PATH } from './shapes';
 
 /**
  * Das Brett. Zeichnet den Zustand und meldet, wo geklickt wurde - mehr nicht.
@@ -62,6 +63,20 @@ const PIPS: Readonly<Record<number, number>> = {
   12: 1,
 };
 
+/**
+ * Die zwei Zahlen, die am haeufigsten fallen - und deshalb rot stehen.
+ *
+ * Abgeleitet aus `PIPS` und nicht als `chip === 6 || chip === 8` geschrieben:
+ * heiss ist, was die hoechste Augenwahrscheinlichkeit hat, und das folgt aus
+ * der Wuerfelschale. Ein Regelwerk mit anderen Wuerfeln faerbt damit von selbst
+ * die richtigen Chips, ohne dass hier eine Zahl nachgezogen werden muss.
+ */
+const HOTTEST = Math.max(...Object.values(PIPS));
+
+function isHot(chip: number): boolean {
+  return (PIPS[chip] ?? 0) === HOTTEST;
+}
+
 export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.Element {
   const board = boardOf(state.scenario);
   const colors = seatsById(seats);
@@ -100,11 +115,16 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
                 <text
                   x={center.x}
                   y={center.y}
-                  className={placement.chip === 6 || placement.chip === 8 ? 'chip__hot' : undefined}
+                  data-hot={isHot(placement.chip) ? 'true' : 'false'}
+                  className={isHot(placement.chip) ? 'chip__hot' : undefined}
                 >
                   {placement.chip}
                 </text>
-                <text x={center.x} y={center.y + 0.24} className="chip__pips">
+                <text
+                  x={center.x}
+                  y={center.y + 0.24}
+                  className={isHot(placement.chip) ? 'chip__pips chip__pips--hot' : 'chip__pips'}
+                >
                   {'·'.repeat(PIPS[placement.chip] ?? 0)}
                 </text>
               </g>
@@ -146,6 +166,27 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
        * `data-hex` daneben - die Endlage ist die Information, der Weg dorthin
        * ist Beiwerk und faellt bei abgeschalteter Bewegung ersatzlos weg.
        */}
+      {/*
+       * Der Ring am Zielfeld.
+       *
+       * Eigenes Element mit `key={state.robber}`: React haengt es bei jedem
+       * Versetzen neu ein, und nur dadurch laeuft die Animation ueberhaupt ein
+       * zweites Mal. Ohne ihn ist das Versetzen im Playtest niemandem
+       * aufgefallen - eine Figur, die 300 ms lang leise von einem Feld zum
+       * naechsten gleitet, sieht nur, wer schon hinschaut.
+       *
+       * Er traegt nichts, was nicht auch ohne ihn dastuende: wo der Raeuber
+       * steht, sagt die Figur selbst und `data-hex` daneben.
+       */}
+      <circle
+        key={state.robber}
+        className="robber__flash"
+        pointerEvents="none"
+        cx={robber.x}
+        cy={robber.y}
+        r={0.5}
+      />
+
       <g
         className="robber"
         pointerEvents="none"
@@ -156,6 +197,41 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
         <circle cx={0} cy={0} r={0.2} />
         <circle cx={0} cy={-0.16} r={0.1} />
       </g>
+
+      {/*
+       * Die Konturen unter den Strassen - **alle** zuerst, dann alle Strassen.
+       *
+       * Im Playtest waren die Strassen am Brettrand „unsichtbar". Am Element
+       * lag es nicht: gemessen liegen die Kuestenkanten in der viewBox und
+       * tragen ihre Klasse und ihre Farbe. Es lag am Untergrund. Eine Strasse
+       * im Inneren hat auf beiden Seiten helles Gelaende; eine an der Kueste
+       * hat auf einer Seite die dunkle See, und ein dunkelblauer oder
+       * violetter Streifen darauf verschwindet schlicht. Die Kontur loest das
+       * unabhaengig davon, worauf die Strasse liegt - dasselbe, was eine
+       * Landkarte mit ihren Strassen macht.
+       *
+       * **Zwei Durchgaenge und nicht einer je Kante.** Sonst liegt an einer
+       * Kreuzung die Kontur der zweiten Strasse ueber der Farbe der ersten und
+       * beisst ihr die Spitze ab. So liegen erst alle Konturen, dann alle
+       * Farben - und keine Kontur kann eine fremde Strasse ueberdecken.
+       */}
+      {board.topology.edges
+        .filter((edge) => state.roads[edge] !== undefined)
+        .map((edge) => {
+          const [from, to] = edgeSegment(edge);
+
+          return (
+            <line
+              key={`casing-${edge}`}
+              className="road__casing"
+              pointerEvents="none"
+              x1={from.x}
+              y1={from.y}
+              x2={to.x}
+              y2={to.y}
+            />
+          );
+        })}
 
       {board.topology.edges.map((edge) => {
         const [from, to] = edgeSegment(edge);
@@ -236,16 +312,38 @@ function VertexMark({
           <circle className="vertex__target" cx={point.x} cy={point.y} r={0.13} />
         ) : null
       ) : (
-        <circle
-          className="vertex__building building"
-          cx={point.x}
-          cy={point.y}
-          r={building.kind === 'city' ? 0.2 : 0.14}
-          // Farbe per `style`: eine gleichnamige CSS-Regel schlaegt jedes
-          // SVG-Praesentationsattribut - daran sind in Etappe 3 alle
-          // gebauten Strassen unsichtbar geworden.
-          style={{ fill: colorOf(building.owner) }}
-        />
+        <>
+          {/*
+           * Der Ring beim Bauen - und `key` ist hier die ganze Mechanik.
+           *
+           * Beim Ausbau zur Stadt bleibt der Knoten derselbe; React aktualisiert
+           * das Element, statt es neu einzuhaengen, und eine Animation, die beim
+           * Einhaengen laeuft, laeuft dann gar nicht. Genau deshalb ist im
+           * Playtest niemandem aufgefallen, wenn eine Stadt entstand: aus einem
+           * Punkt wurde ein etwas groesserer Punkt, lautlos.
+           */}
+          <circle
+            key={`ring-${building.kind}`}
+            className="build-flash"
+            cx={point.x}
+            cy={point.y}
+            r={0.34}
+            style={{ stroke: colorOf(building.owner) }}
+          />
+
+          <path
+            key={building.kind}
+            className={`vertex__building building building--${building.kind}`}
+            d={building.kind === 'city' ? CITY_PATH : SETTLEMENT_PATH}
+            transform={`translate(${point.x} ${point.y}) scale(${
+              building.kind === 'city' ? 0.021 : 0.023
+            })`}
+            // Farbe per `style`: eine gleichnamige CSS-Regel schlaegt jedes
+            // SVG-Praesentationsattribut - daran sind in Etappe 3 alle
+            // gebauten Strassen unsichtbar geworden.
+            style={{ fill: colorOf(building.owner) }}
+          />
+        </>
       )}
     </g>
   );

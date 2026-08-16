@@ -172,14 +172,14 @@ function phaseTextOf(view: PlayerView): string {
   switch (view.phase.kind) {
     case 'setup':
       return view.phase.settlement === null
-        ? `Gruendung: ${nameOf(setupPlayerOf(view))} setzt eine Siedlung`
-        : `Gruendung: ${nameOf(setupPlayerOf(view))} setzt die zugehoerige Strasse`;
+        ? `Gründung: ${nameOf(setupPlayerOf(view))} setzt eine Siedlung`
+        : `Gründung: ${nameOf(setupPlayerOf(view))} setzt die zugehörige Straße`;
     case 'rollPending':
-      return `${currentName()} muss wuerfeln`;
+      return `${currentName()} muss würfeln`;
     case 'discardPending':
       return `Sieben: ${view.phase.pending.map((id) => nameOf(id)).join(' und ')} muss abwerfen`;
     case 'robberPending':
-      return `${currentName()} versetzt den Raeuber`;
+      return `${currentName()} versetzt den Räuber`;
     case 'main':
       return `${currentName()} ist am Zug`;
     case 'tradePending':

@@ -2080,3 +2080,398 @@ und eine laufende Partie verliert ihre Verbindung.
 **Etappe 10 — Erweiterungen.** Davor gehoert der Rest dieser Etappe zu Ende
 gebracht: das Volume bestaetigen, die Partie zu zweit ueber das Netz spielen,
 und der Weg nach draussen mit HTTPS.
+
+## Nach dem ersten Playtest — neun Anpassungen (2026-08-13, `etappe-10-playtest`)
+
+Stand: 2026-08-13, Branch `etappe-10-playtest`, abgezweigt von `main` (`4158e07`).
+
+Das Spiel ist zum ersten Mal von Menschen gespielt worden, und die Liste, die
+dabei entstanden ist, hat einen gemeinsamen Nenner: **nichts davon war ein
+Absturz.** Neun Beobachtungen aus einer Runde, davon zwei echte Fehler (die
+heissen Zahlen, der Einladungslink), vier fehlende Auskuenfte (Vorrat, Farbe,
+Ziel, Name) und drei Stellen, an denen die Oberflaeche etwas anderes sagte als
+sie meinte.
+
+### Abnahme
+
+| Pruefung            | Ergebnis                                                                     |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `pnpm typecheck`    | gruen (`tsc -b`, alle drei Pakete)                                           |
+| `pnpm test`         | 948 Tests gruen (shared 568, server 161, client 219)                         |
+| `pnpm build`        | gruen, Client-Bundle 385,51 kB (114,66 kB gzip), CSS 27,03 kB (6,35 kB gzip) |
+| `pnpm format:check` | gruen                                                                        |
+| Browser             | **nicht gelaufen** — siehe „Offene Punkte"                                   |
+
+Zum Vergleich: Etappe 9 stand bei 838 Tests. Dazu gekommen sind 110, davon 27
+neu geschrieben (17 Server, 10 Client), der Rest aus dem Anpassen bestehender
+Vorrichtungen.
+
+### Getroffene Entscheidungen
+
+**Die Sechs und die Acht waren rot — nur nie sichtbar.** `.chip__hot` mit
+`fill: #a52a1e` stand seit Etappe 3 im Blatt, darueber `.chip text` mit
+`fill: #16202a`. Eine Klasse plus ein Typ schlaegt eine Klasse allein, also hat
+die Regel nie gegriffen, und niemand hat es gemerkt, weil die Farbe ja dastand.
+Die Regel heisst jetzt `.chip text.chip__hot`. Wer eine Farbe schreibt, hat sie
+damit noch nicht gezeigt.
+
+**„Heiss" wird aus der Wuerfelschale abgeleitet, nicht als `6 || 8` getippt.**
+`isHot` liest die hoechste Augenwahrscheinlichkeit aus derselben `PIPS`-Tabelle,
+aus der die Punktreihe unter der Zahl kommt. Ein Regelwerk mit anderen Wuerfeln
+faerbt damit von selbst die richtigen Chips. Die Punktreihe faerbt sich mit —
+Rot ist nie der einzige Traeger.
+
+**Ein zweites Farbtripel fuer Pergament.** `--ok`, `--warn` und `--bad` sind
+fuer die Tiefsee-Flaeche gemischt und stehen auf einem Zahlenchip oder einem
+Knopf aus Pergament zu hell. Statt im Einzelfall abzuweichen, gibt es jetzt
+`--ok-ink`, `--warn-ink` und `--bad-ink`: gleiche Bedeutung, anderer Untergrund.
+
+**Das Schliesskreuz ist eine eigene Komponente und nimmt Escape mit.** Jeder
+Dialog hatte seinen Ausweg schon, aber unten und ausgeschrieben — im Playtest
+hat jemand versehentlich „Handel" gedrueckt und ihn nicht gefunden, weil er
+unter drei Reitern und zwei Kartenlisten stand. `CloseButton` sitzt oben rechts,
+in jedem schliessbaren Fenster an derselben Stelle, und haengt seinen
+Escape-Horcher an sein eigenes Leben: solange das Kreuz da ist, gibt es einen
+Ausweg. Es ersetzt den unteren Knopf **nicht** — „Abbrechen" sagt, was passiert,
+das Kreuz sagt nur, wo man drueckt. Klick auf den Hintergrund schliesst weiter
+nichts: beim Abwerfen und beim Angebot gibt es kein Zumachen, und ein
+Hintergrund, der mal schliesst und mal nicht, ist schlimmer als einer, der es
+nie tut.
+
+**Drei Antworten, drei Farben.** Annehmen/Ablehnen/Anpassen trugen `button`,
+`button` und `button--ghost` — zwei sahen gleich aus, und der dritte war auf
+Pergament praktisch unsichtbar. Im Playtest hat niemand gesehen, dass sich ein
+Angebot anpassen laesst. Jetzt gruen, rot und gelb, und auf jedem steht
+weiterhin, was er tut: wer Rot und Gruen nicht unterscheidet, liest die Woerter.
+
+**Fehlt das Annehmen, tritt der Satz an seine Stelle — Ablehnen bleibt.** Der
+gesperrte Knopf mit der Erklaerung daneben liess einen erst hindruecken und dann
+lesen. Jetzt steht „Nicht genügend Ressourcen" dort, wo der Knopf war. Das
+Ablehnen daneben ist eine bewusste Abweichung von der woertlichen Bitte: der
+Anbieter wartet auf eine Antwort, und ohne Ablehnen bekaeme er sie erst, wenn
+die Frist ablaeuft — ein Fenster, das einem den kurzen Weg nimmt, haelt den
+ganzen Tisch auf.
+
+**„Gegenangebot" heisst jetzt ueberall „Angebot anpassen".** Knopf, Hinweis und
+Absender tragen dasselbe Wort (Regel 8). Der Verlaufssatz („haelt dagegen")
+bleibt, er beschreibt das Ergebnis und nicht die Bedienung.
+
+**Der Bauvorrat steht neben den Wuerfeln.** `piecesLeft` lag seit Etappe 4 in
+jeder `PlayerView` und wurde nirgends gezeigt; dass die letzte Strasse gelegt
+war, merkte man an der Absage des Servers. Drei Zeilen, je die Silhouette vom
+Brett in der eigenen Farbe und die Zahl daneben. **Die Null verschwindet nicht**,
+sondern wird blass: ein fehlender Eintrag saehe aus wie ein Anzeigefehler, und
+gerade die Null ist die Auskunft, auf die es ankommt. Das ist bewusst anders als
+bei der Hand, wo eine Ressource ohne Karten keinen Stapel hat — dort ist das
+Fehlen die Auskunft, hier waere es das Gegenteil.
+
+**Der Einladungslink tritt nicht mehr von selbst bei.** Sein Code stand beim
+ersten Rendern in `codeRef`, und der Anmelde-Effekt schickte gleich hinter
+`hello` ein `room.join` hinterher. Wer dem Link folgte, sass als „Gast" am Tisch,
+bevor er einen Namen eintippen konnte. `codeRef` faengt jetzt bei `null` an; der
+Link fuellt nur noch das Feld auf dem Startbildschirm. Der Reconnect haengt nicht
+daran: nach einem echten Beitritt steht der Code drin, und wer in genau einem
+Raum sitzt, bekommt ihn ohnehin von `hello` aus geoeffnet.
+
+**Umbenennen ist `user.rename` und nicht `room.rename`.** Der Name gehoert der
+Person und nicht dem Sitz (Regel 7). Der Server schreibt ihn in `users` und zieht
+ihn durch **jeden** Raum nach, an dem diese Person sitzt — seit Etappe 6 koennen
+das mehrere sein, und ein Name, der nur in einem ankommt, ist danach zweierlei.
+Laeuft dort eine Partie, geht auch der Spielstand hinaus: die Namen stehen in der
+`PlayerView`, und ohne das hiesse der Umbenannte erst nach dem naechsten Zug
+anders. Nicht ueber `hello` mit neuem Namen, obwohl das schon umbenennen kann:
+das waere die halbe Anmeldung fuer eine Textaenderung, samt allem, was daran
+haengt.
+
+**Die Farbe ist keine Funktion des Platzes mehr.** `seatColorAt(index)` ging,
+solange sie niemand aussuchen konnte. Jetzt gibt `firstFreeColor` dem Naechsten
+die erste freie, `chooseColor` laesst nehmen, was frei ist, und `leaveRoom`
+**faerbt niemanden mehr um** — bis Etappe 9 zaehlte es die Verbliebenen neu
+durch, und wer sich Violett ausgesucht hatte, sass danach in Rot, weil vor ihm
+jemand gegangen war. Belegt ist belegt, kein Tausch: zwei Spieler, die
+gleichzeitig tauschen wollen, waeren eine Verhandlung und keine Einstellung. Wer
+die Farbe eines anderen will, fragt ihn.
+
+**Die Farbwahl trennt sich vom Umstellen des Tisches.** `room.color` ist eine
+eigene Nachricht und kein Feld an `room.configure`: die Tischgroesse stellt der
+Gastgeber fuer alle ein, die Farbe waehlt jeder fuer sich. Zwei verschiedene
+Berechtigungen in einer Nachricht waeren eine Nachricht, die man nur zur Haelfte
+annehmen kann. Im Wartebereich ist das sichtbar: „Dein Platz" ist ein eigener
+Kasten ohne `canConfigure` davor.
+
+**Sechs Farben mit Namen.** `SEAT_COLOR_NAMES` in `shared`, gleiche Reihenfolge
+wie `SEAT_COLORS` und nur darueber verbunden — eine Tabelle von Farbwert auf
+Namen waere ein zweiter Ort, an dem jemand eine Farbe aendern koennte, ohne den
+Namen mitzuaendern. Eine Auswahl aus sechs Flecken laesst sich sonst weder
+vorlesen noch benennen, und Rot neben Orange ist nicht fuer jeden ein
+Unterschied.
+
+**Der freie Platz zeigt keine Farbe mehr.** Bis Etappe 9 stand er in der Farbe,
+die dieser Platz bekommen wuerde. Das war ein Versprechen, das der Wartebereich
+seit der Farbwahl nicht mehr halten kann — der Naechste sucht sie sich aus.
+Jetzt `currentColor`.
+
+**Das Siegpunktziel steht am Raum und geht beim Start ins RuleSet.** Eingestellt
+wird es im Wartebereich, und dort gibt es noch kein Spiel, in dem es stehen
+koennte. `startGame` schreibt `{ ...CLASSIC_RULES, victoryPointGoal }` genau
+einmal in die Partie; ab da traegt sie ihr eigenes Regelwerk (es geht als Teil
+des Startzustands auf die Platte), und eine spaetere Aenderung am Raum erreicht
+sie nicht mehr. Derselbe Grund, aus dem eine alte Partie eine Aenderung an
+`CLASSIC_RULES` ueberlebt.
+
+**Fuenf bis zwanzig, Vorgabe zehn — und die Grenzen stehen in `shared`.**
+`RuleSetSchema` laesst ab 2 alles zu; es beschreibt, was das Regelwerk
+darstellen kann, nicht was ein Tisch sinnvoll einstellt.
+`MIN_VICTORY_POINT_GOAL` und `MAX_VICTORY_POINT_GOAL` sind die Grenzen fuer die
+Bedienung, und sie stehen in `shared`, weil der Server dieselbe Grenze noch
+einmal prueft. Im Protokoll traegt das Feld eine Vorgabe: eingestellt wird es im
+Wartebereich, und ein Pflichtfeld zwaenge den Startbildschirm zu einer Frage, die
+dort niemand stellen will.
+
+**Vierter Migrationsschritt: `room_seats.color` und `rooms.victory_point_goal`.**
+Beides waren Ableitungen und deshalb keine Spalte. Wer sie einstellen kann, muss
+sie speichern — sonst sitzt nach jedem Neustart jeder wieder in der Farbe seines
+Platzes, und ein Wartebereich mit Ziel 15 startet mit 10. Der Bestand bekommt
+genau das, was vorher galt: die Farbe der Position und die Zehn aus der
+Schachtel. Die sechs Farbwerte stehen als Zeichenkette im Schritt und nicht als
+Import aus `SEAT_COLORS` — ein Schritt, der eine Konstante liest, aendert sein
+Ergebnis, sobald jemand die Konstante aendert, und waere dann nicht mehr der
+Schritt, der einmal veroeffentlicht wurde. Dieselbe Regel wie bei den 60 Tagen in
+`stepSessionExpiry`.
+
+**Umlaute nur dort, wo ein Spieler liest.** Betroffen sind die Wortlisten
+(`Hügel`, `Wüste`), die Verlaufssaetze, die Ablehnungstexte der Regeln und des
+Servers und die restlichen Oberflaechentexte im Client. **Nicht** angefasst:
+Kommentare, Testnamen und die geworfenen Invarianten, die ihre Funktion vorn im
+Satz nennen (`coastalEdgeRing:`, `resourceAt:`, `hexRing:`). Die sind an uns
+gerichtet und folgen derselben Konvention wie die Bezeichner. Die Grenze ist
+sichtbar: was ein `violation` oder ein `fail` traegt, hat Umlaute; was ein
+`throw new RangeError` traegt, nicht.
+
+**Ein leerer Name geht gar nicht erst hinaus.** Nebenbefund beim Umbau von
+`identify`: `DisplayNameSchema` verlangt mindestens ein Zeichen, und der Server
+haette damit die ganze Anmeldung abgewiesen statt nur den Namen. Getroffen haette
+das „Zurück in die Partie" bei geleertem `localStorage` — man kaeme in keine
+eigene Partie mehr hinein, mit einer Meldung ueber ein Feld, das man nirgends
+sieht.
+
+### Abweichungen von der Liste
+
+**Punkt 8 woertlich haette Annehmen _und_ Ablehnen entfernt.** Nach Rueckfrage
+bleibt Ablehnen stehen — Begruendung oben.
+
+**Punkt 3 ist ueber den Handelsdialog hinausgegangen.** Gefragt war das Kreuz im
+Handelsfenster; bekommen haben es alle vier schliessbaren Dialoge (Handel, Wen
+bestehlen, Erfindung/Monopol, Konto). Ein Kreuz, das nur in einem Fenster oben
+rechts sitzt, ist keine Stelle, an der man sucht.
+
+### Offene Punkte
+
+- **Kein Browser-Durchlauf.** Die Zahlen oben sind gemessen, die Oberflaeche ist
+  es nicht: auf 5173 lief bereits ein Dev-Server, und ein zweiter daneben waere
+  ein Streit um den Port gewesen. Ungesehen sind damit **alle** neuen Flaechen —
+  die roten Chips, die Vorratsanzeige neben den Wuerfeln, die Farbwahl und das
+  Ziel im Wartebereich, das Kreuz in den Dialogen und die drei farbigen
+  Antwortknoepfe. Zwei Stellen sind dabei am ehesten verdaechtig: die Ablage
+  unten links ist auf 14,5 rem gedeckelt (`.panel`), und Wuerfel plus Vorrat
+  teilen sich diese Breite jetzt zu zweit; und `.lobby__you` ist ein vierter
+  Kasten in einer Spalte, die vorher drei hatte.
+- **Die Farbwahl kennt keinen Tausch.** Wer die Farbe eines anderen will, muss
+  ihn bitten, sie freizugeben. Bewusst so — ein Tausch waere eine Verhandlung
+  mit Zusage, also eher ein zweites `tradePending` als eine Einstellung.
+- **Das Siegpunktziel steht nur im Wartebereich.** Waehrend der Partie sagt keine
+  Flaeche, gegen welche Zahl gespielt wird; sie liegt in
+  `view.rules.victoryPointGoal` und waere im Statusfeld unterzubringen.
+- **Umbenennen waehrend einer laufenden Partie ist erlaubt und im Browser
+  ungeprueft.** Der Verlauf behaelt dabei die alten Saetze — sie sind zu dem
+  Zeitpunkt entstanden, zu dem die Person noch so hiess. Das ist gewollt, koennte
+  aber beim Lesen verwirren.
+- **Die zwei Viewport-Breakpoints aus Etappe 8 sind weiterhin ungesehen**, und
+  die neuen Flaechen sind in ihnen erst recht nicht geprueft.
+- Die offenen Punkte aus Etappe 9 (Volume, HTTPS, Sicherung, Drossel im
+  Speicher, eine Instanz) gelten unveraendert weiter.
+
+### Naechste Etappe
+
+Diese hier im Browser ansehen, zu zweit ueber das Netz, mit dem Einladungslink —
+das ist die Probe, die alle neun Punkte gleichzeitig trifft. Danach der Rest von
+Etappe 9 (Volume, HTTPS) und dann Etappe 10.
+
+## Zweiter Durchgang nach dem Playtest — acht Anpassungen (2026-08-14, `etappe-10-playtest`)
+
+Stand: 2026-08-14, Branch `etappe-10-playtest`, direkt auf den ersten Durchgang
+gesetzt.
+
+Diesmal ging es weniger um Fehlendes als um Missverstaendliches: drei der acht
+Punkte betreffen Stellen, an denen die Oberflaeche etwas zeigte, das man anders
+gelesen hat, als es gemeint war.
+
+### Abnahme
+
+| Pruefung            | Ergebnis                                                                     |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `pnpm typecheck`    | gruen (`tsc -b`, alle drei Pakete)                                           |
+| `pnpm test`         | 976 Tests gruen (shared 576, server 161, client 239)                         |
+| `pnpm build`        | gruen, Client-Bundle 391,10 kB (115,96 kB gzip), CSS 29,73 kB (6,80 kB gzip) |
+| `pnpm format:check` | gruen                                                                        |
+| Browser             | **nicht gelaufen** — siehe „Offene Punkte"                                   |
+
+### Der Fall, der zuerst gemessen und dann erklaert wurde
+
+**„Am Brettrand sind die Strassen unsichtbar" — am Element lag es nicht.** Vor
+jeder Aenderung eine Sonde: ein Brett in eine Datei gerendert und nachgesehen,
+wo eine Kuestenstrasse landet. Ergebnis: alle 30 Kuestenkanten liegen in der
+`viewBox` (null Punkte ausserhalb), die Strasse traegt `road road--built`, sie
+traegt ihre Farbe im `style`, und sie steht in der Zeichenreihenfolge hinter
+allen Feldern. Es war also nichts weg — es war nur nichts zu sehen.
+
+Der Grund ist der Untergrund. Eine Strasse im Inneren liegt zwischen zwei hellen
+Gelaendefeldern; eine an der Kueste liegt zur Haelfte auf der dunklen See, und
+ein dunkelblauer (`#2c6fbb`) oder violetter (`#8e5bb5`) Streifen darauf
+verschwindet. Die Loesung ist die aus der Kartografie: **eine Kontur unter der
+Strasse**, in derselben Tinte wie die Feldraender.
+
+Die Kontur wird in einem **eigenen Durchgang** gezeichnet - erst alle Konturen,
+dann alle Strassen. Ein Wrapper je Kante waere naheliegender gewesen und haette
+an jeder Kreuzung die Kontur der zweiten Strasse ueber die Farbe der ersten
+gelegt.
+
+### Getroffene Entscheidungen
+
+**Ein Gegenangebot ist eine Frage und keine Auskunft.** Es stand als Zeile
+zwischen „lehnt ab" und „nimmt an", in derselben Form - und die Richtung stand
+aus der Sicht des Konternden da („Ben bietet 1 Erz für 3 Holz"). Wer sein
+eigenes Angebot vor Augen hat, liest das zwangslaeufig falsch herum. Jetzt ein
+eigener Kasten mit zwei **beschrifteten** Zeilen aus der Sicht dessen, der ihn
+liest: „Du gibst" und „Du bekommst". Keine Reihenfolge mehr, die man raten muss.
+
+**Neue Aktion `rejectCounter`.** Der Anbieter konnte ein Gegenangebot nur
+annehmen oder sein ganzes Angebot zuruecknehmen. Wer von einem von drei
+Mitspielern etwas bekam, das er nicht wollte, beendete damit die Runde fuer alle
+
+- auch fuer die, die noch ueberlegten. Das Gegenstueck zu `acceptTrade`, und wie
+  dieses ohne Mengen: welches Gegenangebot gemeint ist, steht in der Antwort des
+  Partners.
+
+**Eine vierte Antwortart `rejected` statt eines bequemen `declined`.** Sie als
+Ablehnung zu fuehren waere ein Feld weniger gewesen und im Verlauf eine Luege:
+dort staende, der Konternde habe abgelehnt, obwohl er gerade das Gegenteil getan
+hat. Sie traegt die Mengen des ausgeschlagenen Angebots weiter - geloescht
+stuende der Partner wieder auf `undefined` und duerfte erneut antworten, und aus
+dem Ausschlagen wuerde eine Einladung, dasselbe noch einmal zu schicken.
+
+**Ausschlagen laeuft ueber `withResponse` und nicht von Hand.** Dort steht die
+eine Stelle, an der eine Runde endet, sobald niemand mehr zusagt oder kontert -
+und genau das kann ein Ausschlagen ausloesen, wenn es die letzte offene Antwort
+war.
+
+**Wer geantwortet hat, sieht keine Knoepfe mehr.** Vorher standen drei gesperrte
+da und kein Wort darueber, worauf man wartet. Ein gesperrter Knopf ist ein
+Angebot, das man zurueckzieht, ohne es zu sagen. Jetzt steht da, was man getan
+hat („Du hast abgelehnt.") und was noch fehlt („Es fehlt noch die Antwort eines
+Mitspielers."). Ein **offenes** Gegenangebot zaehlt dabei nicht als fertige
+Antwort: der Anbieter kann es ausschlagen, und dann ist man wieder dran.
+
+**Gebaut wird in zwei Schritten.** Vorher leuchtete das Brett an jeder Stelle,
+an der irgendetwas moeglich war - Strassen, Siedlungen und Staedte gleichzeitig
+-, und was ein Klick brachte, ergab sich aus dem Ort. Jetzt sagt man erst was,
+dann zeigt das Brett wo. Der Knopf traegt dabei die eigentliche Auskunft: er ist
+genau dann bedienbar, wenn es Karten **und** eine Stelle gibt - beides steckt
+schon in `legalActions`, es wurde nur nie gezeigt.
+
+**Die Gruendung und der Raeuber bleiben einstufig.** Beides ist keine Wahl: in
+der Gruendung gibt es genau eine Sache zu setzen, und der Raeuber muss versetzt
+werden. Ein Knopf davor waere ein Schritt, der nichts entscheidet.
+
+**`buildable` zaehlt Stellen und liefert kein `boolean`.** „An drei Stellen
+moeglich" sagt mehr als „moeglich" (es steht im `title`), und eine Null ist
+dieselbe Auskunft wie ein `false`, nur ohne zweiten Typ.
+
+**Der Kaufstapel ist Material und kein Knopf.** „Karte kaufen" stand als dritter
+Knopf zwischen „Handel" und „Zug beenden", in derselben Form wie die Bedienung
+daneben - obwohl es das einzige Spielmaterial unter ihnen war. Jetzt ein Stapel
+aus drei Ruecken mit der Zahl darauf, zwischen Hand und Bauleiste. Der Ruecken
+traegt **kein Motiv**: was auf einer Entwicklungskarte steht, weiss beim Kauf
+niemand, auch der Kaeufer nicht.
+
+**Die Ablage ist eine Zeile geworden.** Sie liest sich von links nach rechts wie
+ein Zug: was man hat, was man kaufen kann, was man damit tut. Als Spalte war sie
+hoch und schmal; als Zeile wird sie flacher, und das Brett darueber gewinnt.
+
+**Die Stadt ist keine groessere Siedlung mehr.** Sie war derselbe Punkt mit
+groesserem Radius - die schwaechste Unterscheidung, die es gibt: Groesse liest
+man nur im Vergleich, und zwei eigene Bauwerke stehen selten nebeneinander. Jetzt
+ein Haus und ein Haus mit Anbau, unterscheidbar auch einzeln und in Graustufen.
+
+**Die Silhouetten stehen in `board/shapes.ts` und damit an einem Ort.** Brett,
+Wartebereich, Vorratsanzeige und Bauleiste zeichnen dieselben Pfade. Wer unten
+in seinem Vorrat eine Stadt sieht, erkennt sie oben auf dem Brett wieder; vier
+Zeichnungen fuer dasselbe Bauwerk waeren vier Gelegenheiten, dass eine abweicht.
+
+**Die Konturbreite steht im Pfadmass, nicht im Brettmass.** Der Pfad steckt in
+einem `scale(0.02)`; eine Linienbreite von 0.03 waere darin auf ein Sechzigstel
+geschrumpft. 1,4 im Pfadraum ergeben rund 0.03 auf dem Brett - genau so viel wie
+vorher am Punkt.
+
+**`key` ist die ganze Mechanik hinter „der Ausbau war nicht zu sehen".** Beim
+Ausbau zur Stadt bleibt der Knoten derselbe; React aktualisiert das Element,
+statt es neu einzuhaengen, und eine Animation, die beim Einhaengen laeuft, laeuft
+dann gar nicht. Mit `key={building.kind}` wird aus dem Ausbau ein neues Element,
+und der Ring geht auf. Dasselbe beim Raeuber: der Ring am Zielfeld haengt an
+`key={state.robber}`.
+
+**Der Raeuber zieht laenger und mit Bogen** (460 ms statt 300, `cubic-bezier`
+mit Ueberschwinger). Beides - Ring und Bogen - ist Beiwerk: wo er steht, sagt
+die Figur selbst und `data-hex` daneben. Bei abgeschalteter Bewegung steht der
+Ring sofort an seinem Ende, also unsichtbar, und das ist hier richtig.
+
+**Verlauf und Status haben die Ecken getauscht.** Wer am Zug ist, liest man
+staendig und beilaeufig; den Verlauf liest man selten und dann genau. Das
+Beilaeufige gehoert in die Naehe der Ablage, in der man ohnehin handelt. Vorher
+war es umgekehrt, und der Blick sprang bei jedem Zug quer ueber den Bildschirm.
+
+### Was beim Testen aufgefallen ist
+
+**Ein Test, der auf einen gesperrten Knopf drueckt, prueft nichts.** Der erste
+Entwurf zum Zwei-Schritt-Bauen tat genau das: er waehlte „Siedlung", und in
+diesem Stand sind nach der Gruendung alle Knoten durch die Abstandsregel
+gesperrt. Der Test war gruen und hat nichts gemessen. Nachgezaehlt (7 Strassen,
+2 Staedte, 0 Siedlungen), dann mit Strasse und Stadt geprueft.
+
+**Zwei Entwuerfe mit `if (disabled) return` sind ersatzlos geflogen.** Ein Test,
+der sich selbst ueberspringt, wenn die Vorbedingung fehlt, ist ein gruener
+Haken ohne Aussage. Statt dessen ein von Hand gesetzter Zustand mit Karten fuer
+alles - welche Rohstoffe die Gruendung abwirft, haengt am Seed.
+
+### Abweichungen
+
+**Punkt 6 hat auch die Siedlung angefasst.** Gefragt war nur die Stadt. Eine
+Stadt als Haus mit Anbau neben einer Siedlung als Punkt waeren aber zwei
+Formensprachen auf einem Brett gewesen.
+
+### Offene Punkte
+
+- **Weiterhin kein Browser-Durchlauf.** Die Zahlen sind gemessen, die Oberflaeche
+  nicht. Ungesehen sind vor allem: die Ablage als Zeile (sie reicht jetzt bis
+  `right: 15.5rem` und teilt sich die untere Bahn mit dem Statusfeld), die
+  Bauleiste, der Kaufstapel, die beiden neuen Silhouetten auf Brettgroesse und
+  die zwei Ringe.
+- **Ob die Kontur reicht, ist eine Vermutung mit Begruendung.** Gemessen ist,
+  dass am Element nichts fehlte; dass der Untergrund die Ursache war, folgt aus
+  den Farbwerten und nicht aus einem Bild. Sollte es weiter unsichtbar sein,
+  liegt es woanders, und dann ist die Sonde in der Aenderungsgeschichte der
+  richtige Anfang.
+- **Ein ausgeschlagenes Gegenangebot laesst sich nicht erneuern.** Wer
+  dagegengehalten hat und ausgeschlagen wurde, ist fuer diese Runde raus.
+  Bewusst so: alles andere waere eine Einladung, dasselbe noch einmal zu
+  schicken.
+- **Der Bau-Modus ueberlebt keinen fremden Zug.** Jeder neue Stand raeumt ihn
+  weg - was eben noch ging, kann jetzt am Vorrat oder am Nachbarn scheitern.
+  Online heisst das: waehrend andere ziehen, muss man neu waehlen.
+- Die offenen Punkte des ersten Durchgangs und aus Etappe 9 gelten weiter.
+
+### Naechste Etappe
+
+Unveraendert: diese beiden Durchgaenge im Browser ansehen, zu zweit ueber das
+Netz. Es ist inzwischen die einzige Probe, die noch aussteht - und die einzige,
+die die Haelfte dieser Punkte ueberhaupt beruehrt.

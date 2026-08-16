@@ -130,6 +130,19 @@ export const GameActionSchema = z.discriminatedUnion('type', [
    */
   z.object({ ...Base, type: z.literal('acceptTrade'), partner: PlayerIdSchema }),
 
+  /**
+   * Der Anbieter schlaegt **ein** Gegenangebot aus.
+   *
+   * Das Gegenstueck zu `acceptTrade` und der Grund, warum es das braucht: bis
+   * dahin konnte der Anbieter ein Gegenangebot nur annehmen oder sein ganzes
+   * Angebot zuruecknehmen. Wer drei Mitspieler hat und von einem ein Angebot
+   * bekommt, das er nicht will, musste damit die Runde fuer alle beenden.
+   *
+   * Auch hier ohne Mengen: welches Gegenangebot gemeint ist, steht in der
+   * Antwort des Partners.
+   */
+  z.object({ ...Base, type: z.literal('rejectCounter'), partner: PlayerIdSchema }),
+
   /** Der Anbieter nimmt sein Angebot zurueck. */
   z.object({ ...Base, type: z.literal('withdrawTrade') }),
 

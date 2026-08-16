@@ -6,7 +6,7 @@ import { MemoryRoomStore } from './store.js';
 describe('Raumverzeichnis', () => {
   it('vergibt Codes aus dem verwechslungsfreien Alphabet', () => {
     const registry = new RoomRegistry();
-    const created = registry.create('u1', 'Anna', 3, 'abc');
+    const created = registry.create('u1', 'Anna', 3, 'abc', 10);
 
     expect(created.ok).toBe(true);
     if (!created.ok) return;
@@ -22,8 +22,8 @@ describe('Raumverzeichnis', () => {
     let call = 0;
     const registry = new RoomRegistry({ randomCode: () => codes[call++] ?? 'CCCC' });
 
-    const first = registry.create('u1', 'Anna', 3, 'abc');
-    const second = registry.create('u2', 'Ben', 3, 'abc');
+    const first = registry.create('u1', 'Anna', 3, 'abc', 10);
+    const second = registry.create('u2', 'Ben', 3, 'abc', 10);
 
     expect(first.ok && first.room.code).toBe('AAAA');
     expect(second.ok && second.room.code).toBe('BBBB');
@@ -31,7 +31,7 @@ describe('Raumverzeichnis', () => {
 
   it('findet den Raum eines Spielers', () => {
     const registry = new RoomRegistry();
-    const created = registry.create('u1', 'Anna', 3, 'abc');
+    const created = registry.create('u1', 'Anna', 3, 'abc', 10);
     if (!created.ok) throw new Error(created.error);
 
     expect(registry.roomOf('u1')?.code).toBe(created.room.code);
@@ -41,7 +41,7 @@ describe('Raumverzeichnis', () => {
   it('raeumt leere Raeume nach der Frist weg, volle nicht', () => {
     let clock = 0;
     const registry = new RoomRegistry({ now: () => clock });
-    const created = registry.create('u1', 'Anna', 3, 'abc');
+    const created = registry.create('u1', 'Anna', 3, 'abc', 10);
     if (!created.ok) throw new Error(created.error);
 
     registry.update(created.room.code, { ...created.room, seats: [] });
@@ -54,7 +54,7 @@ describe('Raumverzeichnis', () => {
   it('legt jeden Raum im Store ab', () => {
     const store = new MemoryRoomStore();
     const registry = new RoomRegistry({ store });
-    const created = registry.create('u1', 'Anna', 3, 'abc');
+    const created = registry.create('u1', 'Anna', 3, 'abc', 10);
     if (!created.ok) throw new Error(created.error);
 
     expect(store.loadAll().map((room) => room.code)).toEqual([created.room.code]);
@@ -63,7 +63,7 @@ describe('Raumverzeichnis', () => {
   it('schreibt den ausloesenden Zug ins Log, aber nur wenn es einen gab', () => {
     const store = new MemoryRoomStore();
     const registry = new RoomRegistry({ store });
-    const created = registry.create('u1', 'Anna', 3, 'abc');
+    const created = registry.create('u1', 'Anna', 3, 'abc', 10);
     if (!created.ok) throw new Error(created.error);
     const code = created.room.code;
 
@@ -77,7 +77,7 @@ describe('Raumverzeichnis', () => {
   it('nimmt einen weggeraeumten Raum auch aus dem Store', () => {
     const store = new MemoryRoomStore();
     const registry = new RoomRegistry({ store, now: () => 0 });
-    const created = registry.create('u1', 'Anna', 3, 'abc');
+    const created = registry.create('u1', 'Anna', 3, 'abc', 10);
     if (!created.ok) throw new Error(created.error);
 
     registry.remove(created.room.code);
@@ -88,7 +88,7 @@ describe('Raumverzeichnis', () => {
   it('baut sich aus einem Store wieder auf', () => {
     const store = new MemoryRoomStore();
     const first = new RoomRegistry({ store });
-    const created = first.create('u1', 'Anna', 3, 'abc');
+    const created = first.create('u1', 'Anna', 3, 'abc', 10);
     if (!created.ok) throw new Error(created.error);
 
     const second = RoomRegistry.load(store);
@@ -98,8 +98,8 @@ describe('Raumverzeichnis', () => {
 
   it('findet alle Raeume, in denen jemand sitzt', () => {
     const registry = new RoomRegistry();
-    const first = registry.create('u1', 'Anna', 3, 'abc');
-    const second = registry.create('u1', 'Anna', 4, 'def');
+    const first = registry.create('u1', 'Anna', 3, 'abc', 10);
+    const second = registry.create('u1', 'Anna', 4, 'def', 10);
     if (!first.ok || !second.ok) throw new Error('Anlegen fehlgeschlagen');
 
     expect(registry.roomsOf('u1')).toHaveLength(2);
@@ -124,7 +124,7 @@ describe('Raumverzeichnis', () => {
     });
 
     // Der Raum entsteht trotzdem - er ist regelgerecht, nur ungesichert.
-    const created = registry.create('u1', 'Anna', 3, 'abc');
+    const created = registry.create('u1', 'Anna', 3, 'abc', 10);
 
     expect(created.ok).toBe(true);
     expect(seen).toHaveLength(1);

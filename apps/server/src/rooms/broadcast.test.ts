@@ -5,7 +5,7 @@ import { createRoom, joinRoom, setConnected, startGame, type Room } from './room
 import type { EventSink } from '../ws/events.js';
 
 function runningRoom(): Room {
-  const created = createRoom('K7X2', 'u1', 'Anna', 3, 'sende-probe');
+  const created = createRoom('K7X2', 'u1', 'Anna', 3, 'sende-probe', 10);
   if (!created.ok) throw new Error(created.error);
 
   let room = created.room;

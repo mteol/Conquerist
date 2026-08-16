@@ -10,7 +10,7 @@ import {
   canPlaceSettlementAt,
 } from './build.js';
 import type { PlayerId } from './player.js';
-import { canAcceptTrade, canRespondTrade } from './playerTrade.js';
+import { canAcceptTrade, canRejectCounter, canRespondTrade } from './playerTrade.js';
 import { canMoveRobber, victimsAt } from './robber.js';
 import { setupPlayer } from './setup.js';
 import type { GameState } from './state.js';
@@ -83,6 +83,15 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
           if (other.id === trade.offer.from) continue;
           if (canAcceptTrade(state, player, other.id) === null) {
             actions.push({ type: 'acceptTrade', player, partner: other.id });
+          }
+          /*
+           * Ausschlagen steht neben Zuschlagen und nicht statt seiner: ein
+           * Gegenangebot, das man sich leisten koennte, darf man trotzdem nicht
+           * wollen. Beide Zuege koennen deshalb fuer denselben Partner in der
+           * Liste stehen.
+           */
+          if (canRejectCounter(state, player, other.id) === null) {
+            actions.push({ type: 'rejectCounter', player, partner: other.id });
           }
         }
         actions.push({ type: 'withdrawTrade', player });

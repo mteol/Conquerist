@@ -2,10 +2,15 @@ import {
   CLASSIC_34,
   CLASSIC_56,
   CLASSIC_RULES,
+  MAX_VICTORY_POINT_GOAL,
+  MIN_VICTORY_POINT_GOAL,
+  SEAT_COLORS,
   createGame,
   generateScenario,
+  isSeatColor,
   reduce,
   seatColorAt,
+  seatColorName,
   type GameAction,
   type GameState,
   type ScenarioBlueprint,
@@ -34,6 +39,15 @@ export interface Room {
   readonly hostId: string;
   readonly seatCount: number;
   readonly seed: string;
+  /**
+   * Womit die Partie startet, wenn sie startet.
+   *
+   * Steht am Raum und nicht am Spiel: eingestellt wird es im Wartebereich, und
+   * dort gibt es noch kein Spiel. `startGame` schreibt die Zahl dann in das
+   * RuleSet der Partie, und ab da ist die dort die verbindliche - eine laufende
+   * Partie zieht ihr Ziel nicht mehr aus dem Raum nach.
+   */
+  readonly victoryPointGoal: number;
   readonly seats: readonly RoomSeat[];
   /** `null`, solange der Wartebereich laeuft. */
   readonly game: GameState | null;
@@ -55,23 +69,45 @@ export function blueprintFor(seatCount: number): ScenarioBlueprint | undefined {
   );
 }
 
+/**
+ * Die erste Farbe, die an diesem Tisch noch niemand hat.
+ *
+ * Bis Etappe 9 war die Farbe eine Funktion des Platzes (`seatColorAt(index)`) -
+ * das ging, solange sie niemand aussuchen konnte. Seit sie waehlbar ist, gibt
+ * es keine Reihenfolge mehr, aus der sie folgen koennte: wer als Dritter kommt,
+ * bekommt nicht die dritte Farbe, sondern die erste noch freie.
+ *
+ * Kein `undefined` als Rueckgabe: es gibt genau so viele Farben wie Plaetze
+ * (`MAX_SEATS`), und ein voller Tisch wird schon vorher abgewiesen. Faellt das
+ * einmal auseinander, ist die Vorgabe die Farbe des Platzes - falsch, aber
+ * sichtbar, und kein Sitz ohne Farbe.
+ */
+function firstFreeColor(seats: readonly RoomSeat[]): string {
+  const taken = new Set(seats.map((seat) => seat.color));
+  return SEAT_COLORS.find((color) => !taken.has(color)) ?? seatColorAt(seats.length);
+}
+
 export function createRoom(
   code: string,
   hostId: string,
   hostName: string,
   seatCount: number,
   seed: string,
+  victoryPointGoal: number,
   now = 0,
 ): RoomResult {
   if (blueprintFor(seatCount) === undefined) {
-    return fail(`Fuer ${seatCount} Spieler gibt es kein passendes Brett`);
+    return fail(`Für ${seatCount} Spieler gibt es kein passendes Brett`);
   }
+  const goal = checkGoal(victoryPointGoal);
+  if (goal !== null) return fail(goal);
 
   return ok({
     code,
     hostId,
     seatCount,
     seed,
+    victoryPointGoal,
     seats: [{ userId: hostId, name: hostName, color: seatColorAt(0), connected: true }],
     game: null,
     version: 1,
@@ -87,7 +123,7 @@ export function joinRoom(room: Room, userId: string, name: string): RoomResult {
   }
 
   if (room.game !== null) {
-    return fail('Die Partie laeuft bereits');
+    return fail('Die Partie läuft bereits');
   }
   if (room.seats.length >= room.seatCount) {
     return fail('Der Tisch ist voll');
@@ -96,9 +132,53 @@ export function joinRoom(room: Room, userId: string, name: string): RoomResult {
   return ok(
     withSeats(room, [
       ...room.seats,
-      { userId, name, color: seatColorAt(room.seats.length), connected: true },
+      { userId, name, color: firstFreeColor(room.seats), connected: true },
     ]),
   );
+}
+
+/**
+ * Sich eine Farbe aussuchen.
+ *
+ * Nur im Wartebereich: die Farbe steht in jeder `PlayerView` und auf jedem
+ * gebauten Teil. Mitten in der Partie umzufaerben hiesse, dass ein Mitspieler
+ * seine eigenen Strassen an anderer Stelle wiederfindet als eben noch.
+ *
+ * Belegt ist belegt - kein Tausch. Zwei Spieler, die gleichzeitig tauschen
+ * wollen, waeren zwei Nachrichten, von denen die zweite eine Zusage der ersten
+ * voraussetzt; das ist eine Verhandlung und keine Einstellung. Wer die Farbe
+ * eines anderen will, fragt ihn.
+ */
+export function chooseColor(room: Room, userId: string, color: string): RoomResult {
+  if (room.game !== null) return fail('Die Partie läuft bereits');
+  if (!isSeatColor(color)) return fail('Diese Farbe gibt es am Tisch nicht');
+
+  const index = room.seats.findIndex((seat) => seat.userId === userId);
+  if (index < 0) return fail('Du sitzt nicht an diesem Tisch');
+  if (room.seats[index]?.color === color) return ok(room);
+
+  const owner = room.seats.find((seat) => seat.color === color && seat.userId !== userId);
+  if (owner !== undefined) return fail(`${seatColorName(color)} hat schon ${owner.name}`);
+
+  return ok(withSeats(room, replaceAt(room.seats, index, { color })));
+}
+
+/**
+ * Sich umbenennen.
+ *
+ * Der Name steht in `users` und als Kopie am Sitz - die Kopie ist noetig, weil
+ * der Verlaufssatz aus den Sitzen gebaut wird und eine laufende Partie ihre
+ * Namen nicht bei jedem Satz nachschlagen soll. Also wird sie mitgezogen, und
+ * zwar in **jedem** Raum, an dem diese Person sitzt: sonst hiesse sie am einen
+ * Tisch schon anders und am anderen noch wie vorher.
+ *
+ * Auch waehrend der Partie erlaubt. Ein Name ist keine Spielinformation - er
+ * steht ueber einer Zeile, nicht in einer Regel.
+ */
+export function renameSeat(room: Room, userId: string, name: string): Room {
+  const index = room.seats.findIndex((seat) => seat.userId === userId);
+  if (index < 0 || room.seats[index]?.name === name) return room;
+  return withSeats(room, replaceAt(room.seats, index, { name }));
 }
 
 /**
@@ -114,9 +194,19 @@ export function leaveRoom(room: Room, userId: string): Room {
   const remaining = room.seats.filter((seat) => seat.userId !== userId);
   if (remaining.length === room.seats.length) return room;
 
+  /*
+   * Die Verbliebenen behalten ihre Farbe.
+   *
+   * Bis Etappe 9 wurden sie hier neu durchgezaehlt - die Farbe folgte dem
+   * Platz, und wer aufrueckte, wechselte sie. Seit man sie sich aussucht, waere
+   * das ein Eingriff in eine Entscheidung, die jemand anders getroffen hat:
+   * geht der Erste, saesse der Zweite ploetzlich in Rot. Die freigewordene
+   * Farbe faellt einfach zurueck in den Vorrat, aus dem `firstFreeColor` beim
+   * naechsten Beitritt schoepft.
+   */
   return {
     ...room,
-    seats: remaining.map((seat, index) => ({ ...seat, color: seatColorAt(index) })),
+    seats: remaining,
     hostId: remaining[0]?.userId ?? room.hostId,
     version: room.version + 1,
   };
@@ -131,9 +221,10 @@ export function setConnected(room: Room, userId: string, connected: boolean): Ro
 /**
  * Die Partie umstellen, solange der Wartebereich offen ist.
  *
- * Dieselben zwei Werte wie beim Erstellen - eine Partie soll nicht deshalb
- * neu gegruendet werden muessen, weil doch einer mehr mitspielt oder das Brett
- * bloed aussieht. Drei Grenzen, und jede hat einen Grund:
+ * Dieselben Werte wie beim Erstellen - eine Partie soll nicht deshalb
+ * neu gegruendet werden muessen, weil doch einer mehr mitspielt, das Brett
+ * bloed aussieht oder zehn Punkte zu lange dauern. Drei Grenzen, und jede hat
+ * einen Grund:
  *
  *   - **Nur der Host.** Sonst zieht einer den anderen den Tisch unter den
  *     Fuessen weg, waehrend sie beitreten.
@@ -142,29 +233,43 @@ export function setConnected(room: Room, userId: string, connected: boolean): Ro
  *     das zu entscheiden.
  *   - **Nicht mehr, wenn die Partie laeuft.** Der Seed steckt dann bereits im
  *     Brett und im Zufallszustand; ihn zu aendern hiesse, mitten im Spiel ein
- *     anderes zu spielen.
+ *     anderes zu spielen. Fuer das Siegpunktziel gilt dasselbe aus einem
+ *     zweiten Grund: es liegt dann im RuleSet der Partie, und das RuleSet steht
+ *     im gespeicherten Startzustand - eine Aenderung daran waere im Log nicht
+ *     mehr auffindbar.
  */
 export function configureRoom(
   room: Room,
   byUserId: string,
   seatCount: number,
   seed: string,
+  victoryPointGoal: number,
 ): RoomResult {
   if (byUserId !== room.hostId) return fail('Nur wer die Partie erstellt hat, kann sie umstellen');
-  if (room.game !== null) return fail('Die Partie laeuft bereits');
+  if (room.game !== null) return fail('Die Partie läuft bereits');
   if (blueprintFor(seatCount) === undefined) {
-    return fail(`Fuer ${seatCount} Spieler gibt es kein passendes Brett`);
+    return fail(`Für ${seatCount} Spieler gibt es kein passendes Brett`);
   }
   if (seatCount < room.seats.length) {
     return fail(`Es sitzen schon ${room.seats.length} am Tisch`);
   }
+  const goal = checkGoal(victoryPointGoal);
+  if (goal !== null) return fail(goal);
 
-  return ok({ ...room, seatCount, seed, version: room.version + 1 });
+  return ok({ ...room, seatCount, seed, victoryPointGoal, version: room.version + 1 });
+}
+
+/** Ob dieses Siegpunktziel einstellbar ist - der Satz dazu, oder `null`. */
+function checkGoal(goal: number): string | null {
+  if (!Number.isInteger(goal) || goal < MIN_VICTORY_POINT_GOAL || goal > MAX_VICTORY_POINT_GOAL) {
+    return `Das Siegpunktziel liegt zwischen ${MIN_VICTORY_POINT_GOAL} und ${MAX_VICTORY_POINT_GOAL}`;
+  }
+  return null;
 }
 
 export function startGame(room: Room, byUserId: string): RoomResult {
   if (byUserId !== room.hostId) return fail('Nur wer die Partie erstellt hat, kann sie starten');
-  if (room.game !== null) return fail('Die Partie laeuft bereits');
+  if (room.game !== null) return fail('Die Partie läuft bereits');
   if (room.seats.length !== room.seatCount) {
     return fail(`Es fehlen noch ${room.seatCount - room.seats.length} Spieler`);
   }
@@ -174,8 +279,16 @@ export function startGame(room: Room, byUserId: string): RoomResult {
 
   const scenario = generateScenario(blueprint, room.seed);
   const game = createGame(
+    /*
+     * Das eingestellte Ziel wird hier ins Regelwerk geschrieben - genau
+     * einmal, beim Start. Ab dann traegt die Partie ihr eigenes RuleSet in
+     * sich (es geht als Teil des Startzustands auf die Platte), und eine
+     * spaetere Aenderung am Raum erreicht sie nicht mehr. Das ist derselbe
+     * Grund, aus dem eine alte Partie eine Aenderung an `CLASSIC_RULES`
+     * ueberlebt: das Regelwerk gehoert zur Partie, nicht zum Programm.
+     */
     scenario,
-    CLASSIC_RULES,
+    { ...CLASSIC_RULES, victoryPointGoal: room.victoryPointGoal },
     room.seats.map((seat) => seat.userId),
     room.seed,
   );
@@ -193,7 +306,7 @@ export function startGame(room: Room, byUserId: string): RoomResult {
 export function applyAction(room: Room, userId: string, action: GameAction): RoomResult {
   if (room.game === null) return fail('Die Partie hat noch nicht begonnen');
   if (action.player !== userId) {
-    return fail('Ein Zug fuer einen anderen Spieler wird nicht angenommen');
+    return fail('Ein Zug für einen anderen Spieler wird nicht angenommen');
   }
   if (!room.seats.some((seat) => seat.userId === userId)) {
     return fail('Du sitzt nicht an diesem Tisch');

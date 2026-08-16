@@ -67,7 +67,7 @@ export function canTradeWithBank(
   if (give === receive) {
     return violation(
       RuleViolationCode.INVALID_TRADE,
-      `${give} gegen ${receive} zu tauschen aendert nichts`,
+      `${give} gegen ${receive} zu tauschen ändert nichts`,
     );
   }
 

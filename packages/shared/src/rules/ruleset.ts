@@ -42,6 +42,20 @@ export const ResourceAmountsSchema = z.record(ResourceIdSchema, z.number().int()
 
 export type ResourceAmounts = z.infer<typeof ResourceAmountsSchema>;
 
+/**
+ * Zwischen welchen Siegpunktzielen der Wartebereich waehlen laesst.
+ *
+ * Das RuleSet selbst laesst ab 2 alles zu - es beschreibt, was das Regelwerk
+ * darstellen kann, nicht was ein Tisch sinnvoll einstellt. Diese beiden Zahlen
+ * sind die Grenzen fuer die **Bedienung**: unter fuenf entscheidet die
+ * Gruendung fast allein, ueber zwanzig reicht das Baumaterial nicht mehr fuer
+ * ein Ende. Sie stehen hier und nicht im Wartebereich, weil der Server dieselbe
+ * Grenze noch einmal prueft und beide Seiten dieselbe Zahl brauchen.
+ */
+export const MIN_VICTORY_POINT_GOAL = 5;
+export const MAX_VICTORY_POINT_GOAL = 20;
+export const DEFAULT_VICTORY_POINT_GOAL = 10;
+
 export const RuleSetSchema = z.object({
   /** Stabiler Bezeichner, etwa `"classic"`. */
   id: z.string().min(1),
@@ -129,7 +143,7 @@ export const CLASSIC_RULES: RuleSet = {
 
   resourceBank: { brick: 19, lumber: 19, wool: 19, grain: 19, ore: 19 },
 
-  victoryPointGoal: 10,
+  victoryPointGoal: DEFAULT_VICTORY_POINT_GOAL,
   victoryPoints: {
     settlement: 1,
     city: 2,

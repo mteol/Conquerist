@@ -67,7 +67,7 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     const onAct = vi.fn();
     render(screenFor(playable(), ids[0]!, onAct));
 
-    const buy = screen.getByRole('button', { name: 'Karte kaufen' });
+    const buy = screen.getByTestId('deck-buy');
     expect(buy).toHaveProperty('disabled', false);
 
     await userEvent.click(buy);
@@ -84,7 +84,7 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
 
     render(screenFor(arm));
 
-    expect(screen.getByRole('button', { name: 'Karte kaufen' })).toHaveProperty('disabled', true);
+    expect(screen.getByTestId('deck-buy')).toHaveProperty('disabled', true);
   });
 
   it('zeigt die eigenen Karten und laesst nur die spielbaren anklicken', () => {

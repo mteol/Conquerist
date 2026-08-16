@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type JSX } from 'react';
 import { MIN_PASSWORD_LENGTH } from '@conquerist/shared';
+import { CloseButton } from './CloseButton';
 
 /**
  * Konto anlegen oder anmelden - ein Dialog, zwei Modi.
@@ -56,6 +57,7 @@ export function AccountDialog({
   return (
     <div className="modal" role="dialog" aria-label={title}>
       <form className="modal__box" onSubmit={submit}>
+        <CloseButton onClose={onClose} label={title} />
         <h2>{title}</h2>
 
         {warned ? (

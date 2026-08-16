@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MAX_VICTORY_POINT_GOAL,
+  MIN_VICTORY_POINT_GOAL,
+  SEAT_COLORS,
   legalActions,
   setupPlayer,
   stampAction,
@@ -9,17 +12,19 @@ import {
 import {
   applyAction,
   applySystemAction,
+  chooseColor,
   configureRoom,
   createRoom,
   joinRoom,
   leaveRoom,
+  renameSeat,
   setConnected,
   startGame,
   type Room,
 } from './room.js';
 
 function room(): Room {
-  const created = createRoom('K7X2', 'u1', 'Anna', 3, 'raum-probe');
+  const created = createRoom('K7X2', 'u1', 'Anna', 3, 'raum-probe', 10);
   if (!created.ok) throw new Error(created.error);
   return created.room;
 }
@@ -97,7 +102,7 @@ describe('Raum', () => {
   });
 
   it('laesst den Host die Partie im Wartebereich noch umstellen', () => {
-    const changed = configureRoom(room(), 'u1', 5, 'anderer-seed');
+    const changed = configureRoom(room(), 'u1', 5, 'anderer-seed', 10);
 
     expect(changed.ok).toBe(true);
     if (changed.ok) {
@@ -108,26 +113,26 @@ describe('Raum', () => {
   });
 
   it('laesst nur den Host umstellen', () => {
-    expect(configureRoom(withThree(), 'u2', 6, 'egal').ok).toBe(false);
+    expect(configureRoom(withThree(), 'u2', 6, 'egal', 10).ok).toBe(false);
   });
 
   it('macht den Tisch nicht kleiner als die Zahl derer, die schon sitzen', () => {
     // Sonst muesste jemand seinen Platz raeumen, den er schon hat - und der
     // Wartebereich waere der falsche Ort, das zu entscheiden.
-    expect(configureRoom(withThree(), 'u1', 3, 'raum-probe').ok).toBe(true);
-    const shrunk = configureRoom(withThree(), 'u1', 2, 'raum-probe');
+    expect(configureRoom(withThree(), 'u1', 3, 'raum-probe', 10).ok).toBe(true);
+    const shrunk = configureRoom(withThree(), 'u1', 2, 'raum-probe', 10);
     expect(shrunk.ok).toBe(false);
   });
 
   it('weist eine Tischgroesse ohne passendes Brett zurueck', () => {
-    expect(configureRoom(room(), 'u1', 7, 'raum-probe').ok).toBe(false);
+    expect(configureRoom(room(), 'u1', 7, 'raum-probe', 10).ok).toBe(false);
   });
 
   it('stellt eine laufende Partie nicht mehr um', () => {
     const started = startGame(withThree(), 'u1');
     if (!started.ok) throw new Error(started.error);
 
-    expect(configureRoom(started.room, 'u1', 4, 'zu-spaet').ok).toBe(false);
+    expect(configureRoom(started.room, 'u1', 4, 'zu-spaet', 10).ok).toBe(false);
   });
 
   it('behaelt den Platz, wenn die Verbindung abbricht', () => {
@@ -223,5 +228,131 @@ describe('Zeit und Systemzuege', () => {
         at: 10_000 + room.game!.rules.tradeOfferMs,
       }).ok,
     ).toBe(true);
+  });
+});
+
+/**
+ * Etappe 10: die Farbe wird gewaehlt und folgt nicht mehr dem Platz.
+ *
+ * Der Unterschied ist groesser als er aussieht: solange sie eine Funktion der
+ * Position war, konnte sie sich hinter jedem Beitritt und jedem Verlassen
+ * aendern. Jetzt gehoert sie dem, der sie genommen hat.
+ */
+describe('Farbwahl', () => {
+  it('nimmt eine freie Farbe an', () => {
+    const changed = chooseColor(withThree(), 'u2', SEAT_COLORS[4]!);
+
+    expect(changed.ok).toBe(true);
+    if (changed.ok) {
+      expect(changed.room.seats.find((seat) => seat.userId === 'u2')?.color).toBe(SEAT_COLORS[4]);
+    }
+  });
+
+  it('weist eine Farbe ab, die schon jemand hat - und sagt, wer', () => {
+    const table = withThree();
+    const taken = table.seats[0]!.color;
+
+    const changed = chooseColor(table, 'u2', taken);
+
+    expect(changed.ok).toBe(false);
+    if (!changed.ok) expect(changed.error).toContain('Anna');
+  });
+
+  it('laesst die eigene Farbe noch einmal waehlen, ohne sich selbst im Weg zu stehen', () => {
+    const table = withThree();
+    const mine = table.seats[1]!.color;
+
+    expect(chooseColor(table, 'u2', mine).ok).toBe(true);
+  });
+
+  it('kennt nur die Farben des Tisches', () => {
+    expect(chooseColor(withThree(), 'u2', 'rebeccapurple').ok).toBe(false);
+  });
+
+  it('faerbt nicht mehr um, sobald die Partie laeuft', () => {
+    const started = startGame(withThree(), 'u1');
+    expect(started.ok).toBe(true);
+    if (!started.ok) return;
+
+    expect(chooseColor(started.room, 'u2', SEAT_COLORS[4]!).ok).toBe(false);
+  });
+
+  /*
+   * Der Fehler, den dieser Test verhindert: bis Etappe 9 wurden die
+   * Verbliebenen hier neu durchgezaehlt. Wer sich Violett ausgesucht hatte,
+   * sass danach in Rot, weil vor ihm jemand gegangen war.
+   */
+  it('laesst den Uebrigen ihre Farbe, wenn jemand geht', () => {
+    const table = withThree();
+    const chosen = chooseColor(table, 'u3', SEAT_COLORS[4]!);
+    expect(chosen.ok).toBe(true);
+    if (!chosen.ok) return;
+
+    const after = leaveRoom(chosen.room, 'u1');
+
+    expect(after.seats.find((seat) => seat.userId === 'u3')?.color).toBe(SEAT_COLORS[4]);
+    expect(after.seats.find((seat) => seat.userId === 'u2')?.color).toBe(table.seats[1]!.color);
+  });
+
+  it('gibt dem Naechsten die erste freie Farbe und keine zweimal', () => {
+    const table = withThree();
+    const chosen = chooseColor(table, 'u2', SEAT_COLORS[5]!);
+    expect(chosen.ok).toBe(true);
+    if (!chosen.ok) return;
+
+    const grown = configureRoom(chosen.room, 'u1', 4, 'raum-probe', 10);
+    expect(grown.ok).toBe(true);
+    if (!grown.ok) return;
+
+    const joined = joinRoom(grown.room, 'u4', 'Dana');
+    expect(joined.ok).toBe(true);
+    if (!joined.ok) return;
+
+    const colors = joined.room.seats.map((seat) => seat.color);
+    expect(new Set(colors).size).toBe(colors.length);
+    expect(joined.room.seats.find((seat) => seat.userId === 'u4')?.color).toBe(SEAT_COLORS[1]);
+  });
+});
+
+describe('Umbenennen', () => {
+  it('zieht den Namen am Sitz nach', () => {
+    const after = renameSeat(withThree(), 'u2', 'Benedikt');
+    expect(after.seats.find((seat) => seat.userId === 'u2')?.name).toBe('Benedikt');
+  });
+
+  it('gibt denselben Raum zurueck, wenn sich nichts aendert', () => {
+    const table = withThree();
+    expect(renameSeat(table, 'u2', 'Ben')).toBe(table);
+    expect(renameSeat(table, 'wer-auch-immer', 'Egal')).toBe(table);
+  });
+});
+
+describe('Siegpunktziel', () => {
+  it('stellt sich im Wartebereich um', () => {
+    const changed = configureRoom(room(), 'u1', 3, 'raum-probe', 15);
+    expect(changed.ok).toBe(true);
+    if (changed.ok) expect(changed.room.victoryPointGoal).toBe(15);
+  });
+
+  it('bleibt in seinen Grenzen', () => {
+    expect(configureRoom(room(), 'u1', 3, 'raum-probe', MIN_VICTORY_POINT_GOAL - 1).ok).toBe(false);
+    expect(configureRoom(room(), 'u1', 3, 'raum-probe', MAX_VICTORY_POINT_GOAL + 1).ok).toBe(false);
+    expect(configureRoom(room(), 'u1', 3, 'raum-probe', MIN_VICTORY_POINT_GOAL).ok).toBe(true);
+    expect(configureRoom(room(), 'u1', 3, 'raum-probe', MAX_VICTORY_POINT_GOAL).ok).toBe(true);
+  });
+
+  /*
+   * Der eigentliche Punkt: das eingestellte Ziel muss im RuleSet der Partie
+   * ankommen. Steht es nur am Raum, spielt der Tisch weiter bis zehn und
+   * wundert sich.
+   */
+  it('geht beim Start in das Regelwerk der Partie', () => {
+    const changed = configureRoom(withThree(), 'u1', 3, 'raum-probe', 7);
+    expect(changed.ok).toBe(true);
+    if (!changed.ok) return;
+
+    const started = startGame(changed.room, 'u1');
+    expect(started.ok).toBe(true);
+    if (started.ok) expect(started.room.game?.rules.victoryPointGoal).toBe(7);
   });
 });

@@ -107,7 +107,7 @@ export function TradeAmounts({
       </fieldset>
 
       <fieldset className="cards">
-        <legend>Du moechtest</legend>
+        <legend>Du möchtest</legend>
         {RESOURCE_IDS.map((resource) => (
           <div key={resource} className="cards__item">
             <span className="cards__label">{RESOURCE_LABELS[resource]}</span>

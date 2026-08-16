@@ -44,7 +44,7 @@ function priceOf(state: GameState): ResourceAmounts {
 /** Die drei Bedingungen, die fuer Kauf und Ausspielen gleich sind. */
 function canActNow(state: GameState, player: PlayerId): RuleViolation | null {
   if (state.phase.kind !== 'main') {
-    return violation(RuleViolationCode.WRONG_PHASE, 'Das geht erst nach dem Wuerfeln');
+    return violation(RuleViolationCode.WRONG_PHASE, 'Das geht erst nach dem Würfeln');
   }
   if (state.players[state.currentPlayerIndex]?.id !== player) {
     return violation(RuleViolationCode.NOT_YOUR_TURN, `${player} ist nicht am Zug`);
@@ -217,7 +217,7 @@ export function applyPlayRoadBuilding(
   if (problem !== null) return rejected(problem);
 
   if (edges.length < 1 || edges.length > 2) {
-    return rejected(violation(RuleViolationCode.NOT_ON_BOARD, 'Eine oder zwei Strassen'));
+    return rejected(violation(RuleViolationCode.NOT_ON_BOARD, 'Eine oder zwei Straßen'));
   }
 
   let current: GameState = spend(state, player, 'roadBuilding');
@@ -241,7 +241,7 @@ function placeFreeRoad(state: GameState, player: PlayerId, edge: EdgeId): Reduce
     return rejected(violation(RuleViolationCode.UNKNOWN_PLAYER, `${player} sitzt nicht am Tisch`));
   }
   if ((owner.piecesLeft.road ?? 0) <= 0) {
-    return rejected(violation(RuleViolationCode.NO_PIECES_LEFT, 'Keine Strassen mehr im Vorrat'));
+    return rejected(violation(RuleViolationCode.NO_PIECES_LEFT, 'Keine Straßen mehr im Vorrat'));
   }
 
   const board = boardOf(state.scenario);
@@ -255,7 +255,7 @@ function placeFreeRoad(state: GameState, player: PlayerId, edge: EdgeId): Reduce
 
   if (!connected) {
     return rejected(
-      violation(RuleViolationCode.NOT_CONNECTED, `${edge} schliesst an nichts Eigenes an`),
+      violation(RuleViolationCode.NOT_CONNECTED, `${edge} schließt an nichts Eigenes an`),
     );
   }
 

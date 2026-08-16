@@ -2,7 +2,14 @@
 import type { JSX } from 'react';
 import { act } from 'react';
 import { describe, expect, it } from 'vitest';
-import { AUTH_LOGIN, AUTH_LOGOUT, AUTH_REGISTER, HELLO, MY_ROOMS } from '@conquerist/shared';
+import {
+  AUTH_LOGIN,
+  AUTH_LOGOUT,
+  AUTH_REGISTER,
+  HELLO,
+  JOIN_ROOM,
+  MY_ROOMS,
+} from '@conquerist/shared';
 import { render, screen } from '../test/dom';
 import { loadSecret } from '../net/session';
 import type { SocketLike } from '../net/types';
@@ -72,6 +79,7 @@ const room = {
   hostId: 'u1',
   seatCount: 3,
   seed: 'abc',
+  victoryPointGoal: 10,
   started: false,
   seats: [{ userId: 'u1', name: 'Anna', color: '#c0392b', connected: true }],
 };
@@ -79,7 +87,7 @@ const room = {
 let socket: FakeSocket;
 
 function Probe(): JSX.Element {
-  const online = useOnlineGame(null, {
+  const online = useOnlineGame({
     socketFactory: () => {
       socket = new FakeSocket();
       return socket;
@@ -209,6 +217,27 @@ describe('Online-Partie', () => {
     });
 
     expect(window.localStorage.getItem('conquerist.secret')).toBe('frisch');
+  });
+
+  /*
+   * Der Einladungslink tritt nicht mehr von selbst bei.
+   *
+   * Bis Etappe 9 stand sein Code beim ersten Rendern in `codeRef`, und der
+   * Anmelde-Effekt schickte gleich hinter `hello` ein `room.join` hinterher.
+   * Im ersten Playtest sass man dadurch als „Gast" am Tisch, bevor man einen
+   * Namen eintippen konnte. Beigetreten wird jetzt erst auf Knopfdruck.
+   */
+  it('tritt nach dem Anmelden keinem Raum von selbst bei', async () => {
+    render(<Probe />);
+
+    await act(async () => {
+      socket.onopen?.({});
+    });
+    await act(async () => {
+      socket.reply(HELLO, { userId: 'u1', secret: 'geheim', name: 'Anna' });
+    });
+
+    expect(socket.countOf(JOIN_ROOM)).toBe(0);
   });
 
   it('merkt sich die Identitaet aus hello und gibt sie heraus', async () => {

@@ -94,6 +94,23 @@ export class Users {
     return { user: { id, name, isGuest: true }, secret: token, tokenHash };
   }
 
+  /**
+   * Den Anzeigenamen aendern - und weiter nichts.
+   *
+   * `hello` konnte das schon nebenbei, aber nur beim Verbindungsaufbau. Seit
+   * Etappe 10 kann man sich im Wartebereich umbenennen, und dafuer noch einmal
+   * `hello` zu schicken hiesse, die halbe Anmeldung fuer eine Textaenderung zu
+   * wiederholen - mit allem, was daran haengt (Geheimnis, Sitzung, der Raum,
+   * der daraufhin von selbst wieder aufgemacht wird).
+   */
+  rename(id: string, name: string): User {
+    this.database.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, id);
+
+    const user = this.byId(id);
+    if (user === undefined) throw new Error('Umbenannte Zeile ist verschwunden');
+    return user;
+  }
+
   byId(id: string): User | undefined {
     const row = this.database
       .prepare('SELECT id, name, is_guest, login FROM users WHERE id = ?')

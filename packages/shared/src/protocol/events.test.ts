@@ -18,6 +18,7 @@ describe('Ereignisse', () => {
         hostId: 'u1',
         seatCount: 3,
         seed: 'abc',
+        victoryPointGoal: 10,
         started: false,
         seats: [{ userId: 'u1', name: 'Anna', color: '#c0392b', connected: true }],
       }).success,

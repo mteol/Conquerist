@@ -8,6 +8,7 @@ import {
   applyCounterTrade,
   applyDropFromTrade,
   applyOfferTrade,
+  applyRejectCounter,
   applyRejoinTrade,
   applyRespondTrade,
   applyTimeout,
@@ -17,11 +18,13 @@ import {
   canCounterTrade,
   canOfferAnything,
   canOfferTrade,
+  canRejectCounter,
   canRespondTrade,
   canTimeout,
   hasAutomaticDecline,
   termsFor,
 } from './playerTrade.js';
+import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
 import type { GameState } from './state.js';
 
@@ -498,5 +501,117 @@ describe('hasAutomaticDecline', () => {
 
     expect(hasAutomaticDecline(gone.state, 'p2')).toBe(true);
     expect(hasAutomaticDecline(gone.state, 'p3')).toBe(false);
+  });
+});
+
+/**
+ * Ein Gegenangebot ausschlagen.
+ *
+ * Der Zug, der beim ersten Playtest gefehlt hat: der Anbieter konnte ein
+ * Gegenangebot nur annehmen oder sein ganzes Angebot zuruecknehmen. Wer von
+ * einem von drei Mitspielern etwas bekam, das er nicht wollte, beendete damit
+ * die Runde fuer alle - auch fuer die, die noch ueberlegten.
+ */
+describe('rejectCounter', () => {
+  /** p2 kontert, p3 ueberlegt noch. */
+  function countered(): GameState {
+    const result = applyCounterTrade(
+      tableWithOffer(),
+      'p2',
+      hand({ ore: 1 }),
+      hand({ lumber: 3 }),
+      0,
+    );
+    if (!result.ok) throw new Error('Gegenangebot wurde abgelehnt');
+    return result.state;
+  }
+
+  it('laesst nur den Anbieter ausschlagen', () => {
+    expect(canRejectCounter(countered(), 'p1', 'p2')).toBeNull();
+    expect(canRejectCounter(countered(), 'p3', 'p2')?.code).toBe(RuleViolationCode.NOT_THE_OFFERER);
+  });
+
+  it('braucht ein Gegenangebot - eine Zusage ist keines', () => {
+    const accepted = applyRespondTrade(tableWithOffer(), 'p2', 'accepted');
+    if (!accepted.ok) throw new Error('Antwort wurde abgelehnt');
+
+    expect(canRejectCounter(accepted.state, 'p1', 'p2')?.code).toBe(
+      RuleViolationCode.PARTNER_DID_NOT_ACCEPT,
+    );
+    expect(canRejectCounter(tableWithOffer(), 'p1', 'p3')?.code).toBe(
+      RuleViolationCode.PARTNER_DID_NOT_ACCEPT,
+    );
+  });
+
+  /*
+   * Die Mengen bleiben in der Antwort stehen. Sie zu loeschen hiesse, den
+   * Partner wieder auf `undefined` zu setzen - er duerfte erneut antworten, und
+   * aus dem Ausschlagen wuerde eine Einladung, dasselbe noch einmal zu
+   * schicken.
+   */
+  it('macht aus dem Gegenangebot eine ausgeschlagene Antwort und laesst es stehen', () => {
+    const result = applyRejectCounter(countered(), 'p1', 'p2');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.state.phase.kind !== 'tradePending') return;
+    expect(result.state.phase.responses.p2).toEqual({
+      kind: 'rejected',
+      give: hand({ ore: 1 }),
+      want: hand({ lumber: 3 }),
+    });
+  });
+
+  it('haelt die Runde offen, solange noch jemand ueberlegt', () => {
+    const result = applyRejectCounter(countered(), 'p1', 'p2');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.phase.kind).toBe('tradePending');
+  });
+
+  /*
+   * Das eigentliche Ziel: die Runde geht ohne den einen weiter - und endet
+   * genau dann, wenn niemand mehr uebrig ist. Vorher blieb dem Anbieter nur das
+   * Zuruecknehmen.
+   */
+  it('beendet die Runde, wenn es die letzte offene Antwort war', () => {
+    const alone = applyRespondTrade(countered(), 'p3', 'declined');
+    if (!alone.ok) throw new Error('Antwort wurde abgelehnt');
+
+    const result = applyRejectCounter(alone.state, 'p1', 'p2');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.phase.kind).toBe('main');
+  });
+
+  it('nimmt niemandem eine Karte weg', () => {
+    const before = countered();
+    const result = applyRejectCounter(before, 'p1', 'p2');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(resourcesOf(result.state, 'p1')).toEqual(resourcesOf(before, 'p1'));
+    expect(resourcesOf(result.state, 'p2')).toEqual(resourcesOf(before, 'p2'));
+  });
+
+  it('laesst sich nicht zweimal ausschlagen', () => {
+    const once = applyRejectCounter(countered(), 'p1', 'p2');
+    if (!once.ok) throw new Error('Ausschlagen wurde abgelehnt');
+
+    expect(canRejectCounter(once.state, 'p1', 'p2')?.code).toBe(
+      RuleViolationCode.PARTNER_DID_NOT_ACCEPT,
+    );
+  });
+
+  it('steht in der Zugliste des Anbieters neben dem Zuschlag', () => {
+    const actions = legalActions(countered(), 'p1');
+
+    expect(actions).toContainEqual({ type: 'rejectCounter', player: 'p1', partner: 'p2' });
+    expect(actions).toContainEqual({ type: 'acceptTrade', player: 'p1', partner: 'p2' });
+    // Und niemand sonst darf es.
+    expect(legalActions(countered(), 'p3')).not.toContainEqual(
+      expect.objectContaining({ type: 'rejectCounter' }),
+    );
   });
 });

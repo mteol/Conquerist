@@ -30,6 +30,7 @@ interface RoomRow {
   readonly host_id: string;
   readonly seat_count: number;
   readonly seed: string;
+  readonly victory_point_goal: number;
   readonly version: number;
   readonly created_at: number;
   readonly start_state: string | null;
@@ -39,6 +40,8 @@ interface SeatRow {
   readonly position: number;
   readonly user_id: string;
   readonly name: string;
+  /** `null` nur bei Zeilen, die der vierte Migrationsschritt nicht erreicht hat. */
+  readonly color: string | null;
 }
 
 export class SqliteRoomStore implements RoomStore {
@@ -54,10 +57,11 @@ export class SqliteRoomStore implements RoomStore {
     const write = this.database.transaction(() => {
       this.database
         .prepare(
-          `INSERT INTO rooms (code, host_id, seat_count, seed, version, created_at, start_state, finished_at)
-           VALUES (@code, @hostId, @seatCount, @seed, @version, @createdAt, @startState, @finishedAt)
+          `INSERT INTO rooms (code, host_id, seat_count, seed, victory_point_goal, version, created_at, start_state, finished_at)
+           VALUES (@code, @hostId, @seatCount, @seed, @victoryPointGoal, @version, @createdAt, @startState, @finishedAt)
            ON CONFLICT(code) DO UPDATE SET
              host_id = @hostId, seat_count = @seatCount, seed = @seed,
+             victory_point_goal = @victoryPointGoal,
              version = @version, finished_at = @finishedAt,
              -- Der Startzustand wird nie ueberschrieben: er entsteht einmal
              -- beim Start und ist danach der Anker fuer das ganze Log.
@@ -68,6 +72,7 @@ export class SqliteRoomStore implements RoomStore {
           hostId: room.hostId,
           seatCount: room.seatCount,
           seed: room.seed,
+          victoryPointGoal: room.victoryPointGoal,
           version: room.version,
           createdAt: room.createdAt,
           startState: room.game === null ? null : JSON.stringify(room.game),
@@ -76,10 +81,10 @@ export class SqliteRoomStore implements RoomStore {
 
       this.database.prepare('DELETE FROM room_seats WHERE code = ?').run(room.code);
       const seat = this.database.prepare(
-        'INSERT INTO room_seats (code, position, user_id) VALUES (?, ?, ?)',
+        'INSERT INTO room_seats (code, position, user_id, color) VALUES (?, ?, ?, ?)',
       );
       room.seats.forEach((entry, position) => {
-        seat.run(room.code, position, entry.userId);
+        seat.run(room.code, position, entry.userId, entry.color);
       });
     });
 
@@ -116,7 +121,7 @@ export class SqliteRoomStore implements RoomStore {
   private rebuild(row: RoomRow): Room | null {
     const seatRows = this.database
       .prepare(
-        `SELECT s.position, s.user_id, u.name
+        `SELECT s.position, s.user_id, s.color, u.name
          FROM room_seats s JOIN users u ON u.id = s.user_id
          WHERE s.code = ? ORDER BY s.position`,
       )
@@ -125,7 +130,10 @@ export class SqliteRoomStore implements RoomStore {
     const seats: RoomSeat[] = seatRows.map((entry, index) => ({
       userId: entry.user_id,
       name: entry.name,
-      color: seatColorAt(index),
+      // Die Farbe steht seit Etappe 10 in der Zeile, weil sie gewaehlt wird und
+      // nicht mehr aus der Position folgt. Die Position bleibt als Rueckfall:
+      // sie ist genau das, was frueher galt.
+      color: entry.color ?? seatColorAt(index),
       // Verbunden ist eine Eigenschaft dieses Serverlaufs. Nach einem Neustart
       // ist niemand verbunden, bis er sich meldet.
       connected: false,
@@ -143,6 +151,7 @@ export class SqliteRoomStore implements RoomStore {
       hostId: row.host_id,
       seatCount: row.seat_count,
       seed: row.seed,
+      victoryPointGoal: row.victory_point_goal,
       seats,
       game,
       version: row.version,

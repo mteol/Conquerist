@@ -15,7 +15,7 @@ function withUsers(): { store: SqliteRoomStore; ids: string[] } {
 }
 
 function waitingRoom(ids: readonly string[]): Room {
-  const created = createRoom('K7X2', ids[0]!, 'Anna', 3, 'platte-probe');
+  const created = createRoom('K7X2', ids[0]!, 'Anna', 3, 'platte-probe', 10);
   if (!created.ok) throw new Error(created.error);
 
   let room = created.room;
@@ -86,7 +86,7 @@ describe('SqliteRoomStore', () => {
     // Ein Zug, den es in dieser Lage nicht geben kann.
     store.appendAction('K7X2', { type: 'endTurn', player: ids[0]! });
 
-    const heil = createRoom('M8Y3', ids[0]!, 'Anna', 3, 'heil');
+    const heil = createRoom('M8Y3', ids[0]!, 'Anna', 3, 'heil', 10);
     if (!heil.ok) throw new Error(heil.error);
     store.save(heil.room);
 

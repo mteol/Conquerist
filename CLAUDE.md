@@ -119,6 +119,32 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
 - Eine CSS-Regel schlägt immer das gleichnamige SVG-Präsentationsattribut.
   `.road { stroke: transparent }` hat jede gebaute Straße unsichtbar gemacht,
   obwohl `stroke={farbe}` am Element stand. Farben am SVG deshalb per `style`.
+- **Eine Farbe, die im Blatt steht, ist damit noch nicht gezeigt.** `.chip__hot`
+  hat die Sechs und die Acht seit Etappe 3 rot gefärbt — nur stand darüber
+  `.chip text`, und eine Klasse plus ein Typ schlägt eine Klasse allein. Die
+  Regel hat nie gegriffen, aufgefallen ist es erst im ersten Playtest, weil die
+  Farbe ja im Blatt stand. Wer eine Regel schreibt, die eine bestehende
+  überschreiben soll, zählt ihre Spezifität nach.
+- **Eine Animation, die beim Einhängen läuft, läuft beim Aktualisieren nicht.**
+  Der Ausbau zur Stadt hat denselben Knoten behalten, React hat das Element
+  aktualisiert statt es neu einzuhängen, und `animation: settle` blieb still —
+  aus einem Punkt wurde lautlos ein größerer Punkt. Wer einen *Wechsel* zeigen
+  will, gibt dem Element ein `key`, das sich mit dem Wechsel ändert
+  (`key={building.kind}`, `key={state.robber}`). Sonst zeigt die Animation nur
+  das erste Mal etwas.
+- **Erst messen, dann erklären — auch bei „das sieht man nicht".** Zu „am
+  Brettrand sind die Straßen unsichtbar" war die erste Vermutung ein fehlendes
+  Element. Eine Sonde (Brett in eine Datei rendern, Koordinaten und Klassen
+  auszählen) hat gezeigt: alle 30 Küstenkanten liegen in der `viewBox`, tragen
+  ihre Klasse und ihre Farbe. Die Ursache war der Untergrund — halb dunkle See.
+  Ohne die Sonde wäre ein Fehler gesucht worden, den es nicht gab.
+- **Was einstellbar wird, hört auf, ableitbar zu sein.** Die Sitzfarbe folgte
+  aus der Position (`seatColorAt(index)`), und daran hingen drei Stellen, die
+  fröhlich neu durchzählten — `joinRoom`, `leaveRoom` und der Wiederaufbau aus
+  der Datenbank. Sobald sie gewählt wird, ist jedes dieser Neuzählen ein
+  Eingriff in eine fremde Entscheidung, und die Spalte in der Datenbank ist
+  keine Redundanz mehr, sondern die einzige Wahrheit. Beim nächsten „das kann
+  man doch ausrechnen" gilt: nur solange es niemand aussuchen darf.
 - Eine Animation, die etwas ausblendet, ist bei `prefers-reduced-motion` von
   Anfang an unsichtbar — die abgeschaltete Animation steht sofort an ihrem
   Ende. Für Information deshalb nur Eingangs-, nie Ausgangsanimationen.
@@ -177,7 +203,18 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
 10. Erweiterungen
 
 ## Aktueller Stand
-Etappen 0 bis 9 fertig, und seit Etappe 9 liegt **alles in `main`** — der
+Etappen 0 bis 9 fertig. Danach kam der **erste Playtest** und mit ihm zwei
+Runden Anpassungen (`etappe-10-playtest`, siehe `PROGRESS.md`): heiße
+Zahlenchips, ein Schließkreuz in jedem Dialog, Farbe und Name als eigene
+Entscheidung im Wartebereich, ein einstellbares Siegpunktziel, der Bauvorrat,
+Umlaute in allen sichtbaren Texten — und dann **Bauen in zwei Schritten**
+(erst was, dann wo), ein ablehnbares Gegenangebot (`rejectCounter`), der
+Kaufstapel als Material statt als Knopf, eigene Silhouetten für Siedlung und
+Stadt (`board/shapes.ts`), Konturen unter den Straßen und getauschte Ecken für
+Verlauf und Status. Die Oberfläche ist dabei durchgehend **nicht** im Browser
+nachgesehen worden — das ist der größte offene Posten.
+
+Seit Etappe 9 liegt **alles in `main`** — der
 Merge der Kette 4–9 (`7872f27`) hat den Rückstand aufgelöst, den `main` seit
 Etappe 3 hatte. Coolify baut diesen Branch.
 

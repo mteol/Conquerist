@@ -11,6 +11,7 @@ import {
 } from '@conquerist/shared';
 import { MAX_SEATS, MIN_SEATS, SEAT_COLORS, defaultSeats, type Seat } from '../seats';
 import { BoardSvg } from '../board/BoardSvg';
+import { SETTLEMENT_PATH, VIEWBOX } from '../board/shapes';
 import { EMPTY_TARGETS } from '../game/targets';
 import { ConnectionPanel } from '../diagnostics/ConnectionPanel';
 import type { Identity } from '../game/useOnlineGame';
@@ -187,11 +188,11 @@ export function StartScreen({
 
   const startLocal = (): void => {
     if (blueprint === undefined) {
-      setLocalProblem(`Fuer ${seats.length} Spieler gibt es kein passendes Brett`);
+      setLocalProblem(`Für ${seats.length} Spieler gibt es kein passendes Brett`);
       return;
     }
     if (preview === null) {
-      setLocalProblem('Das Brett zu diesem Seed laesst sich nicht bauen');
+      setLocalProblem('Das Brett zu diesem Seed lässt sich nicht bauen');
       return;
     }
 
@@ -495,9 +496,9 @@ export function StartScreen({
  */
 function PieceMark({ color }: { readonly color: string }): JSX.Element {
   return (
-    <svg className="piece" viewBox="-10 -12 20 22" aria-hidden="true">
+    <svg className="piece" viewBox={VIEWBOX} aria-hidden="true">
       <path
-        d="M -8 8 L -8 -2 L 0 -10 L 8 -2 L 8 8 Z"
+        d={SETTLEMENT_PATH}
         style={{ fill: color, stroke: '#16202a' }}
         strokeWidth={1.6}
         strokeLinejoin="round"

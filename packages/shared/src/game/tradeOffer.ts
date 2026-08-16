@@ -27,6 +27,11 @@ export type TradeOffer = z.infer<typeof TradeOfferSchema>;
  * `automatic` unterscheidet die Ablehnung, die jemand ausgesprochen hat, von
  * der, die aus einem Verbindungsverlust entstanden ist. Nur die zweite wird bei
  * der Rueckkehr wieder zurueckgenommen - Gesprochenes bleibt stehen.
+ *
+ * `rejected` ist die vierte Antwort, und sie ist die einzige, die **nicht** vom
+ * Antwortenden stammt: der Anbieter hat ein Gegenangebot abgelehnt. Sie als
+ * `declined` zu fuehren waere bequem und falsch - im Verlauf staende dann, der
+ * Konternde habe abgelehnt, obwohl er gerade das Gegenteil getan hat.
  */
 export const TradeResponseSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('accepted') }),
@@ -34,6 +39,12 @@ export const TradeResponseSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('countered'),
     /** Aus Sicht des Konternden: was **er** hergibt. */
+    give: ResourceAmountsSchema,
+    want: ResourceAmountsSchema,
+  }),
+  z.object({
+    kind: z.literal('rejected'),
+    /** Das Gegenangebot, das der Anbieter ausgeschlagen hat - fuer den Verlauf. */
     give: ResourceAmountsSchema,
     want: ResourceAmountsSchema,
   }),

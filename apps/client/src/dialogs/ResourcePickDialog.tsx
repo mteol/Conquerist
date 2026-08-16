@@ -2,6 +2,7 @@ import { useState, type JSX } from 'react';
 import { RESOURCE_IDS, type ResourceId } from '@conquerist/shared';
 import { RESOURCE_COLORS, RESOURCE_LABELS } from '../game/labels';
 import { ResourceGlyph } from '../panels/ResourceGlyph';
+import { CloseButton } from './CloseButton';
 
 /**
  * Rohstoffe auswaehlen - fuer Erfindung und Monopol.
@@ -36,6 +37,7 @@ export function ResourcePickDialog({
   return (
     <div className="modal" role="dialog" aria-label={title}>
       <div className="modal__box">
+        <CloseButton onClose={onClose} label={title} />
         <h2>{title}</h2>
         <p className="modal__hint">{hint}</p>
 

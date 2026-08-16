@@ -58,7 +58,7 @@ function checkShape(
   if (overlaps(give, want)) {
     return violation(
       RuleViolationCode.INVALID_TRADE,
-      'Dieselbe Sorte auf beiden Seiten waere zum Teil kein Tausch',
+      'Dieselbe Sorte auf beiden Seiten wäre zum Teil kein Tausch',
     );
   }
 
@@ -346,7 +346,7 @@ export function canAcceptTrade(
   }
 
   if (player !== trade.offer.from) {
-    return violation(RuleViolationCode.NOT_THE_OFFERER, 'Nur der Anbieter schlaegt zu');
+    return violation(RuleViolationCode.NOT_THE_OFFERER, 'Nur der Anbieter schlägt zu');
   }
 
   const terms = termsFor(state, partner);
@@ -421,6 +421,74 @@ export function applyAcceptTrade(
   });
 }
 
+/**
+ * Ein einzelnes Gegenangebot ausschlagen.
+ *
+ * Das Gegenstueck zu `acceptTrade`, und der Grund, warum es das braucht: bis
+ * dahin konnte der Anbieter ein Gegenangebot nur annehmen oder sein ganzes
+ * Angebot zuruecknehmen. Wer von einem von drei Mitspielern ein Angebot bekam,
+ * das er nicht wollte, musste damit die Runde fuer alle beenden - auch fuer
+ * die, die noch ueberlegten.
+ *
+ * Geprueft wird nur, **dass** dort ein Gegenangebot liegt. Ob es bezahlbar
+ * waere, spielt keine Rolle: man darf auch ausschlagen, was man sich leisten
+ * koennte.
+ */
+export function canRejectCounter(
+  state: GameState,
+  player: PlayerId,
+  partner: PlayerId,
+): RuleViolation | null {
+  const trade = openTrade(state);
+  if (trade === null) {
+    return violation(RuleViolationCode.WRONG_PHASE, 'Es liegt gerade kein Angebot auf dem Tisch');
+  }
+
+  if (player !== trade.offer.from) {
+    return violation(
+      RuleViolationCode.NOT_THE_OFFERER,
+      'Nur der Anbieter schlägt ein Gegenangebot aus',
+    );
+  }
+
+  if (trade.responses[partner]?.kind !== 'countered') {
+    return violation(
+      RuleViolationCode.PARTNER_DID_NOT_ACCEPT,
+      `Von ${partner} liegt gerade kein Gegenangebot`,
+    );
+  }
+
+  return null;
+}
+
+export function applyRejectCounter(
+  state: GameState,
+  player: PlayerId,
+  partner: PlayerId,
+): ReduceResult {
+  const problem = canRejectCounter(state, player, partner);
+  if (problem !== null) return rejected(problem);
+
+  /*
+   * Das Gegenangebot bleibt in der Antwort stehen, nur die Art wechselt. Es
+   * ganz zu loeschen hiesse, den Partner wieder auf `undefined` zu setzen - er
+   * duerfte erneut antworten, und aus einem Ausschlagen wuerde eine Einladung,
+   * dasselbe noch einmal zu schicken.
+   *
+   * Ueber `withResponse` und nicht von Hand: dort steht die eine Stelle, an der
+   * eine Runde zu Ende geht, sobald niemand mehr zusagt oder kontert. Genau das
+   * kann dieses Ausschlagen ausloesen, wenn es die letzte offene Antwort war.
+   */
+  const answer = openTrade(state)!.responses[partner]!;
+  if (answer.kind !== 'countered') return rejected(canRejectCounter(state, player, partner)!);
+
+  return withResponse(state, partner, {
+    kind: 'rejected',
+    give: answer.give,
+    want: answer.want,
+  });
+}
+
 export function canWithdrawTrade(state: GameState, player: PlayerId): RuleViolation | null {
   const trade = openTrade(state);
   if (trade === null) {
@@ -429,7 +497,7 @@ export function canWithdrawTrade(state: GameState, player: PlayerId): RuleViolat
 
   return player === trade.offer.from
     ? null
-    : violation(RuleViolationCode.NOT_THE_OFFERER, 'Nur der Anbieter nimmt sein Angebot zurueck');
+    : violation(RuleViolationCode.NOT_THE_OFFERER, 'Nur der Anbieter nimmt sein Angebot zurück');
 }
 
 export function applyWithdrawTrade(state: GameState, player: PlayerId): ReduceResult {
@@ -449,12 +517,12 @@ export function applyWithdrawTrade(state: GameState, player: PlayerId): ReduceRe
 export function canTimeout(state: GameState, at: number): RuleViolation | null {
   const due = deadlineOf(state);
   if (due === null) {
-    return violation(RuleViolationCode.WRONG_PHASE, 'Gerade laeuft keine Frist');
+    return violation(RuleViolationCode.WRONG_PHASE, 'Gerade läuft keine Frist');
   }
 
   return at >= due.at
     ? null
-    : violation(RuleViolationCode.DEADLINE_NOT_REACHED, 'Die Frist laeuft noch');
+    : violation(RuleViolationCode.DEADLINE_NOT_REACHED, 'Die Frist läuft noch');
 }
 
 export function applyTimeout(state: GameState, at: number): ReduceResult {
@@ -504,7 +572,7 @@ export function applyRejoinTrade(state: GameState, player: PlayerId): ReduceResu
     return rejected(
       violation(
         RuleViolationCode.ALREADY_RESPONDED,
-        `${player} traegt keine automatische Ablehnung`,
+        `${player} trägt keine automatische Ablehnung`,
       ),
     );
   }

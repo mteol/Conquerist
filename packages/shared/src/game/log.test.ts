@@ -40,7 +40,7 @@ describe('Verlaufssaetze', () => {
     const after = apply(before, action);
 
     expect(describeTransition(before, action, after, seats)).toContain('Spieler 1');
-    expect(describeTransition(before, action, after, seats)).toContain('Gruendungssiedlung');
+    expect(describeTransition(before, action, after, seats)).toContain('Gründungssiedlung');
   });
 
   it('nennt beim Wurf die Augenzahl', () => {
@@ -144,6 +144,6 @@ describe('Verlaufssaetze zum Spielerhandel', () => {
     const back = step(gone.state, { type: 'rejoinTrade', player: 'p2' });
 
     expect(gone.entry).toContain('nicht mehr da');
-    expect(back.entry).toContain('zurueck');
+    expect(back.entry).toContain('zurück');
   });
 });

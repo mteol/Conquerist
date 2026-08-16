@@ -15,10 +15,16 @@ import {
   ACT,
   ACT_OK,
   ActRequestSchema,
+  CHOOSE_COLOR,
+  COLOR_CHOSEN,
   CONFIGURE_ROOM,
   CREATE_ROOM,
+  ChooseColorRequestSchema,
   ConfigureRoomRequestSchema,
   CreateRoomRequestSchema,
+  RENAME,
+  RENAMED,
+  RenameRequestSchema,
   ROOM_CONFIGURED,
   EmptyRequestSchema,
   EmptyResponseSchema,
@@ -93,6 +99,16 @@ export const protocol = {
   [CONFIGURE_ROOM]: {
     responseType: ROOM_CONFIGURED,
     request: ConfigureRoomRequestSchema,
+    response: EmptyResponseSchema,
+  },
+  [CHOOSE_COLOR]: {
+    responseType: COLOR_CHOSEN,
+    request: ChooseColorRequestSchema,
+    response: EmptyResponseSchema,
+  },
+  [RENAME]: {
+    responseType: RENAMED,
+    request: RenameRequestSchema,
     response: EmptyResponseSchema,
   },
   [START_GAME]: {

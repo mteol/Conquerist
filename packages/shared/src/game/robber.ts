@@ -125,13 +125,13 @@ export function canMoveRobber(
   if (!board.hexes.has(hex)) {
     return violation(
       RuleViolationCode.NOT_ON_BOARD,
-      `Das Feld ${hex} gehoert nicht zu diesem Brett`,
+      `Das Feld ${hex} gehört nicht zu diesem Brett`,
     );
   }
   if (hex === state.robber) {
     return violation(
       RuleViolationCode.ROBBER_SAME_HEX,
-      'Der Raeuber steht bereits auf diesem Feld und muss weiterziehen',
+      'Der Räuber steht bereits auf diesem Feld und muss weiterziehen',
     );
   }
 

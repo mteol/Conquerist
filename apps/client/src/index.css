@@ -45,6 +45,20 @@
   --warn: #d99a2b;
   --bad: #c0503f;
 
+  /*
+   * Dieselben drei Bedeutungen, aber auf Pergament statt auf Tiefsee.
+   *
+   * `--ok`, `--warn` und `--bad` sind fuer die dunkle Flaeche gemischt. Auf
+   * einem Zahlenchip oder einem Knopf aus Pergament stehen sie zu hell: die
+   * Sechs auf ihrem Chip und ein rotes „Ablehnen" brauchen den satteren Ton,
+   * sonst traegt die Farbe die Bedeutung nur noch halb. Gleiche Bedeutung,
+   * anderer Untergrund - deshalb ein zweites Tripel und keine Ausnahme im
+   * Einzelfall.
+   */
+  --ok-ink: #2f6b3a;
+  --warn-ink: #a8741a;
+  --bad-ink: #a52a1e;
+
   --radius: 10px;
   --shadow: 0 12px 32px rgb(0 0 0 / 35%);
 
@@ -166,6 +180,34 @@ body {
   border-color: rgb(233 225 207 / 30%);
   color: var(--on-sea);
   font-weight: 500;
+}
+
+/*
+ * Zusagen, absagen, nachbessern - die drei Antworten auf ein Angebot.
+ *
+ * Sie sind der einzige Ort im Spiel, an dem drei Knoepfe nebeneinander stehen
+ * und verschiedene Richtungen meinen. Bisher trugen sie `button`, `button` und
+ * `button--ghost`: zwei sahen gleich aus, und der dritte war auf Pergament
+ * praktisch unsichtbar - im Playtest hat niemand gesehen, dass man ein Angebot
+ * auch anpassen kann. Also bekommt jede Richtung ihre Farbe.
+ *
+ * Die Farbe traegt das nicht allein: auf jedem Knopf steht, was er tut. Wer
+ * Rot und Gruen nicht unterscheidet, liest „Annehmen" und „Ablehnen" - deshalb
+ * auch kein Symbol statt der Woerter (Regel 7).
+ */
+.button--yes {
+  background: var(--ok-ink);
+  color: #f4f9f5;
+}
+
+.button--no {
+  background: var(--bad-ink);
+  color: #fdf3f1;
+}
+
+.button--adjust {
+  background: var(--warn);
+  color: #2a1f06;
 }
 
 /* --- Hauptmenue ----------------------------------------------------------- *
@@ -1326,6 +1368,109 @@ body {
   overflow-wrap: anywhere;
 }
 
+/*
+ * Das Siegpunktziel: eine Zahl, so gross wie der Seed danebensteht.
+ *
+ * Es ist die Einstellung, die sagt, wie lange der Abend dauert - sie darf
+ * nicht kleiner gesetzt sein als die Zeichenkette, die sagt, wie das Brett
+ * aussieht.
+ */
+.lobby__goal {
+  margin: 0;
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--parchment);
+}
+
+/*
+ * Der eigene Kasten - Name und Farbe.
+ *
+ * Er sitzt zwischen Tisch und Bretteinstellungen, und das ist Absicht: was
+ * einem selbst gehoert, steht naeher am eigenen Sitz als das, was fuer alle
+ * gilt.
+ */
+.lobby__namefield {
+  width: min(100%, 14rem);
+}
+
+.lobby__namefield input {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgb(233 225 207 / 26%);
+  border-radius: 8px;
+  background: rgb(0 0 0 / 22%);
+  color: var(--on-sea);
+  font: inherit;
+  font-weight: 650;
+  text-align: center;
+}
+
+/*
+ * Die sechs Farben.
+ *
+ * Umbruchfaehige Reihe statt Raster: bei sechs Eintraegen und einem schmalen
+ * Fenster wird daraus von selbst ein Block, ohne dass eine Spaltenzahl geraten
+ * werden muss.
+ *
+ * Belegt heisst gesperrt und blass - und der `title` sagt, bei wem die Farbe
+ * liegt. Ein Fleck, der sich nicht druecken laesst und nicht sagt warum, ist
+ * eine Sackgasse.
+ */
+.colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: center;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.colors__pick {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.25rem 0.5rem 0.25rem 0.3rem;
+  border: 1px solid rgb(233 225 207 / 18%);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-sea-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.colors__pick:hover:not(:disabled) {
+  border-color: rgb(233 225 207 / 45%);
+  color: var(--on-sea);
+}
+
+/*
+ * Die eigene Farbe traegt einen vollen Rand und den hellen Text - nicht nur
+ * einen Farbfleck, den sie ohnehin schon hat. `aria-pressed` sagt dasselbe fuer
+ * Vorlesewerkzeuge.
+ */
+.colors__pick--mine {
+  border-color: var(--parchment);
+  color: var(--parchment);
+}
+
+.colors__pick:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.colors__pick .piece--seat {
+  width: 1rem;
+  height: 1.1rem;
+}
+
 .lobby__foot {
   display: flex;
   flex-direction: column;
@@ -1383,23 +1528,45 @@ body {
   left: 0.75rem;
 }
 
+/*
+ * Verlauf oben, Status unten - seit dem ersten Playtest andersherum als vorher.
+ *
+ * Der Grund ist der Blick: wer am Zug ist, liest man staendig und beilaeufig,
+ * den Verlauf liest man selten und dann genau. Das Beilaeufige gehoert in die
+ * Naehe der Ablage, in der man ohnehin handelt; der Verlauf darf nach oben, wo
+ * er niemandem im Weg steht. Vorher war es genau umgekehrt, und der Blick
+ * sprang bei jedem Zug quer ueber den Bildschirm.
+ */
 .panel--status {
-  top: 0.75rem;
+  bottom: 0.75rem;
   right: 0.75rem;
   text-align: right;
 }
 
 /*
- * Unten links stapeln sich Hand und Aktionen.
+ * Unten liegt die Ablage, und sie liest sich von links nach rechts wie ein Zug:
+ * was man hat, was man kaufen kann, was man damit tut.
  *
- * Beide gehoeren zusammen: was man tun kann, haengt daran, was man hat. Sie
- * teilen sich deshalb eine Spalte, statt getrennt in zwei Ecken zu schweben -
- * der Blick springt sonst zwischen ihnen hin und her.
+ * Bis zum ersten Playtest war das eine Spalte, und der Kaufstapel gar kein
+ * Material, sondern ein Knopf mit der Aufschrift „Karte kaufen" zwischen zwei
+ * anderen Knoepfen. Als Zeile bekommt jedes Stueck seinen Platz, und die
+ * Ablage wird flacher statt hoeher - das Brett darueber gewinnt dabei.
+ *
+ * `flex-end` und nicht `stretch`: die drei Bereiche sind verschieden hoch und
+ * sollen unten auf einer Linie stehen, nicht auf gleiche Hoehe gezogen werden.
  */
 .tray {
   position: absolute;
+  right: 15.5rem;
   bottom: 0.75rem;
   left: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.tray__hand {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -1410,8 +1577,131 @@ body {
   position: static;
 }
 
+/*
+ * Der Kaufstapel.
+ *
+ * Er sitzt zwischen Hand und Bauleiste, weil er dorthin gehoert: er ist die
+ * Bank, soweit sie auf dem Tisch liegt, und damit Spielmaterial - kein
+ * Bedienelement. Deshalb traegt er auch keinen Rahmen wie die Panels daneben.
+ */
+.deck {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.deck__pile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 3.1rem;
+  height: 4.2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.deck__pile:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/*
+ * Die Ruecken. Der oberste traegt die Zahl, die darunter sind nur Tiefe -
+ * deshalb `aria-hidden` am Element und hier keine eigene Beschriftung.
+ */
+.deck__backs {
+  position: absolute;
+  inset: 0;
+}
+
+.deck__backs > span {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 7px;
+  background: linear-gradient(160deg, var(--parchment) 0%, var(--parchment-2) 100%);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 28%);
+}
+
+.deck__count {
+  position: relative;
+  color: var(--ink);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Kaufbar heisst: der Stapel bekommt denselben Rand wie ein bereiter Knopf. */
+.deck__pile--ready .deck__backs > span:last-child {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgb(224 179 74 / 45%);
+}
+
+.deck__label {
+  color: var(--on-sea-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/*
+ * Die Bauleiste - der erste der beiden Schritte.
+ *
+ * Jedes Bauteil traegt seine Silhouette vom Brett: wer hier „Stadt" drueckt,
+ * sieht dieselbe Form gleich am Knoten stehen. Gesperrt heisst genau, dass es
+ * dafuer keine Karten oder keine Stelle gibt - das entscheidet die
+ * Aktionsliste, nicht dieser Kasten.
+ */
+.build {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.build__pick {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  padding: 0.3rem 0.55rem 0.3rem 0.4rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 8px;
+  background: var(--parchment-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.build__pick:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/*
+ * Das gewaehlte Bauteil bleibt sichtbar gewaehlt, solange das Brett darauf
+ * wartet. Ohne diese Markierung weiss man nach dem Blick aufs Brett nicht mehr,
+ * was man eigentlich gedrueckt hat.
+ */
+.build__pick--active {
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgb(224 179 74 / 55%);
+}
+
+.piece--build {
+  width: 1.05rem;
+  height: 1rem;
+}
+
 .panel--log {
-  bottom: 0.75rem;
+  top: 0.75rem;
   right: 0.75rem;
 }
 
@@ -1584,7 +1874,64 @@ body {
   flex-direction: column;
   gap: 0.15rem;
   align-items: flex-start;
+}
+
+/*
+ * Wuerfel links, Bauvorrat rechts.
+ *
+ * Beide beantworten dieselbe Frage - was geht in diesem Zug -, und beide sind
+ * Spielmaterial und keine Bedienung. Deshalb stehen sie in einer Zeile und die
+ * Knoepfe darunter. `space-between` schiebt den Vorrat an den rechten Rand: er
+ * ist eine Auskunft und braucht keine Naehe zum Becher.
+ */
+.panel__top {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  justify-content: space-between;
   margin-bottom: 0.55rem;
+}
+
+/*
+ * Der eigene Vorrat.
+ *
+ * Drei Zeilen statt einer Reihe: die Zahlen stehen damit untereinander und
+ * lassen sich vergleichen, ohne dass der Blick springt. Tabellenziffern kommen
+ * aus `:root` - eine 3 und eine 13 duerfen die Zeile nicht verschieben.
+ */
+.stock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stock__item {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+/*
+ * Aufgebraucht wird blass, nicht unsichtbar.
+ *
+ * Ein Eintrag, der verschwindet, sieht aus wie ein Anzeigefehler - und
+ * ausgerechnet die Null ist die Auskunft, auf die es ankommt: die letzte
+ * Strasse faellt sonst erst auf, wenn der Server sie ablehnt.
+ */
+.stock__item--empty {
+  opacity: 0.35;
+}
+
+.piece--stock {
+  width: 1.05rem;
+  height: 1.15rem;
 }
 
 .dice {
@@ -1780,13 +2127,30 @@ body {
   dominant-baseline: central;
 }
 
-.chip__hot {
-  fill: #a52a1e;
+/*
+ * Die Sechs und die Acht - die zwei Zahlen, die am haeufigsten fallen.
+ *
+ * Die Regel heisst `.chip text.chip__hot` und nicht `.chip__hot`: darueber
+ * steht `.chip text` (eine Klasse plus ein Typ), und die schlaegt eine Klasse
+ * allein. Die Farbe stand deshalb zwar im Blatt, gesehen hat sie nie jemand -
+ * beim ersten Playtest waren die heissen Zahlen so schwarz wie alle anderen.
+ *
+ * Rot ist nicht der einzige Traeger: die Punktreihe darunter ist bei diesen
+ * beiden am laengsten, und sie faerbt sich mit. Wer Rot schlecht sieht, zaehlt
+ * die Punkte - das ist dieselbe Auskunft.
+ */
+.chip text.chip__hot {
+  fill: var(--bad-ink);
+  font-size: 0.36px;
 }
 
 .chip__pips {
   font-size: 0.19px;
   letter-spacing: 0.035px;
+}
+
+.chip text.chip__pips--hot {
+  fill: var(--bad-ink);
 }
 
 .harbor circle {
@@ -1815,14 +2179,54 @@ body {
  * Das darf sie, weil keine dieser Bewegungen etwas erzaehlt, das nicht auch
  * ohne sie am Bildschirm steht.
  */
+/*
+ * Der Raeuber zieht sichtbar um.
+ *
+ * 300 ms waren im Playtest zu leise - wer nicht ohnehin auf das Zielfeld sah,
+ * hat den Wechsel verpasst. Jetzt laenger und mit einem Bogen (`cubic-bezier`
+ * mit Ueberschwinger), dazu der Ring am Ziel. Beides ist Beiwerk: wo er steht,
+ * sagt die Figur selbst.
+ */
 .robber {
-  transition: transform 300ms ease;
+  transition: transform 460ms cubic-bezier(0.34, 1.28, 0.64, 1);
 }
 
 .robber circle {
   fill: #24211d;
   stroke: #0c0b0a;
   stroke-width: 0.02;
+}
+
+/*
+ * Der Ring, der einmal aufgeht - am Zielfeld des Raeubers und an jedem neuen
+ * Bauwerk.
+ *
+ * Er faengt klein und deckend an und laeuft nach aussen aus. Bei abgeschalteter
+ * Bewegung steht er sofort an seinem Ende, also unsichtbar - und das ist hier
+ * richtig: er erklaert einen Wechsel, den man auch ohne ihn ablesen kann
+ * (`data-hex` am Raeuber, die Silhouette am Knoten). Fuer Information waere nur
+ * ein Eingang erlaubt, nie ein Ausgang.
+ */
+.robber__flash,
+.build-flash {
+  fill: none;
+  stroke: #f6efdf;
+  stroke-width: 0.06;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: flash-ring 620ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes flash-ring {
+  from {
+    opacity: 0.85;
+    transform: scale(0.25);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1);
+  }
 }
 
 @keyframes settle {
@@ -1855,8 +2259,22 @@ body {
 }
 
 .road--built {
-  stroke-width: 0.15;
-  paint-order: stroke;
+  stroke-width: 0.16;
+}
+
+/*
+ * Die Kontur unter einer gebauten Strasse.
+ *
+ * Sie ist die Antwort auf „am Brettrand sind die Strassen unsichtbar": im
+ * Inneren liegt eine Strasse zwischen zwei hellen Gelaendefeldern, an der
+ * Kueste zur Haelfte auf der dunklen See - und ein dunkelblauer oder violetter
+ * Streifen darauf verschwindet. Dieselbe Tinte wie die Feldraender, damit die
+ * Kontur zum Brett gehoert und nicht wie ein Schlagschatten wirkt.
+ */
+.road__casing {
+  stroke: #16202a;
+  stroke-width: 0.24;
+  stroke-linecap: round;
 }
 
 .road--target {
@@ -1884,9 +2302,15 @@ body {
   fill: #f6efdf;
 }
 
+/*
+ * Siedlung und Stadt tragen ihre Kontur im **Pfadmass**, nicht im Brettmass:
+ * der Pfad steckt in einem `scale(0.02)`, und eine Linienbreite von 0.03 waere
+ * darin auf ein Sechzigstel geschrumpft, also gar nichts. 1,4 im Pfadraum
+ * ergeben rund 0.03 auf dem Brett - genau so viel wie vorher am Punkt.
+ */
 .vertex__building {
   stroke: #16202a;
-  stroke-width: 0.03;
+  stroke-width: 1.4;
   stroke-linejoin: round;
 }
 
@@ -1902,6 +2326,7 @@ body {
 }
 
 .modal__box {
+  position: relative;
   min-width: min(22rem, 100%);
   max-width: min(92vw, 34rem);
   padding: 1.1rem 1.3rem;
@@ -1911,6 +2336,44 @@ body {
   color: var(--ink);
   box-shadow: var(--shadow);
   text-align: center;
+}
+
+/*
+ * Das Kreuz oben rechts.
+ *
+ * Es liegt im Rand und nicht im Text: die Ueberschrift behaelt ihre Mitte, und
+ * kein Dialog rueckt eine Zeile tiefer, nur weil er sich schliessen laesst. Die
+ * Trefferflaeche ist groesser als das gezeichnete Kreuz - 2,25 rem im Quadrat,
+ * damit auch ein Daumen sie findet.
+ */
+.modal__close {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.modal__close:hover {
+  background: rgb(22 32 42 / 10%);
+  color: var(--ink);
+}
+
+.modal__close svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  stroke: currentcolor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
 }
 
 .modal__box h2 {
@@ -2275,4 +2738,91 @@ body {
 
 .offer__answer .button {
   margin-left: auto;
+}
+
+/*
+ * Ein offenes Gegenangebot.
+ *
+ * Es stand einmal als Zeile zwischen den anderen Antworten, und daran war
+ * zweierlei falsch: es ist keine Auskunft, sondern eine **Frage an den
+ * Anbieter**, und die Richtung stand aus der Sicht des Konternden da. Wer sein
+ * eigenes Angebot vor Augen hat, liest „bietet 1 Erz für 3 Holz" zwangslaeufig
+ * falsch herum.
+ *
+ * Deshalb ein eigener Kasten mit dem Rand, den sonst nur Bedienbares hat, und
+ * zwei beschriftete Zeilen statt einer Reihenfolge, die man raten muss.
+ */
+.counter {
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--parchment-edge);
+  border-left: 3px solid var(--warn-ink);
+  border-radius: 8px;
+  background: rgb(22 32 42 / 5%);
+  text-align: left;
+}
+
+.counter__who {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.counter__terms {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0 0 0.5rem;
+}
+
+.counter__terms > div {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  font-size: 0.88rem;
+}
+
+.counter__terms dt {
+  color: var(--ink-muted);
+}
+
+.counter__terms dd {
+  margin: 0;
+  font-weight: 650;
+  text-align: right;
+}
+
+.counter__buttons {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Im Kasten sitzen die Knoepfe enger als im Dialog ringsum. */
+.counter__buttons .button {
+  margin: 0;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.counter__buttons .modal__problem {
+  margin: 0 auto 0 0;
+  font-size: 0.8rem;
+}
+
+/*
+ * Wer geantwortet hat, liest seine Antwort - und nicht drei graue Knoepfe.
+ */
+.offer__done {
+  margin-top: 0.6rem;
+}
+
+.offer__mine {
+  margin: 0 0 0.2rem;
+  font-weight: 650;
 }

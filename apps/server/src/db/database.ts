@@ -50,6 +50,7 @@ const MIGRATIONS: readonly ((database: AppDatabase) => void)[] = [
   stepInitialSchema,
   stepSessionsAndAccounts,
   stepSessionExpiry,
+  stepSeatColorAndGoal,
 ];
 
 export function migrate(database: AppDatabase): void {
@@ -228,5 +229,41 @@ function stepSessionExpiry(database: AppDatabase): void {
 
     /* Fuer purgeExpired: der einzige Zugriff, der nicht ueber den Schluessel geht. */
     CREATE INDEX sessions_expires ON sessions(expires_at);
+  `);
+}
+
+/**
+ * Etappe 10: die Farbe wird gewaehlt, das Siegpunktziel eingestellt.
+ *
+ * Beides waren bisher Ableitungen und deshalb keine Spalte: die Farbe folgte
+ * aus der Sitzposition, das Ziel stand fest in `CLASSIC_RULES`. Wer sie
+ * einstellen kann, muss sie speichern - sonst sitzt nach jedem Serverneustart
+ * jeder wieder in der Farbe seines Platzes, und ein Wartebereich mit Ziel 15
+ * startet mit 10.
+ *
+ * Der Bestand bekommt genau das, was vorher galt, und keine Fantasiewerte:
+ * `position` ist die Farbe, die diese Zeile bisher bekommen haette, und 10 ist
+ * das Ziel, mit dem jede bisherige Partie begonnen hat. Die sechs Farbwerte
+ * stehen deshalb als Zeichenkette hier und nicht als Import aus `SEAT_COLORS` -
+ * ein Schritt, der eine Konstante liest, aendert sein Ergebnis, sobald jemand
+ * die Konstante aendert, und waere dann nicht mehr der Schritt, der einmal
+ * veroeffentlicht wurde.
+ *
+ * Laufende Partien bleiben unberuehrt: ihr Ziel steht im RuleSet des
+ * gespeicherten Startzustands, und der wird nie ueberschrieben.
+ */
+function stepSeatColorAndGoal(database: AppDatabase): void {
+  database.exec(`
+    ALTER TABLE room_seats ADD COLUMN color TEXT;
+    ALTER TABLE rooms ADD COLUMN victory_point_goal INTEGER NOT NULL DEFAULT 10;
+
+    UPDATE room_seats SET color = CASE position
+      WHEN 0 THEN '#c0392b'
+      WHEN 1 THEN '#2c6fbb'
+      WHEN 2 THEN '#e08a2e'
+      WHEN 3 THEN '#3f8f5b'
+      WHEN 4 THEN '#8e5bb5'
+      WHEN 5 THEN '#d8d3c7'
+    END;
   `);
 }

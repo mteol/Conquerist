@@ -10,9 +10,10 @@ import {
   type ResourceId,
 } from '@conquerist/shared';
 import { BoardSvg, type Place } from '../board/BoardSvg';
-import { EMPTY_TARGETS, targetsFrom } from '../game/targets';
+import { EMPTY_TARGETS, buildKindOf, targetsFrom, type BuildableKind } from '../game/targets';
 import { discardCountForView, gameViewOf, type PlayerRow } from '../game/view';
 import { ActionPanel } from '../panels/ActionPanel';
+import { DeckPanel } from '../panels/DeckPanel';
 import { HandPanel } from '../panels/HandPanel';
 import { DevelopmentCards } from '../panels/DevelopmentCards';
 import { ResourcePickDialog } from '../dialogs/ResourcePickDialog';
@@ -73,6 +74,13 @@ export interface GameScreenProps {
   readonly clockOffset?: number;
 }
 
+/** Der Satz zum zweiten Schritt - benannt wird, was der Spieler tut (Regel 8). */
+const BUILD_HINTS: Readonly<Record<BuildableKind, string>> = {
+  road: 'Straße bauen: Kante auf dem Brett wählen',
+  settlement: 'Siedlung bauen: Knoten auf dem Brett wählen',
+  city: 'Stadt bauen: eigene Siedlung auf dem Brett wählen',
+};
+
 export function GameScreen({
   view,
   actions,
@@ -95,6 +103,15 @@ export function GameScreen({
    * Modus ist aus; ein leeres Feld heisst, die erste Kante fehlt noch.
    */
   const [buildingRoads, setBuildingRoads] = useState<readonly EdgeId[] | null>(null);
+  /**
+   * Was gerade gebaut werden soll - der erste der beiden Schritte.
+   *
+   * Bis zum ersten Playtest gab es diesen Schritt nicht: das Brett leuchtete an
+   * jeder Stelle, an der irgendetwas moeglich war, und was ein Klick brachte,
+   * ergab sich aus dem Ort. Bei drei Bauteilen gleichzeitig ist das ein Raten
+   * mit Ansage. `null` heisst: das Brett ist ruhig.
+   */
+  const [buildMode, setBuildMode] = useState<BuildableKind | null>(null);
   const [revealed, setRevealed] = useState(!concealBetweenTurns);
 
   /*
@@ -131,6 +148,10 @@ export function GameScreen({
   useEffect(() => {
     setBuildingRoads(null);
     setPicking(null);
+    // Auch die Bauwahl: nach dem Bauen ist sie erledigt, und nach einem fremden
+    // Zug stimmt sie vielleicht nicht mehr - was eben noch ging, kann jetzt am
+    // Vorrat oder am Nachbarn scheitern.
+    setBuildMode(null);
   }, [view.version]);
 
   const targets = useMemo(() => targetsFrom(actions), [actions]);
@@ -138,30 +159,49 @@ export function GameScreen({
   /**
    * Was auf dem Brett leuchtet.
    *
-   * Im Strassenbau-Modus nicht die gewoehnlichen Ziele, sondern die, die der
-   * Server fuer diese Karte ausgerechnet hat - und nach der ersten Kante nur
-   * noch die, die danach ueberhaupt noch gehen. Der Anschluss ist eine Regel,
-   * und die steht nicht im Browser.
+   * Drei Faelle, in dieser Reihenfolge:
+   *
+   * 1. **Strassenbau-Karte.** Dann nicht die gewoehnlichen Ziele, sondern die,
+   *    die der Server fuer diese Karte ausgerechnet hat - und nach der ersten
+   *    Kante nur noch die, die danach ueberhaupt noch gehen. Der Anschluss ist
+   *    eine Regel, und die steht nicht im Browser.
+   * 2. **Ein Bauteil ist gewaehlt.** Dann nur dessen Stellen.
+   * 3. **Nichts gewaehlt.** Dann bleibt das Brett ruhig, was das Bauen angeht -
+   *    aber die Gruendung und der Raeuber leuchten weiter. Beide sind keine
+   *    Wahl: in der Gruendung gibt es genau eine Sache zu setzen, und der
+   *    Raeuber muss versetzt werden. Ein Knopf davor waere ein Schritt, der
+   *    nichts entscheidet.
    */
   const boardTargets = useMemo(() => {
-    if (buildingRoads === null) return targets;
+    if (buildingRoads !== null) {
+      const first = buildingRoads[0];
+      const legal =
+        first === undefined
+          ? Object.keys(view.roadBuildingTargets)
+          : (view.roadBuildingTargets[first] ?? []);
 
-    const first = buildingRoads[0];
-    const legal =
-      first === undefined
-        ? Object.keys(view.roadBuildingTargets)
-        : (view.roadBuildingTargets[first] ?? []);
+      return {
+        ...EMPTY_TARGETS,
+        edges: new Map(
+          legal.map((edge) => [
+            edge,
+            { type: 'playRoadBuilding', player: view.you, edges: [edge] } as GameAction,
+          ]),
+        ),
+      };
+    }
+
+    const shown = (action: GameAction): boolean => {
+      const kind = buildKindOf(action);
+      return kind === null || kind === buildMode;
+    };
 
     return {
-      ...EMPTY_TARGETS,
-      edges: new Map(
-        legal.map((edge) => [
-          edge,
-          { type: 'playRoadBuilding', player: view.you, edges: [edge] } as GameAction,
-        ]),
-      ),
+      ...targets,
+      vertices: new Map([...targets.vertices].filter(([, action]) => shown(action))),
+      edges: new Map([...targets.edges].filter(([, action]) => shown(action))),
     };
-  }, [targets, buildingRoads, view.roadBuildingTargets, view.you]);
+  }, [targets, buildMode, buildingRoads, view.roadBuildingTargets, view.you]);
 
   const pick = useCallback(
     (place: Place) => {
@@ -276,27 +316,46 @@ export function GameScreen({
       <StatusPanel view={display} />
       <LogPanel entries={log} />
 
+      {/*
+       * Die Ablage liest sich von links nach rechts wie ein Zug: was man hat,
+       * was man kaufen kann, was man damit tut. Der Kaufstapel steht deshalb
+       * zwischen Hand und Bauleiste und nicht als dritter Knopf zwischen
+       * „Handel" und „Zug beenden" - er ist Spielmaterial und keine Bedienung.
+       */}
       <div className="tray">
-        <HandPanel
-          resources={you?.resources ?? null}
-          cardCount={you?.cardCount ?? 0}
-          covered={!revealed}
-          onReveal={() => setRevealed(true)}
-          {...(concealBetweenTurns && you !== undefined ? { owner: you.name } : {})}
-        />
-
-        {revealed && you?.developmentCards != null ? (
-          <DevelopmentCards
-            cards={you.developmentCards}
-            playable={view.playableCards}
-            onPlay={playCard}
+        <div className="tray__hand">
+          <HandPanel
+            resources={you?.resources ?? null}
+            cardCount={you?.cardCount ?? 0}
+            covered={!revealed}
+            onReveal={() => setRevealed(true)}
+            {...(concealBetweenTurns && you !== undefined ? { owner: you.name } : {})}
           />
-        ) : null}
+
+          {revealed && you?.developmentCards != null ? (
+            <DevelopmentCards
+              cards={you.developmentCards}
+              playable={view.playableCards}
+              onPlay={playCard}
+            />
+          ) : null}
+        </div>
+
+        <DeckPanel
+          left={display.deckLeft}
+          canBuy={targets.buyCard !== null}
+          onBuy={() => {
+            if (targets.buyCard !== null) onAct(targets.buyCard);
+          }}
+        />
 
         <ActionPanel
           view={display}
           targets={targets}
           error={error}
+          stock={you === undefined ? null : { piecesLeft: you.piecesLeft, color: you.color }}
+          buildMode={buildMode}
+          onBuildMode={setBuildMode}
           onRoll={() => {
             if (targets.roll !== null) onAct(targets.roll);
           }}
@@ -304,15 +363,31 @@ export function GameScreen({
             if (targets.endTurn !== null) onAct(targets.endTurn);
           }}
           onOpenTrade={() => setTradeOpen(true)}
-          onBuyCard={() => {
-            if (targets.buyCard !== null) onAct(targets.buyCard);
-          }}
           onDismissError={onDismissError}
         />
       </div>
 
       {mustDiscard > 0 && you !== undefined ? (
+        /*
+         * `key` auf den Besitzer - und das ist keine Feinheit, sondern die
+         * Behebung eines Fehlers aus dem Playtest.
+         *
+         * Nach einer Sieben muessen am selben Geraet oft zwei nacheinander
+         * abwerfen. Wenn der erste fertig ist, bleibt die Bedingung darueber
+         * wahr (jetzt muss der naechste), React haengt den Dialog also **nicht
+         * aus**, sondern schreibt nur neue Eigenschaften hinein - und sein
+         * `chosen` lebt weiter. Im Playtest stand deshalb bei Spieler 3 „Lehm:
+         * 1 von 0": die Auswahl von Spieler 1. Der Server hat den Abwurf mit
+         * „hat diese Karten gar nicht auf der Hand" abgewiesen, und die Sieben
+         * war nicht mehr aufzuloesen.
+         *
+         * Dieselbe Falle wie beim Angebotsdialog (siehe CLAUDE.md): wer
+         * Zustand haelt, der zu *einem* Vorgang gehoert, muss ihn beim Wechsel
+         * loswerden. Ein `key` ist der kuerzeste Weg dorthin - er macht aus dem
+         * Wechsel ein neues Element.
+         */
         <DiscardDialog
+          key={view.you}
           player={you}
           required={mustDiscard}
           onConfirm={(resources: ResourceAmounts) => {
@@ -412,6 +487,20 @@ export function GameScreen({
         </div>
       )}
 
+      {/*
+       * Der zweite Schritt, in Worten. Dieselbe Leiste wie beim Strassenbau -
+       * beide sagen dasselbe („jetzt auf dem Brett zeigen"), und zwei
+       * verschiedene Formen dafuer waeren eine zu viel.
+       */}
+      {buildMode === null || buildingRoads !== null ? null : (
+        <div className="mode" role="status" data-testid="build-mode">
+          <span>{BUILD_HINTS[buildMode]}</span>
+          <button type="button" className="button button--ghost" onClick={() => setBuildMode(null)}>
+            Abbrechen
+          </button>
+        </div>
+      )}
+
       {view.phase.kind === 'finished' ? (
         <div className="modal" role="dialog" aria-label="Partie beendet">
           <div className="modal__box">
@@ -424,7 +513,7 @@ export function GameScreen({
               ))}
             </ol>
             <button type="button" className="button button--go" onClick={onLeave}>
-              Zurueck zum Start
+              Zurück zum Start
             </button>
           </div>
         </div>

@@ -24,12 +24,12 @@ export const RESOURCE_LABELS: Readonly<Record<ResourceId, string>> = {
 };
 
 export const TERRAIN_LABELS: Readonly<Record<TerrainId, string>> = {
-  hills: 'Huegel',
+  hills: 'Hügel',
   forest: 'Wald',
   pasture: 'Weide',
   fields: 'Feld',
   mountains: 'Gebirge',
-  desert: 'Wueste',
+  desert: 'Wüste',
 };
 
 /** „3:1 beliebig" oder „2:1 Erz". */

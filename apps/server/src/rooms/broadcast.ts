@@ -29,6 +29,7 @@ export function broadcastRoom(room: Room, sinks: Sinks): void {
     hostId: room.hostId,
     seatCount: room.seatCount,
     seed: room.seed,
+    victoryPointGoal: room.victoryPointGoal,
     started: room.game !== null,
     seats: room.seats.map((seat) => ({
       userId: seat.userId,

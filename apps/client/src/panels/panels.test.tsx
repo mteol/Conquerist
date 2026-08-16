@@ -68,10 +68,12 @@ describe('ActionPanel', () => {
         view={view}
         targets={targets}
         error={null}
+        stock={null}
+        buildMode={null}
+        onBuildMode={vi.fn()}
         onRoll={vi.fn()}
         onEndTurn={vi.fn()}
         onOpenTrade={vi.fn()}
-        onBuyCard={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );
@@ -103,10 +105,12 @@ describe('ActionPanel', () => {
         view={{ ...view, canOfferTrade: true }}
         targets={{ ...targets, trades: [] }}
         error={null}
+        stock={null}
+        buildMode={null}
+        onBuildMode={vi.fn()}
         onRoll={vi.fn()}
         onEndTurn={vi.fn()}
         onOpenTrade={vi.fn()}
-        onBuyCard={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );
@@ -124,10 +128,12 @@ describe('ActionPanel', () => {
         view={{ ...view, canOfferTrade: false }}
         targets={{ ...targets, trades: [] }}
         error={null}
+        stock={null}
+        buildMode={null}
+        onBuildMode={vi.fn()}
         onRoll={vi.fn()}
         onEndTurn={vi.fn()}
         onOpenTrade={vi.fn()}
-        onBuyCard={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );
@@ -145,10 +151,12 @@ describe('ActionPanel', () => {
         view={view}
         targets={actionTargets(state, view.currentPlayerId)}
         error="Vor dem Bauen fehlt der Wurf"
+        stock={null}
+        buildMode={null}
+        onBuildMode={vi.fn()}
         onRoll={vi.fn()}
         onEndTurn={vi.fn()}
         onOpenTrade={vi.fn()}
-        onBuyCard={vi.fn()}
         onDismissError={onDismissError}
       />,
     );
@@ -156,6 +164,58 @@ describe('ActionPanel', () => {
     expect(screen.getByRole('alert').textContent).toContain('Vor dem Bauen fehlt der Wurf');
     await userEvent.click(screen.getByRole('button', { name: 'Verstanden' }));
     expect(onDismissError).toHaveBeenCalled();
+  });
+
+  /*
+   * Der Vorrat war bis zum ersten Playtest nirgends zu sehen: dass die letzte
+   * Strasse gelegt war, merkte man erst an der Absage des Servers.
+   */
+  it('zeigt den eigenen Bauvorrat neben den Wuerfeln', () => {
+    const state = afterSetup();
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
+
+    render(
+      <ActionPanel
+        view={view}
+        targets={actionTargets(state, view.currentPlayerId)}
+        error={null}
+        stock={{ piecesLeft: { road: 13, settlement: 3, city: 4 }, color: '#c0392b' }}
+        buildMode={null}
+        onBuildMode={vi.fn()}
+        onRoll={vi.fn()}
+        onEndTurn={vi.fn()}
+        onOpenTrade={vi.fn()}
+        onDismissError={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('stock-road').textContent).toContain('13');
+    expect(screen.getByTestId('stock-settlement').textContent).toContain('3');
+    expect(screen.getByTestId('stock-city').textContent).toContain('4');
+  });
+
+  it('laesst einen leeren Vorrat stehen, statt ihn wegzulassen', () => {
+    const state = afterSetup();
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
+
+    render(
+      <ActionPanel
+        view={view}
+        targets={actionTargets(state, view.currentPlayerId)}
+        error={null}
+        stock={{ piecesLeft: { road: 0, settlement: 3, city: 4 }, color: '#c0392b' }}
+        buildMode={null}
+        onBuildMode={vi.fn()}
+        onRoll={vi.fn()}
+        onEndTurn={vi.fn()}
+        onOpenTrade={vi.fn()}
+        onDismissError={vi.fn()}
+      />,
+    );
+
+    const road = screen.getByTestId('stock-road');
+    expect(road.textContent).toContain('0');
+    expect(road.className).toContain('stock__item--empty');
   });
 });
 

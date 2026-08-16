@@ -1,11 +1,13 @@
 import {
   ACT,
+  CHOOSE_COLOR,
   CONFIGURE_ROOM,
   CREATE_ROOM,
   HELLO,
   JOIN_ROOM,
   LEAVE_ROOM,
   MY_ROOMS,
+  RENAME,
   START_GAME,
   awaitsResponse,
   describeTransition,
@@ -20,9 +22,11 @@ import { summaryOf } from '../../rooms/summary.js';
 import {
   applyAction,
   applySystemAction,
+  chooseColor,
   configureRoom,
   joinRoom,
   leaveRoom,
+  renameSeat,
   setConnected,
   startGame,
 } from '../../rooms/room.js';
@@ -154,7 +158,13 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
   router.register(CREATE_ROOM, (payload, context) => {
     const user = requireUser(context, users);
 
-    const created = registry.create(user.id, user.name, payload.seatCount, payload.seed);
+    const created = registry.create(
+      user.id,
+      user.name,
+      payload.seatCount,
+      payload.seed,
+      payload.victoryPointGoal,
+    );
     if (!created.ok) throw new RejectedError(created.error);
 
     context.session.roomCode = created.room.code;
@@ -211,11 +221,59 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     const user = requireUser(context, users);
     const room = requireRoom(registry.get(context.session.roomCode ?? ''));
 
-    const changed = configureRoom(room, user.id, payload.seatCount, payload.seed);
+    const changed = configureRoom(
+      room,
+      user.id,
+      payload.seatCount,
+      payload.seed,
+      payload.victoryPointGoal,
+    );
     if (!changed.ok) throw new RejectedError(changed.error);
 
     registry.update(changed.room.code, changed.room);
     broadcastRoom(changed.room, sinks.map);
+
+    return {};
+  });
+
+  router.register(CHOOSE_COLOR, (payload, context) => {
+    const user = requireUser(context, users);
+    const room = requireRoom(registry.get(context.session.roomCode ?? ''));
+
+    const changed = chooseColor(room, user.id, payload.color);
+    if (!changed.ok) throw new RejectedError(changed.error);
+
+    registry.update(changed.room.code, changed.room);
+    broadcastRoom(changed.room, sinks.map);
+
+    return {};
+  });
+
+  /**
+   * Umbenennen - in `users` und an jedem Tisch, an dem diese Person sitzt.
+   *
+   * Ueber `roomsOf` und nicht ueber den Raum der Sitzung: seit Etappe 6 kann
+   * jemand in mehreren Raeumen sitzen, und ein Name, der nur in einem davon
+   * ankommt, ist danach zweierlei. Der Reihe nach und nicht in einem Rutsch,
+   * weil jeder Raum seinen eigenen Stand und seine eigene Version hat.
+   */
+  router.register(RENAME, (payload, context) => {
+    const user = requireUser(context, users);
+    users.rename(user.id, payload.name);
+
+    for (const room of registry.roomsOf(user.id)) {
+      const next = renameSeat(room, user.id, payload.name);
+      if (next === room) continue;
+
+      registry.update(next.code, next);
+      broadcastRoom(next, sinks.map);
+      /*
+       * Auch der Spielstand geht hinaus: die Namen stehen in der `PlayerView`,
+       * und ohne das hiesse der Umbenannte am Tisch erst nach dem naechsten Zug
+       * anders - oder in einer angehaltenen Partie nie.
+       */
+      if (next.game !== null) broadcastGame(next, sinks.map);
+    }
 
     return {};
   });

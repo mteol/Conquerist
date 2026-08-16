@@ -51,11 +51,25 @@ export class RoomRegistry {
     return registry;
   }
 
-  create(hostId: string, hostName: string, seatCount: number, seed: string): RoomResult {
+  create(
+    hostId: string,
+    hostName: string,
+    seatCount: number,
+    seed: string,
+    victoryPointGoal: number,
+  ): RoomResult {
     const code = this.freeCode();
     if (code === null) return { ok: false, error: 'Kein freier Raumcode - bitte gleich nochmal' };
 
-    const created = createRoom(code, hostId, hostName, seatCount, seed, this.now());
+    const created = createRoom(
+      code,
+      hostId,
+      hostName,
+      seatCount,
+      seed,
+      victoryPointGoal,
+      this.now(),
+    );
     if (created.ok) {
       this.rooms.set(code, created.room);
       this.write(code, () => this.store?.save(created.room));

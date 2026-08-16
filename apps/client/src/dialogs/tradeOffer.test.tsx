@@ -106,20 +106,33 @@ describe('TradeOfferDialog aus Sicht eines Mitspielers', () => {
     });
   });
 
-  it('sperrt das Annehmen mit Begruendung, wenn die Karten fehlen', () => {
+  /*
+   * Kein gesperrter Knopf mehr, sondern gar keiner: wer nicht zahlen kann,
+   * liest den Grund an der Stelle, an der sonst „Annehmen" steht. Ablehnen
+   * bleibt trotzdem - sonst wartet der Anbieter bis zum Ablauf der Frist auf
+   * eine Antwort, die man ihm sofort geben koennte.
+   */
+  it('nennt statt des Annehmens den Grund, wenn die Karten fehlen', () => {
     show(play(afterSetup(), OFFER), ids[2]!);
 
-    expect(screen.getByRole('button', { name: 'Annehmen' })).toHaveProperty('disabled', true);
-    expect(screen.getByRole('dialog').textContent).toContain('Dir fehlt');
+    expect(screen.queryByTestId('offer-accept')).toBeNull();
+    expect(screen.getByTestId('offer-unaffordable').textContent).toContain(
+      'Nicht genügend Ressourcen',
+    );
+    expect(screen.getByRole('button', { name: 'Ablehnen' })).toHaveProperty('disabled', false);
+    expect(screen.getByRole('button', { name: 'Angebot anpassen' })).toHaveProperty(
+      'disabled',
+      false,
+    );
   });
 
   it('schickt ein Gegenangebot mit eigenen Mengen', async () => {
     const onAct = show(play(afterSetup(), OFFER), ids[1]!);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Gegenangebot' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Angebot anpassen' }));
     await userEvent.click(screen.getByRole('button', { name: 'Erz mehr anbieten' }));
     await userEvent.click(screen.getByRole('button', { name: 'Holz mehr verlangen' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Gegenangebot abschicken' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Angepasstes Angebot abschicken' }));
 
     expect(onAct).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -188,26 +201,26 @@ describe('das Gegenangebot haengt an seinem Angebot', () => {
   it('schliesst ein angefangenes Gegenangebot, wenn ein neues Angebot kommt', async () => {
     const { rerender } = zeige(play(afterSetup(), OFFER));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Gegenangebot' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Angebot anpassen' }));
     await userEvent.click(screen.getByRole('button', { name: 'Erz mehr anbieten' }));
     expect(screen.getByTestId('give-ore').textContent).toBe('1');
 
     neu(rerender, play(ohneErz(), ZWEITES_OFFER));
 
-    expect(screen.queryByRole('button', { name: 'Gegenangebot abschicken' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Angepasstes Angebot abschicken' })).toBeNull();
   });
 
   it('vergisst die Mengen, wenn die Runde dazwischen vorbei war', async () => {
     const { rerender } = zeige(play(afterSetup(), OFFER));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Gegenangebot' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Angebot anpassen' }));
     await userEvent.click(screen.getByRole('button', { name: 'Erz mehr anbieten' }));
 
     // Runde vorbei, dann dasselbe Angebot noch einmal - aber ohne das Erz.
     neu(rerender, ohneErz());
     neu(rerender, play(ohneErz(), OFFER));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Gegenangebot' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Angebot anpassen' }));
 
     expect(screen.getByTestId('give-ore').textContent).toBe('0');
   });
@@ -224,7 +237,7 @@ describe('TradeOfferDialog aus Sicht des Anbieters', () => {
 
     const text = screen.getByRole('dialog').textContent ?? '';
     expect(text).toContain('nimmt an');
-    expect(text).toContain('ueberlegt noch');
+    expect(text).toContain('überlegt noch');
   });
 
   it('bietet je Zusage einen Zuschlag - und sonst keinen', async () => {
@@ -248,7 +261,7 @@ describe('TradeOfferDialog aus Sicht des Anbieters', () => {
   it('laesst zurueckziehen', async () => {
     const onAct = show(play(afterSetup(), OFFER), ids[0]!);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Angebot zurueckziehen' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Angebot zurückziehen' }));
 
     expect(onAct).toHaveBeenCalledWith({ type: 'withdrawTrade', player: ids[0] });
   });
@@ -291,5 +304,131 @@ describe('die Uhr', () => {
     );
 
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
+/**
+ * Was nach der eigenen Antwort dasteht.
+ *
+ * Im Playtest standen dort drei gesperrte Knoepfe und kein Wort darueber,
+ * worauf man wartet. Ein gesperrter Knopf ist ein Angebot, das man zurueckzieht,
+ * ohne es zu sagen.
+ */
+describe('nach der eigenen Antwort', () => {
+  function afterDecline(): GameState {
+    return play(afterSetup(), OFFER, {
+      type: 'respondTrade',
+      player: ids[1]!,
+      response: 'declined',
+    });
+  }
+
+  it('nimmt die Knoepfe weg und sagt, was man getan hat', () => {
+    show(afterDecline(), ids[1]!);
+
+    expect(screen.queryByTestId('offer-accept')).toBeNull();
+    expect(screen.queryByTestId('offer-decline')).toBeNull();
+    expect(screen.queryByTestId('offer-counter')).toBeNull();
+    expect(screen.getByTestId('offer-answered').textContent).toContain('Du hast abgelehnt');
+  });
+
+  it('sagt, auf wie viele Antworten noch gewartet wird', () => {
+    show(afterDecline(), ids[1]!);
+
+    // p3 hat noch nicht geantwortet.
+    expect(screen.getByTestId('offer-answered').textContent).toContain('Antwort eines Mitspielers');
+  });
+
+  it('laesst die Knoepfe stehen, solange man nicht geantwortet hat', () => {
+    show(play(afterSetup(), OFFER), ids[1]!);
+
+    expect(screen.getByTestId('offer-decline')).toBeDefined();
+    expect(screen.queryByTestId('offer-answered')).toBeNull();
+  });
+});
+
+/**
+ * Das Gegenangebot beim Anbieter.
+ *
+ * Zwei Maengel aus dem Playtest: es liess sich nicht ablehnen (nur annehmen
+ * oder das ganze Angebot zuruecknehmen), und es stand als eine Textzeile
+ * zwischen den anderen Antworten, mit der Richtung aus der Sicht des
+ * Konternden.
+ */
+describe('das Gegenangebot aus Sicht des Anbieters', () => {
+  const COUNTER: GameAction = {
+    type: 'counterTrade',
+    player: ids[1]!,
+    give: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 2 },
+    want: { brick: 0, lumber: 3, wool: 0, grain: 0, ore: 0 },
+    at: 0,
+  };
+
+  function withCounter(): GameState {
+    return play(afterSetup(), OFFER, COUNTER);
+  }
+
+  it('steht in einem eigenen Kasten, nicht in der Antwortzeile', () => {
+    show(withCounter(), ids[0]!);
+
+    expect(screen.getByTestId(`counter-${ids[1]}`)).toBeDefined();
+  });
+
+  /*
+   * Der eigentliche Punkt: die Mengen stehen aus Sicht des Anbieters. p2
+   * bietet 2 Erz und will 3 Holz - fuer p1 heisst das: 3 Holz geben, 2 Erz
+   * bekommen. In der alten Zeile stand es genau andersherum.
+   */
+  it('nennt die Richtung aus Sicht dessen, der sie liest', () => {
+    show(withCounter(), ids[0]!);
+
+    const box = screen.getByTestId(`counter-${ids[1]}`);
+    const terms = box.querySelectorAll('dd');
+    expect(terms[0]?.textContent).toContain('Holz');
+    expect(terms[1]?.textContent).toContain('Erz');
+    expect(box.textContent).toContain('Du gibst');
+    expect(box.textContent).toContain('Du bekommst');
+  });
+
+  it('laesst es ablehnen, ohne das eigene Angebot zurueckzunehmen', async () => {
+    const onAct = show(withCounter(), ids[0]!);
+
+    await userEvent.click(screen.getByTestId(`counter-reject-${ids[1]}`));
+
+    expect(onAct).toHaveBeenCalledWith({
+      type: 'rejectCounter',
+      player: ids[0],
+      partner: ids[1],
+    });
+  });
+
+  it('laesst es annehmen', async () => {
+    const onAct = show(withCounter(), ids[0]!);
+
+    await userEvent.click(screen.getByTestId(`counter-accept-${ids[1]}`));
+
+    expect(onAct).toHaveBeenCalledWith({
+      type: 'acceptTrade',
+      player: ids[0],
+      partner: ids[1],
+    });
+  });
+
+  /*
+   * Ablehnen bleibt auch dann moeglich, wenn man das Gegenangebot gar nicht
+   * bezahlen koennte - sonst haengt die Runde wieder am Zuruecknehmen.
+   */
+  it('laesst auch ablehnen, was man sich nicht leisten koennte', () => {
+    const teuer: GameAction = {
+      ...COUNTER,
+      want: { brick: 0, lumber: 9, wool: 0, grain: 0, ore: 0 },
+    };
+    show(play(afterSetup(), OFFER, teuer), ids[0]!);
+
+    expect(screen.queryByTestId(`counter-accept-${ids[1]}`)).toBeNull();
+    expect(screen.getByTestId(`counter-short-${ids[1]}`).textContent).toContain(
+      'Nicht genügend Ressourcen',
+    );
+    expect(screen.getByTestId(`counter-reject-${ids[1]}`)).toHaveProperty('disabled', false);
   });
 });

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { ACT, stampAction, type GameAction, type GameState } from '@conquerist/shared';
+import {
+  ACT,
+  CHOOSE_COLOR,
+  RENAME,
+  SEAT_COLORS,
+  stampAction,
+  type GameAction,
+  type GameState,
+} from '@conquerist/shared';
 import { openDatabase } from '../../db/database.js';
 import { Sessions } from '../../identity/sessions.js';
 import { Users } from '../../identity/users.js';
@@ -29,7 +37,7 @@ function fixture() {
   const guests = ['Anna', 'Ben', 'Cem'].map((name) => users.hello(undefined, name));
   const [anna, ben] = guests;
 
-  const created = createRoom('K7X2', anna!.user.id, 'Anna', 3, 'handler-probe');
+  const created = createRoom('K7X2', anna!.user.id, 'Anna', 3, 'handler-probe', 10);
   if (!created.ok) throw new Error(created.error);
 
   let current = created.room;
@@ -53,7 +61,7 @@ function fixture() {
     ),
   };
 
-  registry.create(anna!.user.id, 'Anna', 3, 'handler-probe');
+  registry.create(anna!.user.id, 'Anna', 3, 'handler-probe', 10);
 
   const offer: GameAction = {
     type: 'offerTrade',
@@ -138,5 +146,88 @@ describe('Systemzuege von aussen', () => {
     expect(response.ok).toBe(false);
     // Und das Angebot liegt weiter - der Zug hat nichts bewirkt.
     expect(registry.get('K7X2')?.game?.phase.kind).toBe('tradePending');
+  });
+});
+
+/**
+ * Farbe und Name im Wartebereich.
+ *
+ * Eigene Vorrichtung: die oben laesst eine Partie laufen, und beides ist genau
+ * dann interessant, wenn sie es noch nicht tut.
+ */
+function lobby() {
+  const database = openDatabase(':memory:');
+  const users = new Users(database, new Sessions(database));
+  const registry = new RoomRegistry({ randomCode: () => 'K7X2' });
+  const sinks = new SinkHub();
+  const router = new MessageRouter();
+  registerRoomHandlers(router, { registry, users, sinks });
+
+  const anna = users.hello(undefined, 'Anna');
+  const ben = users.hello(undefined, 'Ben');
+
+  const created = registry.create(anna.user.id, 'Anna', 3, 'lobby-probe', 10);
+  if (!created.ok) throw new Error(created.error);
+  const joined = joinRoom(created.room, ben.user.id, 'Ben');
+  if (!joined.ok) throw new Error(joined.error);
+  registry.update('K7X2', joined.room);
+
+  return { registry, router, users, anna, ben };
+}
+
+const message = (type: string, payload: unknown): string =>
+  JSON.stringify({ id: 'r1', type, payload });
+
+describe('Farbwahl ueber das Protokoll', () => {
+  it('faerbt den eigenen Sitz um', async () => {
+    const { registry, router, ben } = lobby();
+    const context = contextFor(ben.user.id, ben.tokenHash, { send: (): void => undefined });
+
+    const response = await router.dispatch(
+      message(CHOOSE_COLOR, { color: SEAT_COLORS[4] }),
+      context,
+    );
+
+    expect(response.ok).toBe(true);
+    expect(registry.get('K7X2')?.seats.find((seat) => seat.userId === ben.user.id)?.color).toBe(
+      SEAT_COLORS[4],
+    );
+  });
+
+  it('weist eine belegte Farbe ab, ohne den Tisch anzufassen', async () => {
+    const { registry, router, anna, ben } = lobby();
+    const context = contextFor(ben.user.id, ben.tokenHash, { send: (): void => undefined });
+    const before = registry.get('K7X2')!;
+    const annasColor = before.seats.find((seat) => seat.userId === anna.user.id)!.color;
+
+    const response = await router.dispatch(message(CHOOSE_COLOR, { color: annasColor }), context);
+
+    expect(response.ok).toBe(false);
+    expect(registry.get('K7X2')?.seats).toEqual(before.seats);
+  });
+});
+
+describe('Umbenennen ueber das Protokoll', () => {
+  it('schreibt den Namen in die Benutzertabelle und an den Sitz', async () => {
+    const { registry, router, users, ben } = lobby();
+    const context = contextFor(ben.user.id, ben.tokenHash, { send: (): void => undefined });
+
+    const response = await router.dispatch(message(RENAME, { name: 'Benedikt' }), context);
+
+    expect(response.ok).toBe(true);
+    expect(users.byId(ben.user.id)?.name).toBe('Benedikt');
+    expect(registry.get('K7X2')?.seats.find((seat) => seat.userId === ben.user.id)?.name).toBe(
+      'Benedikt',
+    );
+  });
+
+  it('nimmt keinen leeren Namen an', async () => {
+    const { router, users, ben } = lobby();
+    const context = contextFor(ben.user.id, ben.tokenHash, { send: (): void => undefined });
+
+    const response = await router.dispatch(message(RENAME, { name: '   ' }), context);
+
+    expect(response.ok).toBe(false);
+    expect(users.byId(ben.user.id)?.name).toBe('Ben');
   });
 });

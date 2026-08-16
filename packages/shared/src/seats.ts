@@ -35,6 +35,27 @@ export const SEAT_COLORS: readonly string[] = [
   '#d8d3c7',
 ];
 
+/**
+ * Wie die sechs Farben heissen.
+ *
+ * Seit Etappe 10 sucht man sich seine Farbe im Wartebereich aus, und eine
+ * Auswahl aus sechs Flecken laesst sich weder vorlesen noch benennen. Der Name
+ * steht deshalb neben dem Fleck - Farbe traegt nie allein, was jemand sonst
+ * nicht mitbekommt.
+ *
+ * Gleiche Reihenfolge wie `SEAT_COLORS`, und das ist die einzige Verbindung
+ * zwischen beiden: eine Tabelle von Farbwert auf Namen waere ein zweiter Ort,
+ * an dem jemand eine Farbe aendern koennte, ohne den Namen mitzuaendern.
+ */
+export const SEAT_COLOR_NAMES: readonly string[] = [
+  'Rot',
+  'Blau',
+  'Orange',
+  'Grün',
+  'Violett',
+  'Sand',
+];
+
 /** Die Farbe fuer den n-ten Platz am Tisch. */
 export function seatColorAt(index: number): string {
   const color = SEAT_COLORS[index];
@@ -42,4 +63,21 @@ export function seatColorAt(index: number): string {
     throw new RangeError(`seatColorAt: Platz ${index} gibt es an diesem Tisch nicht`);
   }
   return color;
+}
+
+/** Wie die Farbe an diesem Platz heisst - fuer Anzeige und Vorlesewerkzeuge. */
+export function seatColorName(color: string): string {
+  const index = SEAT_COLORS.indexOf(color);
+  return SEAT_COLOR_NAMES[index] ?? color;
+}
+
+/**
+ * Ob diese Farbe ueberhaupt eine Sitzfarbe ist.
+ *
+ * Der Server prueft damit, was ein Client als Wunschfarbe schickt. Ohne diese
+ * Pruefung stuende in `room_seats.color` irgendwann eine Zeichenkette, die im
+ * SVG nichts faerbt - und ein Spieler waere unsichtbar statt bunt.
+ */
+export function isSeatColor(color: string): boolean {
+  return SEAT_COLORS.includes(color);
 }

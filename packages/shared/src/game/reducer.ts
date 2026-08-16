@@ -13,6 +13,7 @@ import {
   applyCounterTrade,
   applyDropFromTrade,
   applyOfferTrade,
+  applyRejectCounter,
   applyRejoinTrade,
   applyRespondTrade,
   applyTimeout,
@@ -65,6 +66,7 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
     'respondTrade',
     'counterTrade',
     'acceptTrade',
+    'rejectCounter',
     'withdrawTrade',
     'timeout',
     'dropFromTrade',
@@ -141,7 +143,7 @@ export function reduce(state: GameState, action: GameAction): ReduceResult {
     return rejected(
       violation(
         RuleViolationCode.GAME_OVER,
-        `${state.phase.winner} hat gewonnen - die Partie nimmt keine Zuege mehr an`,
+        `${state.phase.winner} hat gewonnen - die Partie nimmt keine Züge mehr an`,
       ),
     );
   }
@@ -214,6 +216,8 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
       return applyCounterTrade(state, action.player, action.give, action.want, action.at);
     case 'acceptTrade':
       return applyAcceptTrade(state, action.player, action.partner);
+    case 'rejectCounter':
+      return applyRejectCounter(state, action.player, action.partner);
     case 'withdrawTrade':
       return applyWithdrawTrade(state, action.player);
     case 'timeout':

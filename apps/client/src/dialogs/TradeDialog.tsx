@@ -7,6 +7,7 @@ import {
 } from '@conquerist/shared';
 import { RESOURCE_LABELS } from '../game/labels';
 import type { PlayerRow } from '../game/view';
+import { CloseButton } from './CloseButton';
 import { NO_AMOUNTS, TradeAmounts, isTradeShapeValid } from './TradeAmounts';
 
 /**
@@ -56,6 +57,7 @@ export function TradeDialog({
   return (
     <div className="modal" role="dialog" aria-label="Handel">
       <div className="modal__box">
+        <CloseButton onClose={onClose} label="Handel" />
         <h2>Handel</h2>
 
         {canOffer ? (

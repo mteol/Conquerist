@@ -11,7 +11,7 @@ import { SinkHub } from '../ws/sinks.js';
  * sechzig Sekunden.
  */
 function withThree(): Room {
-  const created = createRoom('K7X2', 'u1', 'Anna', 3, 'wecker-probe');
+  const created = createRoom('K7X2', 'u1', 'Anna', 3, 'wecker-probe', 10);
   if (!created.ok) throw new Error(created.error);
 
   let current = created.room;
@@ -57,7 +57,7 @@ function registryWithOffer(at: number): { registry: RoomRegistry; room: Room } {
   const registry = new RoomRegistry({ randomCode: () => 'K7X2' });
   const base = inMainPhase();
   // Der Raum muss in der Registry stehen, sonst greift `update` nicht.
-  registry.create('u1', 'Anna', 3, 'wecker-probe');
+  registry.create('u1', 'Anna', 3, 'wecker-probe', 10);
   registry.update('K7X2', base);
 
   const acted = applyAction(base, 'u1', stampAction(OFFER, at));
@@ -107,7 +107,7 @@ describe('createRoomClock', () => {
 
   it('stellt gar nichts, wenn keine Frist laeuft', () => {
     const registry = new RoomRegistry({ randomCode: () => 'K7X2' });
-    registry.create('u1', 'Anna', 3, 'wecker-probe');
+    registry.create('u1', 'Anna', 3, 'wecker-probe', 10);
     registry.update('K7X2', inMainPhase());
 
     const { clock, schedule } = clockFor(registry, 0);

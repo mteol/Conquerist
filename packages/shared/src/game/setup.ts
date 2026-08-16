@@ -90,7 +90,7 @@ export function applySetupSettlement(
     return rejected(
       violation(
         RuleViolationCode.WRONG_PHASE,
-        'Eine Gruendungssiedlung laesst sich hier nicht setzen',
+        'Eine Gründungssiedlung lässt sich hier nicht setzen',
       ),
     );
   }
@@ -125,7 +125,7 @@ export function applySetupRoad(state: GameState, player: PlayerId, edge: EdgeId)
     return rejected(
       violation(
         RuleViolationCode.WRONG_PHASE,
-        'Vor der Gruendungsstrasse fehlt die zugehoerige Siedlung',
+        'Vor der Gründungsstraße fehlt die zugehörige Siedlung',
       ),
     );
   }
@@ -141,7 +141,7 @@ export function applySetupRoad(state: GameState, player: PlayerId, edge: EdgeId)
     return rejected(
       violation(
         RuleViolationCode.NOT_CONNECTED,
-        `Die Gruendungsstrasse muss an ${phase.settlement} anschliessen`,
+        `Die Gründungsstraße muss an ${phase.settlement} anschließen`,
       ),
     );
   }

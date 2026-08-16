@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 import { GameActionSchema } from '../game/actions.js';
+import {
+  DEFAULT_VICTORY_POINT_GOAL,
+  MAX_VICTORY_POINT_GOAL,
+  MIN_VICTORY_POINT_GOAL,
+} from '../rules/ruleset.js';
 import { MAX_SEATS, MIN_SEATS } from '../seats.js';
 
 /**
@@ -24,6 +29,10 @@ export const MY_ROOMS = 'room.mine';
 export const MY_ROOMS_OK = 'room.mine.ok';
 export const CONFIGURE_ROOM = 'room.configure';
 export const ROOM_CONFIGURED = 'room.configured';
+export const CHOOSE_COLOR = 'room.color';
+export const COLOR_CHOSEN = 'room.colored';
+export const RENAME = 'user.rename';
+export const RENAMED = 'user.renamed';
 export const START_GAME = 'room.start';
 export const GAME_STARTED = 'room.started';
 export const ACT = 'game.act';
@@ -77,17 +86,52 @@ export const HelloResponseSchema = z.object({
 export const CreateRoomRequestSchema = z.object({
   seatCount: z.number().int().min(MIN_SEATS).max(MAX_SEATS),
   seed: z.string().trim().min(1).max(24),
+  /**
+   * Mit Vorgabe, und das ist der Grund: eingestellt wird das Ziel im
+   * Wartebereich, nicht beim Erstellen. Ein Pflichtfeld zwaenge den
+   * Startbildschirm zu einer Frage, die dort niemand stellen will - und einen
+   * aelteren Client, der das Feld nicht kennt, wuerde es aussperren.
+   */
+  victoryPointGoal: z
+    .number()
+    .int()
+    .min(MIN_VICTORY_POINT_GOAL)
+    .max(MAX_VICTORY_POINT_GOAL)
+    .default(DEFAULT_VICTORY_POINT_GOAL),
 });
 
 /**
  * Die Partie im offenen Wartebereich umstellen.
  *
- * Dieselben zwei Werte wie beim Erstellen, und mit Absicht dasselbe Schema:
+ * Dieselben Werte wie beim Erstellen, und mit Absicht dasselbe Schema:
  * ein Raum, der sich einstellen laesst, hat keine anderen Angaben als einer,
  * der gerade entsteht. Wer das darf und bis wann, entscheidet der Server -
  * nicht dieses Schema.
  */
 export const ConfigureRoomRequestSchema = CreateRoomRequestSchema;
+
+/**
+ * Sich eine Farbe aussuchen.
+ *
+ * Eine eigene Nachricht und kein Feld an `room.configure`: die Tischgroesse
+ * stellt der Gastgeber fuer alle ein, die Farbe waehlt jeder fuer sich. Zwei
+ * verschiedene Berechtigungen in einer Nachricht waeren eine Nachricht, die
+ * man nur zur Haelfte annehmen kann.
+ *
+ * Geprueft wird der Wert trotzdem erst am Tisch: ob es diese Farbe gibt, weiss
+ * `isSeatColor`, ob sie noch frei ist, nur der Raum.
+ */
+export const ChooseColorRequestSchema = z.object({ color: z.string().min(1).max(16) });
+
+/**
+ * Sich umbenennen - auch mitten im Wartebereich.
+ *
+ * Der Name gehoert der Person und nicht dem Sitz (Regel 7), deshalb `user.` und
+ * nicht `room.`. Der Server schreibt ihn in `users` und zieht ihn durch jeden
+ * Tisch nach, an dem diese Person sitzt: ein Name, der an zwei Stellen steht,
+ * ist sonst nach der ersten Aenderung zweierlei.
+ */
+export const RenameRequestSchema = z.object({ name: DisplayNameSchema });
 
 /**
  * Eine Partie, wie sie auf einer Karte am Startbildschirm steht.
@@ -128,6 +172,8 @@ export type HelloRequest = z.infer<typeof HelloRequestSchema>;
 export type HelloResponse = z.infer<typeof HelloResponseSchema>;
 export type CreateRoomRequest = z.infer<typeof CreateRoomRequestSchema>;
 export type ConfigureRoomRequest = z.infer<typeof ConfigureRoomRequestSchema>;
+export type ChooseColorRequest = z.infer<typeof ChooseColorRequestSchema>;
+export type RenameRequest = z.infer<typeof RenameRequestSchema>;
 export type JoinRoomRequest = z.infer<typeof JoinRoomRequestSchema>;
 export type ActRequest = z.infer<typeof ActRequestSchema>;
 export type RoomCode = z.infer<typeof RoomCodeSchema>;

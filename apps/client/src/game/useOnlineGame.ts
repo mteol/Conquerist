@@ -4,6 +4,7 @@ import {
   AUTH_LOGIN,
   AUTH_LOGOUT,
   AUTH_REGISTER,
+  CHOOSE_COLOR,
   CONFIGURE_ROOM,
   CREATE_ROOM,
   GAME_EVENT,
@@ -12,10 +13,12 @@ import {
   LEAVE_ROOM,
   MY_ROOMS,
   OVER_EVENT,
+  RENAME,
   ROOM_EVENT,
   eventSchema,
   isEventType,
   START_GAME,
+  DEFAULT_VICTORY_POINT_GOAL,
   type AuthResponse,
   type GameAction,
   type LoginRequest,
@@ -72,7 +75,15 @@ export interface OnlineGame {
   readonly createRoom: (seatCount: number, seed: string, name: string) => Promise<string>;
   readonly joinRoom: (code: string, name: string) => Promise<void>;
   readonly leaveRoom: () => Promise<void>;
-  readonly configureRoom: (seatCount: number, seed: string) => Promise<void>;
+  readonly configureRoom: (
+    seatCount: number,
+    seed: string,
+    victoryPointGoal: number,
+  ) => Promise<void>;
+  /** Sich eine Sitzfarbe aussuchen. Belegte lehnt der Server ab. */
+  readonly chooseColor: (color: string) => Promise<void>;
+  /** Sich umbenennen - der Name gehoert der Person, nicht dem Sitz. */
+  readonly rename: (name: string) => Promise<void>;
   readonly startGame: () => Promise<void>;
   readonly act: (action: GameAction) => Promise<void>;
   /** Konto anlegen. Ablehnung (etwa: Login vergeben) kommt als Fehler vom Server. */
@@ -83,7 +94,6 @@ export interface OnlineGame {
 }
 
 export function useOnlineGame(
-  initialCode: string | null = null,
   /** Nur fuer Tests: eine Socket-Attrappe statt eines echten WebSockets. */
   options: TransportOptions = {},
 ): OnlineGame {
@@ -97,8 +107,16 @@ export function useOnlineGame(
    * Raumcode und Name in Refs, nicht im State: sie steuern nur, was beim
    * naechsten Verbindungsaufbau geschickt wird. Als State wuerden sie den
    * Anmelde-Effect neu ausloesen und damit ein zweites `hello` schicken.
+   *
+   * **Der Code aus dem Einladungslink steht hier bewusst NICHT drin.** Bis
+   * Etappe 9 tat er das, und die Folge war das, was im ersten Playtest auffiel:
+   * wer einem Link folgte, sass am Tisch, bevor er einen Namen eingeben konnte
+   * - der Server legte einen Gast namens „Gast" an, und der stand dann so in
+   * der Runde. Der Link fuellt jetzt nur das Feld auf dem Startbildschirm; in
+   * den Raum geht es erst, wenn jemand „Beitreten" drueckt. Ab da traegt
+   * `codeRef` den Code, und der Reconnect nach einem Abriss laeuft wie vorher.
    */
-  const codeRef = useRef<string | null>(initialCode);
+  const codeRef = useRef<string | null>(null);
   const nameRef = useRef<string>(loadName() ?? '');
 
   useEffect(() => {
@@ -266,7 +284,16 @@ export function useOnlineGame(
   const identify = useCallback(
     async (name: string): Promise<void> => {
       const secret = loadSecret();
-      adopt(await send(HELLO, { ...(secret === null ? {} : { secret }), name }));
+      /*
+       * Ein leerer Name geht gar nicht erst hinaus: `DisplayNameSchema`
+       * verlangt mindestens ein Zeichen, und der Server wiese damit die ganze
+       * Anmeldung ab statt nur den Namen. Getroffen haette das „Zurueck in die
+       * Partie" bei geleertem Speicher - man kaeme in keine der eigenen
+       * Partien mehr hinein, mit einer Meldung ueber ein Feld, das man nirgends
+       * sieht. Ohne Namen bleibt der stehen, den der Server schon kennt.
+       */
+      const named = name.trim() === '' ? {} : { name };
+      adopt(await send(HELLO, { ...(secret === null ? {} : { secret }), ...named }));
     },
     [adopt, send],
   );
@@ -275,7 +302,13 @@ export function useOnlineGame(
     async (seatCount: number, seed: string, name: string): Promise<string> => {
       remember(name);
       await identify(name);
-      const { code } = await send(CREATE_ROOM, { seatCount, seed });
+      // Das Siegpunktziel wird im Wartebereich eingestellt, nicht hier - der
+      // Server setzt beim Erstellen seine Vorgabe ein.
+      const { code } = await send(CREATE_ROOM, {
+        seatCount,
+        seed,
+        victoryPointGoal: DEFAULT_VICTORY_POINT_GOAL,
+      });
       codeRef.current = code;
       return code;
     },
@@ -301,9 +334,9 @@ export function useOnlineGame(
   }, [send]);
 
   const configureRoom = useCallback(
-    async (seatCount: number, seed: string): Promise<void> => {
+    async (seatCount: number, seed: string, victoryPointGoal: number): Promise<void> => {
       try {
-        await send(CONFIGURE_ROOM, { seatCount, seed });
+        await send(CONFIGURE_ROOM, { seatCount, seed, victoryPointGoal });
       } catch (error) {
         // Der Server prueft die Grenzen noch einmal. Wird es abgelehnt, bleibt
         // der alte Stand stehen und der Grund sichtbar - der Wartebereich darf
@@ -312,6 +345,37 @@ export function useOnlineGame(
       }
     },
     [send],
+  );
+
+  /*
+   * Farbe und Name gehen denselben Weg wie das Umstellen: die Absage bleibt
+   * lesbar, der Stand bleibt der des Servers. „Blau hat schon Ben" ist ein
+   * gewoehnlicher Ausgang und kein Absturz.
+   */
+  const chooseColor = useCallback(
+    async (color: string): Promise<void> => {
+      try {
+        await send(CHOOSE_COLOR, { color });
+      } catch (error) {
+        dispatch({ type: 'error', message: messageOf(error) });
+      }
+    },
+    [send],
+  );
+
+  const rename = useCallback(
+    async (name: string): Promise<void> => {
+      try {
+        await send(RENAME, { name });
+        // Erst wenn der Server ihn angenommen hat: sonst stuende im Browser
+        // ein Name, unter dem am Tisch niemand sitzt.
+        remember(name);
+        setIdentity((current) => (current === null ? current : { ...current, name }));
+      } catch (error) {
+        dispatch({ type: 'error', message: messageOf(error) });
+      }
+    },
+    [send, remember],
   );
 
   const startGame = useCallback(async (): Promise<void> => {
@@ -347,6 +411,8 @@ export function useOnlineGame(
       joinRoom,
       leaveRoom,
       configureRoom,
+      chooseColor,
+      rename,
       startGame,
       act,
       register,
@@ -365,6 +431,8 @@ export function useOnlineGame(
       joinRoom,
       leaveRoom,
       configureRoom,
+      chooseColor,
+      rename,
       startGame,
       act,
       register,

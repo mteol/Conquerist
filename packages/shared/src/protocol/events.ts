@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { GameActionSchema } from '../game/actions.js';
 import { PlayerViewSchema } from '../game/playerView.js';
+import { MAX_VICTORY_POINT_GOAL, MIN_VICTORY_POINT_GOAL } from '../rules/ruleset.js';
 import { MAX_SEATS, MIN_SEATS } from '../seats.js';
 import { DisplayNameSchema, RoomCodeSchema } from './room.js';
 
@@ -34,6 +35,16 @@ export const RoomEventSchema = z.object({
   hostId: z.string().min(1),
   seatCount: z.number().int().min(MIN_SEATS).max(MAX_SEATS),
   seed: z.string().min(1),
+  /**
+   * Wie viele Siegpunkte diese Partie beenden.
+   *
+   * Steht im Raumstand und nicht erst im Spielstand: eingestellt wird es im
+   * Wartebereich, und dort gibt es noch keinen Spielstand, in dem es stehen
+   * koennte. Sobald die Partie laeuft, ist die verbindliche Zahl die im
+   * RuleSet des `GameState` - diese hier hat dann nur noch beschrieben, womit
+   * sie gestartet ist.
+   */
+  victoryPointGoal: z.number().int().min(MIN_VICTORY_POINT_GOAL).max(MAX_VICTORY_POINT_GOAL),
   started: z.boolean(),
   seats: z.array(SeatInRoomSchema),
 });

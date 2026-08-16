@@ -79,7 +79,7 @@ export function ConnectionPanel(): JSX.Element {
         onClick={() => void sendPing()}
         disabled={!isOpen || busy}
       >
-        {busy ? 'Ping laeuft…' : 'Ping senden'}
+        {busy ? 'Ping läuft…' : 'Ping senden'}
       </button>
 
       {error !== null ? <p className="error">{error}</p> : null}

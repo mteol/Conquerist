@@ -76,6 +76,49 @@ describe('TradeDialog', () => {
 
     expect(onConfirm).toHaveBeenCalledWith('brick', 'ore');
   });
+
+  /*
+   * Der Weg zurueck aus einem versehentlich geoeffneten Fenster - gemeldet aus
+   * dem ersten Playtest. Zwei Wege, weil beide fehlen koennen: die Maus findet
+   * das Kreuz, die Tastatur die Taste.
+   */
+  it('schliesst sich ueber das Kreuz in der Ecke', async () => {
+    const onClose = vi.fn();
+    render(
+      <TradeDialog
+        player={player}
+        rateFor={() => 4}
+        canTrade={() => true}
+        canOffer={false}
+        onOffer={vi.fn()}
+        onConfirm={vi.fn()}
+        onClose={onClose}
+      />,
+    );
+
+    await userEvent.click(screen.getByTestId('modal-close'));
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('schliesst sich mit Escape', async () => {
+    const onClose = vi.fn();
+    render(
+      <TradeDialog
+        player={player}
+        rateFor={() => 4}
+        canTrade={() => true}
+        canOffer={false}
+        onOffer={vi.fn()}
+        onConfirm={vi.fn()}
+        onClose={onClose}
+      />,
+    );
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(onClose).toHaveBeenCalled();
+  });
 });
 
 describe('AccountDialog', () => {

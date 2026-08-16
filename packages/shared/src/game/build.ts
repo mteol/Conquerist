@@ -27,7 +27,7 @@ export function canPlaceSettlementAt(state: GameState, vertex: VertexId): RuleVi
   if (!board.topology.vertexNeighbors.has(vertex)) {
     return violation(
       RuleViolationCode.NOT_ON_BOARD,
-      `Der Knoten ${vertex} gehoert nicht zu diesem Brett`,
+      `Der Knoten ${vertex} gehört nicht zu diesem Brett`,
     );
   }
   if (state.buildings[vertex] !== undefined) {
@@ -55,11 +55,11 @@ export function canPlaceRoadAt(state: GameState, edge: EdgeId): RuleViolation | 
   if (!board.topology.edgeVertices.has(edge)) {
     return violation(
       RuleViolationCode.NOT_ON_BOARD,
-      `Die Kante ${edge} gehoert nicht zu diesem Brett`,
+      `Die Kante ${edge} gehört nicht zu diesem Brett`,
     );
   }
   if (state.roads[edge] !== undefined) {
-    return violation(RuleViolationCode.EDGE_OCCUPIED, `Auf ${edge} liegt bereits eine Strasse`);
+    return violation(RuleViolationCode.EDGE_OCCUPIED, `Auf ${edge} liegt bereits eine Straße`);
   }
 
   return null;
@@ -165,7 +165,7 @@ export function canBuildRoad(
   if (!connected) {
     return violation(
       RuleViolationCode.NOT_CONNECTED,
-      `${edge} schliesst an keine eigene Strasse und keine eigene Siedlung an`,
+      `${edge} schließt an keine eigene Straße und keine eigene Siedlung an`,
     );
   }
 
@@ -190,7 +190,7 @@ export function canBuildSettlement(
   if (placement !== null) return placement;
 
   if (!connectsAt(state, player, vertex, null)) {
-    return violation(RuleViolationCode.NOT_CONNECTED, `An ${vertex} endet keine eigene Strasse`);
+    return violation(RuleViolationCode.NOT_CONNECTED, `An ${vertex} endet keine eigene Straße`);
   }
 
   return canPay(state, player, 'settlement', costOf(state.rules, 'settlement'));
@@ -221,7 +221,7 @@ export function canBuildCity(
   if (building === undefined || building.owner !== player || building.kind !== 'settlement') {
     return violation(
       RuleViolationCode.NOT_OWN_SETTLEMENT,
-      `Auf ${vertex} steht keine eigene Siedlung, die sich ausbauen liesse`,
+      `Auf ${vertex} steht keine eigene Siedlung, die sich ausbauen ließe`,
     );
   }
 

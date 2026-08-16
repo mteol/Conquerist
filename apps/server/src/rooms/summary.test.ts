@@ -3,7 +3,7 @@ import { createRoom, joinRoom, startGame, type Room } from './room.js';
 import { summaryOf } from './summary.js';
 
 function full(): Room {
-  const created = createRoom('K7X2', 'u1', 'Anna', 3, 'liste-probe');
+  const created = createRoom('K7X2', 'u1', 'Anna', 3, 'liste-probe', 10);
   if (!created.ok) throw new Error(created.error);
 
   let room = created.room;

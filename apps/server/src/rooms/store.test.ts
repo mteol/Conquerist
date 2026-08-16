@@ -4,7 +4,7 @@ import { MemoryRoomStore } from './store.js';
 import { createRoom, joinRoom, type Room } from './room.js';
 
 function room(): Room {
-  const created = createRoom('K7X2', 'u1', 'Anna', 3, 'store-probe');
+  const created = createRoom('K7X2', 'u1', 'Anna', 3, 'store-probe', 10);
   if (!created.ok) throw new Error(created.error);
   return created.room;
 }
