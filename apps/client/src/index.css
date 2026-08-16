@@ -575,7 +575,10 @@ body {
 @media (max-width: 26rem) {
   .corner {
     gap: 0.5rem;
-    padding: 0.75rem 2.9rem 0.75rem 0.9rem;
+    /* 3,25rem und nicht 2,9rem: bei 392 px lagen sonst die letzten drei Pixel
+       von „Anmelden" unter dem Zahnrad - unsichtbar knapp, aber dort nicht
+       mehr klickbar (gemessen im Browser). */
+    padding: 0.75rem 3.25rem 0.75rem 0.9rem;
     font-size: 0.72rem;
   }
 
@@ -1703,8 +1706,17 @@ body {
   height: 1rem;
 }
 
+/*
+ * Der Verlauf beginnt unterhalb des Zahnrads.
+ *
+ * Beide wollen dieselbe Ecke, und das Zahnrad ist fest verankert. Es auf dem
+ * Panel liegen zu lassen waere derselbe Fehler wie `.button--ghost`: seine
+ * Farbe ist fuer Tiefsee gemischt und auf Pergament kaum zu sehen. Deshalb
+ * weicht der Verlauf nach unten aus statt zur Seite - so bleibt seine Kante an
+ * der Bildschirmkante, wo die anderen Panels auch sitzen.
+ */
 .panel--log {
-  top: 0.75rem;
+  top: 3.3rem;
   right: 0.75rem;
 }
 

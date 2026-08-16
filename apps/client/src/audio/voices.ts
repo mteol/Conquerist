@@ -154,13 +154,17 @@ export const VOICES: Record<Cue, Recipe> = {
     ],
   },
 
-  // Je Karte ein Blip, aufsteigend. Bei vier ist Schluss - mehr wird ein
-  // Wischen statt einer Zahl.
+  /*
+   * Je Karte ein Blip, aufsteigend - wie viele davon klingen, sagt `count` am
+   * Vorfall. Vier Schichten, weil dort gedeckelt wird: mehr wird ein Wischen
+   * statt einer Zahl.
+   */
   'gain.self': {
     layers: [
       { kind: 'tone', wave: 'sine', from: A3 * 2, attack: 2, decay: 90, gain: 0.14 },
       { kind: 'tone', wave: 'sine', from: A3 * 2.25, at: 70, attack: 2, decay: 90, gain: 0.13 },
       { kind: 'tone', wave: 'sine', from: A3 * 2.5, at: 140, attack: 2, decay: 110, gain: 0.12 },
+      { kind: 'tone', wave: 'sine', from: A3 * 3, at: 210, attack: 2, decay: 130, gain: 0.12 },
     ],
   },
 
@@ -290,12 +294,19 @@ export const VOICES: Record<Cue, Recipe> = {
  */
 export function recipeFor(sound: Sound): Recipe {
   const base = VOICES[sound.cue];
-  if (sound.note === undefined) return base;
+
+  // `count` kuerzt die Figur auf so viele Schichten, wie der Vorfall hergibt.
+  const layers =
+    sound.count === undefined
+      ? base.layers
+      : base.layers.slice(0, Math.max(1, Math.min(base.layers.length, sound.count)));
+
+  if (sound.note === undefined) return layers === base.layers ? base : { layers };
 
   const factor = 2 ** ((sound.note - 7) / 12);
 
   return {
-    layers: base.layers.map((layer) =>
+    layers: layers.map((layer) =>
       layer.kind === 'tone'
         ? {
             ...layer,

@@ -23,8 +23,18 @@ export interface Engine {
   readonly close: () => void;
 }
 
-/** Wie viele Stimmen gleichzeitig - darueber wird es eine Wand statt eines Spiels. */
-const MAX_VOICES = 8;
+/**
+ * Wie viele **Klaenge** gleichzeitig - darueber wird es eine Wand statt eines
+ * Spiels.
+ *
+ * Gezaehlt werden Cues und nicht ihre Schichten, und das ist der Unterschied
+ * zwischen einer Grenze und einem Fehler: ein Wuerfelwurf besteht aus sechs
+ * Schichten (Klick plus fuenf Ticks). Mit einer Schichtgrenze von acht fiel
+ * danach alles weg, was noch kam - im Browser gemessen: der Verlauf meldete
+ * „Spieler 1 +2", und der Ertragsklang kam nicht. Ein Klang ist eine Einheit;
+ * angefangen wird er ganz oder gar nicht.
+ */
+const MAX_CUES = 6;
 /** Derselbe Cue zweimal innerhalb dieser Spanne ist einmal zu viel. */
 const DEDUPE_MS = 60;
 
@@ -37,7 +47,7 @@ export function createEngine(): Engine {
 
   const buffers = new Map<string, AudioBuffer>();
   const lastPlayed = new Map<string, number>();
-  let voices = 0;
+  const running = new Set<ReturnType<typeof setTimeout>>();
 
   const apply = (next: AudioSettings): void => {
     settings = next;
@@ -110,7 +120,6 @@ export function createEngine(): Engine {
       osc.stop(start + attack + decay + 0.02);
       osc.onended = () => {
         envelope.disconnect();
-        voices -= 1;
       };
     } else {
       const source = ctx.createBufferSource();
@@ -129,11 +138,8 @@ export function createEngine(): Engine {
       source.onended = () => {
         filter.disconnect();
         envelope.disconnect();
-        voices -= 1;
       };
     }
-
-    voices += 1;
   };
 
   const playSample = (
@@ -152,10 +158,7 @@ export function createEngine(): Engine {
     source.start();
     source.onended = () => {
       envelope.disconnect();
-      voices -= 1;
     };
-
-    voices += 1;
   };
 
   /*
@@ -184,13 +187,14 @@ export function createEngine(): Engine {
     if (last !== undefined && now - last < DEDUPE_MS) return;
     lastPlayed.set(sound.cue, now);
 
-    if (voices >= MAX_VOICES) return;
+    if (running.size >= MAX_CUES) return;
     if (context.state === 'suspended') void context.resume();
 
     const url = SAMPLES[sound.cue];
     if (url !== undefined) {
       const buffer = buffers.get(sound.cue);
       if (buffer !== undefined) {
+        hold(buffer.duration * 1000);
         playSample(context, sfx, buffer, sound.gain);
         return;
       }
@@ -199,7 +203,24 @@ export function createEngine(): Engine {
       load(context, sound.cue, url);
     }
 
-    for (const layer of recipeFor(sound).layers) playLayer(context, sfx, layer, sound.gain);
+    const recipe = recipeFor(sound);
+    hold(Math.max(...recipe.layers.map((l) => (l.at ?? 0) + (l.attack ?? 2) + l.decay)));
+
+    for (const layer of recipe.layers) playLayer(context, sfx, layer, sound.gain);
+  };
+
+  /**
+   * Haelt einen Platz frei, solange dieser Klang laeuft.
+   *
+   * Eine Uhr und kein `onended`: ein Klang besteht aus mehreren Schichten mit
+   * eigenen Enden, und gezaehlt werden sollen Klaenge. Der Zeitgeber steht
+   * hier richtig - diese Datei ist die unreine Kante.
+   */
+  const hold = (ms: number): void => {
+    const handle = setTimeout(() => {
+      running.delete(handle);
+    }, ms + 30);
+    running.add(handle);
   };
 
   const close = (): void => {
@@ -210,7 +231,8 @@ export function createEngine(): Engine {
     music = null;
     buffers.clear();
     lastPlayed.clear();
-    voices = 0;
+    for (const handle of running) clearTimeout(handle);
+    running.clear();
   };
 
   return { play, apply, close };

@@ -20,9 +20,13 @@ export function SettingsButton(): JSX.Element {
         aria-label="Einstellungen"
         onClick={() => setOpen(true)}
       >
+        {/* Ein Rad, keine Sonne: ohne den aeusseren Ring lesen die acht Striche
+            als Strahlen, und das heisst ueberall Helligkeit statt
+            Einstellungen. Der Ring macht aus ihnen Zaehne. */}
         <svg viewBox="-12 -12 24 24" aria-hidden="true">
-          <circle cx="0" cy="0" r="3.4" />
-          <path d="M 0 -9 L 0 -6 M 0 6 L 0 9 M -9 0 L -6 0 M 6 0 L 9 0 M -6.4 -6.4 L -4.2 -4.2 M 4.2 4.2 L 6.4 6.4 M 6.4 -6.4 L 4.2 -4.2 M -4.2 4.2 L -6.4 6.4" />
+          <circle cx="0" cy="0" r="3.2" />
+          <circle cx="0" cy="0" r="7" />
+          <path d="M 0 -9.5 L 0 -7 M 0 7 L 0 9.5 M -9.5 0 L -7 0 M 7 0 L 9.5 0 M -6.7 -6.7 L -4.9 -4.9 M 4.9 4.9 L 6.7 6.7 M 6.7 -6.7 L 4.9 -4.9 M -4.9 4.9 L -6.7 6.7" />
         </svg>
       </button>
 

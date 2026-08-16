@@ -45,7 +45,22 @@ describe('VOICES', () => {
   });
 
   it('laesst ein Rezept ohne Note unveraendert', () => {
-    expect(recipeFor({ cue: 'build.city', gain: 1 })).toEqual(VOICES['build.city']);
+    expect(recipeFor({ cue: 'build.city', gain: 1 })).toBe(VOICES['build.city']);
+  });
+
+  it('kuerzt den Ertragsklang auf die Zahl der Karten', () => {
+    // Der Verlauf sagt „+2" - dann sollen auch zwei Blips klingen und nicht
+    // dieselbe Figur wie bei vier.
+    expect(recipeFor({ cue: 'gain.self', gain: 1, count: 1 }).layers).toHaveLength(1);
+    expect(recipeFor({ cue: 'gain.self', gain: 1, count: 2 }).layers).toHaveLength(2);
+    expect(recipeFor({ cue: 'gain.self', gain: 1, count: 4 }).layers).toHaveLength(4);
+  });
+
+  it('nimmt nicht mehr Schichten, als das Rezept hat', () => {
+    expect(recipeFor({ cue: 'gain.self', gain: 1, count: 9 }).layers).toHaveLength(
+      VOICES['gain.self'].layers.length,
+    );
+    expect(recipeFor({ cue: 'gain.self', gain: 1, count: 0 }).layers).toHaveLength(1);
   });
 });
 

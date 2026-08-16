@@ -45,10 +45,15 @@ describe('cueFor', () => {
     expect(cues(sounds)).toEqual(['dice.roll', 'dice.seven']);
   });
 
-  it('haengt den Ertrag an, wenn Karten zugelaufen sind', () => {
-    const sounds = cueFor({ type: 'rollDice', actor: 'a' }, { ...quiet, diceTotal: 5, gained: 2 });
+  it('haengt den Ertrag an und sagt, wie viele Karten kamen', () => {
+    const two = cueFor({ type: 'rollDice', actor: 'a' }, { ...quiet, diceTotal: 5, gained: 2 });
 
-    expect(cues(sounds)).toContain('gain.self');
+    expect(cues(two)).toContain('gain.self');
+    expect(two.find((sound) => sound.cue === 'gain.self')?.count).toBe(2);
+
+    // Bei mehr als vier wird gedeckelt - sonst wird aus der Zahl ein Wischen.
+    const many = cueFor({ type: 'rollDice', actor: 'a' }, { ...quiet, diceTotal: 5, gained: 9 });
+    expect(many.find((sound) => sound.cue === 'gain.self')?.count).toBe(4);
   });
 
   it('daempft fremde Zuege', () => {

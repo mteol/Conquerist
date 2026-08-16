@@ -53,6 +53,14 @@ export interface Sound {
   readonly cue: Cue;
   readonly gain: number;
   readonly note?: number;
+  /**
+   * Wie viele Schichten des Rezepts klingen sollen.
+   *
+   * Nur `gain.self` benutzt das: ein Blip je zugelaufener Karte. Ohne das
+   * spielte der Klang immer dieselbe Figur, egal ob eine Karte kam oder vier -
+   * und dann meldete er nur „irgendwas kam" statt „so viel kam".
+   */
+  readonly count?: number;
 }
 
 /**

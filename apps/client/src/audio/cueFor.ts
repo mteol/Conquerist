@@ -101,7 +101,11 @@ export function cueFor(move: Move, situation: Situation): readonly Sound[] {
       break;
   }
 
-  if (situation.gained > 0) addMine('gain.self');
+  // Ein Blip je Karte, bei vier gedeckelt: mehr wird ein Wischen statt einer
+  // Zahl.
+  if (situation.gained > 0) {
+    sounds.push({ cue: 'gain.self', gain: 1, count: Math.min(4, situation.gained) });
+  }
   if (situation.mustDiscard) addMine('discard.required');
   if (situation.becameMyTurn) addMine('turn.mine');
   if (situation.finished) addMine('game.over');
