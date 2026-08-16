@@ -110,6 +110,45 @@ describe('Zustellung', () => {
     expect(players.find((entry: { id: string }) => entry.id === 'u3').connected).toBe(true);
   });
 
+  it('schickt Satz und Zug, wenn ein Uebergang mitkommt', () => {
+    const room = runningRoom();
+    const game = room.game!;
+    const actor = setupPlayer(game)!;
+    const action = {
+      type: 'placeSetupSettlement',
+      player: actor,
+      vertex: 'v:0,0|1,-1|1,0',
+    } as const;
+    const targets = sinks(['u1', 'u2', 'u3']);
+
+    broadcastGame(room, targets, { before: game, action, after: game });
+
+    for (const list of targets.values()) {
+      const send = list[0]!.send as unknown as ReturnType<typeof vi.fn>;
+      const payload = send.mock.calls[0]![1];
+
+      // Beides entsteht jetzt hier statt bei vier Aufrufern - und beides
+      // beschreibt denselben Zug, es kann also nicht auseinanderlaufen.
+      expect(payload.move).toEqual({ type: 'placeSetupSettlement', actor });
+      expect(payload.entry).toContain('Gründungssiedlung');
+    }
+  });
+
+  it('schickt weder Satz noch Zug, wenn keiner mitkommt', () => {
+    const room = runningRoom();
+    const targets = sinks(['u1', 'u2', 'u3']);
+
+    // Beitritt, Start und Reconnect stellen einen Stand zu, der aus keinem Zug
+    // entstanden ist. Ein erfundener Satz dazu waere eine Luege im Verlauf.
+    broadcastGame(room, targets);
+
+    const send = targets.get('u1')![0]!.send as unknown as ReturnType<typeof vi.fn>;
+    const payload = send.mock.calls[0]![1];
+
+    expect(payload.move).toBeUndefined();
+    expect(payload.entry).toBeUndefined();
+  });
+
   it('schickt den Raumzustand an alle gleich', () => {
     const room = runningRoom();
     const targets = sinks(['u1', 'u2', 'u3']);

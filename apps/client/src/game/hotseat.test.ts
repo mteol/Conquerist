@@ -32,6 +32,29 @@ describe('Hotseat-Zustand', () => {
     expect(state.actions).toHaveLength(0);
     expect(state.log).toHaveLength(0);
     expect(state.lastError).toBeNull();
+    expect(state.sound).toBeNull();
+  });
+
+  it('legt den Klang zum Zug ab und zaehlt ihn hoch', () => {
+    const first = apply(startHotseat(start), legalActions(start, setupPlayer(start)!)[0]!);
+
+    // Die erste Setzung ist eine Siedlung - dieselbe Handlung wie ein Bau, also
+    // derselbe Klang.
+    expect(first.sound?.sounds.map((sound) => sound.cue)).toEqual(['build.settlement']);
+    expect(first.sound?.seq).toBe(1);
+
+    const second = apply(first, legalActions(first.game, setupPlayer(first.game)!)[0]!);
+
+    expect(second.sound?.seq).toBe(2);
+  });
+
+  it('laesst den letzten Klang stehen, wenn ein Zug abgelehnt wird', () => {
+    const built = apply(startHotseat(start), legalActions(start, setupPlayer(start)!)[0]!);
+    const rejected = apply(built, { type: 'endTurn', player: 'p1' });
+
+    // Kein neuer Klang, aber auch kein Ruecksetzen: auf `null` zurueckgestellt
+    // waere derselbe Klang beim naechsten gueltigen Zug ein zweites Mal faellig.
+    expect(rejected.sound).toBe(built.sound);
   });
 
   it('haengt jede angenommene Aktion an Folge und Verlauf', () => {

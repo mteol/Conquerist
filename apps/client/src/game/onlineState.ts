@@ -1,4 +1,7 @@
 import type { GameAction, GameEvent, OverEvent, PlayerView, RoomEvent } from '@conquerist/shared';
+import { cueFor } from '../audio/cueFor';
+import type { SoundEvent } from '../audio/cues';
+import { situationFromView } from '../audio/situation';
 import type { LogEntry } from './hotseat';
 
 /**
@@ -23,6 +26,8 @@ export interface OnlineState {
   readonly log: readonly LogEntry[];
   /** Der letzte Ablehnungsgrund - sichtbar, bis er weggeraeumt wird. */
   readonly lastError: string | null;
+  /** Der Klang zum gemeldeten Zug. `seq` ist die Version - eine je Stand. */
+  readonly sound: SoundEvent | null;
   /** Gesetzt, wenn der Server die Partie beendet hat. */
   readonly over: OverEvent | null;
   /**
@@ -41,6 +46,7 @@ export const emptyOnlineState: OnlineState = {
   actions: [],
   log: [],
   lastError: null,
+  sound: null,
   over: null,
   clockOffset: 0,
 };
@@ -74,6 +80,17 @@ export function onlineReducer(state: OnlineState, event: OnlineEvent): OnlineSta
       if (state.view !== null && event.payload.version <= state.view.version) return state;
 
       const entry = event.payload.entry;
+      /*
+       * Der Klang entsteht aus dem gemeldeten Zug und dem Unterschied der
+       * beiden Sichten - beides liegt genau hier vor. `move` fehlt bei Staenden
+       * ohne Zug (Beitritt, Start, Reconnect); die klingen nicht.
+       */
+      const move = event.payload.move;
+      const sounds =
+        move === undefined
+          ? []
+          : cueFor(move, situationFromView(state.view, event.payload.view, move));
+
       return {
         ...state,
         view: event.payload.view,
@@ -84,6 +101,7 @@ export function onlineReducer(state: OnlineState, event: OnlineEvent): OnlineSta
           entry === undefined
             ? state.log
             : [...state.log, { turn: event.payload.view.turn, text: entry }],
+        sound: sounds.length === 0 ? state.sound : { seq: event.payload.version, sounds },
       };
     }
 

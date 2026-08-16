@@ -182,6 +182,20 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
   Store.** Wird der Zielordner danach woanders hinkopiert, zeigt der Link ins
   Leere, und Node sagt dazu nur „Cannot find package". Deshalb heißt der Pfad
   im Dockerfile schon in der Bau-Stufe so, wie er drüben heißen wird.
+- **Ein Effekt unter `StrictMode` läuft doppelt.** `main.tsx` lässt ihn an, und
+  in der Entwicklung klang deshalb jeder Zug zweimal, bis eine Sperre auf die
+  Folgenummer dazukam (`useCueSound` in `audio/useAudio.tsx`). Wer einen Effekt
+  schreibt, der etwas *auslöst* statt etwas *einzurichten*, braucht eine
+  Kennung, die sagt, ob es schon passiert ist.
+- **Eine Grenze, die die falsche Einheit zählt, ist ein Fehler.** Die
+  Stimmensperre stand auf acht *Schichten*; ein Würfelwurf kostet allein sechs
+  (Klick plus fünf Ticks), und alles danach fiel weg — der Verlauf meldete
+  „Spieler 1 +2", und der Ertragsklang kam nicht. Gezählt wird jetzt, was der
+  Spieler als *einen* Klang hört, nicht, woraus er gebaut ist.
+- **Ein Wächter, den der Compiler wegwirft, wacht nicht.** `noUnusedLocals`
+  verwirft einen nur lokal deklarierten Typ; der Vollständigkeitsbeweis für die
+  Zugtypen (`NoActionTypeForgotten` in `game/actions.ts`) ist deshalb
+  exportiert, obwohl ihn niemand benutzt.
 - **Ein einmal veröffentlichter Migrationsschritt wird nie wieder angefasst.**
   Er beschreibt den Stand, den es einmal gab. Wer ihn ändert, gibt Bestands-
   und Neudatenbanken verschiedene Schemata — deren `user_version` steht auf
@@ -213,6 +227,15 @@ Kaufstapel als Material statt als Knopf, eigene Silhouetten für Siedlung und
 Stadt (`board/shapes.ts`), Konturen unter den Straßen und getauschte Ecken für
 Verlauf und Status. Die Oberfläche ist dabei durchgehend **nicht** im Browser
 nachgesehen worden — das ist der größte offene Posten.
+
+Seit dem **Ton** (`etappe-10-ton`) klingt das Spiel: 23 synthetisierte Klänge
+unter `apps/client/src/audio/`, ein Einstellungen-Dialog mit Gesamt-, Effekt-
+und Musiklautstärke hinter einem festen Zahnrad oben rechts. Kein Audio-Byte im
+Image — jeder Klang ist ein Rezept aus Zahlen, und `samples.ts` führt alle 23
+als auskommentierte Zeilen, falls später eine mp3 einen davon ersetzen soll.
+Dafür sagt das Protokoll neuerdings, **welcher** Zug einen Stand erzeugt hat
+(`move: { type, actor }` im `GameEvent`): der Client bekam vorher nur den
+fertigen deutschen Verlaufssatz und hätte den Klang aus Text raten müssen.
 
 Seit Etappe 9 liegt **alles in `main`** — der
 Merge der Kette 4–9 (`7872f27`) hat den Rückstand aufgelöst, den `main` seit

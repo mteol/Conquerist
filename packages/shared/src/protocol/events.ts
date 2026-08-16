@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-import { GameActionSchema } from '../game/actions.js';
+import { GameActionSchema, GameActionTypeSchema } from '../game/actions.js';
+import { PlayerIdSchema } from '../game/player.js';
 import { PlayerViewSchema } from '../game/playerView.js';
 import { MAX_VICTORY_POINT_GOAL, MIN_VICTORY_POINT_GOAL } from '../rules/ruleset.js';
 import { MAX_SEATS, MIN_SEATS } from '../seats.js';
@@ -50,6 +51,24 @@ export const RoomEventSchema = z.object({
 });
 
 /**
+ * Welcher Zug zu diesem Stand gefuehrt hat.
+ *
+ * Der Client hatte bis dahin nur `entry` - einen fertigen deutschen Satz.
+ * Daraus laesst sich nichts ableiten ausser Text; welcher Zug es war, stand
+ * nirgends, und der Ton haette ihn aus dem Zustandsunterschied erraten muessen.
+ *
+ * Hier steht deshalb, **was** passiert ist. Was daraus wird - ein Klang, spaeter
+ * vielleicht eine uebersetzte Zeile - entscheidet der Empfaenger. Eine
+ * Ausgabeanweisung gehoerte nicht ins Protokoll.
+ */
+export const MoveSchema = z.object({
+  type: GameActionTypeSchema,
+  actor: PlayerIdSchema,
+});
+
+export type Move = z.infer<typeof MoveSchema>;
+
+/**
  * Der Spielstand - **je Empfaenger ein eigener**.
  *
  * `actions` sind die Zuege, die genau dieser Empfaenger gerade machen darf.
@@ -62,6 +81,8 @@ export const GameEventSchema = z.object({
   actions: z.array(GameActionSchema),
   /** Verlaufssatz zum Zug, der gerade geschehen ist. Fehlt beim ersten Stand. */
   entry: z.string().min(1).optional(),
+  /** Der Zug selbst. Steht genau dann da, wenn `entry` dasteht. */
+  move: MoveSchema.optional(),
   /**
    * Die Serveruhr beim Senden.
    *

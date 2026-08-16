@@ -174,6 +174,62 @@ export type GameAction = z.infer<typeof GameActionSchema>;
 export type GameActionType = GameAction['type'];
 
 /**
+ * Die Zugarten als Liste - fuer Stellen, die den Typ ohne die ganze Aktion
+ * brauchen.
+ *
+ * Seit dem Ton schickt der Server ihn im Spielstand mit: der Client bekam
+ * vorher nur den fertigen Verlaufssatz und konnte daraus nichts ableiten ausser
+ * Text.
+ *
+ * Die Liste steht doppelt zur Union, und beide Waechter sind noetig:
+ * `satisfies` faengt jeden Tippfehler, `AssertNever` darunter jeden
+ * **vergessenen** Zweig. Ohne den zweiten bliebe ein neuer Zugtyp einfach
+ * stumm, und niemand merkte es.
+ */
+export const GAME_ACTION_TYPES = [
+  'placeSetupSettlement',
+  'placeSetupRoad',
+  'rollDice',
+  'discard',
+  'moveRobber',
+  'buildRoad',
+  'buildSettlement',
+  'buildCity',
+  'buyDevelopmentCard',
+  'playKnight',
+  'playRoadBuilding',
+  'playYearOfPlenty',
+  'playMonopoly',
+  'tradeWithBank',
+  'offerTrade',
+  'respondTrade',
+  'counterTrade',
+  'acceptTrade',
+  'rejectCounter',
+  'withdrawTrade',
+  'timeout',
+  'dropFromTrade',
+  'rejoinTrade',
+  'endTurn',
+] as const satisfies readonly GameActionType[];
+
+type AssertNever<T extends never> = T;
+
+/**
+ * Der zweite Waechter: was in der Union steht und oben fehlt, landet hier - und
+ * alles ausser `never` verletzt die Schranke.
+ *
+ * Er ist **exportiert, obwohl ihn niemand benutzt**: `noUnusedLocals` verwirft
+ * einen nur lokal deklarierten Typ, und ein weggeworfener Waechter waecht
+ * nichts.
+ */
+export type NoActionTypeForgotten = AssertNever<
+  Exclude<GameActionType, (typeof GAME_ACTION_TYPES)[number]>
+>;
+
+export const GameActionTypeSchema = z.enum(GAME_ACTION_TYPES);
+
+/**
  * Aktionen, die kein Spieler schickt.
  *
  * Zwei von ihnen sprechen **ueber** einen anderen Spieler, die dritte ist das
