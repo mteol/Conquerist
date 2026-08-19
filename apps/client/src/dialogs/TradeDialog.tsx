@@ -5,8 +5,9 @@ import {
   type ResourceAmounts,
   type ResourceId,
 } from '@conquerist/shared';
-import { RESOURCE_LABELS } from '../game/labels';
+import { RESOURCE_COLORS, RESOURCE_LABELS } from '../game/labels';
 import type { PlayerRow } from '../game/view';
+import { ResourceGlyph } from '../panels/ResourceGlyph';
 import { CloseButton } from './CloseButton';
 import { NO_AMOUNTS, TradeAmounts, isTradeShapeValid } from './TradeAmounts';
 
@@ -92,16 +93,15 @@ export function TradeDialog({
             <fieldset className="cards">
               <legend>Du gibst ab</legend>
               {RESOURCE_IDS.map((resource) => (
-                <label key={resource} className="cards__choice">
-                  <input
-                    type="radio"
-                    name="give"
-                    aria-label={`${RESOURCE_LABELS[resource]} abgeben`}
-                    checked={give === resource}
-                    onChange={() => setGive(resource)}
-                  />
-                  {RESOURCE_LABELS[resource]} ({player.resources?.[resource] ?? 0})
-                </label>
+                <Choice
+                  key={resource}
+                  resource={resource}
+                  group="give"
+                  action="abgeben"
+                  held={player.resources?.[resource] ?? 0}
+                  checked={give === resource}
+                  onPick={() => setGive(resource)}
+                />
               ))}
             </fieldset>
 
@@ -118,16 +118,15 @@ export function TradeDialog({
             <fieldset className="cards">
               <legend>Du bekommst</legend>
               {RESOURCE_IDS.map((resource) => (
-                <label key={resource} className="cards__choice">
-                  <input
-                    type="radio"
-                    name="receive"
-                    aria-label={`${RESOURCE_LABELS[resource]} bekommen`}
-                    checked={receive === resource}
-                    onChange={() => setReceive(resource)}
-                  />
-                  {RESOURCE_LABELS[resource]}
-                </label>
+                <Choice
+                  key={resource}
+                  resource={resource}
+                  group="receive"
+                  action="bekommen"
+                  held={null}
+                  checked={receive === resource}
+                  onPick={() => setReceive(resource)}
+                />
               ))}
             </fieldset>
 
@@ -172,5 +171,72 @@ export function TradeDialog({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Eine Sorte zur Auswahl - als Karte, nicht als Punkt neben einem Wort.
+ *
+ * **Der Bankhandel war die einzige Stelle, an der ein Rohstoff keine Farbe
+ * hatte.** Auf der Hand ist er eine Karte in der Gelaendefarbe mit seinem
+ * Motiv, in „Erfindung" und „Monopol" ebenso (`ResourcePickDialog`) - hier
+ * standen fuenf gleiche beigefarbene Pillen mit Text darin, und wer schnell
+ * hinsah, unterschied sie nicht. Dieselbe Sache muss ueberall gleich aussehen,
+ * sonst ist es nicht mehr dieselbe Sache.
+ *
+ * **Das Feld bleibt ein `radio`.** Ausgeblendet wird nur seine Zeichnung, nicht
+ * das Feld: die Gruppe ist damit weiter mit Pfeiltasten bedienbar und meldet
+ * sich als das, was sie ist. Die Karte darum ist das `label` - ein Klick
+ * irgendwo darauf waehlt aus.
+ *
+ * **Die Zeile fuer den Bestand steht immer da, auch leer.** Beim Abgeben zaehlt,
+ * was man hat; beim Bekommen sagt die Zahl nichts. Ohne die leere Zeile waeren
+ * die zwei Reihen verschieden hoch - derselbe Grund, aus dem die Aufforderung
+ * unter den Wuerfeln auch dann dasteht, wenn sie leer ist.
+ */
+function Choice({
+  resource,
+  group,
+  action,
+  held,
+  checked,
+  onPick,
+}: {
+  readonly resource: ResourceId;
+  readonly group: 'give' | 'receive';
+  readonly action: 'abgeben' | 'bekommen';
+  /** Wieviele davon auf der Hand liegen - `null`, wo das nichts zur Sache tut. */
+  readonly held: number | null;
+  readonly checked: boolean;
+  readonly onPick: () => void;
+}): JSX.Element {
+  return (
+    <label className="cards__choice" style={{ background: RESOURCE_COLORS[resource] }}>
+      <input
+        type="radio"
+        name={group}
+        className="visually-hidden"
+        aria-label={`${RESOURCE_LABELS[resource]} ${action}`}
+        checked={checked}
+        onChange={onPick}
+      />
+
+      <ResourceGlyph resource={resource} />
+      <span className="cards__choice-name">{RESOURCE_LABELS[resource]}</span>
+
+      {/*
+       * Die Null bleibt stehen und wird blass - dieselbe Entscheidung wie beim
+       * Bauvorrat: ein fehlender Eintrag saehe aus wie ein Anzeigefehler, „0"
+       * ist dagegen genau die Auskunft, um die es geht.
+       */}
+      <span
+        className={
+          held === 0 ? 'cards__choice-held cards__choice-held--empty' : 'cards__choice-held'
+        }
+        aria-hidden="true"
+      >
+        {held ?? ''}
+      </span>
+    </label>
   );
 }

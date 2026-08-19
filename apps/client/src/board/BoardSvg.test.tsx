@@ -73,6 +73,48 @@ describe('BoardSvg', () => {
    * man nur im Vergleich, und zwei eigene Bauwerke stehen selten nebeneinander;
    * die Form dagegen liest man einzeln.
    */
+  /*
+   * **Die Augen ragten ueber den Chiprand hinaus, und das ist hier rechenbar.**
+   *
+   * Sie waren ein `text` aus Mittelpunkten, dessen `font-size` in `.chip__pips`
+   * stand - unter `.chip text`, das eine Klasse plus einen Typ hat und deshalb
+   * gewinnt. Statt 0.19px wurden 0.32px gesetzt, und fuenf Punkte in dieser
+   * Groesse sind breiter als der Chip. Als Kreise haben sie keine Metrik mehr,
+   * die eine Schrift verschieben koennte - und ihre Lage laesst sich ohne
+   * Layout-Engine nachrechnen, also wird sie das hier.
+   */
+  it('haelt die Augen innerhalb des Chips - gerechnet, nicht geschaetzt', () => {
+    render(<BoardSvg state={start} targets={EMPTY_TARGETS} seats={seats} onPick={vi.fn()} />);
+
+    /** Der Radius, mit dem `BoardSvg` die Chipscheibe zeichnet. */
+    const CHIP = 0.34;
+    let counted = 0;
+
+    for (const placement of scenario.hexes) {
+      if (placement.chip === undefined) continue;
+
+      const group = screen.getByTestId(`hex-${placement.hex}`).parentElement!;
+      const disc = group.querySelector('.chip > circle')!;
+      const cx = Number(disc.getAttribute('cx'));
+      const cy = Number(disc.getAttribute('cy'));
+
+      const pips = [...group.querySelectorAll('.chip__pips circle')];
+      expect(pips.length).toBeGreaterThan(0);
+
+      for (const pip of pips) {
+        const reach =
+          Math.hypot(Number(pip.getAttribute('cx')) - cx, Number(pip.getAttribute('cy')) - cy) +
+          Number(pip.getAttribute('r'));
+
+        expect(reach).toBeLessThan(CHIP);
+        counted += 1;
+      }
+    }
+
+    // Ein Test, der nichts gezaehlt hat, hat nichts geprueft.
+    expect(counted).toBeGreaterThan(0);
+  });
+
   it('zeichnet Siedlung und Stadt als verschiedene Formen, nicht als zwei Punkte', () => {
     const vertices = boardOf(scenario).topology.vertices;
     const withBoth = {

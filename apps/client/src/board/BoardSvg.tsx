@@ -174,13 +174,32 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
                 >
                   {placement.chip}
                 </text>
-                <text
+                {/*
+                 * Die Augen als **gezeichnete Punkte** und nicht als eine Reihe
+                 * Mittelpunkte in einem `text`.
+                 *
+                 * Als Text ragten sie ueber den Chiprand hinaus, und der Grund
+                 * war zweifach. Erstens die alte Falle aus CLAUDE.md: die
+                 * Schriftgroesse stand in `.chip__pips` (eine Klasse), darueber
+                 * aber `.chip text` (eine Klasse plus ein Typ) - die 0.19px
+                 * haben nie gegolten, gerendert wurden 0.32px. Fuenf Punkte in
+                 * dieser Groesse sind breiter als der Chip, in den sie gehoeren.
+                 * Zweitens, und schlimmer: die Breite haengt an den Metriken
+                 * einer Schrift. Wieviel Vorschub ein `·` in Segoe UI
+                 * bekommt, laesst sich nicht ausrechnen, und auf einem Rechner
+                 * ohne Segoe UI ist es eine andere Zahl.
+                 *
+                 * Gezeichnete Kreise haben keine Metrik. Fuenf Punkte im
+                 * Abstand 0.055 sind 0.22 breit, der aeusserste sitzt damit
+                 * 0.272 vom Mittelpunkt - der Chip misst 0.34. Das gilt in
+                 * jeder Schrift und auf jedem Rechner.
+                 */}
+                <ChipPips
+                  count={PIPS[placement.chip] ?? 0}
                   x={center.x}
-                  y={center.y + 0.24}
-                  className={isHot(placement.chip) ? 'chip__pips chip__pips--hot' : 'chip__pips'}
-                >
-                  {'·'.repeat(PIPS[placement.chip] ?? 0)}
-                </text>
+                  y={center.y + 0.225}
+                  hot={isHot(placement.chip)}
+                />
               </g>
             )}
           </g>
@@ -394,6 +413,34 @@ function roadClass(built: boolean, isTarget: boolean): string {
   return isTarget ? 'road road--target' : 'road';
 }
 
+/**
+ * Die Augen unter der Zahl - gezeichnet, nicht gesetzt.
+ *
+ * Der Abstand 0.055 und der Radius 0.022 sind gegen den Chip gerechnet: fuenf
+ * Punkte spannen 0.22, der aeusserste sitzt damit samt Radius 0.272 vom
+ * Mittelpunkt, und der Chip misst 0.34. Die Zahl darueber steht mit 0.36px
+ * Schrift in der Mitte und reicht rund 0.13 nach unten - dazwischen bleibt Luft.
+ */
+function ChipPips({
+  count,
+  x,
+  y,
+  hot,
+}: {
+  readonly count: number;
+  readonly x: number;
+  readonly y: number;
+  readonly hot: boolean;
+}): JSX.Element {
+  return (
+    <g className={hot ? 'chip__pips chip__pips--hot' : 'chip__pips'}>
+      {Array.from({ length: count }, (_unused, index) => (
+        <circle key={index} cx={x + (index - (count - 1) / 2) * 0.055} cy={y} r={0.022} />
+      ))}
+    </g>
+  );
+}
+
 function VertexMark({
   vertex,
   state,
@@ -426,6 +473,33 @@ function VertexMark({
         ) : null
       ) : (
         <>
+          {/*
+           * **Ein Knoten, auf dem schon etwas steht, war als Ziel unsichtbar.**
+           *
+           * Die Zielmarke hing bis hierher am leeren Knoten - `building ===
+           * undefined ? Marke : Bauwerk`. Beim Ausbau zur Stadt sind aber
+           * *alle* Ziele bebaut: man drueckt „Stadt", und das Brett bleibt
+           * vollkommen ruhig. Anklickbar war es die ganze Zeit (der Klick haengt
+           * an der Gruppe, nicht an der Marke), nur sah man nicht, welches Haus
+           * gemeint ist - im Playtest hat das genau so gewirkt, wie es aussah:
+           * als ginge es nicht.
+           *
+           * Der Hof ist deshalb dieselbe Marke wie am leeren Knoten, nur
+           * groesser und **unter** dem Bauwerk: gleiches Material, gleiche
+           * Aussage („hier kannst du"), und das Haus steht darauf statt
+           * darunter. Ein zweiter Ring waere ein zweites Zeichen fuer dieselbe
+           * Sache gewesen - und haette sich ausserdem mit der Aufbau-Welle
+           * (`build-flash`, r 0.34) gestapelt.
+           */}
+          {isTarget ? (
+            <circle
+              className="vertex__target vertex__target--yard"
+              cx={point.x}
+              cy={point.y}
+              r={0.235}
+            />
+          ) : null}
+
           {/*
            * Der Ring beim Bauen - und `key` ist hier die ganze Mechanik.
            *

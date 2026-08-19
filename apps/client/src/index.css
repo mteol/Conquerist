@@ -2776,12 +2776,23 @@ body {
   font-size: 0.36px;
 }
 
-.chip__pips {
-  font-size: 0.19px;
-  letter-spacing: 0.035px;
+/*
+ * Die Augen unter der Zahl.
+ *
+ * Sie waren ein `text` aus Mittelpunkten und standen ueber den Chiprand hinaus:
+ * `font-size` stand hier in einer Klasse, darueber aber in `.chip text` - eine
+ * Klasse plus ein Typ schlaegt eine Klasse allein, also galten nie 0.19px,
+ * sondern 0.32px. **Dieselbe Falle wie bei der roten Sechs**, zwei Regeln
+ * weiter oben im selben Block, und diesmal ist sie nicht mit einem schaerferen
+ * Selektor behoben, sondern mit dem Verzicht auf die Schrift: die Punkte sind
+ * jetzt Kreise (siehe `BoardSvg`). Eine gezeichnete Form hat keine Metrik, die
+ * eine fehlende Schrift veraendern koennte.
+ */
+.chip__pips circle {
+  fill: #16202a;
 }
 
-.chip text.chip__pips--hot {
+.chip__pips--hot circle {
   fill: var(--bad-ink);
 }
 
@@ -2975,6 +2986,31 @@ body {
 }
 
 /*
+ * Der Hof unter einem Bauwerk, das gerade ein Ziel ist - beim Ausbau zur Stadt
+ * sind das alle eigenen Siedlungen.
+ *
+ * Etwas blasser als die Marke am leeren Knoten: dort ist sie das einzige
+ * Zeichen, hier liegt ein Haus darauf und soll das laute Ding bleiben. Der Rand
+ * traegt die Form, die Flaeche nur den Grund.
+ */
+.vertex__target--yard {
+  fill: rgb(246 239 223 / 34%);
+  stroke-width: 0.022;
+}
+
+/*
+ * Der Zeiger gehoert an die Gruppe und nicht an die Marke: das Bauwerk liegt
+ * ueber ihr, und wer auf das Haus zeigt, zeigt auf das Ziel.
+ */
+.vertex[data-target='true'] {
+  cursor: pointer;
+}
+
+.vertex[data-target='true']:hover .vertex__target--yard {
+  fill: rgb(246 239 223 / 62%);
+}
+
+/*
  * Siedlung und Stadt tragen ihre Kontur im **Pfadmass**, nicht im Brettmass:
  * der Pfad steckt in einem `scale(0.027)`, und eine Linienbreite von 0.03 waere
  * darin auf ein Sechzigstel geschrumpft, also gar nichts.
@@ -3084,6 +3120,27 @@ body {
   margin: 0.35rem 0.2rem 0;
 }
 
+/*
+ * **Der Geisterknopf auf Pergament war creme auf creme.**
+ *
+ * `.button--ghost` setzt `color: var(--on-sea)` - richtig auf der Tiefsee, wo
+ * er sonst ueberall steht, und in einem Dialog gemessene 1,05:1 gegen den
+ * Pergamentgrund. „Abbrechen" im Handel, „Auswahl zuruecksetzen" bei Erfindung
+ * und Monopol: alle unsichtbar. Der Befund stand seit dem Browser-Durchlauf im
+ * August in CLAUDE.md, behoben wurden damals nur die drei Antwortknoepfe am
+ * Angebot und das Zahnrad - die Klasse selbst blieb, wie sie war.
+ *
+ * Behoben wird er hier und nicht in der Klasse: `--ink` liegt nicht an jedem
+ * Grund vor (`.mode` etwa traegt Tiefsee, definiert es aber nicht um), ein
+ * `--ink: inherit` in `.button--ghost` haette dort dunkle Tinte auf dunklem
+ * Grund ergeben - also derselbe Fehler, nur woanders. Der Dialogkasten ist der
+ * eine Ort, an dem der Untergrund **immer** Pergament ist.
+ */
+.modal__box .button--ghost {
+  border-color: var(--parchment-edge);
+  color: var(--ink-base);
+}
+
 /* Beschriftetes Eingabefeld in Dialogen - Konto anlegen/anmelden. */
 .field {
   display: flex;
@@ -3179,21 +3236,71 @@ body {
   background: #fff;
 }
 
+/*
+ * Eine Sorte zur Auswahl im Bankhandel.
+ *
+ * **Sie war das einzige Stueck im Spiel, an dem ein Rohstoff keine Farbe
+ * hatte**: fuenf gleiche Pergamentpillen mit Text, waehrend derselbe Rohstoff
+ * auf der Hand und in „Erfindung"/„Monopol" eine Karte in der Gelaendefarbe
+ * mit seinem Motiv ist. Jetzt traegt er auch hier beides.
+ */
 .cards__choice {
-  display: flex;
-  gap: 0.3rem;
-  align-items: center;
-  padding: 0.3rem 0.5rem;
-  border: 1px solid var(--parchment-edge);
-  border-radius: 999px;
-  background: var(--parchment-2);
-  font-size: 0.8rem;
+  display: grid;
+  gap: 0.08rem;
+  justify-items: center;
+  width: 4rem;
+  padding: 0.35rem 0.2rem;
+  border: 1px solid rgb(22 32 42 / 55%);
+  border-radius: 6px;
+  color: var(--ink-base);
   cursor: pointer;
 }
 
+/* Kleiner als auf der Handkarte - die Karte hier ist eine Auswahl, kein Stapel. */
+.cards__choice .card__glyph {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.cards__choice-name {
+  font-size: 0.6rem;
+  font-weight: 650;
+}
+
+/*
+ * Die Zeile steht immer da, auch leer: beim Bekommen sagt ein Bestand nichts,
+ * und ohne sie waeren die zwei Reihen verschieden hoch.
+ */
+.cards__choice-held {
+  min-height: 0.95rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cards__choice-held--empty {
+  opacity: 0.45;
+}
+
+/*
+ * Gewaehlt: zwei Ringe, innen Tinte und aussen Gold.
+ *
+ * **Ein einzelner Ring ginge auf fuenf verschiedenen Gelaendefarben nicht.**
+ * Gold allein verschwaende auf dem Korn (beides `--fields`), Tinte allein
+ * saesse auf dem dunklen Wald fast unsichtbar - und gegen die Pergamentflaeche
+ * des Dialogs muss der Ring auch noch stehen. Zwei Ringe stehen auf jedem
+ * dieser Gruende.
+ */
 .cards__choice:has(input:checked) {
-  border-color: transparent;
-  background: var(--accent);
+  box-shadow:
+    0 0 0 2px var(--ink-base),
+    0 0 0 4px var(--accent);
+}
+
+/* Das Feld ist versteckt, sein Fokus darf es nicht sein. */
+.cards__choice:has(input:focus-visible) {
+  outline: 2px solid var(--ink-base);
+  outline-offset: 4px;
 }
 
 .result {

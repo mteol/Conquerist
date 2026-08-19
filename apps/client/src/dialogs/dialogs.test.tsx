@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import type { ResourceId } from '@conquerist/shared';
+import { RESOURCE_IDS, type ResourceId } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
+import { RESOURCE_LABELS } from '../game/labels';
 import type { PlayerRow } from '../game/view';
 import { AccountDialog } from './AccountDialog';
 import { DiscardDialog } from './DiscardDialog';
@@ -75,6 +76,41 @@ describe('TradeDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: /Tauschen/ }));
 
     expect(onConfirm).toHaveBeenCalledWith('brick', 'ore');
+  });
+
+  /*
+   * **Der Bankhandel war die einzige Stelle, an der ein Rohstoff keine Farbe
+   * hatte.** Fuenf gleiche Pergamentpillen mit Text darin - waehrend derselbe
+   * Rohstoff auf der Hand und in „Erfindung"/„Monopol" eine Karte in der
+   * Gelaendefarbe mit seinem Motiv ist. Gemeldet als „weiss auf weiss".
+   *
+   * Geprueft wird nicht, *welche* Farbe (die steht in `labels.ts` und waere hier
+   * nur abgeschrieben), sondern dass es fuenf verschiedene sind und keine
+   * fehlt - genau das war kaputt.
+   */
+  it('gibt jeder Sorte im Bankhandel ihre Farbe und ihr Motiv', () => {
+    render(
+      <TradeDialog
+        player={player}
+        rateFor={() => 4}
+        canTrade={() => true}
+        canOffer={false}
+        onOffer={vi.fn()}
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const cards = RESOURCE_IDS.map((resource) =>
+      screen.getByLabelText(`${RESOURCE_LABELS[resource]} abgeben`).closest('label')!,
+    );
+
+    for (const card of cards) {
+      expect(card.querySelector('.card__glyph')).not.toBeNull();
+      expect(card.style.background).not.toBe('');
+    }
+
+    expect(new Set(cards.map((card) => card.style.background)).size).toBe(RESOURCE_IDS.length);
   });
 
   /*

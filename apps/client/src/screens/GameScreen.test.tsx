@@ -227,7 +227,18 @@ describe('GameScreen', () => {
     expect(
       screen.getAllByTestId(/^(vertex|edge)-/).filter((node) => node.dataset['target'] === 'true'),
     ).toHaveLength(0);
-  });
+    /*
+     * Eigene Frist, und zwar gemessen: dieser Test klickt zwoelf Gruendungszuege
+     * durch, jeder mit zwei `userEvent`-Klicks und einem vollstaendigen
+     * Neurendern des Bretts. Allein lief er in 4.7 s, parallel neben `shared`
+     * und `server` zweimal knapp ueber die 5000-ms-Standardfrist - einmal rot,
+     * beim naechsten Lauf gruen, ohne dass sich etwas geaendert haette.
+     *
+     * Erhoeht und nicht gekuerzt: was er prueft, braucht die zwoelf Zuege. Ein
+     * Test, der je nach Rechnerlast faellt, ist schlimmer als ein langsamer -
+     * er kostet jedes Mal die Frage, ob diesmal wirklich etwas kaputt ist.
+     */
+  }, 20_000);
 });
 
 /**
@@ -285,6 +296,30 @@ describe('Bauen in zwei Schritten', () => {
     await userEvent.click(screen.getByTestId('build-city'));
     expect(litVertices()).toBeGreaterThan(0);
     expect(litEdges()).toBe(0);
+  });
+
+  /*
+   * **Beim Ausbau zur Stadt sind alle Ziele bebaut** - und die Zielmarke hing
+   * bis hierher ausschliesslich am *leeren* Knoten. Das Brett blieb damit
+   * vollkommen ruhig, obwohl jede eigene Siedlung anklickbar war; im Playtest
+   * hat das genau so gewirkt, wie es aussah: als ginge es nicht.
+   */
+  it('markiert beim Stadtbau die Haeuser, auf die man druecken soll', async () => {
+    render(<LocalGameFrom state={richMainPhase()} />);
+
+    await userEvent.click(screen.getByTestId('build-city'));
+
+    const marked = screen
+      .getAllByTestId(/^vertex-/)
+      .filter((node) => node.dataset['target'] === 'true');
+    expect(marked.length).toBeGreaterThan(0);
+
+    for (const node of marked) {
+      // Auf jedem steht schon eine Siedlung - deshalb reicht der Punkt nicht,
+      // der am leeren Knoten liegt: er laege unter dem Haus.
+      expect(node.querySelector('.vertex__building')).not.toBeNull();
+      expect(node.querySelector('.vertex__target--yard')).not.toBeNull();
+    }
   });
 
   it('nimmt die Auswahl auf denselben Knopf wieder zurueck', async () => {

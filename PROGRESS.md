@@ -3425,3 +3425,161 @@ Material, das man anfasst, und Material, das man nur hat.
 
 Unverändert Etappe 10 (Erweiterungen) — und davor weiterhin der
 Browser-Durchlauf, jetzt mit fünf ungesehenen Zeichnungen mehr auf der Liste.
+
+## Drei Befunde vom Spieltisch (2026-08-19, `main`)
+
+Stand: nach `6ae509a`. Drei Meldungen aus dem laufenden Spiel — die Farbe im
+Bankhandel, die unsichtbaren Ziele beim Stadtbau, die Augen über dem Chiprand.
+Alle drei haben eine nachweisbare Ursache im Blatt, keine ist Geschmack.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 309 / 33       |
+| `pnpm build`        | grün — `index.js` 410.70 kB (gzip 122.09), `index.css` 34.99 kB (7.87) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | **nicht gelaufen** — Chrome-Erweiterung weiterhin nicht verbunden      |
+
+### Die Augen ragten über den Chiprand — und der Grund stand schon in CLAUDE.md
+
+Gemeldet: „die Punkte von den Zahlen im Inneren der Felder überlappen mit dem
+Rand von dem Kreis". Die Ursache ist die **dritte** Wiederholung derselben
+Falle:
+
+```css
+.chip text {
+  font-size: 0.32px;
+} /* eine Klasse plus ein Typ */
+.chip__pips {
+  font-size: 0.19px;
+} /* eine Klasse allein — verliert */
+```
+
+Die 0,19 px haben nie gegolten. Gerendert wurden 0,32 px, und fünf Mittelpunkte
+in dieser Größe sind breiter als die Scheibe, in der sie liegen (Radius 0,34).
+Dieselbe Kaskadenfalle wie bei der roten Sechs, zwei Regeln weiter oben im
+selben Block — dort war sie mit einem schärferen Selektor behoben worden
+(`.chip text.chip__hot`), hier nicht.
+
+**Behoben wurde sie diesmal nicht mit einem schärferen Selektor, sondern mit dem
+Verzicht auf Schrift.** Die Augen sind jetzt gezeichnete Kreise (`ChipPips` in
+`BoardSvg.tsx`), Abstand 0,055, Radius 0,022. Der Grund ist der zweite, schwerere
+Teil des Befunds: die Breite eines `·` hängt an den Metriken einer Schrift. Wie
+viel Vorschub Segoe UI ihm gibt, lässt sich nicht ausrechnen, und auf einem
+Rechner ohne Segoe UI ist es eine andere Zahl — die Regel wäre also selbst dann
+nur zufällig richtig gewesen, wenn sie gegriffen hätte. Eine gezeichnete Form
+hat keine Metrik.
+
+Gerechnet: fünf Punkte spannen 0,22, der äußerste sitzt mit seinem Radius 0,272
+vom Mittelpunkt, der Chip misst 0,34. **Und das ist jetzt ein Test** — die Lage
+von Kreisen ist reine Attributrechnung und braucht keine Layout-Engine, also
+prüft `BoardSvg.test.tsx` für jeden Chip im Szenario, dass jeder Punkt innerhalb
+bleibt.
+
+### Beim Stadtbau blieb das Brett vollkommen ruhig
+
+Gemeldet: „beim Bauen von Städten sollen die Häuser markiert werden für
+Sichtbarkeit". Der Code sagt, warum: die Zielmarke hing am **leeren** Knoten.
+
+```tsx
+{
+  building === undefined ? isTarget ? <Marke /> : null : <Bauwerk />;
+}
+```
+
+Beim Ausbau zur Stadt sind aber _alle_ Ziele bebaut. Es gab also keinen Fall, in
+dem überhaupt etwas leuchtete: man drückt „Stadt", die Bauleiste bestätigt die
+Wahl, und das Brett bleibt, wie es war. Anklickbar waren die Häuser die ganze
+Zeit — der Klick hängt an der Gruppe, nicht an der Marke —, nur sah man nicht,
+welches gemeint ist. Das wirkt genau so, wie es aussieht: als ginge es nicht.
+
+Jede bebaute Zielstelle bekommt deshalb einen **Hof**: dieselbe Marke wie am
+leeren Knoten, größer (Radius 0,235) und **unter** dem Bauwerk. Gleiches
+Material, gleiche Aussage, und das Haus steht darauf statt darunter. Kein
+zweiter Ring — der hätte sich mit der Aufbau-Welle (`build-flash`, Radius 0,34)
+gestapelt und dieselbe Sache zweimal gesagt. Er ist blasser als die Marke am
+leeren Knoten (34 % statt 62 %): dort ist sie das einzige Zeichen, hier liegt
+ein Haus darauf, und das soll das laute Ding bleiben.
+
+Dazu wandert `cursor: pointer` von der Marke auf die Gruppe — das Bauwerk liegt
+über ihr, und wer auf das Haus zeigt, zeigt auf das Ziel.
+
+### „Weiß auf weiß" im Bankhandel — zwei Ursachen, beide behoben
+
+Die Meldung ließ zwei Lesarten zu, und beide Male steckte ein echter Fehler
+dahinter. Deshalb sind beide behoben.
+
+**Erstens: der Rohstoff hatte dort als einziger keine Farbe.** Auf der Hand ist
+ein Rohstoff eine Karte in der Geländefarbe mit seinem Motiv; in „Erfindung" und
+„Monopol" ebenso (`ResourcePickDialog`). Im Bankhandel standen fünf gleiche
+Pergamentpillen mit Text darin. Dieselbe Sache muss überall gleich aussehen,
+sonst ist es nicht mehr dieselbe Sache — also trägt sie auch hier Farbe und
+Motiv (`Choice` in `TradeDialog.tsx`).
+
+Das Feld bleibt dabei ein `radio`; ausgeblendet wird nur seine Zeichnung, nicht
+das Feld — die Gruppe ist weiter mit Pfeiltasten bedienbar, und `:has(input:
+focus-visible)` holt den Fokusring zurück. Die Zeile für den Bestand steht immer
+da, auch leer: beim Bekommen sagt ein Bestand nichts, und ohne sie wären die
+zwei Reihen verschieden hoch (derselbe Kniff wie bei der Aufforderung unter den
+Würfeln).
+
+**Gewählt wird mit zwei Ringen, innen Tinte und außen Gold** — und das ist kein
+Schmuck. Ein einzelner Ring geht auf fünf verschiedenen Geländefarben nicht:
+Gold allein verschwände auf dem Korn (beides `--fields`), Tinte allein säße auf
+dem dunklen Wald fast unsichtbar, und gegen die Pergamentfläche des Dialogs muss
+der Ring auch noch stehen. Zwei Ringe stehen auf jedem dieser Gründe.
+
+**Zweitens: `.button--ghost` ist auf Pergament creme auf creme.** Die Klasse
+setzt `color: var(--on-sea)` — richtig auf der Tiefsee, wo sie sonst überall
+steht, und im Dialog gemessene **1,05:1**. Betroffen: „Abbrechen" im Handel,
+„Auswahl zurücksetzen" bei Erfindung und Monopol, „Abbrechen" beim Räuberopfer.
+
+Der Befund selbst ist nicht neu — er steht seit dem Browser-Durchlauf im August
+in `CLAUDE.md` („cream auf Pergament = 1,05:1, an rund zehn Stellen
+unsichtbar"). Behoben wurden damals die drei Antwortknöpfe am Angebot und das
+Zahnrad; **die Klasse selbst blieb, wie sie war**, und damit alle anderen
+Stellen. Das ist die eigentliche Lehre: wer einen Befund an seinen Fundstellen
+repariert statt an seiner Ursache, bekommt ihn wieder.
+
+Repariert wird er jetzt an `.modal__box .button--ghost` und **nicht** in der
+Klasse. Der naheliegende Weg wäre `--ink: inherit` gewesen, damit der körperlose
+Knopf die Tinte seines Grundes nimmt — nur liegt `--ink` nicht an jedem Grund
+vor: `.mode` etwa trägt Tiefsee, definiert `--ink` aber nicht um, und dort wäre
+daraus dunkle Tinte auf dunklem Grund geworden. Also derselbe Fehler, nur
+woanders. Der Dialogkasten ist der eine Ort, an dem der Untergrund **immer**
+Pergament ist.
+
+### Ein Test mit eigener Frist statt eines Flakes
+
+`GameScreen.test.tsx` → „sperrt das Bauen, solange nicht gewürfelt ist" ist beim
+letzten Stand einmal an der 5000-ms-Standardfrist gescheitert und beim
+Nachschreiben dieser Abnahme noch einmal. Allein läuft er in 4,7 s, parallel
+neben `shared` und `server` reicht das nicht. Er hat jetzt 20 s.
+
+Erhöht und nicht gekürzt: was er prüft, braucht die zwölf Gründungszüge. Ein
+Test, der je nach Rechnerlast fällt, ist schlimmer als ein langsamer — er kostet
+jedes Mal die Frage, ob diesmal wirklich etwas kaputt ist.
+
+### Offene Punkte
+
+- **Weiterhin nichts davon im Browser gesehen.** Bei den ersten beiden Befunden
+  wiegt das leichter als sonst: der Chip ist gerechnet und getestet, der Hof ist
+  eine Marke, die es an anderer Stelle schon gibt. Die Farbkarten im Bankhandel
+  sind dagegen neu gesetzt — Breite 4 rem, Motiv 1,8 rem, fünf davon je Reihe in
+  einem Dialog von höchstens 34 rem. Ob das in einer Reihe bleibt oder umbricht,
+  ist ungemessen.
+- Eine Sorte, von der man nichts hat, lässt sich im Bankhandel weiter auswählen;
+  die Absage kommt erst am „Tauschen"-Knopf. Ableitbar wäre es (`canTrade` über
+  alle Empfangssorten), ohne eine Regel in den Client zu schreiben — bewusst
+  nicht gemacht, weil es über die Meldung hinausginge.
+- `.button--ghost` ist an seiner Ursache immer noch nicht heil: außerhalb von
+  Dialogen steht er weiter auf `--on-sea`, und der nächste helle Untergrund
+  außerhalb eines `.modal__box` bringt ihn zurück.
+- Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen.
+
+### Nächste Etappe
+
+Unverändert Etappe 10 — und davor der Browser-Durchlauf, der inzwischen die
+längste Liste des Projekts vor sich herschiebt.

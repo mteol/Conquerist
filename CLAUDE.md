@@ -124,7 +124,30 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
   `.chip text`, und eine Klasse plus ein Typ schlägt eine Klasse allein. Die
   Regel hat nie gegriffen, aufgefallen ist es erst im ersten Playtest, weil die
   Farbe ja im Blatt stand. Wer eine Regel schreibt, die eine bestehende
-  überschreiben soll, zählt ihre Spezifität nach.
+  überschreiben soll, zählt ihre Spezifität nach. **Derselbe Block hat es ein
+  zweites Mal getan:** `.chip__pips { font-size: 0.19px }` verlor gegen
+  `.chip text { font-size: 0.32px }`, und die Augen ragten über den Chiprand.
+  Wer eine Falle an einer Stelle behebt, sieht im selben Block nach, wo sie noch
+  steht.
+- **Ein Befund, der an seinen Fundstellen repariert wird, kommt wieder.** Der
+  Browser-Durchlauf hat `.button--ghost` als creme auf Pergament gemeldet,
+  1,05:1, „an rund zehn Stellen unsichtbar". Behoben wurden damals die drei
+  Antwortknöpfe am Angebot und das Zahnrad — die Klasse blieb, wie sie war, und
+  „Abbrechen" im Handel war Monate später immer noch unsichtbar. Repariert wird
+  die Ursache; geht das nicht (`--ink` liegt nicht an jedem Grund vor), dann an
+  der Stelle, an der der Untergrund **garantiert** ist, und mit dem Grund im
+  Kommentar.
+- **Eine Zielmarke, die nur am leeren Platz hängt, fehlt genau da, wo schon
+  etwas steht.** `building === undefined ? Marke : Bauwerk` war für Straßen und
+  Siedlungen richtig und für den Ausbau zur Stadt tödlich: dort sind *alle*
+  Ziele bebaut, das Brett blieb vollkommen ruhig, und anklickbar war es die
+  ganze Zeit. Wer einen Zustand als „entweder/oder" schreibt, prüft, ob es einen
+  Zug gibt, in dem beides zugleich gilt.
+- **Eine Maßangabe in Textmetriken ist keine Maßangabe.** Wie breit fünf `·`
+  werden, hängt an der Schrift, die gerade da ist — nicht ausrechenbar und auf
+  einem Rechner ohne Segoe UI eine andere Zahl. Was in eine Form passen muss,
+  wird gezeichnet und nicht gesetzt; dann ist es rechenbar und damit prüfbar,
+  auch ohne Layout-Engine.
 - **Eine Animation, die beim Einhängen läuft, läuft beim Aktualisieren nicht.**
   Der Ausbau zur Stadt hat denselben Knoten behalten, React hat das Element
   aktualisiert statt es neu einzuhängen, und `animation: settle` blieb still —
