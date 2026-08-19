@@ -1187,49 +1187,107 @@ body {
 }
 
 /*
- * Entwicklungskarten.
+ * Entwicklungskarten - dieselbe Karte wie in der Hand, anderes Material.
  *
  * **Pergament statt Gelaendefarbe.** Rohstoffe kommen vom Brett,
  * Entwicklungskarten von der Bank - man soll am Material sehen, woher etwas
- * stammt, ohne die Beschriftung zu lesen. Was dieser Zug nicht hergibt, liegt
- * blass da: die Regel wird sichtbar, statt erst beim Klick als Absage
- * aufzutauchen.
+ * stammt, ohne die Beschriftung zu lesen.
+ *
+ * **Die Masse sind die der Handkarte, und zwar absichtlich dieselben Zahlen.**
+ * Sie standen hier als 0.72rem grosse Textknoepfchen neben 4.6rem breiten
+ * Karten - dasselbe Missverhaeltnis, aus dem der Kaufstapel seine heutige
+ * Groesse bekommen hat, nur schaerfer: eine Beschriftung neben einer Karte ist
+ * nicht ein kleineres Ding, sondern gar keins. Wer die Karte anfassen soll,
+ * bekommt einen Kartenkoerper.
+ *
+ * Was dieser Zug nicht hergibt, liegt blass da: die Regel wird sichtbar, statt
+ * erst beim Klick als Absage aufzutauchen.
  */
 .devcards {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
-  margin: 0.5rem 0 0;
+  /* Oben und seitlich Luft fuer Stapeltiefe und Plakette, die aus der Karte
+     herausragen - dieselbe Rechnung wie bei `.hand__stacks`. */
+  gap: 0.4rem;
+  margin: 0.65rem 0 0;
   padding: 0;
   list-style: none;
 }
 
 .devcard {
-  padding: 0.3rem 0.5rem;
-  border: 1px solid var(--parchment-edge);
-  border-radius: 5px;
-  --ink: var(--ink-base);
-  --ink-muted: var(--ink-base-muted);
-  background: var(--parchment-2);
-  color: var(--ink);
-  box-shadow: var(--lift);
+  position: relative;
+  width: 4.6rem;
+  padding: 0;
+  border: 0;
+  background: none;
   font: inherit;
-  font-size: 0.72rem;
-  font-weight: 650;
+  /* Ein Knopf ohne eigene Flaeche: die Karte darin ist der Koerper - dieselbe
+     Setzung wie beim Kaufstapel (`.deck__pile`). */
+  cursor: pointer;
+}
+
+/*
+ * Der Siegpunkt ist kein Knopf. Denselben Koerper bekommt er trotzdem - was
+ * ihn unterscheidet, steht am Zeiger: es gibt nichts zu druecken.
+ */
+.devcard--kept {
+  cursor: default;
+}
+
+.devcard:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
 
-.devcard--ready {
-  opacity: 1;
-  cursor: pointer;
-  /* Der einzige Unterschied, den man von weitem sieht. */
-  box-shadow: 0 0 0 2px var(--accent);
+.devcard__behind {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5.8rem;
+  border: 1px solid rgb(22 32 42 / 45%);
+  border-radius: 7px;
+  background: var(--parchment-2);
+  opacity: 0.5;
 }
 
-.devcard__count {
-  margin-left: 0.3rem;
-  color: var(--ink-muted);
+.devcard__face {
+  position: relative;
+  display: grid;
+  gap: 0.1rem;
+  align-content: center;
+  justify-items: center;
+  height: 5.8rem;
+  border: 1px solid rgb(22 32 42 / 65%);
+  border-radius: 7px;
+  background: var(--parchment-2);
+  box-shadow: var(--lift);
+}
+
+.devcard__glyph {
+  width: 2.4rem;
+  height: 2.4rem;
+  /* Dieselbe Tinte wie im Rohstoffmotiv - eine Handschrift, eine Farbe. */
+  fill: rgb(22 32 42 / 82%);
+}
+
+/*
+ * Der Name steht hier und nicht unter der Karte: unter ihr kostete er in jeder
+ * Reihe eine Zeile, die dem Brett abgeht, und auf der Karte ist er ohnehin
+ * das, was auf einer Spielkarte steht.
+ */
+.devcard__name {
+  max-width: 100%;
+  padding: 0 0.15rem;
+  color: var(--ink-base);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Spielbar: derselbe Ring, den der Kaufstapel traegt, wenn er etwas hergibt. */
+.devcard--ready .devcard__face {
+  box-shadow:
+    var(--lift),
+    0 0 0 2px var(--accent);
 }
 
 /* Rohstoffe waehlen - Erfindung und Monopol. */

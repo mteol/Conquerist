@@ -3303,3 +3303,125 @@ werden, entscheidet die Engine und nicht der Haken.
 
 Etappe 10 (Erweiterungen) — davor steht weiter der Browser-Durchlauf über den
 ganzen Spielbildschirm, jetzt mit zwei Umzügen und einer Tonspur mehr darin.
+
+## Die Entwicklungskarten werden Karten (2026-08-19, `main`)
+
+Stand: nach `9b51b83`. Fünf gezeichnete Motive, ein Kartenkörper statt eines
+Textknöpfchens, und ein Knopf weniger, der nie angeht.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 306 / 33       |
+| `pnpm build`        | grün — `index.js` 410.11 kB (gzip 121.91), `index.css` 34.42 kB (7.75) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | **nicht gelaufen** — die Chrome-Erweiterung war weiter nicht verbunden |
+
+Statt des Durchlaufs ein Musterbogen als eigene Seite: die fünf Karten in
+Originalgröße neben einer Handkarte, die Motive einzeln auf 4,6 rem vergrößert,
+dazu die drei Zustände. Er ist ein **Abzug** und keine zweite Quelle — die Pfade
+darin sind aus `DevelopmentGlyph.tsx` kopiert und veralten, sobald dort jemand
+etwas ändert.
+
+### Der beste Platz für ein Motiv ist eine Karte
+
+Die Frage war, wo die Grafiken hingehören. Die Antwort steckte im Befund: es gab
+gar keinen Platz für eine. Die Entwicklungskarten waren das einzige Kartending
+am Tisch **ohne Kartenkörper** — ein Knopf mit `padding: 0.3rem 0.5rem` und
+0,72 rem Schrift, direkt neben Handkarten von 4,6 × 5,8 rem und einem
+Kaufstapel derselben Größe. Ein Motiv hätte dort nirgends hingepasst.
+
+Das ist derselbe Befund, aus dem der Kaufstapel im August seine heutige Größe
+bekommen hat — „eine Karte ist eine Karte, und 3.1rem neben 4.6rem hat aus der
+Bank ein Beiwerk gemacht" —, nur schärfer: eine Beschriftung neben einer Karte
+ist nicht ein kleineres Ding, sondern gar keins. Also bekommt jede
+Entwicklungskarte denselben Körper: 4,6 × 5,8 rem, dieselbe Stapeltiefe
+(gedeckelt bei vier), dieselbe Plakette (`.card__count`, wiederverwendet — es
+gibt genau eine Plakette in diesem Spiel), derselbe Kontaktschatten.
+
+**Pergament statt Geländefarbe** bleibt der Unterschied und ist der ganze
+Unterschied: Rohstoffe kommen vom Brett, Entwicklungskarten von der Bank. Woher
+etwas stammt, liest man am Material.
+
+**Am Bildschirm bleiben sie, wo sie waren** — zweite Reihe in der linken unteren
+Ecke, zwischen Hand und Zugknöpfen. Die eigenen Karten liegen bei den eigenen
+Karten; die Bank liegt gegenüber. Der Preis steht unter „Offene Punkte": die
+Ecke wird höher.
+
+### Der Name bleibt stehen, obwohl er unter den Handkarten weggefallen ist
+
+Unter den Rohstoffkarten ist er im August verschwunden, weil er ein Bild
+beschriftete, das schon spricht: Geländefarbe **und** Motiv tragen dort dieselbe
+Aussage doppelt. Hier tragen sie das nicht — alle fünf Karten sind dasselbe
+Pergament, das Motiv wäre der einzige Träger. Farbe oder Form allein dürfen nie
+allein tragen (Designregel 7), also steht der Name auf der Karte. Er steht
+**auf** ihr und nicht darunter: unter der Karte kostete er in jeder Reihe eine
+Zeile, die dem Brett abgeht, und auf einer Spielkarte steht ohnehin, was sie
+ist.
+
+### Fünf Motive, eine Handschrift
+
+Sie liegen in `panels/DevelopmentGlyph.tsx`, direkt neben `ResourceGlyph.tsx`,
+und halten sich an dieselben Regeln: 24 × 24 als Quadrat, einfarbig dunkel
+gefüllt, gleiche Kantenrundung. Wer beide Reihen übereinander sieht, soll zwei
+Sorten Karten erkennen und **einen** Zeichner.
+
+**Gezeigt wird die Wirkung, nicht der Name** (Designregel 8). „Erfindung" heißt
+die Karte, aber was sie tut, sind zwei Rohstoffe aus der Bank — also liegen dort
+zwei Karten und keine Glühbirne.
+
+- **Ritter** — ein geschlossener Helm. Sehschlitz, Nasensteg und zwei Luftlöcher
+  sind **Löcher im selben Pfad** (`fill-rule: evenodd`) und keine hellen Striche
+  darüber. Ein aufgemalter Schlitz stimmte nur auf einer Kartenfarbe; ein Loch
+  auf jeder.
+- **Straßenbau** — zwei Straßen. Derselbe Balken mit runden Enden, den eine
+  gebaute Straße auf dem Brett ist; wer die Karte spielt, sucht danach gleich
+  eine Kante. Sie berühren sich nicht, sonst wären sie ein Balken.
+- **Erfindung** — zwei Karten. Eine Karte ist in diesem Spiel die Form, in der
+  ein Rohstoff vorkommt, also zwei davon für zwei Rohstoffe, in der Sprache, die
+  der Tisch schon spricht. Sie überlappen **nicht**: zwei gleich gefüllte
+  Formen, die sich schneiden, sind eine Form.
+- **Monopol** — ein Sack mit zugebundenem Hals. Kein Pfeildiagramm; die
+  Nachbarn im Blatt sind Ziegel, Baum und Schaf, also Dinge. Der Sack ist die
+  dingliche Fassung von „alle geben dir ab".
+- **Siegpunkt** — eine Krone. Die einzige Karte ohne Handlung, also ein Zeichen
+  für den Ausgang und keines für ein Werkzeug.
+
+### Ein Knopf, der nie angeht, ist keiner
+
+Der Siegpunkt wird **nie** gespielt. Als Knopf wäre er in jeder Lage gesperrt,
+und ein Bedienelement, das in keinem Zustand jemals bedienbar wird, sagt „gerade
+nicht" über etwas, das nie geht. Blass daliegend sähe der eigene Punkt außerdem
+aus wie ein Fehler — dabei ist er das Beste, was auf der Hand liegen kann.
+
+Er ist deshalb ein `div` und kein `button`, in voller Deckkraft und ohne Ring:
+Besitz statt Handlung. Das ist dieselbe Unterscheidung, die der Tisch schon
+zwischen Dingen und Auskünften macht, nur eine Ebene tiefer — hier zwischen
+Material, das man anfasst, und Material, das man nur hat.
+
+### Offene Punkte
+
+- **Niemand hat die Zeichnungen gesehen.** Sie sind aus Koordinaten gebaut und
+  im Kopf geprüft, nicht am Bildschirm. Die drei wackligsten: der **Sack**
+  (könnte als Wolke lesen — Alternative wären drei zusammenlaufende Pfeile), die
+  **zwei Karten** bei 2,4 rem (könnten als zwei Türen lesen) und die **zwei
+  Straßen**, die knapp am Gleichheitszeichen liegen.
+- **Die linke Ecke wird höher.** Eine zweite Reihe echter Karten kostet rund
+  5,8 rem plus Fuge. Bei 1920×889 ist der Ecken-Streifen ~476 px breit, fünf
+  Karten passen nebeneinander; bei 1280×800 sind es nur 236 px, also drei je
+  Reihe — hält jemand vier oder fünf Sorten, bricht die Reihe um und die Ecke
+  wächst um weitere 5,8 rem. Ungemessen, ob sie dann noch unter dem Brett
+  vorbeikommt.
+- `GameScreen.test.tsx` → „sperrt das Bauen, solange nicht gewürfelt ist" lief
+  in einem Lauf **5032 ms** und damit knapp über die Standardfrist von 5000 ms;
+  im nächsten Lauf war er grün. Der Test klickt zwölf Gründungszüge durch und
+  liegt damit an der Grenze — er wird beim nächsten langsamen Rechner rot, ohne
+  dass jemand etwas kaputt gemacht hat.
+- Die Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen.
+
+### Nächste Etappe
+
+Unverändert Etappe 10 (Erweiterungen) — und davor weiterhin der
+Browser-Durchlauf, jetzt mit fünf ungesehenen Zeichnungen mehr auf der Liste.

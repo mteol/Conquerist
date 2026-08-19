@@ -251,7 +251,14 @@ Nutzergeste, nie beim Laden, und ihr Ausfall ist immer still.
 Am **Spielbildschirm** stehen seit demselben Tag der Status oben rechts neben
 der Verlaufstür (`.topline`) und die Würfel ganz außen in der unteren rechten
 Ecke, mit Kaufstapel und Bauteilen links daneben. Das `ActionPanel` stellt
-seither nur noch die Bauteile und braucht keine `GameView` mehr.
+seither nur noch die Bauteile und braucht keine `GameView` mehr. Und die
+**Entwicklungskarten sind Karten geworden**: derselbe Kartenkoerper wie in der
+Hand, Pergament statt Geländefarbe, dazu fünf gezeichnete Motive in
+`panels/DevelopmentGlyph.tsx` — dieselbe Handschrift wie `ResourceGlyph.tsx`.
+Der Name bleibt hier auf der Karte stehen, weil alle fünf dasselbe Pergament
+sind und das Motiv sonst allein trüge. Der Siegpunkt ist dabei **kein Knopf**:
+er wird nie gespielt, und ein dauerhaft gesperrtes Bedienelement sagt „gerade
+nicht" über etwas, das nie geht.
 Dafür sagt das Protokoll neuerdings, **welcher** Zug einen Stand erzeugt hat
 (`move: { type, actor }` im `GameEvent`): der Client bekam vorher nur den
 fertigen deutschen Verlaufssatz und hätte den Klang aus Text raten müssen.

@@ -244,6 +244,87 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     expect(onAct.mock.calls[0]![0].edges).toHaveLength(1);
   });
 
+  /*
+   * Seit die Karten einen Kartenkoerper haben, tragen sie ein Motiv - und der
+   * Name bleibt trotzdem stehen. Bei den Handkarten ist er weggefallen, weil
+   * dort Gelaendefarbe und Motiv dieselbe Aussage doppelt tragen; hier sind
+   * alle fuenf dasselbe Pergament, und dann waere das Bild der einzige Traeger.
+   */
+  it('gibt jeder Karte ein Motiv und laesst den Namen daneben stehen', () => {
+    const state = playable({
+      turn: 4,
+      players: afterSetup().players.map((entry, index) =>
+        index === 0
+          ? {
+              ...entry,
+              developmentCards: [
+                { id: 'knight', boughtOnTurn: 1 },
+                { id: 'roadBuilding', boughtOnTurn: 1 },
+              ],
+            }
+          : entry,
+      ),
+    });
+
+    render(screenFor(state));
+
+    for (const id of ['knight', 'roadBuilding']) {
+      const card = screen.getByTestId(`devcard-${id}`);
+      expect(card.querySelector('.devcard__glyph')).not.toBeNull();
+    }
+
+    expect(screen.getByText('Ritter')).toBeDefined();
+    expect(screen.getByText('Straßenbau')).toBeDefined();
+  });
+
+  /*
+   * Der Siegpunkt wird nie gespielt. Als Knopf waere er in jeder Lage gesperrt,
+   * und ein Bedienelement, das nie angeht, sagt „gerade nicht" ueber etwas, das
+   * nie geht - blass daliegend saehe der eigene Punkt ausserdem aus wie ein
+   * Fehler. Er ist Besitz und keine Handlung.
+   */
+  it('macht aus dem Siegpunkt keinen dauerhaft gesperrten Knopf', () => {
+    const state = playable({
+      turn: 4,
+      players: afterSetup().players.map((entry, index) =>
+        index === 0
+          ? { ...entry, developmentCards: [{ id: 'victoryPoint', boughtOnTurn: 1 }] }
+          : entry,
+      ),
+    });
+
+    render(screenFor(state));
+
+    const card = screen.getByTestId('devcard-victoryPoint');
+    expect(card.tagName).toBe('DIV');
+    expect(screen.queryByRole('button', { name: /Siegpunkt/ })).toBeNull();
+    expect(screen.getByText('Siegpunkt')).toBeDefined();
+  });
+
+  it('zaehlt mehrere Karten derselben Sorte auf einer Plakette', () => {
+    const state = playable({
+      turn: 4,
+      players: afterSetup().players.map((entry, index) =>
+        index === 0
+          ? {
+              ...entry,
+              developmentCards: [
+                { id: 'knight', boughtOnTurn: 1 },
+                { id: 'knight', boughtOnTurn: 1 },
+                { id: 'knight', boughtOnTurn: 1 },
+              ],
+            }
+          : entry,
+      ),
+    });
+
+    render(screenFor(state));
+
+    // Ein Stapel statt dreier Karten - und die Zahl daran, weil man sie liest.
+    expect(screen.getAllByTestId('devcard-knight')).toHaveLength(1);
+    expect(screen.getByTestId('devcard-count-knight').textContent).toBe('3');
+  });
+
   it('zeigt fremde Entwicklungskarten nirgends', () => {
     const state = playable({
       turn: 4,

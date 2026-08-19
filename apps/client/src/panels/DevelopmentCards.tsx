@@ -4,14 +4,30 @@ import {
   type DevelopmentCard,
   type DevelopmentCardId,
 } from '@conquerist/shared';
+import { DevelopmentGlyph } from './DevelopmentGlyph';
 
 /**
- * Die eigenen Entwicklungskarten, als zweite Reihe in der Ablage.
+ * Die eigenen Entwicklungskarten, als zweite Reihe unter der Hand.
  *
- * **Sie tragen Pergament statt Gelaendefarbe.** Rohstoffe kommen vom Brett,
+ * **Sie sind jetzt Karten.** Bis hierher waren sie das einzige Kartending am
+ * Tisch, das keinen Kartenkoerper hatte: ein 0.72rem grosses Textknoepfchen
+ * neben Handkarten zu 4.6rem und einem Kaufstapel derselben Groesse. Das ist
+ * genau das Missverhaeltnis, das der Kaufstapel schon einmal hatte und aus dem
+ * er seine heutige Groesse bekam - „eine Karte ist eine Karte, und 3.1rem neben
+ * 4.6rem hat aus der Bank ein Beiwerk gemacht" (`DeckPanel`). Derselbe Satz
+ * gilt hier, nur schaerfer: eine Beschriftung neben einer Karte ist nicht
+ * einmal mehr ein kleineres Ding, sondern gar keins.
+ *
+ * **Pergament statt Gelaendefarbe.** Rohstoffe kommen vom Brett,
  * Entwicklungskarten von der Bank - man soll am Material sehen, woher etwas
- * stammt, ohne die Beschriftung zu lesen. Dieselbe Stapelform wie bei den
- * Rohstoffen, damit die Ablage eine Ablage bleibt und nicht zwei.
+ * stammt, ohne die Beschriftung zu lesen. Dieselbe Stapelform und dieselbe
+ * Plakette wie bei den Rohstoffen, damit die Ecke eine Ablage bleibt und nicht
+ * zwei.
+ *
+ * **Der Name bleibt unter dem Motiv stehen**, obwohl er unter den Handkarten
+ * weggefallen ist. Dort tragen Farbe und Motiv dieselbe Aussage doppelt; hier
+ * sind alle fuenf dasselbe Pergament, das Motiv waere der einzige Traeger, und
+ * Farbe oder Form allein duerfen nie allein tragen (Designregel 7).
  *
  * Eine Karte, die dieser Zug noch nicht hergibt, ist blass und nicht
  * anklickbar - die Regel „nicht in der Kaufrunde" wird dadurch sichtbar, statt
@@ -55,25 +71,88 @@ export function DevelopmentCards({
 
   return (
     <ol className="devcards" aria-label="Entwicklungskarten">
-      {stacks.map(({ id, amount }) => {
-        const canPlay = playable.includes(id);
-
-        return (
-          <li key={id}>
+      {stacks.map(({ id, amount }) => (
+        <li key={id}>
+          {/*
+           * Der Siegpunkt ist kein Knopf, und das ist keine Feinheit.
+           *
+           * Er wird nie gespielt - als Knopf waere er dauerhaft gesperrt, und
+           * ein Bedienelement, das in keiner Lage jemals angeht, sagt „gerade
+           * nicht" ueber etwas, das nie geht. Blass daliegend saehe der eigene
+           * Siegpunkt ausserdem aus wie ein Fehler. Er ist Besitz und keine
+           * Handlung, also liegt er einfach da.
+           */}
+          {id === 'victoryPoint' ? (
+            <div
+              className="devcard devcard--kept"
+              data-testid="devcard-victoryPoint"
+              title={CARD_HINTS[id]}
+            >
+              <Body id={id} amount={amount} />
+            </div>
+          ) : (
             <button
               type="button"
-              className={canPlay ? 'devcard devcard--ready' : 'devcard'}
+              className={playable.includes(id) ? 'devcard devcard--ready' : 'devcard'}
               data-testid={`devcard-${id}`}
-              disabled={!canPlay}
+              disabled={!playable.includes(id)}
               title={CARD_HINTS[id]}
               onClick={() => onPlay(id)}
             >
-              <span className="devcard__name">{CARD_LABELS[id]}</span>
-              {amount > 1 ? <span className="devcard__count">{amount}</span> : null}
+              <Body id={id} amount={amount} />
             </button>
-          </li>
-        );
-      })}
+          )}
+        </li>
+      ))}
     </ol>
+  );
+}
+
+/**
+ * Der Kartenkoerper: Tiefe, Gesicht, Plakette - wie bei einem Handkartenstapel.
+ *
+ * Die Tiefe ist gedeckelt wie dort: ab vier Karten waechst der Stapel nicht
+ * weiter, die genaue Zahl steht in der Plakette. Vier Ritter kommen vor, und
+ * eine Ecke, die dabei nach oben auswaechst, kostet Brett.
+ */
+function Body({
+  id,
+  amount,
+}: {
+  readonly id: DevelopmentCardId;
+  readonly amount: number;
+}): JSX.Element {
+  const depth = Math.min(amount, 4);
+
+  return (
+    <>
+      {Array.from({ length: depth - 1 }, (_unused, index) => (
+        <span
+          key={index}
+          className="devcard__behind"
+          aria-hidden="true"
+          style={{ transform: `translateY(${(index + 1) * -2.5}px)` }}
+        />
+      ))}
+
+      <span className="devcard__face">
+        <DevelopmentGlyph card={id} />
+        <span className="devcard__name">{CARD_LABELS[id]}</span>
+      </span>
+
+      {/*
+       * Die Plakette traegt die Zahl, und der Name steht sichtbar auf der
+       * Karte - vorgelesen wird deshalb nur nachgereicht, was das Bild sagt.
+       * Ein zweites „Ritter" im `visually-hidden` klaenge als „Ritter Ritter".
+       */}
+      {amount > 1 ? (
+        <>
+          <span className="card__count" data-testid={`devcard-count-${id}`} aria-hidden="true">
+            {amount}
+          </span>
+          <span className="visually-hidden">{`${amount} Karten`}</span>
+        </>
+      ) : null}
+    </>
   );
 }
