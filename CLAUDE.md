@@ -129,6 +129,26 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
   `.chip text { font-size: 0.32px }`, und die Augen ragten über den Chiprand.
   Wer eine Falle an einer Stelle behebt, sieht im selben Block nach, wo sie noch
   steht.
+- **Eine Animation, die laenger dauert als ihr Zustandswechsel, muss ihn
+  aufhalten.** Wurf, Verlaufszeile, Plaketten und Klang stammen aus **einer**
+  Zustandsaenderung und erscheinen im selben Augenblick. Sobald die Wuerfel eine
+  Sekunde fliegen, steht die Zahl im Verlauf, bevor sie faellt - die Animation
+  erklaert dann nicht mehr den Wechsel (Designregel 5), sie kommt ihm hinterher.
+  `useSettledRoll` haelt deshalb die **ganze** Vorfuehrung an, und zwar
+  **vor** `useCueSound`: sonst ist der Wurf zu hoeren, bevor er liegt.
+- **Wo Bewegung ausfaellt, faellt auch das Warten aus.** Eine Sekunde Stillstand
+  ohne sichtbaren Grund ist kein Spannungsbogen, sondern eine hakende
+  Oberflaeche. Bei `prefers-reduced-motion` - und ueberall, wo es kein
+  `matchMedia` gibt - wird deshalb gar nicht gewartet, nicht bloss nicht
+  animiert.
+- **Ein Element, das waehrend einer Animation weiterlebt, sperrt sich selbst.**
+  Die Klickkarte stammt aus dem Stand von vorhin und laesst das Werfen
+  selbstverstaendlich noch zu; ohne ein eigenes `disabled` am Becher schickt der
+  zweite Klick einen zweiten Wurf.
+- **`advanceTimersByTime` allein flusht kein React.** Der Wecker feuert, aber
+  was er an Zustand setzt, haengt danach in der Warteschlange - ohne `act` liest
+  der Test den Bildschirm von *vor* dem Timer und meldet einen Fehler, den es
+  nicht gibt.
 - **`disabled` allein sieht man nicht.** An einem Knopf mit eigenem
   Hintergrund ändert das Attribut die Farben nicht; ohne eine Regel für den
   Zustand ist die Sperre im Browser gemessen **identisch** zum offenen Knopf.

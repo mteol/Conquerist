@@ -72,6 +72,84 @@ describe('DiceTray', () => {
     expect(onRoll).toHaveBeenCalledTimes(1);
   });
 
+  /*
+   * **Der Wurf ueber das Brett.** Gepruef wird nicht, DASS etwas fliegt - eine
+   * Animation kann jsdom nicht sehen. Gepruef wird, was daran haengt und was
+   * ohne sie falsch waere: dass die Kuben auf der geworfenen Zahl stehen, dass
+   * die Summe erst mit der Landung erscheint, und dass niemand waehrend des
+   * Fluges ein zweites Mal werfen kann.
+   */
+  it('stellt die Kuben auf die geworfene Zahl', () => {
+    render(
+      tray({
+        canRoll: false,
+        roll: null,
+        total: null,
+        landing: [
+          { die: 'first', value: 5 },
+          { die: 'second', value: 3 },
+        ],
+      }),
+    );
+
+    expect(screen.getByTestId('cube-5')).toBeDefined();
+    expect(screen.getByTestId('cube-3')).toBeDefined();
+  });
+
+  it('laesst waehrend des Fluges nicht noch einmal werfen', async () => {
+    const onRoll = vi.fn();
+    render(
+      tray({
+        canRoll: true,
+        onRoll,
+        landing: [
+          { die: 'first', value: 2 },
+          { die: 'second', value: 2 },
+        ],
+      }),
+    );
+
+    const dice = screen.getByTestId('dice');
+    // Die Klickkarte stammt aus dem Stand von vorhin und laesst das Werfen
+    // selbstverstaendlich noch zu - der Becher weiss es besser.
+    expect(dice).toHaveProperty('disabled', true);
+    expect(dice.getAttribute('aria-label')).toBe('Die Würfel fallen');
+
+    await userEvent.click(dice);
+    expect(onRoll).not.toHaveBeenCalled();
+  });
+
+  it('haelt die Summe zurueck, solange die Wuerfel unterwegs sind', () => {
+    render(tray({ total: 8, landing: [{ die: 'first', value: 5 }] }));
+
+    // Sie ist die Antwort, auf die man wartet - sie darf nicht vor dem Wuerfel
+    // dastehen, der sie zeigen soll.
+    expect(screen.getByTestId('dice').textContent).not.toContain('8');
+  });
+
+  /*
+   * Ein Kubus hat sechs Flaechen. Fuer einen achtseitigen Wuerfel aus einem
+   * spaeteren Regelwerk gaebe es keine Zuordnung, und eine erfundene waere
+   * schlechter als keine - dann bleibt es beim Umspringen an Ort und Stelle.
+   */
+  it('wirft nicht, was kein Kubus ist', () => {
+    const eight: DiceSpec = [{ id: 'first', faces: 8, countsTowardYield: true }];
+
+    render(
+      tray({
+        spec: eight,
+        roll: [{ die: 'first', value: 7 }],
+        total: 7,
+        landing: [{ die: 'first', value: 7 }],
+      }),
+    );
+
+    expect(screen.queryByTestId(/^cube-/)).toBeNull();
+    // Stattdessen die flache Ziffer - ueber sechs Seiten gibt es kein gewohntes
+    // Augenbild mehr, und ein erfundenes waere schlechter als eine Zahl.
+    expect(screen.getByTestId('dice').querySelector('.die--numeral')?.textContent).toBe('7');
+  });
+
   it('zeigt so viele Wuerfel, wie das Regelwerk hat', () => {
     // Die Erweiterungsprobe: ein dritter Wuerfel braucht hier keine Zeile.
     const spec: DiceSpec = [...CLASSIC_DICE, { id: 'event', faces: 6, countsTowardYield: false }];

@@ -3700,3 +3700,157 @@ auf die Knöpfe der Klickkarte). Zwei Dinge daran sind notierenswert:
 
 Etappe 10 (Erweiterungen). Der Browser-Durchlauf steht zum ersten Mal seit
 Wochen **nicht** mehr davor.
+
+## Die Würfel fliegen über das Brett (2026-08-19, `main`)
+
+Stand: nach `8ef52c9`. Zwei CSS-3D-Kuben, ein Bogen über das Brett — und ein
+Tisch, der schweigt, solange sie unterwegs sind.
+
+**Entwurf.** Rolle: der Wurf ist der Augenblick, in dem eine Runde kippt; er
+gehört aufs Brett und nicht in eine Ecke. Aufbau: zwei Kuben springen aus der
+Ablage, taumeln über das Brett und fallen in ihren Platz zurück. Woran man sich
+erinnert: dass der Verlauf die Zahl erst verrät, wenn der Würfel sie zeigt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 319 / 34       |
+| `pnpm build`        | grün — `index.js` 412.51 kB (gzip 122.80), `index.css` 36.25 kB (8.17) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | lokale Partie bei 1920×889, Wurf im Flug und nach der Landung gemessen |
+
+Der ganze Wurf kostet **1,7 kB** im Skript und **1,2 kB** im Blatt.
+
+### Keine Bibliothek, keine Physik — und das ist kein Sparen
+
+`three.js` samt einer Physik-Engine wiegt 300–600 kB gegen ein Bundle von 410 kB.
+Das allein wäre schon ein Argument. Das eigentliche ist ein anderes:
+
+> **Das Ergebnis steht fest, bevor der Würfel fällt.**
+
+Es kommt aus dem Seed, der Reducer hat es ausgewürfelt (Architekturregel 2), und
+keine Simulation darf es bestimmen. Ein physikalisch geworfener Würfel, der sich
+auf eine andere Zahl legt als die, die im Zustand steht, wäre ein Fehler, den
+niemand mehr einfinge — man müsste ihn also ohnehin auf seine Fläche
+**steuern**. Damit fällt der Hauptgrund für echte Physik weg, und übrig bleibt
+das, was ein Würfel wirklich ist: sechs Flächen um eine Mitte.
+
+Der Kubus steht in `transform-style: preserve-3d`, seine sechs Seiten je um die
+halbe Kantenlänge nach außen geschoben. Gesteuert wird er über zwei Zahlen:
+`--fx` und `--fy` sind die Drehung, bei der genau die geworfene Fläche vorn
+steht (`FACE_TURN` in `DiceTray.tsx`, die Umkehrung des Würfelnetzes). Die
+Animation dreht von **drei ganzen Umdrehungen davor** in diese Lage hinein — das
+taumelt sichtbar und landet trotzdem exakt.
+
+Gegenüberliegende Flächen ergeben sieben, wie bei einem echten Würfel. Wer beim
+Taumeln zwei Kanten zugleich sieht, soll nichts Falsches sehen.
+
+Der Bogen fängt und endet bei `translate3d(0,0,0)`, also **an Ort und Stelle**.
+Damit muss niemand die Bildschirmkoordinaten der Ablage messen: der Würfel
+springt aus seinem Platz heraus und fällt in ihn zurück. Der Scheitel steht in
+`vw`/`vh` — wie weit „über das Brett" ist, weiß nur das Fenster. Das `scale` am
+Scheitel ist die Tiefe; ohne es sähe der Bogen aus wie ein Schieben auf der
+Tischplatte.
+
+### Der Haken war nicht die Grafik, sondern die Zeit
+
+Wurf, Verlaufszeile, die Zuwachsplaketten am Tisch und der Klang stammen alle
+aus **einer** Zustandsänderung und erscheinen deshalb im selben Augenblick.
+Solange die Würfel an Ort und Stelle umsprangen, war das richtig. Würfel, die
+eine Sekunde über das Brett trudeln, zeigen ihre Zahl dagegen erst am Ende — und
+dann steht sie im Verlauf schon, bevor sie fällt. Die Animation erklärte dann
+nicht mehr den Zustandswechsel (Designregel 5), sie käme ihm hinterher.
+
+Also hält `game/useSettledRoll.ts` **die ganze Vorführung** an: Sicht,
+Klickkarte, Verlauf und Klang. Wer wirft, sieht bis zur Landung genau den Tisch,
+den er vorher hatte.
+
+Drei Entscheidungen darin:
+
+**Er liegt um die Partie und nicht in ihr.** In `App.tsx` umschließt er
+`useLocalGame` beziehungsweise `online.state` — und zwar **vor** `useCueSound`.
+Stünde der Klang davor, wäre der Wurf zu hören, bevor er liegt. Online wartet
+damit auch der Bildschirm des Mitspielers, der nur zusieht: der Wurf ist für
+alle derselbe Augenblick.
+
+**Nur eine Auskunft geht vor der Landung durch:** der Wurf selbst, als
+`landing`. Die Würfel müssen wissen, worauf sie fallen sollen. Alles andere
+erfährt der Tisch erst, wenn sie liegen.
+
+**Ohne Bewegung gibt es auch kein Warten.** Bei `prefers-reduced-motion` fliegt
+nichts, und eine Sekunde Stillstand ohne sichtbaren Grund wäre kein
+Spannungsbogen, sondern eine hakende Oberfläche. Dasselbe gilt, wo es gar kein
+`matchMedia` gibt: im Zweifel wird nicht gewartet.
+
+Woran der Haken erkennt, dass ein Stand aus einem Wurf kam, wusste der Client
+schon — daran hängt seit dem Ton die Fall-Animation. Die Bedingung ist dafür aus
+dem Anzeigemodell in eine eigene Funktion gewandert (`cameFromRoll` in
+`game/view.ts`): **zwei Abschriften derselben Bedingung wären beim ersten Umbau
+auseinandergelaufen**, und dann hätte der Tisch gewartet, ohne dass etwas
+fliegt, oder umgekehrt.
+
+Dazu eine Kleinigkeit mit Folgen: **der Becher sperrt sich während des Fluges
+selbst.** Die Klickkarte stammt aus dem Stand von vorhin und lässt das Werfen
+selbstverständlich noch zu — ein zweiter Klick hätte einen zweiten Wurf
+geschickt.
+
+### Was ein Kubus nicht kann
+
+Sechs Flächen. Für einen achtseitigen Würfel aus einem späteren Regelwerk gäbe
+es keine Zuordnung, und eine erfundene wäre schlechter als keine — dann bleibt
+es beim Umspringen an Ort und Stelle. Gezeigt wird ohnehin, was in `spec` steht.
+
+### Im Browser gemessen
+
+Bei 1920×889, lokale Partie, echter Klick auf die Würfel:
+
+| Zeitpunkt  | Befund                                                                                  |
+| ---------- | --------------------------------------------------------------------------------------- |
+| im Flug    | zwei `.cube`, Phase noch „Spieler 1 muss würfeln", Becher gesperrt, „Die Würfel fallen" |
+| gesteuert  | `--fx: -90deg` (Fünf) und `--fy: 180deg` (Sechs)                                        |
+| nach 1,1 s | keine Kuben mehr, „Wurf: 5 und 6, zusammen 11", Summe 11                                |
+| Verlauf    | „Spieler 1 würfelt 11 — Spieler 1 +2, Spieler 2 +1" — erst jetzt                        |
+
+Keine Meldung in der Konsole.
+
+### Ein Test, der ohne Layout-Engine etwas beweist
+
+Vier Tests in `game/useSettledRoll.test.tsx` prüfen nicht, DASS etwas fliegt —
+das kann jsdom nicht sehen —, sondern **welchen Stand der Bildschirm bekommt und
+wann**: der Tisch bleibt bis zur Landung auf dem alten Stand samt seinem
+Verlauf, ein Stand ohne Wurf geht sofort durch, bei reduzierter Bewegung wird
+gar nicht gewartet, und ein Stand, der **während** des Fluges eintrifft, öffnet
+den Tisch nicht vorzeitig, geht aber auch nicht verloren — übernommen wird am
+Ende der neueste.
+
+Zwei Dinge daran waren beim Schreiben nicht offensichtlich:
+
+- **`advanceTimersByTime` allein reicht nicht.** Der Wecker feuert, aber was er
+  an Zustand setzt, hängt danach in der Warteschlange; ohne `act` liest der
+  nächste Blick den Bildschirm von **vor** der Landung, und der Test meldet
+  einen Fehler, den es nicht gibt.
+- **Die Wurfaktion heißt `rollDice`, nicht `roll`.** Im Client heißt das Feld
+  der Klickkarte `roll`, im Protokoll heißt der Zug anders — ein Test, der nach
+  dem falschen Namen sucht, findet nichts und behauptet, es gäbe keinen Wurf.
+
+Dazu vier in `DiceTray.test.tsx`: die Kuben stehen auf der geworfenen Zahl, die
+Summe bleibt bis zur Landung weg, während des Fluges nimmt der Becher keinen
+Klick an, und ein achtseitiger Würfel fliegt gar nicht erst.
+
+### Offene Punkte
+
+- **Der Klang liegt jetzt vollständig auf der Landung.** Schöner wäre das
+  Poltern (`dice.roll`) beim Abwurf und der Aufschlag (`dice.land`) beim
+  Auftreffen — dafür müsste die Klangliste eines Ereignisses aufgeteilt werden,
+  und das ist eine eigene Etappe wert.
+- Der Bogen ist an keiner anderen Fenstergröße als 1920×889 gesehen. Der
+  Scheitel steht in `vw`/`vh`, sollte also mitwandern — gemessen ist das nicht.
+- Reduzierte Bewegung ist im Test belegt, aber nicht im Browser nachgestellt.
+- Online ist der Haken ungesehen: dass **jeder** Bildschirm wartet, ist bisher
+  nur die Bauart, nicht die Beobachtung.
+
+### Nächste Etappe
+
+Etappe 10 (Erweiterungen).

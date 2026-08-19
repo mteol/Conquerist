@@ -2688,6 +2688,121 @@ body {
   animation: dice-fall 260ms ease-out;
 }
 
+/* --- Der Wurf ueber das Brett --------------------------------------------- */
+
+/*
+ * Die Buehne fuer die zwei Kuben.
+ *
+ * `perspective` steht hier und nicht am Kubus: eine Perspektive je Element
+ * gaebe jedem Wuerfel seinen eigenen Fluchtpunkt, und zwei Wuerfel nebeneinander
+ * saehen dann aus, als flogen sie in zwei verschiedenen Raeumen. Ein Raum, zwei
+ * Wuerfel.
+ *
+ * `overflow: visible` ist keine Vorsicht, sondern Bedingung: der Wurf verlaesst
+ * seine Ablage um ein Vielfaches ihrer Groesse.
+ */
+.dice__faces--flying {
+  perspective: 900px;
+  overflow: visible;
+}
+
+/*
+ * Ein Wuerfel als Koerper.
+ *
+ * `z-index` hebt ihn ueber das Brett - er fliegt darueber und nicht darunter.
+ * Der Ruhezustand traegt schon die Enddrehung, damit zwischen dem Ende der
+ * Animation und dem Aushaengen des Kubus keine falsche Flaeche aufblitzt.
+ */
+.cube {
+  position: relative;
+  z-index: 4;
+  width: 3rem;
+  height: 3rem;
+  transform: rotateX(var(--fx)) rotateY(var(--fy));
+  transform-style: preserve-3d;
+  animation: die-throw 950ms cubic-bezier(0.34, 0.62, 0.3, 1) both;
+}
+
+.cube__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+/*
+ * Die sechs Seiten, je um die halbe Kantenlaenge (1.5rem) nach aussen geschoben.
+ * Welche Augenzahl wo sitzt, steht in `DiceTray.tsx` - hier steht nur, wo
+ * „vorn", „oben" und „rechts" sind.
+ */
+.cube__face--front {
+  transform: translateZ(1.5rem);
+}
+
+.cube__face--back {
+  transform: rotateY(180deg) translateZ(1.5rem);
+}
+
+.cube__face--right {
+  transform: rotateY(90deg) translateZ(1.5rem);
+}
+
+.cube__face--left {
+  transform: rotateY(-90deg) translateZ(1.5rem);
+}
+
+.cube__face--top {
+  transform: rotateX(90deg) translateZ(1.5rem);
+}
+
+.cube__face--bottom {
+  transform: rotateX(-90deg) translateZ(1.5rem);
+}
+
+.cube__face .die {
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * Der Wurf: hinaus ueber das Brett und zurueck in die Ablage.
+ *
+ * **Er faengt und endet an Ort und Stelle** - `translate3d(0,0,0)` an beiden
+ * Enden. Damit braucht niemand die Bildschirmkoordinaten der Ablage zu messen;
+ * der Wuerfel springt aus seinem Platz heraus und faellt in ihn zurueck.
+ * `--peak-x` und `--peak-y` stehen in `vw`/`vh` und kommen aus `DiceTray.tsx`:
+ * wie weit „ueber das Brett" ist, weiss nur das Fenster.
+ *
+ * **Die Drehung laeuft rueckwaerts auf ihr Ziel zu.** Der Kubus startet mit drei
+ * ganzen Umdrehungen *vor* seiner Endlage und dreht sich in sie hinein - er
+ * taumelt sichtbar und liegt am Ende trotzdem exakt auf der geworfenen Zahl,
+ * ohne dass irgendwo eine Zufallszahl im Spiel waere. Das Ergebnis steht
+ * schliesslich vorher fest (Architekturregel 2).
+ *
+ * `scale` am Scheitel ist die Tiefe: ein Wuerfel, der auf einen zufliegt, wird
+ * groesser. Ohne das saehe der Bogen aus wie ein Schieben auf der Tischplatte.
+ */
+@keyframes die-throw {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotateX(calc(var(--fx) - 1080deg))
+      rotateY(calc(var(--fy) - 1440deg));
+  }
+
+  38% {
+    transform: translate3d(var(--peak-x), var(--peak-y), 0) scale(1.6)
+      rotateX(calc(var(--fx) - 540deg)) rotateY(calc(var(--fy) - 720deg));
+  }
+
+  /* Aufprall: kurz ueber der Ablage, schon fast in der Endlage. */
+  86% {
+    transform: translate3d(0, -0.9rem, 0) scale(1.06) rotateX(calc(var(--fx) - 24deg))
+      rotateY(calc(var(--fy) + 16deg));
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0) scale(1) rotateX(var(--fx)) rotateY(var(--fy));
+  }
+}
+
 /*
  * Zwei Staerken fuer dieselbe Sache.
  *

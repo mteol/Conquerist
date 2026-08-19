@@ -10,6 +10,7 @@ import { StartScreen, type LocalOptions } from './screens/StartScreen';
 import { MenuScreen, type MenuChoice } from './screens/MenuScreen';
 import { useLocalGame } from './game/useLocalGame';
 import { useOnlineGame } from './game/useOnlineGame';
+import { useSettledRoll } from './game/useSettledRoll';
 import { loadName, roomFromLocation } from './net/session';
 
 /**
@@ -67,7 +68,12 @@ function Local({
   readonly session: LocalSession;
   readonly onLeave: () => void;
 }): JSX.Element {
-  const game = useLocalGame(session.game, session.seats);
+  /*
+   * `useSettledRoll` liegt **um** die Partie und nicht in ihr: es haelt die
+   * Vorfuehrung an, waehrend die Wuerfel fliegen, und dazu gehoert der Klang.
+   * Stuende `useCueSound` davor, kaeme der Wurf zu hoeren, bevor er liegt.
+   */
+  const game = useSettledRoll(useLocalGame(session.game, session.seats));
   useCueSound(game.sound);
 
   return (
@@ -76,6 +82,7 @@ function Local({
       actions={game.actions}
       log={game.log}
       error={game.error}
+      landing={game.landing}
       onAct={game.act}
       onDismissError={game.dismissError}
       concealBetweenTurns={session.options.concealBetweenTurns}
@@ -90,9 +97,16 @@ function Online({
   readonly onStartLocal: (game: GameState, seats: readonly Seat[], options: LocalOptions) => void;
 }): JSX.Element {
   const online = useOnlineGame();
-  const { room, view } = online.state;
+  /*
+   * Derselbe Haken wie in der lokalen Partie - und aus demselben Grund. Online
+   * wartet damit **jeder** Bildschirm auf die Landung, auch der des Mitspielers,
+   * der nur zusieht: der Wurf ist fuer alle derselbe Augenblick.
+   */
+  const shown = useSettledRoll(online.state);
+  const { room } = online.state;
+  const view = shown.view;
 
-  useCueSound(online.state.sound);
+  useCueSound(shown.sound);
 
   /*
    * Welcher Weg gewaehlt wurde. `null` heisst: das Hauptmenue steht.
@@ -233,9 +247,10 @@ function Online({
     screen = (
       <GameScreen
         view={view}
-        actions={online.state.actions}
-        log={online.state.log}
+        actions={shown.actions}
+        log={shown.log}
         error={online.state.lastError}
+        landing={shown.landing}
         onAct={(action) => {
           void online.act(action);
         }}

@@ -8,6 +8,7 @@ import {
   type PlayerView,
   type ResourceAmounts,
   type ResourceId,
+  type Roll,
 } from '@conquerist/shared';
 import { BoardSvg, type Place } from '../board/BoardSvg';
 import { EMPTY_TARGETS, buildKindOf, targetsFrom, type BuildableKind } from '../game/targets';
@@ -58,6 +59,16 @@ export interface GameScreenProps {
   readonly actions: readonly GameAction[];
   readonly log: readonly LogEntry[];
   readonly error: string | null;
+  /**
+   * Der Wurf, der gerade ueber das Brett fliegt - `null`, wenn nichts fliegt.
+   *
+   * Solange er nicht `null` ist, zeigt dieser Bildschirm **den Stand von
+   * vorhin**: `useSettledRoll` haelt Sicht, Klickkarte, Verlauf und Klang bis
+   * zur Landung an, damit der Tisch die Zahl nicht vor dem Wuerfel verraet.
+   * Diese eine Auskunft aus dem zurueckgehaltenen Stand geht durch, weil die
+   * Wuerfel wissen muessen, worauf sie fallen.
+   */
+  readonly landing?: Roll | null;
   readonly onAct: (action: GameAction) => void;
   readonly onDismissError: () => void;
   readonly onLeave: () => void;
@@ -93,6 +104,7 @@ export function GameScreen({
   actions,
   log,
   error,
+  landing = null,
   onAct,
   onDismissError,
   onLeave,
@@ -440,6 +452,7 @@ export function GameScreen({
             total={display.rollTotal}
             canRoll={targets.roll !== null}
             fell={display.rolled}
+            landing={landing}
             onRoll={() => {
               if (targets.roll !== null) onAct(targets.roll);
             }}

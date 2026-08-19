@@ -244,10 +244,7 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     dice: view.rules.dice,
     lastRoll: view.lastRoll,
     rollTotal: view.lastRoll === null ? null : yieldTotal(view.rules.dice, view.lastRoll),
-    rolled:
-      previous !== undefined &&
-      previous.phase.kind === 'rollPending' &&
-      view.phase.kind !== 'rollPending',
+    rolled: cameFromRoll(previous ?? null, view),
     turn: view.turn,
     longestRoad: view.longestRoad,
     largestArmy: view.largestArmy,
@@ -256,4 +253,24 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     you: view.you,
     gains,
   };
+}
+
+/**
+ * Ob dieser Stand aus einem Wurf hervorgegangen ist.
+ *
+ * Gelesen aus dem Phasenwechsel und nicht aus veraenderten Augenzahlen: aus
+ * `rollPending` fuehrt genau ein Zug heraus, und zweimal dieselbe Augenzahl
+ * hintereinander ist trotzdem ein zweiter Wurf. Ein Zaehler im Zustand waere
+ * die Alternative gewesen - er waere eine zweite Wahrheit neben der Phase.
+ *
+ * **Eigene Funktion, seit zwei Stellen fragen.** Das Anzeigemodell braucht die
+ * Antwort, um die Wuerfel fallen zu lassen; `useSettledRoll` braucht sie, um
+ * den Tisch anzuhalten, waehrend sie fliegen. Zwei Abschriften derselben
+ * Bedingung waeren beim ersten Umbau auseinandergelaufen - und dann haette der
+ * Tisch gewartet, ohne dass etwas fliegt, oder umgekehrt.
+ */
+export function cameFromRoll(before: PlayerView | null, after: PlayerView): boolean {
+  return (
+    before !== null && before.phase.kind === 'rollPending' && after.phase.kind !== 'rollPending'
+  );
 }
