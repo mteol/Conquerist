@@ -14,6 +14,7 @@ import { EMPTY_TARGETS, buildKindOf, targetsFrom, type BuildableKind } from '../
 import { discardCountForView, gameViewOf, type PlayerRow } from '../game/view';
 import { ActionPanel } from '../panels/ActionPanel';
 import { DeckPanel } from '../panels/DeckPanel';
+import { DiceTray } from '../panels/DiceTray';
 import { HandPanel } from '../panels/HandPanel';
 import { TurnPanel } from '../panels/TurnPanel';
 import { DevelopmentCards } from '../panels/DevelopmentCards';
@@ -319,7 +320,26 @@ export function GameScreen({
       </div>
 
       <TablePanel view={display} />
-      <LogPanel entries={log} />
+
+      {/*
+       * **Der Status steht oben, neben der Tuer zum Verlauf.**
+       *
+       * Er lag zuletzt am Fuss der rechten Ecke, unter Kaufstapel und
+       * Bauteilen - also mitten in der Bedienung, obwohl er nichts ist, was man
+       * bedient. Zwischen den Dingen, nach denen man greift, unterbrach der
+       * Satz „Spieler 2 ist am Zug" jedesmal die Reihe, und der Blick musste
+       * ihn ueberspringen, um zu den Bauteilen zu kommen.
+       *
+       * Oben rechts steht er ueber leerer See und teilt sich die Zeile mit dem
+       * Verlauf. Das ist kein Ausweichen, sondern der Ort, an den er gehoert:
+       * beides ist Auskunft ueber den Gang der Partie - das eine staendig und
+       * beilaeufig, das andere selten und dann genau. Ein Ort fuer „was ist
+       * gerade", einer fuer „was liegt jetzt auf dem Tisch".
+       */}
+      <div className="topline">
+        <StatusPanel view={display} />
+        <LogPanel entries={log} />
+      </div>
 
       {/*
        * **Die Ablage ist keine Zeile mehr, sondern zwei Ecken.**
@@ -336,9 +356,9 @@ export function GameScreen({
        * steht also immer rechts von der linken und links von der rechten - die
        * Rechnung dazu steht in `index.css` bei `--tray-strip`.
        *
-       * Was man hat, liegt links; was man tun kann, rechts. Innerhalb der
-       * rechten Ecke liest es sich weiter wie ein Zug: woran man ist, was man
-       * kaufen kann, womit man wuerfelt und was man baut.
+       * Was man hat, liegt links; was man tun kann, rechts. Die rechte Ecke
+       * traegt seither nur noch Material: der Kaufstapel, die Bauteile, die
+       * Wuerfel - drei Dinge, nach denen man greift, und kein Satz dazwischen.
        * Der Kaufstapel steht deshalb zwischen Hand und Bauleiste und nicht als
        * dritter Knopf neben „Handel" und „Zug beenden" - er ist
        * Spielmaterial und keine Bedienung.
@@ -351,12 +371,14 @@ export function GameScreen({
        * Ueberlegen ohnehin steht - und die Ecke unten links ist die einzige,
        * die man mit der Maus ohne Zielen trifft.
        *
-       * **Der Status steht seit dem neuen Layout in dieser Zeile.** Er schwebte
-       * vorher frei in der Ecke unten rechts, und der Blick sprang bei jedem Zug
-       * diagonal ueber den Bildschirm - genau der Befund, aus dem er nach dem
-       * ersten Playtest schon einmal von oben nach unten gewandert ist. In der
-       * Leiste liegt er auf derselben Linie wie alles, was man bedient; der
-       * Blick wandert waagerecht statt quer.
+       * **Die Wuerfel liegen ganz aussen, in der Ecke selbst.** Sie standen
+       * zwischen Kaufstapel und Bauteilen, also in der Mitte einer Reihe - und
+       * damit an der Stelle, die man am schlechtesten trifft. Es ist der eine
+       * Knopf, mit dem jeder Zug anfaengt, und die Bildschirmecke ist der
+       * einzige Ort, den eine Maus ohne Zielen erreicht: man faehrt hin, bis es
+       * nicht weiter geht. Dieselbe Ueberlegung, die „Zug beenden" nach unten
+       * links gebracht hat - der Anfang eines Zuges und sein Ende liegen jetzt
+       * in je einer Ecke.
        */}
       <div className="tray">
         <div className="tray__hand">
@@ -386,31 +408,42 @@ export function GameScreen({
           />
         </div>
 
-        <div className="tray__side">
-          <div className="tray__controls">
-            <DeckPanel
-              left={display.deckLeft}
-              canBuy={targets.buyCard !== null}
-              onBuy={() => {
-                if (targets.buyCard !== null) onAct(targets.buyCard);
-              }}
-            />
+        <div className="tray__controls">
+          <DeckPanel
+            left={display.deckLeft}
+            canBuy={targets.buyCard !== null}
+            onBuy={() => {
+              if (targets.buyCard !== null) onAct(targets.buyCard);
+            }}
+          />
 
-            <ActionPanel
-              view={display}
-              targets={targets}
-              error={error}
-              stock={you === undefined ? null : { piecesLeft: you.piecesLeft, color: you.color }}
-              buildMode={buildMode}
-              onBuildMode={setBuildMode}
-              onRoll={() => {
-                if (targets.roll !== null) onAct(targets.roll);
-              }}
-              onDismissError={onDismissError}
-            />
-          </div>
+          <ActionPanel
+            targets={targets}
+            error={error}
+            stock={you === undefined ? null : { piecesLeft: you.piecesLeft, color: you.color }}
+            buildMode={buildMode}
+            onBuildMode={setBuildMode}
+            onDismissError={onDismissError}
+          />
 
-          <StatusPanel view={display} />
+          {/*
+           * Die Wuerfel haengen nicht mehr in der Bauleiste, sondern daneben.
+           *
+           * Sie standen dort als erste Zeile, weil ein Zug mit ihnen anfaengt -
+           * nur ist die Reihenfolge im Ablauf nicht dieselbe wie die auf dem
+           * Tisch. Als eigenes Stueck koennen sie in die Ecke, und die Leiste
+           * daneben ist wieder das, was ihr Name sagt: was man baut.
+           */}
+          <DiceTray
+            spec={display.dice}
+            roll={display.lastRoll}
+            total={display.rollTotal}
+            canRoll={targets.roll !== null}
+            fell={display.rolled}
+            onRoll={() => {
+              if (targets.roll !== null) onAct(targets.roll);
+            }}
+          />
         </div>
       </div>
 

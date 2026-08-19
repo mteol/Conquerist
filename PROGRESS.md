@@ -3144,3 +3144,162 @@ Ecken-Ablage weg, weil das Brett den oberen Rand nicht mehr braucht.
   wieder zumacht — beobachten.
 - Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen.
 - Der schwarze Rand der Felder (`.hex`) ist nach wie vor unangetastet.
+
+## Der Status nach oben, die Würfel in die Ecke — und die erste Musik (2026-08-19, `main`)
+
+Stand: nach `b467aab`. Zwei Umzüge auf dem Spielbildschirm und eine mp3, die zum
+ersten Mal im Image liegt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 303 / 33       |
+| `pnpm build`        | grün — `index.js` 407.88 kB (gzip 121.28), `index.css` 34.04 kB (7.69) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | **nicht gelaufen** — die Chrome-Erweiterung war nicht verbunden        |
+
+Die fünf Tests mehr im Client: drei zur Musik (`audio/useAudio.test.tsx`), zwei
+zu den Plätzen im Baum (`screens/GameScreen.test.tsx`).
+
+### Der Status stand zwischen Dingen, nach denen man greift
+
+Er ist einen Tag zuvor ans Ende der rechten Ablage gewandert, und dort saß er
+falsch — nicht zu weit weg, sondern in der falschen Sorte Fläche. Die rechte
+Ecke ist die Reihe, die die Maus abfährt: Kaufstapel, Bauteile, Würfel. Ein Satz
+darin ist kein Ding, sondern eine Unterbrechung, und er verschiebt beim
+Zugwechsel auch noch die Höhe der Ecke, weil er mal eine und mal zwei Zeilen
+braucht.
+
+Jetzt steht er **oben rechts, links neben der Verlaufstür**. Das ist kein
+Ausweichen auf freie Fläche, sondern eine Gruppe: Status und Verlauf sagen
+beide, wie die Partie steht — das eine ständig und beiläufig, das andere selten
+und dann genau. Ein Ort für „was ist gerade", einer für „was liegt auf dem
+Tisch". Der Statussatz ist rechtsbündig gesetzt, weil er mitwächst („Spieler 2
+ist am Zug" gegen „Gründung: Spieler 3 setzt eine Siedlung"); links ausgerichtet
+wanderte sein Ende bei jedem Zugwechsel und mit ihm der Abstand zum Knopf.
+
+Beides hängt in einem neuen `.topline`, und der trägt dieselbe
+`pointer-events`-Regelung wie `.tray`: die Zeile liegt über dem Brett, der
+Status ist Schrift ohne Körper, also fängt sie nichts, und der Verlaufsknopf
+holt sich das Fangen einzeln zurück. Ohne das läge ein unsichtbarer Kasten über
+den oberen Feldern.
+
+**Was dabei wegfiel:** `.log-corner` war bis hierher selbst am Bildschirmrand
+festgenagelt (`position: fixed` plus `top`/`right`) und ist jetzt das letzte
+Glied der Zeile. Der Ort ist derselbe geblieben — die Zeile endet dort, wo die
+Ecke endete —, aber der Abstand zum Nachbarn kommt aus einem `gap` statt aus
+einer zweiten festen Zahl.
+
+### Die Würfel lagen mitten in der Reihe
+
+Sie standen als erste Zeile in der Bauleiste, weil ein Zug mit ihnen anfängt.
+Nur ist die Reihenfolge im Ablauf nicht die Reihenfolge auf dem Tisch: nach dem
+Umbau der Ablage in zwei Ecken saßen sie zwischen Kaufstapel und Bauteilen, also
+an der Stelle einer Reihe, die man am schlechtesten trifft — mit Nachbarn auf
+beiden Seiten.
+
+Jetzt liegen sie **ganz außen, in der Bildschirmecke selbst**. Eine
+Bildschirmecke ist das einzige Ziel, das eine Maus ohne Zielen erreicht: man
+fährt hin, bis es nicht weiter geht. Genau das verdient der eine Knopf, mit dem
+jeder einzelne Zug anfängt. Es ist dieselbe Überlegung, die „Zug beenden" nach
+unten links gebracht hat — der Anfang eines Zuges und sein Ende liegen jetzt in
+je einer Ecke, und dazwischen liegt das Material.
+
+**Der Umzug ist ein Umzug im Baum, keine `order`-Regel.** Die Würfel hängen
+jetzt als eigenes Stück im `GameScreen` neben dem `ActionPanel` statt darin. Mit
+`order` in CSS wäre die Reihenfolge am Bildschirm eine andere als die im
+Dokument — und damit eine andere für Tastatur und Vorlesewerkzeug als für die
+Maus. Das ist die Art Trick, die genau einmal gutgeht.
+
+**Daraus folgt eine Vereinfachung, die niemand geplant hat:** das `ActionPanel`
+brauchte die `GameView` nur für die Augen und den Wurf. Ohne die Würfel bekommt
+es sie nicht mehr, und `onRoll` auch nicht — es stellt jetzt die Bauteile und
+die Absage des Servers, und was es dafür braucht, steht in der Klickkarte und im
+eigenen Vorrat. Ebenso weggefallen: `.tray__side`, die zweite Hülle um die
+rechte Ecke. Es gab sie nur, um den Statussatz auf eine eigene Zeile darüber zu
+heben. Eine Ecke, ein Element.
+
+### Die Musik ist die eine Ausnahme von „kein Audio-Byte im Image"
+
+Beim Ton war die Zusage eindeutig: 23 Klänge als Rezepte aus Zahlen,
+`samples.ts` führt sie als auskommentierte Einkaufsliste, und im Image liegt
+kein Byte Audio. Das gilt weiter — für **Effekte**. Ein Klick, ein Würfel, ein
+Handschlag lassen sich aus Hüllkurven bauen, und ein Rezept wiegt nichts. Ein
+Stück Musik lässt sich das nicht: synthetisiert wäre es eine Tonfolge und kein
+Stück.
+
+Deshalb liegt jetzt eine Datei da (`public/music/catan.mp3`, 2,22 MB) und
+kostet, was sie kostet. Das ist die bewusste Abweichung von der Zusage, und sie
+steht hier, damit sie beim nächsten Lesen kein Versehen ist. `samples.ts` bleibt
+leer.
+
+**Ein `<audio>`-Element und kein dekodierter Puffer.** Die Datei ist Minuten
+lang; über `decodeAudioData` läge sie als PCM im Speicher, also ein Vielfaches
+ihrer zwei Megabyte, und die Schleife müsste man selbst bauen. Das Element
+streamt und bekommt `loop` geschenkt. Über `createMediaElementSource` hängt es
+trotzdem am **selben Musik-Bus**, der seit dem Ton fertig dasteht — damit gilt
+für die Spur derselbe Regler wie für alles andere, ohne eine zweite
+Lautstärkerechnung daneben. Der Kommentar an `ensure()`, der das vorausgesagt
+hat, stimmte: an dieser Stelle hat sich nichts geändert.
+
+**Sie fängt bei der ersten Geste an, nicht beim Laden** — aus demselben Grund,
+aus dem der `AudioContext` erst beim ersten Klang entsteht. Der Anlauf hängt an
+`pointerdown` **und** `keydown`: wer mit der Tastatur spielt, hat sonst nie eine
+erste Geste. Und die Listener melden sich **nicht** nach dem ersten Mal ab. Das
+ist die eigentliche Entscheidung dahinter: `playMusic` tut bei laufender Spur
+nichts, und ein Anlauf, den der Browser abgelehnt hat, bekommt so bei der
+nächsten Geste einen zweiten. Ein `once: true` hätte genau diesen Fall
+verspielt — und man hätte ihm nicht angesehen, dass er fehlt.
+
+**Stumm heißt still, der Regler auf null heißt leise.** Das sind zwei
+verschiedene Absichten: wer den Regler herunterzieht, will das Stück leiser, und
+wenn er ihn wieder aufdreht, soll es dort weiterlaufen, wo es inzwischen steht.
+Wer stummschaltet, will es weg — dann soll es auch keine Leitung und keinen Takt
+kosten, also wird pausiert. Angehalten wird allerdings **nach** der Blende, mit
+120 ms Verzug: `pause()` mitten in der Gain-Rampe schneidet die Welle ab, wo sie
+gerade steht, und das hört man als Knacks. 120 ms sind rund das Sechsfache der
+Zeitkonstante der Rampe, also praktisch Stille.
+
+Jeder Ausfall ist still und keiner ist laut: kein `Audio` im Fenster, kein
+`MediaElementSource`, eine abgelehnte Wiedergabe — in allen drei Fällen bleibt
+es bei der Stille, und die Effekte klingen weiter. Dieselbe Zusage wie bei den
+Samples. Der Satz „Musik gibt es noch nicht — der Regler wartet auf sie" ist aus
+dem Einstellungen-Dialog verschwunden; er wartet nicht mehr.
+
+### Was jsdom prüfen kann und was nicht
+
+Zwei neue Tests im `GameScreen` prüfen die **Ordnung im Baum** und ausdrücklich
+nicht das Aussehen: der Status liegt im `.topline` und **vor** der Verlaufstür,
+die Würfel sind das letzte Kind von `.tray__controls` und haben die Bauteile
+links neben sich. jsdom hat keine Layout-Engine — wie breit etwas ist und ob
+sich zwei Dinge überdecken, kann hier niemand messen, das bleibt dem
+Browser-Durchlauf. Aber beide Umzüge sind mit einer verrutschten CSS-Regel
+wieder da, wo sie waren; mit einer verrutschten Klammer nicht, und genau das
+fangen die Tests.
+
+Drei Tests zur Musik in `audio/useAudio.test.tsx`: vor der ersten Geste nichts,
+nach einem Klick der Anlauf, nach einem Tastendruck ebenso. Dass dabei zwei
+Gesten zwei Anläufe erzeugen, steht als Zusage im Test — ob daraus zwei Spuren
+werden, entscheidet die Engine und nicht der Haken.
+
+### Offene Punkte
+
+- **Der Browser-Durchlauf fehlt wieder**, diesmal nicht aus Nachlässigkeit,
+  sondern weil die Chrome-Erweiterung nicht verbunden war. Ungesehen sind damit:
+  ob die Musik im Browser tatsächlich anspringt, ob der Status oben rechts bei
+  einem langen Phasensatz mit dem Brett ins Gehege kommt, und ob die Würfel in
+  der Ecke bei schmalem Fenster noch neben statt unter dem Brett liegen.
+- Der Statussatz hat `max-width: min(22rem, 34vw)`. Die Zahl ist gesetzt und
+  nicht gemessen — sie soll den Satz zweizeilig halten, geprüft ist das nicht.
+- Die 2,22 MB im Image sind nicht gemessen: was sie für den ersten Aufruf über
+  eine langsame Leitung heißen, weiß niemand. Die Spur lädt erst nach der ersten
+  Geste, blockt also nichts — aber sie teilt sich die Leitung mit allem anderen.
+- Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen.
+- Der schwarze Rand der Felder (`.hex`) ist nach wie vor unangetastet.
+
+### Nächste Etappe
+
+Etappe 10 (Erweiterungen) — davor steht weiter der Browser-Durchlauf über den
+ganzen Spielbildschirm, jetzt mit zwei Umzügen und einer Tonspur mehr darin.

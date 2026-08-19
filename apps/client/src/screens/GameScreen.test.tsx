@@ -165,6 +165,44 @@ describe('GameScreen', () => {
     expect(screen.getByText(/setzt die Gründungssiedlung/)).toBeDefined();
   });
 
+  /*
+   * Die Plaetze, nicht das Aussehen.
+   *
+   * jsdom hat keine Layout-Engine - wie breit etwas ist und ob sich zwei Dinge
+   * ueberdecken, kann hier niemand messen; das bleibt der Browser-Durchlauf.
+   * Was sich pruefen laesst, ist die Ordnung im Baum, und genau daran haengt
+   * das neue Layout: der Status neben der Verlaufstuer, die Wuerfel als
+   * aeusserstes Stueck der rechten Ecke. Beides ist mit einer verrutschten
+   * CSS-Regel wieder da, wo es war - mit einer verrutschten Klammer nicht.
+   */
+  it('stellt den Status neben die Tuer zum Verlauf', () => {
+    render(<LocalGame />);
+
+    const topline = screen.getByTestId('log-toggle').closest('.topline');
+    expect(topline).not.toBeNull();
+
+    const status = topline!.querySelector('.panel--status');
+    expect(status).not.toBeNull();
+    // Er steht davor: gelesen wird von links nach rechts, und das Beilaeufige
+    // kommt vor der Tuer, die man selten oeffnet.
+    expect(status!.compareDocumentPosition(screen.getByTestId('log-toggle'))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('legt die Wuerfel als Letztes in die rechte Ecke', () => {
+    render(<LocalGame />);
+
+    const corner = screen.getByTestId('dice').closest('.tray__controls');
+    expect(corner).not.toBeNull();
+
+    // Aeusserstes Kind heisst am Bildschirm: in der Ecke selbst. Was links
+    // davon liegt, sind die Bauteile.
+    const own = screen.getByTestId('dice').closest('.dice-tray');
+    expect(corner!.lastElementChild).toBe(own);
+    expect(corner!.querySelector('[data-testid="build-road"]')).not.toBeNull();
+  });
+
   it('zeigt genau eine offene Hand und von allen nur die Anzahl', () => {
     render(<LocalGame />);
 

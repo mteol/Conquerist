@@ -62,30 +62,32 @@ describe('TablePanel', () => {
 });
 
 describe('ActionPanel', () => {
-  it('laesst wuerfeln, ohne einen Knopf dafuer zu stellen', () => {
+  it('stellt die Bauteile und sonst nichts', () => {
     const state = afterSetup();
     const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
     const targets = actionTargets(state, view.currentPlayerId);
 
     render(
       <ActionPanel
-        view={view}
         targets={targets}
         error={null}
         stock={null}
         buildMode={null}
         onBuildMode={vi.fn()}
-        onRoll={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );
 
-    // Der Knopf „Wuerfeln" ist weg: geworfen wird an den Wuerfeln selbst.
-    expect(screen.queryByRole('button', { name: 'Wuerfeln' })).toBeNull();
-    expect(screen.getByTestId('dice')).toHaveProperty('disabled', false);
+    // Die drei Bauteile sind der Inhalt dieser Leiste.
+    expect(screen.getByTestId('build-road')).toBeDefined();
+    expect(screen.getByTestId('build-settlement')).toBeDefined();
+    expect(screen.getByTestId('build-city')).toBeDefined();
 
-    // Und die zwei Knoepfe stehen nicht mehr in dieser Leiste, sondern unter
-    // den Handkarten - siehe `TurnPanel`.
+    // Die Wuerfel standen hier und liegen jetzt in der Bildschirmecke daneben -
+    // gestellt vom `GameScreen`, nicht mehr von dieser Leiste.
+    expect(screen.queryByTestId('dice')).toBeNull();
+
+    // Und die zwei Knoepfe stehen unter den Handkarten - siehe `TurnPanel`.
     expect(screen.queryByRole('button', { name: 'Zug beenden' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Handel' })).toBeNull();
   });
@@ -97,13 +99,11 @@ describe('ActionPanel', () => {
 
     render(
       <ActionPanel
-        view={view}
         targets={actionTargets(state, view.currentPlayerId)}
         error="Vor dem Bauen fehlt der Wurf"
         stock={null}
         buildMode={null}
         onBuildMode={vi.fn()}
-        onRoll={vi.fn()}
         onDismissError={onDismissError}
       />,
     );
@@ -126,13 +126,11 @@ describe('ActionPanel', () => {
 
     render(
       <ActionPanel
-        view={view}
         targets={actionTargets(state, view.currentPlayerId)}
         error={null}
         stock={{ piecesLeft: { road: 13, settlement: 3, city: 4 }, color: '#c0392b' }}
         buildMode={null}
         onBuildMode={vi.fn()}
-        onRoll={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );
@@ -148,13 +146,11 @@ describe('ActionPanel', () => {
 
     render(
       <ActionPanel
-        view={view}
         targets={actionTargets(state, view.currentPlayerId)}
         error={null}
         stock={{ piecesLeft: { road: 0, settlement: 3, city: 4 }, color: '#c0392b' }}
         buildMode={null}
         onBuildMode={vi.fn()}
-        onRoll={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );
@@ -177,13 +173,11 @@ describe('ActionPanel', () => {
 
     render(
       <ActionPanel
-        view={view}
         targets={actionTargets(state, view.currentPlayerId)}
         error={null}
         stock={{ piecesLeft: { road: 13, settlement: 3, city: 4 }, color: '#c0392b' }}
         buildMode={null}
         onBuildMode={vi.fn()}
-        onRoll={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );

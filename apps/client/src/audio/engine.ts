@@ -19,6 +19,14 @@ import { recipeFor, type Layer } from './voices';
  */
 export interface Engine {
   readonly play: (sound: Sound) => void;
+  /**
+   * Startet die Hintergrundspur.
+   *
+   * Beliebig oft aufrufbar, und genau darauf kommt es an: der erste Anlauf
+   * kann am Autoplay-Riegel scheitern, und dann bekommt ihn die naechste Geste
+   * noch einmal. Laeuft die Spur schon, tut der Aufruf nichts.
+   */
+  readonly playMusic: (url: string) => void;
   readonly apply: (settings: AudioSettings) => void;
   readonly close: () => void;
 }
@@ -43,6 +51,10 @@ export function createEngine(): Engine {
   let master: GainNode | null = null;
   let sfx: GainNode | null = null;
   let music: GainNode | null = null;
+  /** Die laufende Hintergrundspur - `null`, solange keine gebaut ist. */
+  let track: HTMLAudioElement | null = null;
+  /** Das Anhalten wartet auf die Blende. `null`, wenn nichts aussteht. */
+  let fade: ReturnType<typeof setTimeout> | null = null;
   let settings: AudioSettings | null = null;
 
   const buffers = new Map<string, AudioBuffer>();
@@ -59,6 +71,39 @@ export function createEngine(): Engine {
     master.gain.setTargetAtTime(levelOf(next.master), at, 0.02);
     sfx.gain.setTargetAtTime(levelOf(next.sfx), at, 0.02);
     music.gain.setTargetAtTime(levelOf(next.music), at, 0.02);
+
+    /*
+     * Stumm heisst still, nicht leise.
+     *
+     * Der Regler auf null laesst die Spur weiterlaufen - er ist eine
+     * Lautstaerke, und wer ihn wieder aufdreht, will dort weiterhoeren, wo das
+     * Stueck inzwischen steht. Der Stummschalter ist dagegen ein Schalter: eine
+     * Spur, die niemand hoert, soll auch keine Leitung und keinen Takt kosten.
+     */
+    if (track !== null) {
+      const stopping = track;
+      if (fade !== null) {
+        clearTimeout(fade);
+        fade = null;
+      }
+
+      if (next.master.muted || next.music.muted) {
+        /*
+         * Erst ausblenden, dann anhalten - und nicht umgekehrt.
+         *
+         * `pause()` mitten in der Rampe schneidet die Welle ab, wo sie gerade
+         * steht, und das hoert man als Knacks. Es ist derselbe Grund, aus dem
+         * die Regler oben rampen statt zu springen; 120 ms sind rund das
+         * Sechsfache der Zeitkonstante, also praktisch Stille.
+         */
+        fade = setTimeout(() => {
+          stopping.pause();
+          fade = null;
+        }, 120);
+      } else if (stopping.paused) {
+        void stopping.play().catch(() => undefined);
+      }
+    }
   };
 
   const ensure = (): boolean => {
@@ -77,9 +122,9 @@ export function createEngine(): Engine {
     music = context.createGain();
     master.connect(context.destination);
     sfx.connect(master);
-    // Der Musik-Bus haengt fertig da, auch wenn heute nichts darueber laeuft:
-    // sein Regler steht im Dialog, und wenn die erste Musik kommt, aendert sich
-    // hier nichts mehr.
+    // Der Musik-Bus hing hier fertig da, bevor es Musik gab - und als sie kam,
+    // hat sich an dieser Stelle tatsaechlich nichts geaendert. Die Spur haengt
+    // sich in `playMusic` an denselben Knoten.
     music.connect(master);
 
     if (settings !== null) apply(settings);
@@ -178,6 +223,43 @@ export function createEngine(): Engine {
       });
   };
 
+  /**
+   * Die Hintergrundspur - ein `<audio>`-Element am Musik-Bus.
+   *
+   * **Ein Element und kein dekodierter Puffer.** Die Datei ist Minuten lang;
+   * als PCM im Speicher waere sie ein Vielfaches ihrer zwei Megabyte, waehrend
+   * das Element streamt und `loop` geschenkt bekommt. Ueber
+   * `createMediaElementSource` haengt sie trotzdem am selben Bus wie alles
+   * andere - damit gilt fuer sie derselbe Regler, ohne eine zweite
+   * Lautstaerkerechnung daneben.
+   *
+   * Jeder Ausfall ist still und keiner ist laut: kein `Audio` im Fenster, kein
+   * `MediaElementSource`, eine abgelehnte Wiedergabe - in allen drei Faellen
+   * bleibt es bei der Stille, und die Effekte klingen weiter.
+   */
+  const playMusic = (url: string): void => {
+    if (!ensure() || context === null || music === null) return;
+    if (settings !== null && (settings.master.muted || settings.music.muted)) return;
+
+    if (track === null) {
+      if (typeof Audio === 'undefined') return;
+
+      const element = new Audio(url);
+      element.loop = true;
+      element.preload = 'auto';
+
+      try {
+        context.createMediaElementSource(element).connect(music);
+      } catch {
+        return;
+      }
+      track = element;
+    }
+
+    if (context.state === 'suspended') void context.resume();
+    if (track.paused) void track.play().catch(() => undefined);
+  };
+
   const play = (sound: Sound): void => {
     if (!ensure() || context === null || sfx === null) return;
     if (settings !== null && (settings.master.muted || settings.sfx.muted)) return;
@@ -224,6 +306,10 @@ export function createEngine(): Engine {
   };
 
   const close = (): void => {
+    if (fade !== null) clearTimeout(fade);
+    fade = null;
+    track?.pause();
+    track = null;
     void context?.close();
     context = null;
     master = null;
@@ -235,5 +321,5 @@ export function createEngine(): Engine {
     running.clear();
   };
 
-  return { play, apply, close };
+  return { play, playMusic, apply, close };
 }

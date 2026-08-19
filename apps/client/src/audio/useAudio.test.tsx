@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import type { JSX } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, userEvent } from '../test/dom';
+import { fireEvent, render, screen, userEvent } from '../test/dom';
 import type { SoundEvent } from './cues';
+import { MUSIC_TRACK } from './music';
 import { AudioProvider, useCueSound } from './useAudio';
 
 /*
@@ -11,12 +12,18 @@ import { AudioProvider, useCueSound } from './useAudio';
  * weil `vi.mock` ueber die Importe gezogen wird und eine gewoehnliche Konstante
  * zu diesem Zeitpunkt noch nicht existierte.
  */
-const { played } = vi.hoisted(() => ({ played: [] as string[] }));
+const { played, started } = vi.hoisted(() => ({
+  played: [] as string[],
+  started: [] as string[],
+}));
 
 vi.mock('./engine', () => ({
   createEngine: () => ({
     play: (sound: { cue: string }) => {
       played.push(sound.cue);
+    },
+    playMusic: (url: string) => {
+      started.push(url);
     },
     apply: () => {},
     close: () => {},
@@ -48,6 +55,7 @@ const mount = (event: SoundEvent | null = null): ReturnType<typeof render> =>
 
 beforeEach(() => {
   played.length = 0;
+  started.length = 0;
 });
 
 describe('der delegierte Klick', () => {
@@ -73,6 +81,38 @@ describe('der delegierte Klick', () => {
     await userEvent.click(screen.getByText('Zusagen'));
 
     expect(played).toEqual(['ui.confirm']);
+  });
+});
+
+/*
+ * Die Musik haengt an derselben Geste wie der Ton ueberhaupt - und der Anlauf
+ * bleibt bestehen, statt sich nach dem ersten Mal abzumelden. Dass hier zwei
+ * Eintraege stehen, ist deshalb kein Fehler, sondern die Zusage: ein vom
+ * Browser abgelehnter erster Versuch bekommt bei der naechsten Geste einen
+ * zweiten. Ob daraus zwei Spuren werden, entscheidet die Engine, nicht dieser
+ * Haken.
+ */
+describe('die Musik', () => {
+  it('faengt nicht vor der ersten Geste an', () => {
+    mount();
+
+    expect(started).toEqual([]);
+  });
+
+  it('faengt bei der ersten Geste an', async () => {
+    mount();
+
+    await userEvent.click(screen.getByText('Bauen'));
+
+    expect(started).toEqual([MUSIC_TRACK]);
+  });
+
+  it('faengt auch bei einer Taste an - sonst bliebe es ohne Maus still', () => {
+    mount();
+
+    fireEvent.keyDown(window, { key: 'Tab' });
+
+    expect(started).toEqual([MUSIC_TRACK]);
   });
 });
 

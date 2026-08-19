@@ -76,8 +76,6 @@ export function SettingsDialog({ onClose }: { readonly onClose: () => void }): J
             </div>
           );
         })}
-
-        <p className="modal__hint">Musik gibt es noch nicht — der Regler wartet auf sie.</p>
       </div>
     </div>
   );

@@ -1663,22 +1663,47 @@ body {
 }
 
 /*
- * Der Status steht **in** der Ablage, ganz rechts, und dort als Letztes -
- * unter dem Kaufstapel und den Bauteilen, nicht mehr darueber.
+ * Die obere rechte Zeile: der Status und die Tuer zum Verlauf.
  *
- * Der Grund ist derselbe, aus dem er nach dem ersten Playtest schon einmal von
- * oben nach unten gewandert ist: wer am Zug ist, liest man staendig und
- * beilaeufig, und das Beilaeufige gehoert dorthin, wo man ohnehin hinsieht. Als
- * freies Panel in der Ecke lag er zwar unten, aber diagonal gegenueber der
- * Hand - der Blick sprang bei jedem Zug ueber den ganzen Bildschirm. In der
- * Leiste liegt er auf derselben Linie und `margin-left: auto` haelt ihn am
- * rechten Ende, wo ein Zug endet.
+ * `pointer-events: none` aus demselben Grund wie bei `.tray`: die Zeile liegt
+ * ueber dem Brett, und der Status ist Schrift ohne Koerper - ohne das `none`
+ * finge sein Kasten Klicks ab, die einem Feld darunter gelten. Der
+ * Verlaufsknopf holt sich das Fangen einzeln zurueck, der Satz daneben nicht:
+ * ihn soll man lesen und nicht treffen.
+ *
+ * Das Zahnrad steht **nicht** hier drin - es gilt allen Bildschirmen und haengt
+ * deshalb in `App.tsx`. Seinen Platz haelt der Verlaufsknopf mit dem eigenen
+ * `margin-right` frei, wie vorher auch.
+ */
+.topline {
+  position: fixed;
+  top: 0.85rem;
+  right: 0.95rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+/*
+ * Der Status steht oben rechts, links neben der Tuer zum Verlauf.
+ *
+ * Er ist zweimal umgezogen, und beide Male wegen desselben Befunds: er ist
+ * Auskunft und keine Bedienung. Zuletzt lag er am Fuss der rechten Ecke, unter
+ * Kaufstapel und Bauteilen - also mitten zwischen den Dingen, nach denen man
+ * greift, und dort unterbrach ein Satz die Reihe, die die Maus abfaehrt. Oben
+ * liegt er ueber leerer See und neben dem Verlauf: beides sagt, wie die Partie
+ * steht, das eine staendig und beilaeufig, das andere selten und dann genau.
+ *
+ * `text-align: right`, weil die rechte Kante die feste ist. Der Satz wird
+ * laenger und kuerzer („Spieler 2 ist am Zug" gegen „Gruendung: Spieler 3 setzt
+ * eine Siedlung"); links ausgerichtet wanderte sein Ende bei jedem Zugwechsel,
+ * und mit ihm der Abstand zum Knopf daneben.
  */
 .panel--status {
   position: static;
-  width: 100%;
-  margin-top: 0.5rem;
-  margin-left: auto;
+  max-width: min(22rem, 34vw);
   text-align: right;
 }
 
@@ -1731,25 +1756,19 @@ body {
  * nach oben - dort ist in einer Ecke Platz, unter dem Brett nicht.
  */
 .tray__hand,
-.tray__side {
+.tray__controls {
   max-width: var(--tray-strip);
 }
 
 /*
- * Die rechte Ecke: woran man ist, was man kaufen kann, womit man wuerfelt und
- * was man baut. Der Statussatz traegt `width: 100%` und bekommt dadurch seine
- * eigene Zeile - er steht oben, die Bedienung darunter in der Ecke.
- */
-.tray__side {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  align-items: flex-end;
-}
-
-/*
- * Kaufstapel, Wuerfel und Bauteile in einer Zeile - und umbrechend, damit sie
- * in einer schmalen Ecke nach oben ausweichen statt unter das Brett.
+ * Die rechte Ecke: Kaufstapel, Bauteile, Wuerfel - in dieser Reihenfolge nach
+ * aussen. Umbrechend, damit sie in einer schmalen Ecke nach oben ausweichen
+ * statt unter das Brett.
+ *
+ * Sie steckte bis hierher in einer zweiten Huelle (`.tray__side`), die es nur
+ * gab, um den Statussatz auf eine eigene Zeile darueber zu heben. Der Satz
+ * steht jetzt oben am Bildschirm, und mit ihm ist die Huelle weg: eine Ecke,
+ * ein Element.
  */
 .tray__controls {
   display: flex;
@@ -2187,11 +2206,18 @@ body {
  * Ort fuer „alles, was nicht das Spiel ist"; eines davon anders zu gestalten
  * hiesse, zwei Orte zu behaupten, wo einer ist.
  */
+/*
+ * Sie sass selbst am Bildschirmrand und sitzt jetzt als letztes Glied in
+ * `.topline`. Der Ort ist derselbe geblieben - die Zeile endet dort, wo die
+ * Ecke endete -, aber der Abstand zum Status daneben kommt jetzt aus einem
+ * `gap` und nicht aus einer zweiten festen Zahl.
+ *
+ * `position: relative` bleibt noetig: das aufgeklappte Blatt haengt mit
+ * `right: 0` an dieser Kante und nicht am Fensterrand.
+ */
 .log-corner {
-  position: fixed;
-  top: 0.85rem;
-  right: 0.95rem;
-  z-index: 2;
+  position: relative;
+  pointer-events: auto;
 }
 
 /*
@@ -2425,16 +2451,21 @@ body {
 /*
  * Der Wuerfelbecher.
  *
- * Er hat den Knopf „Wuerfeln" ersetzt und steht deshalb dort, wo der Knopf
- * stand: oben in der Aktionsleiste, als erstes im Ablauf eines Zuges. Die
- * Wuerfel selbst sind heller als das Pergament ringsum - sie sind das eine
- * Stueck Spielmaterial in dieser Leiste, alles andere ist Bedienung.
+ * Er hat den Knopf „Wuerfeln" ersetzt: geworfen wird an den Wuerfeln selbst.
+ * Sie standen dafuer erst oben in der Aktionsleiste und liegen jetzt ganz
+ * aussen in der unteren rechten Ecke - der einzige Ort, den eine Maus ohne
+ * Zielen erreicht, und das fuer den Knopf, mit dem jeder Zug anfaengt.
+ *
+ * Rechtsbuendig, seit die Wuerfel in der Bildschirmecke liegen: die Aufschrift
+ * „Wuerfeln" haengt unter ihnen, und die feste Kante ist jetzt die rechte. An
+ * der linken ausgerichtet ruecke sie mit, sobald neben den Augen die Summe
+ * erscheint und der Becher breiter wird.
  */
 .dice-tray {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  align-items: flex-start;
+  align-items: flex-end;
 }
 
 /*
@@ -2608,11 +2639,13 @@ body {
  */
 .status__waiting {
   margin: 0.45rem 0 0;
-  padding-left: 0.5rem;
-  border-left: 3px solid var(--warn);
+  /* Die Kante liegt rechts, weil der ganze Block rechts ausgerichtet ist -
+     links stuende sie in der Luft, mit einem Flatterrand dazwischen. */
+  padding-right: 0.5rem;
+  border-right: 3px solid var(--warn);
   font-size: 0.75rem;
   line-height: 1.35;
-  text-align: left;
+  text-align: right;
 }
 
 .status__away {

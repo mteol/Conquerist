@@ -2,26 +2,28 @@ import type { JSX } from 'react';
 import { PIECE_IDS, type PieceId, type RuleSet } from '@conquerist/shared';
 import { CITY_PATH, ROAD_PATH, SETTLEMENT_PATH, VIEWBOX } from '../board/shapes';
 import type { ActionTargets, BuildableKind } from '../game/targets';
-import type { GameView } from '../game/view';
-import { DiceTray } from './DiceTray';
 
 /**
- * Die Bedienung, die nicht auf dem Brett liegt.
+ * Die Bauteile - und die Absage, wenn eines nicht geht.
  *
  * Gesperrt wird nicht nach eigenem Wissen, sondern nach der Klickkarte: was
- * `legalActions` nicht genannt hat, ist grau. Der Handelsknopf oeffnet ein
- * Fenster - der Kurs wird dort abgeleitet und nicht gewaehlt (Regel 3).
+ * `legalActions` nicht genannt hat, ist grau (Regel 3).
  *
- * Oben stehen die Wuerfel, und sie sind kein Beiwerk: sie haben den Knopf
- * „Wuerfeln" ersetzt. Er stand daneben und tat, was sie darstellen - jetzt
- * wirft man sie. Damit liest sich die Leiste in der Reihenfolge eines Zuges:
- * werfen, bauen - und weiter unten links handeln oder beenden.
+ * **Die Wuerfel standen hier und stehen jetzt daneben.** Sie waren die erste
+ * Zeile dieser Leiste, weil ein Zug mit ihnen anfaengt - nur ist die
+ * Reihenfolge im Ablauf nicht die auf dem Tisch, und mitten in der Reihe lag
+ * ausgerechnet der Knopf, den man in jedem Zug als ersten drueckt. Er liegt
+ * jetzt in der Bildschirmecke, gestellt von `GameScreen`; was hier bleibt, ist
+ * eine Sache statt zweier.
  *
- * **„Handel" und „Zug beenden" stehen nicht mehr hier.** Sie sassen am rechten
- * Ende dieser Zeile, also am weitesten weg von der Hand, auf die man beim
- * Handeln und beim Beenden sieht. Sie liegen jetzt als `TurnPanel` unter den
- * Handkarten; hier bleibt, was zum Zug selbst gehoert: die Wuerfel, die
- * Bauteile und die Absage des Servers.
+ * Das ist der Grund, aus dem diese Leiste keine `GameView` mehr bekommt: sie
+ * brauchte sie nur fuer die Augen und den Wurf. Was jetzt noch zaehlt, steht in
+ * der Klickkarte und im eigenen Vorrat.
+ *
+ * **„Handel" und „Zug beenden" stehen ebenfalls nicht mehr hier.** Sie sassen
+ * am rechten Ende dieser Zeile, also am weitesten weg von der Hand, auf die man
+ * beim Handeln und beim Beenden sieht. Sie liegen jetzt als `TurnPanel` unter
+ * den Handkarten.
  *
  * **Gebaut wird seit dem Playtest in zwei Schritten.** Vorher leuchtete das
  * Brett an jeder Stelle, an der irgendetwas moeglich war - Strassen, Siedlungen
@@ -31,20 +33,18 @@ import { DiceTray } from './DiceTray';
  * genau dann bedienbar, wenn es dafuer Karten **und** eine Stelle gibt.
  */
 export interface ActionPanelProps {
-  readonly view: GameView;
   readonly targets: ActionTargets;
   readonly error: string | null;
   /**
    * Der eigene Bauvorrat - `null`, solange es keinen eigenen Sitz gibt.
    *
-   * Steht neben den Wuerfeln und nicht bei den Karten: er beantwortet dieselbe
-   * Frage wie die Knoepfe darunter, naemlich was jetzt ueberhaupt geht.
+   * Steht am Bauteil und nicht bei den Karten: er beantwortet dieselbe Frage
+   * wie der Knopf, an dem er haengt, naemlich was jetzt ueberhaupt geht.
    */
   readonly stock: { readonly piecesLeft: RuleSet['pieceStock']; readonly color: string } | null;
   /** Welches Bauteil gerade gewaehlt ist. `null` heisst: das Brett ist ruhig. */
   readonly buildMode: BuildableKind | null;
   readonly onBuildMode: (kind: BuildableKind | null) => void;
-  readonly onRoll: () => void;
   readonly onDismissError: () => void;
 }
 
@@ -62,26 +62,15 @@ const STOCK_LABELS: Readonly<Record<PieceId, string>> = {
 };
 
 export function ActionPanel({
-  view,
   targets,
   error,
   stock,
   buildMode,
   onBuildMode,
-  onRoll,
   onDismissError,
 }: ActionPanelProps): JSX.Element {
   return (
     <section className="panel panel--actions">
-      <DiceTray
-        spec={view.dice}
-        roll={view.lastRoll}
-        total={view.rollTotal}
-        canRoll={targets.roll !== null}
-        fell={view.rolled}
-        onRoll={onRoll}
-      />
-
       {/*
        * Die Bauleiste. Jedes Bauteil traegt seine Silhouette vom Brett - wer
        * hier „Stadt" drueckt, sieht dieselbe Form gleich am Knoten stehen.
@@ -166,8 +155,8 @@ export function ActionPanel({
       </div>
 
       {/*
-       * Hier stand `view.phaseText`. Er steht auch in der Statusecke, und zwei
-       * Ecken mit demselben Satz sind eine zu viel - siehe StatusPanel.
+       * Hier stand `view.phaseText`. Er steht oben in der Statuszeile, und
+       * zweimal derselbe Satz ist einmal zu viel - siehe StatusPanel.
        */}
       {error === null ? null : (
         <div role="alert" className="panel__error">

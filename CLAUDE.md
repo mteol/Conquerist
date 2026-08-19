@@ -182,6 +182,13 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
   Store.** Wird der Zielordner danach woanders hinkopiert, zeigt der Link ins
   Leere, und Node sagt dazu nur „Cannot find package". Deshalb heißt der Pfad
   im Dockerfile schon in der Bau-Stufe so, wie er drüben heißen wird.
+- **Ein `once` auf einer Geste, die scheitern darf, ist ein Versuch und kein
+  Anlauf.** Der Browser gibt Audio erst nach einer Nutzergeste frei — und darf
+  auch die erste noch ablehnen. Ein Listener mit `{ once: true }` hätte die
+  Musik in genau diesem Fall für immer stumm gelassen, ohne dass man ihm das
+  ansieht. Er bleibt deshalb hängen, und `playMusic` ist so gebaut, dass ein
+  zweiter Aufruf bei laufender Spur nichts tut. Wer eine Handlung an eine Geste
+  hängt, die fehlschlagen kann, fragt zuerst, was der zweite Versuch kostet.
 - **Ein Effekt unter `StrictMode` läuft doppelt.** `main.tsx` lässt ihn an, und
   in der Entwicklung klang deshalb jeder Zug zweimal, bis eine Sperre auf die
   Folgenummer dazukam (`useCueSound` in `audio/useAudio.tsx`). Wer einen Effekt
@@ -233,6 +240,18 @@ unter `apps/client/src/audio/`, ein Einstellungen-Dialog mit Gesamt-, Effekt-
 und Musiklautstärke hinter einem festen Zahnrad oben rechts. Kein Audio-Byte im
 Image — jeder Klang ist ein Rezept aus Zahlen, und `samples.ts` führt alle 23
 als auskommentierte Zeilen, falls später eine mp3 einen davon ersetzen soll.
+
+Seit dem 19.08. gibt es **Musik**, und sie ist die eine bewusste Ausnahme davon:
+`apps/client/public/music/catan.mp3` (2,22 MB) läuft als Schleife über alle
+Bildschirme, angehängt an denselben Musik-Bus, den der Ton schon angelegt hatte
+(`audio/music.ts`, `playMusic` in `audio/engine.ts`). Effekte bleiben Rezepte —
+eine Melodie lässt sich nicht aus Hüllkurven bauen. Sie startet bei der ersten
+Nutzergeste, nie beim Laden, und ihr Ausfall ist immer still.
+
+Am **Spielbildschirm** stehen seit demselben Tag der Status oben rechts neben
+der Verlaufstür (`.topline`) und die Würfel ganz außen in der unteren rechten
+Ecke, mit Kaufstapel und Bauteilen links daneben. Das `ActionPanel` stellt
+seither nur noch die Bauteile und braucht keine `GameView` mehr.
 Dafür sagt das Protokoll neuerdings, **welcher** Zug einen Stand erzeugt hat
 (`move: { type, actor }` im `GameEvent`): der Client bekam vorher nur den
 fertigen deutschen Verlaufssatz und hätte den Klang aus Text raten müssen.

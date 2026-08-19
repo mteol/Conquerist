@@ -5,7 +5,12 @@ import { AudioProvider } from '../audio/useAudio';
 import { SettingsButton } from '../screens/SettingsButton';
 
 vi.mock('../audio/engine', () => ({
-  createEngine: () => ({ play: () => {}, apply: () => {}, close: () => {} }),
+  createEngine: () => ({
+    play: () => {},
+    playMusic: () => {},
+    apply: () => {},
+    close: () => {},
+  }),
 }));
 
 const openSettings = async (): Promise<void> => {
@@ -26,7 +31,6 @@ describe('Einstellungen', () => {
 
     expect(sliderFor('Gesamt')).toBeDefined();
     expect(sliderFor('Effekte')).toBeDefined();
-    // Musik regelt heute eine leere Spur - der Regler ist trotzdem echt.
     expect(sliderFor('Musik')).toBeDefined();
   });
 

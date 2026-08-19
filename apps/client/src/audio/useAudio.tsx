@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { CUES, type Cue, type Sound, type SoundEvent } from './cues';
 import { createEngine } from './engine';
+import { MUSIC_TRACK } from './music';
 import {
   DEFAULT_AUDIO,
   loadAudioSettings,
@@ -64,6 +65,34 @@ export function AudioProvider({ children }: { readonly children: ReactNode }): J
     },
     [engine],
   );
+
+  /*
+   * Die Musik faengt bei der ersten Geste an und nicht beim Laden.
+   *
+   * Aus demselben Grund, aus dem der Kontext erst beim ersten Klang entsteht:
+   * Browser geben Audio erst nach einer Nutzergeste frei, und ein Anlauf davor
+   * bringt nichts ausser einer Warnung in der Konsole. Deshalb haengt er an
+   * `pointerdown` **und** `keydown` - wer mit der Tastatur spielt, hat sonst
+   * nie eine erste Geste.
+   *
+   * Die Listener bleiben haengen, statt sich nach dem ersten Mal abzumelden.
+   * Das ist nicht vergessen, sondern die Zusage: `playMusic` tut bei laufender
+   * Spur nichts, und ein Anlauf, den der Browser abgelehnt hat, bekommt so bei
+   * der naechsten Geste einen zweiten. Ein `once` haette genau diesen Fall
+   * verspielt - und man haette ihm nicht angesehen, dass er fehlt.
+   */
+  useEffect(() => {
+    const start = (): void => {
+      engine.playMusic(MUSIC_TRACK);
+    };
+
+    window.addEventListener('pointerdown', start);
+    window.addEventListener('keydown', start);
+    return () => {
+      window.removeEventListener('pointerdown', start);
+      window.removeEventListener('keydown', start);
+    };
+  }, [engine]);
 
   const setBus = useCallback((bus: Bus, next: { level?: number; muted?: boolean }) => {
     setSettings((current) => {
