@@ -392,10 +392,25 @@ function VertexMark({
            * damit React beim Ausbau zur Stadt neu einhaengt - nur dann laeuft
            * die Einblendung ein zweites Mal.
            */}
+          {/*
+           * **Groesser seit dem zweiten Blick aufs Brett.** Die Siedlung stand
+           * mit 0.023 auf einem Feld, dessen Umkreis 1 misst - ein Haus von
+           * 0.28 Brettbreite, kleiner als der Zahlenchip in der Feldmitte
+           * (0.34 Radius) und kleiner als die Trefferflaeche, auf die man
+           * klickt (0.22 Radius). Jetzt 0.027 und 0.0245: 0.32 und 0.44 breit,
+           * also groesser als der Chip und immer noch mit Luft zum Nachbarn -
+           * zwei Bauwerke stehen nie naeher als eine Kantenlaenge beieinander.
+           *
+           * Die Stadt bleibt dabei der kleinere Faktor, weil ihr Pfad breiter
+           * ist (18 Einheiten gegen 12): gleiche Faktoren haetten sie auf dem
+           * Brett um die Haelfte groesser gemacht als die Siedlung, und der
+           * Unterschied soll die Form tragen (Haus mit Anbau), nicht die
+           * Groesse - siehe `board/shapes.ts`.
+           */}
           <g
             key={building.kind}
             transform={`translate(${point.x} ${point.y}) scale(${
-              building.kind === 'city' ? 0.021 : 0.023
+              building.kind === 'city' ? 0.0245 : 0.027
             })`}
           >
             <path

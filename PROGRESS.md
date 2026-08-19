@@ -2770,7 +2770,7 @@ Das Motiv, drei Lagen, alle aus vorhandenem Material:
 
 1. **Das Feld** - ein Gitter kleiner Sechsecke, versetzt gesetzt. Das Sechseck
    ist die Grundform des Bretts; als Papierstruktur gelesen macht es aus dem
-   Ruecken eine Karte *dieses* Spiels statt einer Ruckseite mit Rautenmuster.
+   Ruecken eine Karte _dieses_ Spiels statt einer Ruckseite mit Rautenmuster.
 2. **Die Fassung** - zwei eingerueckte Linien, aussen kraeftig, innen fein. Die
    Grammatik jedes Kartenruecken, den es je gab: sie macht aus einem Rechteck
    eine Karte.
@@ -2821,7 +2821,7 @@ stehen ohnehin still.
 - **Ein Verbot im Kommentar kann richtig begruendet und trotzdem zu weit
   gefasst sein.** „Kein Motiv, weil der Inhalt geheim ist" hat auch das Motiv
   verboten, das gar nicht vom Inhalt redet. Wer eine Regel aufschreibt, schreibt
-  dazu, *worauf* sie zielt - sonst gilt sie spaeter fuer den Nachbarfall mit.
+  dazu, _worauf_ sie zielt - sonst gilt sie spaeter fuer den Nachbarfall mit.
 - **Wer einen Rahmen wegnimmt, nimmt auch alles weg, was am Rahmen hing.** Die
   Auswahlmarkierung war eine Fuellung, der Bereit-Zustand ein Rand. Beides
   musste neu erfunden werden, und zwar im Ding selbst.
@@ -2850,7 +2850,7 @@ einer laufenden Partie.
 
 **Und die Messung selbst ging fast schief.** Zum Vergroessern hatte ich per
 JavaScript den Rest der Seite geloescht - und damit das `<defs>` mit Muster und
-Verlauf, die in einem *anderen* SVG standen. Das Gitter war danach nicht
+Verlauf, die in einem _anderen_ SVG standen. Das Gitter war danach nicht
 schwach, sondern **weg**, und der Befund „traegt nicht" waere ein Befund ueber
 meinen eigenen Eingriff gewesen. Erst ein Nebeneinander alt/neu in einer Datei,
 jedes SVG mit eigenen Defs, hat die Frage beantwortet.
@@ -2864,3 +2864,102 @@ jedes SVG mit eigenen Defs, hat die Frage beantwortet.
   Pergament-Chips in der Ablage: kleine Knoepfe mit Name und Zahl neben einer
   grossen gezeichneten Bank. Entweder werden sie auch Karten - dann brauchen
   sie fuenf Vorderseiten - oder sie bleiben bewusst eine Liste. Offen.
+
+## Duennere Strassen, groessere Haeuser, die Zugknoepfe nach unten links (2026-08-19, `main`)
+
+Drei Befunde vom Menschen am Bildschirm, alle aus derselben Beobachtung: das
+Brett ist der Held, aber auf ihm gewinnt die Tinte gegen die Spielerfarbe, und
+die Bedienung, die man in jedem Zug braucht, liegt am weitesten weg von dem,
+worauf man dabei sieht.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 298 / 33       |
+| `pnpm build`        | grün — `index.js` 406.97 kB (gzip 120.98), `index.css` 34.11 kB (7.65) |
+| `pnpm format:check` | grün (dabei fiel eine alte Kursiv-Schreibweise in PROGRESS.md an)      |
+| Browser             | lokale Partie, Gründung durchgespielt, 6 Siedlungen und 6 Strassen     |
+
+### Die Strasse war ein schwarzer Balken mit farbigem Kern
+
+Gerechnet, nicht geschaetzt: ein Balken von 0.16 lag in einer Kontur von 0.24.
+Das sind **0.04 Tinte auf jeder Seite**, also je Rand ein Viertel der
+Strassenbreite - quer ueber die drei Streifen gemessen war mehr Rand als
+Strasse. Die Spielerfarbe, an der man die Strasse ueberhaupt erkennen soll, war
+der kleinste Anteil an ihrer eigenen Zeichnung.
+
+Jetzt 0.115 in 0.15, also 0.0175 je Seite, und die Kontur steht auf 72 %
+Deckkraft statt voll. Eine Haarlinie, die die Form haelt, statt einer Fassung,
+die sie traegt. Was die Kontur einmal geloest hat - Strassen an der Kueste
+verschwanden auf der dunklen See -, loest sie in dieser Breite unveraendert:
+sie muss die Farbe **abgrenzen**, nicht einrahmen.
+
+**Die Trefferflaeche bleibt, wo sie war.** `.road` traegt weiter 0.14; nur die
+gebaute Strasse ist schmaler geworden. Eine freie Kante ist zum Anklicken da,
+und die soll nicht mitschrumpfen, weil das Ergebnis duenner aussehen soll. Die
+gestrichelte Vorschau (`.road--target`) liegt bei 0.125 - sie zeigt jetzt die
+Breite, die daraus wird, und nicht mehr eine breitere.
+
+### Die Haeuser waren kleiner als der Zahlenchip
+
+Auch das faellt erst auf, wenn man es nebeneinander legt: die Siedlung stand mit
+`scale(0.023)` auf 0.28 Brettbreite, der Zahlenchip in der Feldmitte hat 0.34
+Radius, also 0.68 Durchmesser. Das **Bauwerk** war weniger als halb so gross wie
+die Zahl auf dem Feld daneben - und ein Bauwerk ist das, was man auf einem
+Brett zaehlt.
+
+Jetzt 0.027 (Siedlung) und 0.0245 (Stadt): 0.32 und 0.44 breit. Die Stadt
+bekommt bewusst den kleineren Faktor, weil ihr Pfad breiter ist (18 Einheiten
+gegen 12) - der Unterschied zwischen beiden soll die **Form** tragen (Haus mit
+Anbau), nicht die Groesse, das steht seit dem Playtest so in `board/shapes.ts`.
+
+Dazu die Kontur von 1.4 auf 1.15 im Pfadraum. Sie skaliert mit dem Bauwerk mit,
+und 1.4 waeren bei `scale(0.027)` von 0.032 auf 0.038 gewachsen: das Haus haette
+seinen Rand mitwachsen lassen und waere **schwaerzer** geworden statt groesser.
+1.15 × 0.027 sind wieder 0.031 - dieselbe Haarlinie an einem groesseren Haus.
+
+### „Handel" und „Zug beenden" liegen jetzt unter den Handkarten
+
+Sie sassen am rechten Ende der Bedienleiste, in der Reihenfolge eines Zuges:
+werfen, bauen, handeln, beenden. Die Reihenfolge stimmt - die **Haeufigkeit**
+nicht. „Zug beenden" ist der Knopf, den man in jedem einzelnen Zug drueckt, und
+er lag diagonal gegenueber der Hand, auf die man beim Ueberlegen sieht. Genau
+der Befund, aus dem der Status schon zweimal umgezogen ist.
+
+Neu als eigene Komponente `panels/TurnPanel.tsx` und nicht als Rest von
+`ActionPanel`: die Leiste dort ist eine Zeile in der Ablage, dieser Block eine
+Spalte darunter - zwei Orte, also zwei Bausteine. Die linke Spalte ist damit ein
+Stapel aus drei Lagen: Handkarten, Entwicklungskarten, Zugknoepfe.
+
+**Was es kostet, und zwar gemessen.** Im Browser bei 1568×744: die Ablage waechst
+von 190 auf 233 px, das Brett schrumpft von 518 auf 475 px Hoehe - **43 px, also
+8,3 %**. Das Brett ist auf einem breiten Fenster immer hoehen- und nie
+breitenbegrenzt, deshalb ist jede Zeile in der Ablage direkt Bretthoehe. Der
+Preis ist bewusst bezahlt: die Ecke unten links trifft man mit der Maus ohne zu
+zielen, und der Weg vom Ueberlegen zum Beenden ist ein Blick nach unten statt
+einer Diagonale. Wer die 43 px zurueckwill, holt sie an der Kartengroesse
+(4.6rem) und nicht an den Knoepfen.
+
+### Der Browser-Durchlauf
+
+Diesmal am laufenden Spiel und nicht an einem Nachbau: lokale Partie mit drei
+Sitzen, Gruendung durchgespielt (6 Siedlungen, 6 Strassen), dann alt gegen neu
+verglichen, indem die alten Werte als Stilblock nachtraeglich ueber die neuen
+gelegt wurden. Der Unterschied ist im Nebeneinander deutlich und nicht
+uebersteuert: die Strassen lesen sich weiter als Balken in Spielerfarbe, nicht
+als Striche.
+
+Nebenbefund, kein Fehler: in der Gruendung leuchtet das Brett erst, nachdem man
+„Siedlung" bzw. „Strasse" gedrueckt hat. Das ist seit dem zweiten Playtest-Durchgang
+Absicht (`buildKindOf` nennt die Gruendungszuege) - die Gruendung ist der Moment,
+in dem man die Bedienung lernt.
+
+### Offene Punkte
+
+- **Der schwarze Rand der Felder** (`.hex`, 0.024 volle Tinte) ist unangetastet.
+  Gemeint war die Fassung der Strassen; falls das Gitter selbst zu praesent
+  wirkt, ist es dieselbe Sorte Aenderung und eine Zeile.
+- Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen -
+  und die linke Spalte ist mit den Knoepfen darunter hoeher geworden.

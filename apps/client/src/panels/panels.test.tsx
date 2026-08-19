@@ -16,6 +16,7 @@ import { defaultSeats } from '../seats';
 import { gameViewOf } from '../game/view';
 import { actionTargets } from '../game/targets';
 import { ActionPanel } from './ActionPanel';
+import { TurnPanel } from './TurnPanel';
 import { TablePanel } from './TablePanel';
 import { StatusPanel } from './StatusPanel';
 import { LogPanel } from './LogPanel';
@@ -59,7 +60,7 @@ describe('TablePanel', () => {
 });
 
 describe('ActionPanel', () => {
-  it('sperrt Handel und Zugende, solange nicht gewuerfelt ist', () => {
+  it('laesst wuerfeln, ohne einen Knopf dafuer zu stellen', () => {
     const state = afterSetup();
     const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
     const targets = actionTargets(state, view.currentPlayerId);
@@ -73,8 +74,6 @@ describe('ActionPanel', () => {
         buildMode={null}
         onBuildMode={vi.fn()}
         onRoll={vi.fn()}
-        onEndTurn={vi.fn()}
-        onOpenTrade={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );
@@ -82,64 +81,11 @@ describe('ActionPanel', () => {
     // Der Knopf „Wuerfeln" ist weg: geworfen wird an den Wuerfeln selbst.
     expect(screen.queryByRole('button', { name: 'Wuerfeln' })).toBeNull();
     expect(screen.getByTestId('dice')).toHaveProperty('disabled', false);
-    expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', true);
-    expect(screen.getByRole('button', { name: 'Zug beenden' })).toHaveProperty('disabled', true);
-  });
 
-  /*
-   * Der Fehler, den dieser Test festhaelt: der Knopf hing allein an
-   * `targets.trades`, also an den Bankgeschaeften. Wer zu wenige Karten fuer
-   * die Bank hatte - der Normalfall, wenn man handeln moechte -, kam gar nicht
-   * erst an den Reiter fuer den Spielerhandel.
-   */
-  it('oeffnet den Handel auch ohne Bankgeschaeft, wenn ein Angebot moeglich waere', () => {
-    const state = afterSetup();
-    const rolled = reduce(state, { type: 'rollDice', player: setupPlayer(state) ?? ids[0]! });
-    const after = rolled.ok ? rolled.state : state;
-    const view = gameViewOf(
-      playerViewOf(after, after.players[after.currentPlayerIndex]!.id, seats, 2),
-    );
-    const targets = actionTargets(after, view.currentPlayerId);
-
-    render(
-      <ActionPanel
-        view={{ ...view, canOfferTrade: true }}
-        targets={{ ...targets, trades: [] }}
-        error={null}
-        stock={null}
-        buildMode={null}
-        onBuildMode={vi.fn()}
-        onRoll={vi.fn()}
-        onEndTurn={vi.fn()}
-        onOpenTrade={vi.fn()}
-        onDismissError={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', false);
-  });
-
-  it('sperrt den Handel, wenn weder Bank noch Mitspieler in Frage kommen', () => {
-    const state = afterSetup();
-    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
-    const targets = actionTargets(state, view.currentPlayerId);
-
-    render(
-      <ActionPanel
-        view={{ ...view, canOfferTrade: false }}
-        targets={{ ...targets, trades: [] }}
-        error={null}
-        stock={null}
-        buildMode={null}
-        onBuildMode={vi.fn()}
-        onRoll={vi.fn()}
-        onEndTurn={vi.fn()}
-        onOpenTrade={vi.fn()}
-        onDismissError={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', true);
+    // Und die zwei Knoepfe stehen nicht mehr in dieser Leiste, sondern unter
+    // den Handkarten - siehe `TurnPanel`.
+    expect(screen.queryByRole('button', { name: 'Zug beenden' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Handel' })).toBeNull();
   });
 
   it('zeigt den Ablehnungsgrund und laesst ihn wegraeumen', async () => {
@@ -156,8 +102,6 @@ describe('ActionPanel', () => {
         buildMode={null}
         onBuildMode={vi.fn()}
         onRoll={vi.fn()}
-        onEndTurn={vi.fn()}
-        onOpenTrade={vi.fn()}
         onDismissError={onDismissError}
       />,
     );
@@ -187,8 +131,6 @@ describe('ActionPanel', () => {
         buildMode={null}
         onBuildMode={vi.fn()}
         onRoll={vi.fn()}
-        onEndTurn={vi.fn()}
-        onOpenTrade={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );
@@ -211,8 +153,6 @@ describe('ActionPanel', () => {
         buildMode={null}
         onBuildMode={vi.fn()}
         onRoll={vi.fn()}
-        onEndTurn={vi.fn()}
-        onOpenTrade={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );
@@ -242,14 +182,69 @@ describe('ActionPanel', () => {
         buildMode={null}
         onBuildMode={vi.fn()}
         onRoll={vi.fn()}
-        onEndTurn={vi.fn()}
-        onOpenTrade={vi.fn()}
         onDismissError={vi.fn()}
       />,
     );
 
     expect(view.phaseText.length).toBeGreaterThan(0);
     expect(screen.queryByText(view.phaseText)).toBeNull();
+  });
+});
+
+describe('TurnPanel', () => {
+  it('sperrt Handel und Zugende, solange nicht gewuerfelt ist', () => {
+    const state = afterSetup();
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
+    const targets = actionTargets(state, view.currentPlayerId);
+
+    render(<TurnPanel view={view} targets={targets} onOpenTrade={vi.fn()} onEndTurn={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Zug beenden' })).toHaveProperty('disabled', true);
+  });
+
+  /*
+   * Der Fehler, den dieser Test festhaelt: der Knopf hing allein an
+   * `targets.trades`, also an den Bankgeschaeften. Wer zu wenige Karten fuer
+   * die Bank hatte - der Normalfall, wenn man handeln moechte -, kam gar nicht
+   * erst an den Reiter fuer den Spielerhandel.
+   */
+  it('oeffnet den Handel auch ohne Bankgeschaeft, wenn ein Angebot moeglich waere', () => {
+    const state = afterSetup();
+    const rolled = reduce(state, { type: 'rollDice', player: setupPlayer(state) ?? ids[0]! });
+    const after = rolled.ok ? rolled.state : state;
+    const view = gameViewOf(
+      playerViewOf(after, after.players[after.currentPlayerIndex]!.id, seats, 2),
+    );
+    const targets = actionTargets(after, view.currentPlayerId);
+
+    render(
+      <TurnPanel
+        view={{ ...view, canOfferTrade: true }}
+        targets={{ ...targets, trades: [] }}
+        onOpenTrade={vi.fn()}
+        onEndTurn={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', false);
+  });
+
+  it('sperrt den Handel, wenn weder Bank noch Mitspieler in Frage kommen', () => {
+    const state = afterSetup();
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
+    const targets = actionTargets(state, view.currentPlayerId);
+
+    render(
+      <TurnPanel
+        view={{ ...view, canOfferTrade: false }}
+        targets={{ ...targets, trades: [] }}
+        onOpenTrade={vi.fn()}
+        onEndTurn={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', true);
   });
 });
 

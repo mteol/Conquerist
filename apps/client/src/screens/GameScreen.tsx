@@ -15,6 +15,7 @@ import { discardCountForView, gameViewOf, type PlayerRow } from '../game/view';
 import { ActionPanel } from '../panels/ActionPanel';
 import { DeckPanel } from '../panels/DeckPanel';
 import { HandPanel } from '../panels/HandPanel';
+import { TurnPanel } from '../panels/TurnPanel';
 import { DevelopmentCards } from '../panels/DevelopmentCards';
 import { ResourcePickDialog } from '../dialogs/ResourcePickDialog';
 import { LogPanel } from '../panels/LogPanel';
@@ -324,8 +325,16 @@ export function GameScreen({
        * Die Ablage liest sich von links nach rechts wie ein Zug: was man hat,
        * was man kaufen kann, was man damit tut, und ganz rechts, woran man ist.
        * Der Kaufstapel steht deshalb zwischen Hand und Bauleiste und nicht als
-       * dritter Knopf zwischen „Handel" und „Zug beenden" - er ist
+       * dritter Knopf neben „Handel" und „Zug beenden" - er ist
        * Spielmaterial und keine Bedienung.
+       *
+       * **Die linke Spalte ist seit dem zweiten Playtest ein Stapel aus drei
+       * Lagen: Handkarten, Entwicklungskarten, und darunter die zwei Knoepfe,
+       * mit denen ein Zug weitergeht.** „Zug beenden" drueckt man in jedem
+       * einzelnen Zug; er lag am rechten Ende der Bedienleiste, also diagonal
+       * gegenueber der Hand. Unter den Karten liegt er dort, wo der Blick beim
+       * Ueberlegen ohnehin steht - und die Ecke unten links ist die einzige,
+       * die man mit der Maus ohne Zielen trifft.
        *
        * **Der Status steht seit dem neuen Layout in dieser Zeile.** Er schwebte
        * vorher frei in der Ecke unten rechts, und der Blick sprang bei jedem Zug
@@ -351,6 +360,15 @@ export function GameScreen({
               onPlay={playCard}
             />
           ) : null}
+
+          <TurnPanel
+            view={display}
+            targets={targets}
+            onOpenTrade={() => setTradeOpen(true)}
+            onEndTurn={() => {
+              if (targets.endTurn !== null) onAct(targets.endTurn);
+            }}
+          />
         </div>
 
         <DeckPanel
@@ -371,10 +389,6 @@ export function GameScreen({
           onRoll={() => {
             if (targets.roll !== null) onAct(targets.roll);
           }}
-          onEndTurn={() => {
-            if (targets.endTurn !== null) onAct(targets.endTurn);
-          }}
-          onOpenTrade={() => setTradeOpen(true)}
           onDismissError={onDismissError}
         />
 

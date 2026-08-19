@@ -15,7 +15,13 @@ import { DiceTray } from './DiceTray';
  * Oben stehen die Wuerfel, und sie sind kein Beiwerk: sie haben den Knopf
  * „Wuerfeln" ersetzt. Er stand daneben und tat, was sie darstellen - jetzt
  * wirft man sie. Damit liest sich die Leiste in der Reihenfolge eines Zuges:
- * werfen, bauen, handeln, beenden.
+ * werfen, bauen - und weiter unten links handeln oder beenden.
+ *
+ * **„Handel" und „Zug beenden" stehen nicht mehr hier.** Sie sassen am rechten
+ * Ende dieser Zeile, also am weitesten weg von der Hand, auf die man beim
+ * Handeln und beim Beenden sieht. Sie liegen jetzt als `TurnPanel` unter den
+ * Handkarten; hier bleibt, was zum Zug selbst gehoert: die Wuerfel, die
+ * Bauteile und die Absage des Servers.
  *
  * **Gebaut wird seit dem Playtest in zwei Schritten.** Vorher leuchtete das
  * Brett an jeder Stelle, an der irgendetwas moeglich war - Strassen, Siedlungen
@@ -39,8 +45,6 @@ export interface ActionPanelProps {
   readonly buildMode: BuildableKind | null;
   readonly onBuildMode: (kind: BuildableKind | null) => void;
   readonly onRoll: () => void;
-  readonly onEndTurn: () => void;
-  readonly onOpenTrade: () => void;
   readonly onDismissError: () => void;
 }
 
@@ -65,8 +69,6 @@ export function ActionPanel({
   buildMode,
   onBuildMode,
   onRoll,
-  onEndTurn,
-  onOpenTrade,
   onDismissError,
 }: ActionPanelProps): JSX.Element {
   return (
@@ -161,32 +163,6 @@ export function ActionPanel({
             </button>
           );
         })}
-      </div>
-
-      <div className="panel__buttons">
-        <button
-          type="button"
-          className="button"
-          /*
-           * Zwei Wege hinter einem Knopf: der Bankkurs steht in der
-           * Aktionsliste, das Angebot an die Mitspieler nicht (es braucht
-           * Mengen). Wer nur `targets.trades` prueft, sperrt den Spielerhandel
-           * genau dann aus, wenn jemand zu wenige Karten fuer die Bank hat -
-           * also fast immer dann, wenn er handeln moechte.
-           */
-          disabled={targets.trades.length === 0 && !view.canOfferTrade}
-          onClick={onOpenTrade}
-        >
-          Handel
-        </button>
-        <button
-          type="button"
-          className="button button--go"
-          disabled={targets.endTurn === null}
-          onClick={onEndTurn}
-        >
-          Zug beenden
-        </button>
       </div>
 
       {/*
