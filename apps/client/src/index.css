@@ -1722,23 +1722,33 @@ body {
  * Er sitzt zwischen Hand und Bauleiste, weil er dorthin gehoert: er ist die
  * Bank, soweit sie auf dem Tisch liegt, und damit Spielmaterial - kein
  * Bedienelement. Deshalb traegt er auch keinen Rahmen wie die Panels daneben.
+ *
+ * **In Handkartengroesse, seit der Ruecken ein Motiv traegt.** Er war 3.1rem
+ * breit und 4.2rem hoch und lag neben Handkarten zu 4.6rem auf 5.8rem -
+ * dieselbe Sorte Ding in zwei Groessen, und die kleinere war ausgerechnet die
+ * Bank. Eine Zeichnung haette darin ohnehin nichts sagen koennen.
  */
 .deck {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
   align-items: center;
 }
 
+/*
+ * Der Stapel selbst ist der Knopf, samt Zahl und Aufschrift darunter: was man
+ * anfassen will, ist die Karte, und wer die Zahl trifft, hat den Stapel
+ * gemeint. Der Knopfkoerper bleibt dabei unsichtbar - die Karte ist der Koerper.
+ */
 .deck__pile {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 3.1rem;
-  height: 4.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
   padding: 0;
   border: 0;
   background: transparent;
+  color: inherit;
+  font: inherit;
   cursor: pointer;
 }
 
@@ -1747,16 +1757,22 @@ body {
   opacity: 0.45;
 }
 
+.deck__body {
+  position: relative;
+  width: 4.6rem;
+  height: 5.8rem;
+}
+
 /*
- * Die Ruecken. Der oberste traegt die Zahl, die darunter sind nur Tiefe -
- * deshalb `aria-hidden` am Element und hier keine eigene Beschriftung.
+ * Die Ruecken darunter sind Beiwerk und tragen nichts: die Zahl sagt, wie viele
+ * es sind, die Tiefe ist nur der schnelle Eindruck.
  */
-.deck__backs {
+.deck__behind-stack {
   position: absolute;
   inset: 0;
 }
 
-.deck__backs > span {
+.deck__behind {
   position: absolute;
   inset: 0;
   border: 1px solid var(--parchment-edge);
@@ -1765,19 +1781,119 @@ body {
   box-shadow: var(--lift);
 }
 
-.deck__count {
+/*
+ * Die oberste Karte. Sie hat keinen Kasten um sich, sondern ihren eigenen
+ * Umriss - der Schatten kommt deshalb als `drop-shadow` und folgt den runden
+ * Ecken des gezeichneten Rechtecks statt denen eines Elements. Es ist derselbe
+ * kurze Kontaktschatten wie in `--lift`, nur an der Zeichnung statt am Kasten.
+ */
+.deck__face {
   position: relative;
-  /* Steht auf dem Stapel, nicht auf dem Tisch. */
-  color: var(--ink-base);
-  font-size: 1.15rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 30%)) drop-shadow(0 3px 7px rgb(0 0 0 / 26%));
+  transform-origin: 50% 95%;
+  transition:
+    transform 160ms cubic-bezier(0.2, 0.7, 0.3, 1.3),
+    filter 160ms ease;
 }
 
-/* Kaufbar heisst: der Stapel bekommt denselben Rand wie ein bereiter Knopf. */
-.deck__pile--ready .deck__backs > span:last-child {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgb(224 179 74 / 45%);
+/*
+ * Beim Darueberfahren hebt sich die oberste Karte an und kippt ein wenig - die
+ * Bewegung, mit der man eine Karte von einem Stapel nimmt. Sie erklaert damit
+ * genau das, was der Klick tut (Designregel 5): eine Karte geht vom Stapel in
+ * die Hand. Die Ruecken darunter bleiben liegen, sonst huepft der ganze Stapel.
+ */
+.deck__pile:not(:disabled):hover .deck__face,
+.deck__pile:focus-visible .deck__face {
+  transform: translateY(-0.35rem) rotate(-2.5deg);
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 26%)) drop-shadow(0 9px 12px rgb(0 0 0 / 34%));
+}
+
+/* --- Das Motiv auf dem Ruecken, Lage fuer Lage (Begruendung in DeckPanel.tsx) */
+
+.deck__paper-light {
+  stop-color: var(--parchment);
+}
+
+.deck__paper-dark {
+  stop-color: var(--parchment-2);
+}
+
+.deck__paper {
+  stroke: var(--parchment-edge);
+  stroke-width: 0.8;
+}
+
+/* Das Sechseckgitter ist Papierstruktur, keine Zeichnung - deshalb so blass. */
+.deck__lattice {
+  fill: none;
+  stroke: var(--ink-base);
+  stroke-width: 0.55;
+  opacity: 0.2;
+}
+
+.deck__rule {
+  fill: none;
+  stroke: var(--ink-base);
+  stroke-width: 0.7;
+  opacity: 0.5;
+}
+
+.deck__rule--fine {
+  stroke-width: 0.35;
+  opacity: 0.3;
+}
+
+/* Die Perforation, an der man aufbricht. */
+.deck__perforation {
+  fill: none;
+  stroke: var(--ink-base);
+  stroke-width: 0.4;
+  stroke-dasharray: 0.9 1.9;
+  opacity: 0.4;
+}
+
+.deck__seal {
+  fill: var(--sea-800);
+}
+
+.deck__seal-ring {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  transition: stroke-width 160ms ease;
+}
+
+/* Leer, und das ist die Aussage: verschlossen, nicht „Ritter". */
+.deck__seal-hex {
+  fill: none;
+  stroke: var(--parchment);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  opacity: 0.85;
+}
+
+/*
+ * Kaufbar heisst: der Ring am Siegel wird kraeftig. Das ist dieselbe Auskunft,
+ * die vorher ein Akzentrahmen um den ganzen Stapel gegeben hat - nur sitzt sie
+ * jetzt im Motiv statt darum herum, denn einen Rahmen hat die Karte nicht mehr.
+ */
+.deck__pile--ready .deck__seal-ring {
+  stroke-width: 2.2;
+}
+
+/*
+ * Die Zahl unter dem Stapel - auf derselben Hoehe wie die Zahlen unter den
+ * Bauteilen. Sie sass bis eben auf der obersten Karte, also mitten auf dem
+ * Motiv; darunter steht sie neben ihresgleichen, und der Ruecken kommt zu Wort.
+ */
+.deck__count {
+  color: var(--on-sea);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .deck__label {
@@ -1795,31 +1911,116 @@ body {
  * sieht dieselbe Form gleich am Knoten stehen. Gesperrt heisst genau, dass es
  * dafuer keine Karten oder keine Stelle gibt - das entscheidet die
  * Aktionsliste, nicht dieser Kasten.
+ *
+ * **Ohne Rahmen, seit der Vorrat als Vorrat gelesen werden soll.** Die drei
+ * Bauteile sassen auf Pergamentplatten mit Rand und Schatten, also in derselben
+ * Form wie „Handel" und „Zug beenden" - und sahen damit aus wie Bedienung,
+ * obwohl sie das Gegenstueck zum Kaufstapel sind: Material, das auf dem Tisch
+ * liegt. Jetzt liegt es da. Was von der Platte bleibt, ist der Kontaktschatten
+ * unter dem Stueck; er ist der Unterschied zwischen „liegt" und „ist aufgemalt".
  */
 .build {
   display: flex;
-  gap: 0.3rem;
+  gap: 0.7rem;
   margin-bottom: 0.5rem;
 }
 
+.build__pick {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  align-items: center;
+  padding: 0.1rem 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.build__pick:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
 /*
- * Die Zahl am Bauknopf: wie viele Teile noch im Vorrat liegen.
+ * Der Platz unter dem Stueck: er traegt die Bewegung und die Markierung, und im
+ * Ruhezustand ist er nichts - keine Flaeche, keine Kante. Eine feste Groesse hat
+ * er trotzdem, damit Haus, Haus-mit-Anbau und Balken auf einer Grundlinie
+ * stehen und die drei Zahlen darunter eine Zeile bilden.
+ */
+.build__piece {
+  display: grid;
+  place-items: center;
+  width: 3.2rem;
+  height: 2.6rem;
+  border-radius: 999px;
+  transition:
+    transform 150ms cubic-bezier(0.2, 0.7, 0.3, 1.35),
+    background-color 150ms ease;
+}
+
+.piece--build {
+  width: 2.5rem;
+  height: 2.15rem;
+  /* Der kurze dunkle Schatten dicht unter der Kante: das Stueck liegt. */
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 45%));
+  transition: filter 150ms ease;
+}
+
+/*
+ * Beim Darueberfahren greift man danach: das Stueck hebt sich, und sein Schatten
+ * wird laenger und weicher, weil es weiter vom Tisch weg ist. Zwei Teile
+ * derselben Bewegung - eine Hebung ohne wachsenden Schatten liest sich als
+ * Verschiebung, nicht als Abheben.
+ */
+.build__pick:not(:disabled):hover .build__piece,
+.build__pick:focus-visible .build__piece {
+  transform: translateY(-0.22rem) scale(1.07);
+}
+
+.build__pick:not(:disabled):hover .piece--build,
+.build__pick:focus-visible .piece--build {
+  filter: drop-shadow(0 5px 5px rgb(0 0 0 / 42%));
+}
+
+/*
+ * Das gewaehlte Bauteil bleibt sichtbar gewaehlt, solange das Brett darauf
+ * wartet. Ohne diese Markierung weiss man nach dem Blick aufs Brett nicht mehr,
+ * was man eigentlich gedrueckt hat.
+ *
+ * Ohne Rahmen ist sie ein Lichtfleck auf dem Tisch statt eines gefuellten
+ * Knopfes - und sie ist nicht nur Farbe: das Stueck steht dabei angehoben, so
+ * wie beim Greifen, und die Zahl darunter wechselt mit (Designregel 7).
+ */
+.build__pick--active .build__piece {
+  background: radial-gradient(closest-side, rgb(224 179 74 / 42%), rgb(224 179 74 / 0%));
+  transform: translateY(-0.22rem);
+}
+
+.build__pick--active .piece--build {
+  filter: drop-shadow(0 5px 5px rgb(0 0 0 / 42%));
+}
+
+/*
+ * Die Zahl unter dem Bauteil: wie viele Teile noch im Vorrat liegen.
  *
  * Sie stand bis zum neuen Layout in einer eigenen Liste ueber der Bauleiste -
  * dreimal dieselbe Silhouette mit einer Zahl, und direkt darunter dieselben
  * drei Silhouetten noch einmal als Knoepfe. Zwei Zeilen je Bauteil, die eine
  * zum Zaehlen, die andere zum Druecken, und beide beantworten dieselbe Frage.
+ * Seit dem Rahmenabbau steht sie nicht mehr rechts neben dem Namen, sondern
+ * unter dem Stueck - dort, wo am Tisch der Vorrat liegt.
  *
- * Tabellenziffern kommen aus `:root` - eine 3 und eine 13 duerfen den Knopf
- * nicht in der Breite springen lassen. `min-width` haelt die Spalte auch bei
- * einstelligen Zahlen ruhig.
+ * Tabellenziffern kommen aus `:root` - eine 3 und eine 13 duerfen die Spalte
+ * nicht springen lassen. `min-width` haelt sie auch bei einstelligen Zahlen ruhig.
  */
 .build__left {
-  min-width: 1.1ch;
+  min-width: 1.6ch;
   color: var(--ink-muted);
-  font-size: 0.72rem;
-  font-weight: 650;
-  text-align: right;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 /*
@@ -1833,45 +2034,27 @@ body {
   opacity: 0.4;
 }
 
-.build__pick {
-  display: flex;
-  gap: 0.35rem;
-  align-items: center;
-  padding: 0.35rem 0.6rem 0.35rem 0.45rem;
-  border: 1px solid var(--parchment-edge);
-  border-radius: 8px;
-  --ink: var(--ink-base);
-  --ink-muted: var(--ink-base-muted);
-  background: var(--parchment-2);
-  color: var(--ink);
-  box-shadow: var(--lift);
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 650;
-  cursor: pointer;
-  transition:
-    background-color 120ms ease,
-    box-shadow 120ms ease;
-}
-
-.build__pick:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.build__pick--active .build__left {
+  color: var(--accent);
 }
 
 /*
- * Das gewaehlte Bauteil bleibt sichtbar gewaehlt, solange das Brett darauf
- * wartet. Ohne diese Markierung weiss man nach dem Blick aufs Brett nicht mehr,
- * was man eigentlich gedrueckt hat.
+ * Bewegung abbestellt heisst hier: nichts hebt sich, aber man sieht trotzdem,
+ * worauf man zeigt.
+ *
+ * Der globale Block ganz oben kuerzt nur die **Dauer** - ein Sprung um 0.22rem
+ * in 0.01ms bleibt ein Sprung, und zwar ein besonders unangenehmer. Weg muss
+ * deshalb die Verschiebung selbst; was bleibt, ist der laengere Schatten und
+ * der Lichtfleck der Auswahl, und beide stehen ohnehin still.
  */
-.build__pick--active {
-  background: var(--accent);
-  box-shadow: 0 0 0 2px rgb(224 179 74 / 55%);
-}
-
-.piece--build {
-  width: 1.05rem;
-  height: 1rem;
+@media (prefers-reduced-motion: reduce) {
+  .build__pick:not(:disabled):hover .build__piece,
+  .build__pick:focus-visible .build__piece,
+  .build__pick--active .build__piece,
+  .deck__pile:not(:disabled):hover .deck__face,
+  .deck__pile:focus-visible .deck__face {
+    transform: none;
+  }
 }
 
 /*

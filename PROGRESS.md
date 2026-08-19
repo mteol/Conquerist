@@ -2720,3 +2720,147 @@ war eine Rechnung um einen Rahmen herum, den es nicht mehr gibt.
   die ist jetzt von den grossen Karten bestimmt.
 - Die Gruendung kostet zwoelf zusaetzliche Klicks. Ob das im Spiel zaeh wirkt,
   entscheidet der naechste Playtest.
+
+## Der Vorrat als Material — Bauteile ohne Rahmen, ein Ruecken fuer die Bank (2026-08-19, `main`)
+
+Nachtrag zum Layout aus derselben Woche, wieder vom Menschen am Bildschirm
+gemeldet: der Tisch stimmt fast, aber die Bauteile stehen noch als Knoepfe
+darauf. Drei Aenderungen, alle in der Ablage.
+
+### Die Bauteile liegen jetzt, statt zu klicken
+
+`.build__pick` war eine Pergamentplatte mit Rand, Schatten und Beschriftung -
+also genau dieselbe Form wie „Handel" und „Zug beenden", mit einer 1.05rem
+grossen Silhouette darin. Der Kaufstapel daneben hatte diese Form schon
+verloren, weil er Material ist und keine Bedienung; die drei Bauteile im
+eigenen Vorrat sind dasselbe und behielten sie trotzdem.
+
+Jetzt: kein Rahmen, keine Flaeche, die Silhouette von 1.05rem auf 2.5rem, die
+Vorratszahl von rechts daneben nach **unten darunter**. Was von der Platte
+bleibt, ist der kurze `drop-shadow` dicht unter der Kante - er ist der
+Unterschied zwischen „liegt auf dem Tisch" und „ist auf den Tisch gemalt", und
+er sitzt jetzt am gezeichneten Umriss statt am Kasten drumherum.
+
+**Der Name ist weg.** Er stand neben einer Form, die auf dem Brett dasselbe
+bedeutet - Haus, Haus mit Anbau, Balken - und war die Beschriftung eines
+Bildes, das schon spricht. Er bleibt im `title` und als vorgelesener Name des
+Knopfes; die Silhouetten unterscheiden sich einzeln und nicht nur im Vergleich
+(deshalb hat die Stadt seit dem Playtest einen Anbau statt eines groesseren
+Radius).
+
+Ohne Rahmen braucht die **Auswahl** eine neue Form: sie war eine goldene
+Fuellung des Knopfes. Jetzt ist sie ein Lichtfleck auf dem Tisch
+(`radial-gradient` unter dem Stueck), das Stueck steht dabei angehoben, und die
+Zahl darunter wechselt auf den Akzent. Drei Traeger fuer eine Auskunft, damit
+nicht die Farbe allein sie traegt.
+
+### Der Kartenruecken traegt jetzt doch ein Motiv
+
+In `DeckPanel.tsx` stand seit dem Playtest: **„Der Ruecken traegt kein Motiv"** -
+was auf einer Entwicklungskarte steht, weiss beim Kauf niemand, ein Ritter
+darauf waere ein Versprechen, das der Stapel nicht halten kann.
+
+Der Satz stimmt und war trotzdem die falsche Regel. Er verbietet Motive, die
+vom **Inhalt** reden. Ein Ruecken redet aber vom **Stapel** - „diese Karten
+gehoeren zusammen und keine verraet sich" - und das ist die aelteste Aufgabe
+eines Kartenruecken ueberhaupt. Ohne ihn war die Bank ein leeres beiges
+Rechteck neben fuenf gezeichneten Handkarten.
+
+Das Motiv, drei Lagen, alle aus vorhandenem Material:
+
+1. **Das Feld** - ein Gitter kleiner Sechsecke, versetzt gesetzt. Das Sechseck
+   ist die Grundform des Bretts; als Papierstruktur gelesen macht es aus dem
+   Ruecken eine Karte *dieses* Spiels statt einer Ruckseite mit Rautenmuster.
+2. **Die Fassung** - zwei eingerueckte Linien, aussen kraeftig, innen fein. Die
+   Grammatik jedes Kartenruecken, den es je gab: sie macht aus einem Rechteck
+   eine Karte.
+3. **Das Siegel** - eine Scheibe aus Tiefsee-Tinte mit goldenem Ring, darin ein
+   Sechseck aus Pergamentlinie, **und das Sechseck ist leer**. Genau da steckt
+   der alte Einwand: das Siegel sagt „verschlossen", nicht „Ritter". Der
+   gestrichelte Ring darum ist die Perforation, an der man aufbricht.
+
+Keine Farbe, die es nicht schon gab: Pergament, Tiefsee, der Akzent aus
+`--fields`. Alle Werte stehen in `index.css`, keiner in der Komponente
+(Designregel 2); das SVG traegt nur Klassen. Die Rueckseiten der **Handkarten**
+sind ein anderer Stapel und behalten ihr eigenes Streifenmuster - gleiche
+Zeichnung hiesse gleiche Herkunft, und die stimmt nicht.
+
+Dazu die Groesse: 3.1rem x 4.2rem -> **4.6rem x 5.8rem**, also Handkartenmass.
+Dieselbe Sorte Ding in zwei Groessen war schon vorher schief, und ein Motiv
+haette in der kleinen ohnehin nichts sagen koennen. Die Stapelzahl sass mitten
+auf der obersten Karte und steht jetzt **darunter**, auf derselben Hoehe wie
+die Vorratszahlen unter den Bauteilen; die Aufschrift („Karte kaufen" /
+„Stapel leer") steht darunter. Kaufbar heisst jetzt: der Ring am Siegel wird
+kraeftig - die Auskunft sitzt im Motiv, weil es den Rahmen nicht mehr gibt, der
+sie vorher trug.
+
+### Zwei Bewegungen, und beide sind ein Griff
+
+Designregel 5 sagt: Bewegung erklaert einen Zustandswechsel oder entfaellt. Das
+hier ist der Grenzfall, den sie nicht nennt - eine Bewegung, die keinen Wechsel
+erklaert, sondern eine **Moeglichkeit**:
+
+- Das Bauteil hebt sich beim Darueberfahren und wird groesser, sein Schatten
+  laenger und weicher. Ohne den wachsenden Schatten liest sich die Hebung als
+  Verschiebung.
+- Die oberste Karte des Stapels hebt sich und kippt leicht - die Bewegung, mit
+  der man eine Karte von einem Stapel nimmt, also genau das, was der Klick tut.
+  Die Ruecken darunter bleiben liegen, sonst huepft der ganze Stapel.
+
+Beide haengen an `:hover` **und** `:focus-visible`: eine Ruckmeldung, die nur
+die Maus bekommt, ist eine halbe.
+
+Bei `prefers-reduced-motion` faellt die Verschiebung ganz weg statt schneller
+zu werden. **Der globale Block ganz oben kuerzt nur die Dauer** - ein Sprung um
+0.22rem in 0.01ms ist immer noch ein Sprung, und zwar ein besonders
+unangenehmer. Uebrig bleiben der laengere Schatten und der Lichtfleck; beide
+stehen ohnehin still.
+
+### Lehren
+
+- **Ein Verbot im Kommentar kann richtig begruendet und trotzdem zu weit
+  gefasst sein.** „Kein Motiv, weil der Inhalt geheim ist" hat auch das Motiv
+  verboten, das gar nicht vom Inhalt redet. Wer eine Regel aufschreibt, schreibt
+  dazu, *worauf* sie zielt - sonst gilt sie spaeter fuer den Nachbarfall mit.
+- **Wer einen Rahmen wegnimmt, nimmt auch alles weg, was am Rahmen hing.** Die
+  Auswahlmarkierung war eine Fuellung, der Bereit-Zustand ein Rand. Beides
+  musste neu erfunden werden, und zwar im Ding selbst.
+- **`prefers-reduced-motion` kuerzt nur, was man ihm nennt** - schon wieder.
+  Beim Hauptmenue war es die Verzoegerung, hier ist es der Zielwert einer
+  Transition.
+
+### Der Browser-Durchlauf (statische Vorschau)
+
+Diesmal **vor** der Abgabe, und nicht am Spiel, sondern an einer nachgebauten
+Seite mit denselben Regeln - der Kaufstapel und die Bauleiste haengen sonst an
+einer laufenden Partie.
+
+- Die **Sitzfarben auf der See** tragen: Rot und Blau stehen als 2.5rem grosse
+  Silhouette klar auf `--sea-900`, der `drop-shadow` trennt zusaetzlich. Der
+  befuerchtete Grenzfall Blau `#2c6fbb` ist keiner.
+- Das **Sechseckgitter war bei 4.6rem zu fein** - bei 74 px Kartenbreite und
+  0.45 Einheiten Strichbreite auf 14 % Deckkraft blieb ein Grauschleier ohne
+  Form. Kachel von 9.2x8 auf 12x12, Sechseck-Radius 1.8 -> 2.6, Strich 0.45 ->
+  0.55, Deckkraft 0.14 -> 0.2. Jetzt liest man die Form.
+- Das **Siegel war zu klein**, um in echter Groesse etwas zu sagen: Scheibe
+  9.6 -> 11.5, Sechseck darin 5.2 -> 6.9 mit Strich 1 -> 1.4, Perforation
+  12.4 -> 14.
+- Die **zwei Fassungslinien** lagen 1.8 Einheiten auseinander, also 2.9 px, und
+  verschmolzen zu einer dicken Kante. Die innere von 5.2 auf 6.4 nach innen.
+
+**Und die Messung selbst ging fast schief.** Zum Vergroessern hatte ich per
+JavaScript den Rest der Seite geloescht - und damit das `<defs>` mit Muster und
+Verlauf, die in einem *anderen* SVG standen. Das Gitter war danach nicht
+schwach, sondern **weg**, und der Befund „traegt nicht" waere ein Befund ueber
+meinen eigenen Eingriff gewesen. Erst ein Nebeneinander alt/neu in einer Datei,
+jedes SVG mit eigenen Defs, hat die Frage beantwortet.
+
+### Offene Punkte
+
+- **Im Spiel selbst noch nicht gesehen.** Die Vorschau war ein Nachbau; offen
+  bleiben die Zeilenhoehe der Ablage mit dem groesseren Stapel und wie sich das
+  Ganze neben Brett und Handkarten macht.
+- Die **eigenen** Entwicklungskarten (`.devcard`) sind jetzt die letzten
+  Pergament-Chips in der Ablage: kleine Knoepfe mit Name und Zahl neben einer
+  grossen gezeichneten Bank. Entweder werden sie auch Karten - dann brauchen
+  sie fuenf Vorderseiten - oder sie bleiben bewusst eine Liste. Offen.

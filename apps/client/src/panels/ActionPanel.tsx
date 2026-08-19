@@ -91,6 +91,21 @@ export function ActionPanel({
        * eine zum Zaehlen, die andere zum Druecken - und beide beantworten
        * dieselbe Frage: was geht jetzt noch. Jetzt traegt der Knopf seine Zahl.
        *
+       * **Und seit dem zweiten Blick auf den Tisch ist der Knopf kein Knopf
+       * mehr.** Er war eine Pergamentplatte mit Rahmen, auf der die Silhouette
+       * als 1.05rem grosses Zeichen sass: ein Bedienelement mit einem Bildchen
+       * darin. Ein Bauteil im Vorrat ist aber kein Bedienelement, sondern
+       * Spielmaterial wie der Kaufstapel daneben - es liegt auf dem Tisch, man
+       * greift danach, und die Zahl darunter sagt, wie viele noch daliegen.
+       * Deshalb faellt der Rahmen weg, die Silhouette wird gross, und was vom
+       * Knopf bleibt, ist der Kontaktschatten unter dem Stueck.
+       *
+       * **Der Name steht nicht mehr dabei.** Er stand neben einer Form, die auf
+       * dem Brett dasselbe bedeutet - ein Haus, ein Haus mit Anbau, ein Balken -
+       * und war damit die Beschriftung eines Bildes, das schon spricht. Fuer
+       * alle, die das Bild nicht lesen, bleibt er: im `title` und als
+       * vorgelesener Name des Knopfes.
+       *
        * Die Null bleibt stehen und wird grau. Ein fehlender Eintrag saehe aus
        * wie ein Anzeigefehler; „0" ist dagegen die Auskunft, um die es geht -
        * am Tisch aus Holz sieht man den leeren Platz vor sich.
@@ -119,8 +134,18 @@ export function ActionPanel({
               // klebt eine Auswahl am Brett, die man nur durch Bauen loswird.
               onClick={() => onBuildMode(active ? null : piece)}
             >
-              <PieceMark piece={piece} color={stock?.color ?? 'currentColor'} />
-              <span className="build__name">{BUILD_LABELS[piece]}</span>
+              {/*
+               * Der Traeger der Bewegung, und zwar nur er: das Stueck hebt sich,
+               * die Zahl darunter bleibt liegen. Stiege der ganze Knopf, wanderte
+               * die Zahl mit - und eine Zahl, die beim Darueberfahren ihre Zeile
+               * verlaesst, laesst sich schlechter mit der daneben vergleichen.
+               */}
+              <span className="build__piece">
+                <PieceMark piece={piece} color={stock?.color ?? 'currentColor'} />
+              </span>
+
+              <span className="visually-hidden">{BUILD_LABELS[piece]}</span>
+
               {left === null ? null : (
                 <>
                   <span
