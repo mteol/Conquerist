@@ -2597,3 +2597,126 @@ Polster in der schmalen Media Query steht jetzt auf 3,25rem. Nachgemessen bei
 - **Musik gibt es nicht.** Bus, Regler und Speicher stehen; die Spur ist leer.
 - Der Spielbildschirm hat weiterhin keine einzige Media Query - der
   Verlaufs-Umzug aendert daran nichts.
+
+## Der Tisch — Layout ohne Rahmen, Haefen im Wasser (2026-08-19, `main`)
+
+Vier Sachen aus einer Sitzung: ein Bauwerk, das beim Bauen riesig ueber dem
+Brett stand, Haefen unter Strassen, ein neues Layout und der Zwei-Schritt-Bau
+in der Gruendung. Alle vier vom Menschen am Bildschirm gemeldet, keine davon
+von einem Test.
+
+### Das riesige Haus
+
+Beim Bauen erschien die Silhouette einmal ganz gross quer ueber dem Brett und
+sprang dann an ihren Platz. Der Pfad trug seine Lage als `transform`-Attribut
+und gleichzeitig ueber `.building` die Einblendung `settle`, die `transform`
+animiert. **Eine CSS-Animation schlaegt das gleichnamige
+Praesentationsattribut** - fuer 180 ms war `translate(...) scale(0.023)` schlicht
+weg, und der Pfad stand in seinem eigenen Mass da: rund 20 Einheiten breit, wo
+ein Feld eine misst, und am Nullpunkt statt am Knoten.
+
+Eingeschleppt wurde das in `dd3d467`: `settle` stammt aus `d8b8eea`, damals war
+das Bauwerk ein `<circle cx cy r>` ohne `transform` - kein Konflikt. Der
+Wechsel auf einen Pfad mit `transform`-Attribut hat die Kollision erst erzeugt.
+Jetzt traegt eine Gruppe die Lage und wird nie animiert, der Pfad darin bewegt
+sich in seinem eigenen Raum.
+
+### Haefen ins Wasser
+
+Die Marke sass auf `edgeMidpoint` - derselben Stelle, ueber die eine Strasse
+laeuft. Wer auf einer Hafenkante baute, legte seinen Balken mitten durch den
+Hafen, und weil die Strassen spaeter gezeichnet werden, blieb vom Hafen nichts.
+
+`harborAnchor` setzt sie jetzt `HARBOR_OFFSET = 0.42` in die See, im rechten
+Winkel von der Kante weg. Die Richtung kommt aus dem **angrenzenden Landfeld**
+und nicht aus dem Brettschwerpunkt: beim runden `classic34` liefe beides aufs
+selbe hinaus, bei einem laenglichen Szenario schoebe der Schwerpunkt die Marke
+aufs Land. Dazu zwei Stege zu den Endknoten - bis dahin stand **nirgends,
+welche zwei Knoten ein Hafen bedient**.
+
+### Der Tisch
+
+Regel: **was man anfassen koennte, behaelt einen Koerper; was nur Auskunft ist,
+wird Schrift auf dem Tisch.** Vier Dinge trugen denselben Pergamentkasten
+(Spielerliste, Status, Bedienleiste, Hand) - genau der liess das Spiel wie eine
+Anwendung aussehen. Karten, Wuerfel, Kaufstapel, Bauteile und Knoepfe behalten
+ihren hellen Koerper und bekommen `--lift`, einen kurzen Kontaktschatten dicht
+unter der Kante. Das ist die eigentliche Arbeit: Rahmen wegzunehmen macht Dinge
+nur flach, der Schatten macht sie liegend.
+
+Technisch haengt es an zwei Zeilen - `.panel` und `.hand` definieren `--ink`
+lokal auf die Farben fuer dunklen Grund um, und alles darin folgt. Dafuer gibt
+es `--ink-base`, das nie ueberschrieben wird, damit die hellen Dinge _innerhalb_
+ihre dunkle Tinte zurueckholen koennen.
+
+Dazu: `.game` ist ein Raster (`minmax(0, 1fr) auto`) statt `bottom: 11rem` im
+Einzug des Bretts - eine Zahl, die an zwei Stellen stimmen muss, stimmt
+irgendwann an einer nicht mehr. Der Vorrat steht am Bauknopf statt als eigene
+Liste darueber (`StockPanel` entfaellt; es waren zwei Zeilen je Bauteil, eine
+zum Zaehlen, eine zum Druecken). Der Verlauf liegt hinter einem Symbol neben
+dem Zahnrad - was man selten liest, braucht eine Tuer und keine Wand. Der
+Phasentext in der Bedienleiste ist weg, er stand woertlich doppelt.
+
+### Zwei Schritte auch in der Gruendung
+
+Die Gruendung war einstufig, begruendet mit „ein Knopf davor entscheidet
+nichts". Das stimmt fuer sich und geht am Punkt vorbei: die Gruendung ist der
+Moment, in dem man die Bedienung **lernt**. Wer seine ersten vier Zuege macht,
+indem er irgendwo auf ein leuchtendes Brett klickt, steht in der ersten
+Hauptrunde vor einem dunklen Brett. `buildKindOf` kennt jetzt
+`placeSetupSettlement` und `placeSetupRoad`, alles andere folgt daraus. Kostet
+zwoelf zusaetzliche Klicks ueber die Gruendung; in derselben Funktion wieder
+raus.
+
+### Was der Browser-Durchlauf gefunden hat
+
+Diesmal in der Abnahme. Drei Fehler, keinen davon hat ein Test gesehen.
+
+1. **Die Wuerfel waren zwei leere Kaestchen.** `.die__pip` benutzt `var(--ink)`,
+   und der Wuerfel liegt in der Bedienleiste, die `--ink` auf Cremeweiss
+   umstellt: cremefarbene Augen auf cremefarbenem Wuerfel. Genau die Falle, fuer
+   die `--ink-base` gebaut war - und ausgerechnet der Wuerfel war vergessen.
+2. **Zwoelf Prozent Bretthoehe an einen geratenen Rand verschenkt.** Fuer die
+   Haefen war `PADDING` von 0.6 auf 0.95 gesetzt worden, geschaetzt. Gemessen
+   mit `getBBox()`: das Brett zeichnete 8.69 von 9.90 viewBox-Einheiten, die
+   Haefen ragen tatsaechlich nur **0.35** ueber die Feldecken. Die Zahl ist
+   jetzt in ihre zwei Gruende zerlegt (`PADDING = 0.2` Luft plus
+   `HARBOR_REACH = 0.35`). Ausnutzung 88 % -> **95 %**, Brett 633 von 663 px
+   Flaechenhoehe bei 1920x889.
+3. **Das Verlaufsblatt blieb schmal, obwohl `max-width: 21rem` dranstand.** Es
+   haengt in `.log-corner`, und die ist nur so breit wie ihr Symbol (74 px) -
+   als Containing Block deckelt sie die verfuegbare Breite eines absolut
+   positionierten Kindes. `max-width` war nie erreichbar; `width` steht ueber
+   dieser Rechnung.
+
+Dazu eine Regression aus dem Umbau selbst: ohne Kasten ist `.hand__head` so
+breit wie die Kartenreihe, also wanderte die Gesamtzahl mit jeder neuen Sorte
+ueber den Bildschirm. Sie steht jetzt fest neben ihrer Beschriftung.
+
+Karten von 2,3rem auf 4,6rem (Flaeche 5,8rem, Motiv 3,1rem) - die alte Groesse
+war eine Rechnung um einen Rahmen herum, den es nicht mehr gibt.
+
+### Lehren
+
+- **Eine CSS-Animation schlaegt das gleichnamige Praesentationsattribut.**
+  Dasselbe Muster wie die unsichtbaren Strassen in Etappe 3, nur andersherum:
+  dort schlug eine Regel ein Attribut, hier eine Animation. Wer Lage und
+  Bewegung auf dieselbe Eigenschaft legt, verliert die Lage.
+- **Eine umdefinierbare Farbvariable braucht einen unverschiebbaren
+  Grundwert** - und dann muss man jeden hellen Koerper darin auch wirklich
+  finden. Der Wuerfel war vergessen, und kein Test kann das sehen.
+- **Zahlen, die man beim Umbau schaetzt, bleiben stehen.** 0.95 statt 0.55 hat
+  ueber eine Sitzung hinweg zwoelf Prozent Brett gekostet und faellt nur beim
+  Messen auf.
+- **Ein `max-width` ist nur so gross wie der Containing Block erlaubt.**
+
+### Offene Punkte
+
+- Der Spielbildschirm hat weiterhin keine einzige Media Query - der Umbau auf
+  ein Raster macht das nicht besser und nicht schlechter.
+- Links und rechts vom Brett stehen je rund 380 px leere See. Das ist
+  Geometrie und kein Fehler: das Brett ist fast quadratisch, das Fenster breit,
+  also begrenzt die Hoehe. Groesser wird es nur mit einer flacheren Ablage - und
+  die ist jetzt von den grossen Karten bestimmt.
+- Die Gruendung kostet zwoelf zusaetzliche Klicks. Ob das im Spiel zaeh wirkt,
+  entscheidet der naechste Playtest.

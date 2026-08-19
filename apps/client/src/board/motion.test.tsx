@@ -4,6 +4,7 @@ import {
   CLASSIC_34,
   CLASSIC_DICE,
   CLASSIC_RULES,
+  boardOf,
   createGame,
   generateScenario,
 } from '@conquerist/shared';
@@ -95,5 +96,36 @@ describe('Bewegung', () => {
     render(<TablePanel view={tableView(new Map())} />);
 
     expect(screen.queryByText(/^\+\d+$/)).toBeNull();
+  });
+  /*
+   * Ein Bauwerk darf seine Lage nicht auf demselben `transform` tragen, das
+   * die Einblendung bespielt.
+   *
+   * Eine CSS-Animation auf `transform` schlaegt das gleichnamige
+   * Praesentationsattribut - fuer die Dauer der Animation ist das
+   * `translate(...) scale(0.023)` des Pfades schlicht weg. Der Pfad steht dann
+   * in seinem eigenen Mass (rund 20 Einheiten breit, ein Feld misst eine) und
+   * am Nullpunkt statt am Knoten: fuer 180 ms liegt ein riesiges Haus quer
+   * ueber dem Brett, danach springt es an seinen Platz. Genau derselbe Fehler
+   * wie bei den unsichtbaren Strassen in Etappe 3, nur andersherum - dort
+   * schlug eine Regel ein Attribut, hier eine Animation.
+   *
+   * Deshalb: Lage auf die Gruppe, Animation auf den Pfad darin.
+   */
+  it('stellt ein Bauwerk nicht ueber dasselbe transform, das die Animation bespielt', () => {
+    const vertices = boardOf(scenario).topology.vertices;
+    const built = {
+      ...start,
+      buildings: {
+        [vertices[0]!]: { owner: seats[0]!.id, kind: 'settlement' as const },
+      },
+    };
+
+    render(<BoardSvg state={built} targets={EMPTY_TARGETS} seats={seats} onPick={vi.fn()} />);
+
+    const animated = screen.getByTestId(`vertex-${vertices[0]}`).querySelector('.building')!;
+
+    expect(animated.getAttribute('transform')).toBeNull();
+    expect(animated.parentElement!.getAttribute('transform')).toContain('translate');
   });
 });

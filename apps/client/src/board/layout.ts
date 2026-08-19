@@ -1,6 +1,8 @@
 import {
+  edgeHexes,
   edgeVertices,
   hexFromId,
+  hexToId,
   hexVertices,
   vertexHexes,
   type EdgeId,
@@ -70,10 +72,55 @@ export function edgeSegment(edge: EdgeId): readonly [Point, Point] {
   return [vertexPoint(from), vertexPoint(to)];
 }
 
-/** Die Mitte einer Kante - dort sitzt die Hafenmarke. */
+/** Die Mitte einer Kante. */
 export function edgeMidpoint(edge: EdgeId): Point {
   const [from, to] = edgeSegment(edge);
   return { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+}
+
+/**
+ * Wie weit die Hafenmarke von ihrer Kante in die See rueckt.
+ *
+ * Genug, dass zwischen Marke (Radius 0.23) und Strassenkontur (0.24 breit)
+ * Luft bleibt - ein knapperer Wert haette den Fehler verkleinert statt behoben.
+ */
+export const HARBOR_OFFSET = 0.42;
+
+/**
+ * Wo die Hafenmarke liegt - auf der See, nicht auf der Kante.
+ *
+ * Vorher sass sie auf `edgeMidpoint`, und das ist genau die Stelle, ueber die
+ * eine Strasse laeuft: wer auf einer Hafenkante baute, legte seinen Balken
+ * mitten durch die Marke. Zwei verschiedene Dinge auf derselben Geometrie -
+ * eines von beiden muss weg, und der Hafen ist das, was am Wasser liegt.
+ *
+ * Die Richtung wird aus dem **angrenzenden Feld** gerechnet und nicht aus dem
+ * Brettschwerpunkt. Beim runden `classic34` liefe beides aufs selbe hinaus; bei
+ * einem laenglichen oder gebuchteten Szenario zeigt der Schwerpunkt an manchen
+ * Kanten schraeg und schoebe die Marke aufs Land. Bei einem regelmaessigen
+ * Sechseck steht die Strecke Mittelpunkt -> Kantenmitte senkrecht auf der
+ * Kante; die Marke tritt damit im rechten Winkel weg und haelt ueberall
+ * denselben Abstand zur Strasse.
+ */
+export function harborAnchor(edge: EdgeId, onBoard: ReadonlySet<HexId>): Point {
+  const land = edgeHexes(edge).filter((hex) => onBoard.has(hexToId(hex)));
+
+  if (land.length !== 1) {
+    throw new RangeError(
+      `harborAnchor: ${edge} ist keine Kuestenkante - ${land.length} der beiden Felder liegen auf dem Brett, erwartet ist genau eines`,
+    );
+  }
+
+  const middle = edgeMidpoint(edge);
+  const center = hexCenter(land[0]!);
+  const outX = middle.x - center.x;
+  const outY = middle.y - center.y;
+  const length = Math.hypot(outX, outY);
+
+  return {
+    x: middle.x + (outX / length) * HARBOR_OFFSET,
+    y: middle.y + (outY / length) * HARBOR_OFFSET,
+  };
 }
 
 /**

@@ -9,7 +9,7 @@ import {
 import { seatsById, type Seat } from '../seats';
 import { RESOURCE_COLORS, TERRAIN_COLORS, harborLabel } from '../game/labels';
 import type { ActionTargets } from '../game/targets';
-import { edgeMidpoint, edgeSegment, hexCenter, hexCorners, vertexPoint, viewBoxOf } from './layout';
+import { edgeSegment, harborAnchor, hexCenter, hexCorners, vertexPoint, viewBoxOf } from './layout';
 import { CITY_PATH, SETTLEMENT_PATH } from './shapes';
 
 /**
@@ -46,8 +46,27 @@ export interface BoardSvgProps {
   readonly onPick: (place: Place) => void;
 }
 
-/** Wie viel Luft um das Brett bleibt, in Umkreisradien. */
-const PADDING = 0.6;
+/**
+ * Luft um das Aeusserste, was gezeichnet wird - in Umkreisradien.
+ *
+ * Getrennt von HARBOR_REACH, weil es zwei verschiedene Dinge sind, und das
+ * einmal teuer war: als die Haefen in die See wanderten, ist hier einfach eine
+ * groessere Zahl (0.95) eingetragen worden, damit sie hineinpassen. Im Browser
+ * gemessen kam heraus, dass das Brett damit nur 8.69 von 9.90 viewBox-Einheiten
+ * Hoehe nutzte - zwoelf Prozent Bretthoehe an einen geratenen Rand verschenkt.
+ */
+const PADDING = 0.2;
+
+/**
+ * Wie weit die Hafenmarken ueber die aeussersten Feldecken hinausragen.
+ *
+ * Gemessen und nicht geschaetzt: `getBBox()` am fertigen Brett gegen die
+ * Eckenspanne gerechnet ergibt 0.35 - eine Marke sitzt HARBOR_OFFSET vor der
+ * Kantenmitte und traegt ihren Radius, und die Kantenmitte liegt naeher am
+ * Mittelpunkt als eine Ecke. Die viewBox rechnet aus Ecken, also muss dieser
+ * Ueberstand dazu.
+ */
+const HARBOR_REACH = 0.35;
 
 /** Augenwahrscheinlichkeit eines Chips - fuer die Punktreihe unter der Zahl. */
 const PIPS: Readonly<Record<number, number>> = {
@@ -82,11 +101,13 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
   const colors = seatsById(seats);
   const colorOf = (player: PlayerId): string => colors.get(player)?.color ?? '#8b93a3';
   const robber = hexCenter(hexFromId(state.robber));
+  /** Welche Felder auf dem Brett liegen - die Hafenmarken brauchen die Seeseite. */
+  const onBoard = new Set(board.topology.hexes);
 
   return (
     <svg
       className="board"
-      viewBox={viewBoxOf(board.topology.hexes, PADDING)}
+      viewBox={viewBoxOf(board.topology.hexes, PADDING + HARBOR_REACH)}
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label="Spielbrett"
@@ -134,14 +155,25 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
       })}
 
       {/*
-       * Haefen als Marke auf der Kuestenkante: der Ring traegt die Farbe der
-       * Ressource, in der Mitte steht nur das Verhaeltnis. Der ausgeschriebene
-       * Name („2:1 Erz") passt bei dieser Groesse nicht lesbar aufs Brett und
-       * steht deshalb im `title` - sichtbar beim Zeigen, vorhanden fuer
-       * Vorlesewerkzeuge.
+       * Haefen: die Marke liegt in der See, zwei Stege fuehren an Land.
+       *
+       * Bis hierher sass sie auf der Kuestenkante - derselben Stelle, ueber die
+       * eine Strasse laeuft. Wer dort baute, legte seinen Balken mitten durch
+       * den Hafen, und weil die Strassen spaeter gezeichnet werden, blieb vom
+       * Hafen nichts uebrig. Zwei verschiedene Dinge auf einer Geometrie; die
+       * Kante gehoert der Strasse, das Wasser dem Hafen.
+       *
+       * Die Stege sind dabei kein Schmuck. Bis jetzt stand nirgends, **welche
+       * zwei Knoten** einen Hafen bedienen - man las es aus der Lage der Marke,
+       * und genau die war verdeckt. Jetzt zeigen zwei Linien darauf.
+       *
+       * Der Ring traegt die Farbe der Ressource, in der Mitte steht nur das
+       * Verhaeltnis. Der ausgeschriebene Name („2:1 Erz") passt bei dieser
+       * Groesse nicht lesbar aufs Brett und steht deshalb im `title` - sichtbar
+       * beim Zeigen, vorhanden fuer Vorlesewerkzeuge.
        */}
       {state.scenario.harbors.map((harbor) => {
-        const middle = edgeMidpoint(harbor.edge);
+        const mark = harborAnchor(harbor.edge, onBoard);
         const ring = harbor.resource === undefined ? '#16202a' : RESOURCE_COLORS[harbor.resource];
 
         return (
@@ -152,8 +184,19 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
             data-testid={`harbor-${harbor.edge}`}
           >
             <title>{harborLabel(harbor)}</title>
-            <circle cx={middle.x} cy={middle.y} r={0.23} style={{ stroke: ring }} />
-            <text x={middle.x} y={middle.y}>
+            {edgeSegment(harbor.edge).map((landing, index) => (
+              <line
+                key={index}
+                className="harbor__dock"
+                x1={mark.x}
+                y1={mark.y}
+                x2={landing.x}
+                y2={landing.y}
+                style={{ stroke: ring }}
+              />
+            ))}
+            <circle cx={mark.x} cy={mark.y} r={0.23} style={{ stroke: ring }} />
+            <text x={mark.x} y={mark.y}>
               {harbor.ratio}:1
             </text>
           </g>
@@ -331,18 +374,39 @@ function VertexMark({
             style={{ stroke: colorOf(building.owner) }}
           />
 
-          <path
+          {/*
+           * Lage aussen, Bewegung innen - und das ist kein Geschmack.
+           *
+           * Die Einblendung `settle` animiert `transform`. Eine CSS-Animation
+           * schlaegt das gleichnamige Praesentationsattribut, also war das
+           * `translate(...) scale(0.023)` fuer die Dauer der Animation weg:
+           * der Pfad stand in seinem eigenen Mass da - rund 20 Einheiten
+           * breit, wo ein Feld eine misst - und am Nullpunkt statt am Knoten.
+           * Ein riesiges Haus quer ueber dem Brett, 180 ms lang, dann der
+           * Sprung an seinen Platz. Dasselbe Muster wie bei den unsichtbaren
+           * Strassen in Etappe 3, nur andersherum: dort schlug eine Regel ein
+           * Attribut, hier eine Animation.
+           *
+           * Die Gruppe stellt das Bauwerk hin und wird nie animiert; der Pfad
+           * darin bewegt sich in seinem eigenen Raum. `key` an der Gruppe,
+           * damit React beim Ausbau zur Stadt neu einhaengt - nur dann laeuft
+           * die Einblendung ein zweites Mal.
+           */}
+          <g
             key={building.kind}
-            className={`vertex__building building building--${building.kind}`}
-            d={building.kind === 'city' ? CITY_PATH : SETTLEMENT_PATH}
             transform={`translate(${point.x} ${point.y}) scale(${
               building.kind === 'city' ? 0.021 : 0.023
             })`}
-            // Farbe per `style`: eine gleichnamige CSS-Regel schlaegt jedes
-            // SVG-Praesentationsattribut - daran sind in Etappe 3 alle
-            // gebauten Strassen unsichtbar geworden.
-            style={{ fill: colorOf(building.owner) }}
-          />
+          >
+            <path
+              className={`vertex__building building building--${building.kind}`}
+              d={building.kind === 'city' ? CITY_PATH : SETTLEMENT_PATH}
+              // Farbe per `style`: eine gleichnamige CSS-Regel schlaegt jedes
+              // SVG-Praesentationsattribut - daran sind in Etappe 3 alle
+              // gebauten Strassen unsichtbar geworden.
+              style={{ fill: colorOf(building.owner) }}
+            />
+          </g>
         </>
       )}
     </g>

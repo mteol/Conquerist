@@ -3,12 +3,23 @@ import {
   CLASSIC_34,
   CLASSIC_56,
   boardOf,
+  edgeHexes,
   generateScenario,
   hexFromId,
+  hexToId,
   hexVertices,
   vertexId,
 } from '@conquerist/shared';
-import { edgeSegment, hexCenter, hexCorners, vertexPoint, viewBoxOf } from './layout';
+import {
+  HARBOR_OFFSET,
+  edgeMidpoint,
+  edgeSegment,
+  harborAnchor,
+  hexCenter,
+  hexCorners,
+  vertexPoint,
+  viewBoxOf,
+} from './layout';
 
 const round = (value: number): number => Math.round(value * 1e6) / 1e6;
 
@@ -79,5 +90,69 @@ describe('Brettgeometrie', () => {
         }
       }
     }
+  });
+});
+
+/**
+ * Die Hafenmarke gehoert ins Wasser, nicht auf die Kante.
+ *
+ * Bis hierher lag sie auf `edgeMidpoint` - derselben Stelle, ueber die eine
+ * Strasse laeuft. Wer auf einer Hafenkante baute, legte seine Strasse mitten
+ * durch die Marke, und weil die Strassen nach den Haefen gezeichnet werden,
+ * gewann die Strasse. Der Hafen war weg.
+ */
+describe('Hafenmarken', () => {
+  const scenario = generateScenario(CLASSIC_34, 'hafen-probe');
+  const board = boardOf(scenario);
+  const onBoard = new Set(board.topology.hexes);
+
+  /** Der Mittelpunkt des Feldes, an dem eine Kuestenkante liegt. */
+  const landCenterOf = (edge: string) => {
+    const land = edgeHexes(edge).find((hex) => onBoard.has(hexToId(hex)));
+    if (land === undefined) throw new Error(`${edge} liegt an keinem Feld des Bretts`);
+    return hexCenter(land);
+  };
+
+  it('tritt im rechten Winkel von der Kante weg - und genau so weit', () => {
+    expect(scenario.harbors.length).toBeGreaterThan(0);
+
+    for (const harbor of scenario.harbors) {
+      const mark = harborAnchor(harbor.edge, onBoard);
+      const middle = edgeMidpoint(harbor.edge);
+      const [from, to] = edgeSegment(harbor.edge);
+
+      const step = { x: mark.x - middle.x, y: mark.y - middle.y };
+      const along = { x: to.x - from.x, y: to.y - from.y };
+
+      expect(round(Math.hypot(step.x, step.y))).toBe(round(HARBOR_OFFSET));
+      // Senkrecht: der Fusspunkt bleibt die Kantenmitte, der Abstand zur
+      // Strasse ist damit ueberall HARBOR_OFFSET und nirgends weniger.
+      expect(step.x * along.x + step.y * along.y).toBeCloseTo(0, 9);
+    }
+  });
+
+  it('haelt genug Abstand, dass keine Strasse die Marke beruehrt', () => {
+    // Strasse 0.16 breit, Kontur 0.24, Marke 0.23 im Radius - Halbbreiten
+    // addiert bleibt Luft, sonst waere der Fehler nur kleiner geworden.
+    expect(HARBOR_OFFSET).toBeGreaterThan(0.24 / 2 + 0.23);
+  });
+
+  it('setzt die Marke auf die See und nicht auf das Land', () => {
+    for (const harbor of scenario.harbors) {
+      const mark = harborAnchor(harbor.edge, onBoard);
+      const land = landCenterOf(harbor.edge);
+
+      // Weiter weg als der Umkreisradius heisst: ausserhalb des Feldes.
+      expect(Math.hypot(mark.x - land.x, mark.y - land.y)).toBeGreaterThan(1);
+    }
+  });
+
+  it('weist eine Kante zurueck, die gar nicht an der Kueste liegt', () => {
+    const inner = board.topology.edges.find((edge) =>
+      edgeHexes(edge).every((hex) => onBoard.has(hexToId(hex))),
+    );
+
+    expect(inner).toBeDefined();
+    expect(() => harborAnchor(inner!, onBoard)).toThrow(RangeError);
   });
 });

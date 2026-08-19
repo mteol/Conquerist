@@ -26,9 +26,20 @@
   --parchment-2: #e3d5b8;
   --parchment-edge: #b9a684;
 
-  /* Schrift */
-  --ink: #16202a;
-  --ink-muted: #6a6558;
+  /*
+   * Schrift.
+   *
+   * `--ink` und `--ink-muted` sind **umdefinierbar** und werden es auch: alles,
+   * was seinen Pergamentkoerper verloren hat, setzt sie weiter unten auf die
+   * Farben fuer den dunklen Grund um, und jedes `var(--ink)` darin folgt von
+   * selbst. Damit die Dinge, die *innerhalb* davon noch einen hellen Koerper
+   * haben (eine Karte, ein Knopf, das Verlaufsblatt), ihre dunkle Tinte
+   * zurueckholen koennen, steht der Grundwert daneben und wird nie ueberschrieben.
+   */
+  --ink-base: #16202a;
+  --ink-base-muted: #6a6558;
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
   --on-sea: #e9e1cf;
   --on-sea-muted: #94a7b0;
 
@@ -61,6 +72,17 @@
 
   --radius: 10px;
   --shadow: 0 12px 32px rgb(0 0 0 / 35%);
+
+  /*
+   * Der Unterschied zwischen „schwebt" und „liegt".
+   *
+   * `--shadow` ist ein Panelschatten: weit, weich, weit weg vom Element - das
+   * liest sich als Fenster ueber der Flaeche. Ein Ding, das auf dem Tisch
+   * **liegt**, wirft einen kurzen dunklen Schatten dicht unter seiner Kante.
+   * Das ist die eigentliche Arbeit an „es soll aussehen wie auf dem Tisch";
+   * Rahmen wegzunehmen allein macht Dinge nur flach, nicht liegend.
+   */
+  --lift: 0 1px 1px rgb(0 0 0 / 30%), 0 3px 7px rgb(0 0 0 / 26%);
 
   font-family: 'Segoe UI', system-ui, ui-sans-serif, sans-serif;
   font-size: 16px;
@@ -146,8 +168,12 @@ body {
   padding: 0.55rem 1.1rem;
   border: 1px solid transparent;
   border-radius: 8px;
+  /* Ein Knopf ist ein Ding auf dem Tisch: heller Koerper, dunkle Tinte - auch
+     dort, wo das umgebende Panel seine Tinte auf den Grund umgestellt hat. */
+  --ink: var(--ink-base);
   background: var(--parchment);
   color: var(--ink);
+  box-shadow: var(--lift);
   font: inherit;
   font-weight: 650;
   cursor: pointer;
@@ -178,6 +204,8 @@ body {
 .button--ghost {
   background: transparent;
   border-color: rgb(233 225 207 / 30%);
+  /* Kein Koerper, also kein Schatten - er liegt nicht, er steht nur da. */
+  box-shadow: none;
   color: var(--on-sea);
   font-weight: 500;
 }
@@ -926,21 +954,35 @@ body {
  * den schnellen Eindruck.
  */
 
+/*
+ * Die Hand liegt offen auf dem Tisch, nicht in einem Kasten.
+ *
+ * Der Kasten war zugleich die Fessel: er war 14.5rem breit, und daraus folgte
+ * jede Karte mit 2.3rem - „fuenf Stapel muessen nebeneinander passen". Das war
+ * eine Rechnung um einen Rahmen herum, den es nicht mehr gibt. Ohne ihn duerfen
+ * die Karten die Groesse haben, die eine Karte hat: man soll das Motiv erkennen,
+ * ohne hinzusehen.
+ */
 .hand {
-  width: 14.5rem;
-  padding: 0.6rem 0.7rem 0.7rem;
-  border: 1px solid var(--parchment-edge);
-  border-radius: var(--radius);
-  background: var(--parchment);
+  --ink: var(--on-sea);
+  --ink-muted: var(--on-sea-muted);
   color: var(--ink);
-  box-shadow: var(--shadow);
 }
 
+/*
+ * Beschriftung und Gesamtzahl stehen nebeneinander, nicht auseinandergezogen.
+ *
+ * `space-between` war richtig, solange die Hand in einem 14.5rem breiten Kasten
+ * sass: die Zahl stand an dessen rechter Kante und blieb dort. Ohne Kasten ist
+ * der Kopf so breit wie die Kartenreihe darunter - und die waechst mit jeder
+ * Sorte. Die Zahl wanderte damit bei jedem Zug ueber den Bildschirm. Ein Wert,
+ * den man im Blick behalten soll, darf seinen Platz nicht wechseln.
+ */
 .hand__head {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.55rem;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 
 .hand__head .panel__title {
@@ -961,7 +1003,7 @@ body {
 
 .hand__stacks {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.4rem;
   /* Oben Luft fuer die Stapeltiefe, die nach oben aus der Karte herausragt. */
   margin: 0.65rem 0 0;
   padding: 0;
@@ -969,12 +1011,18 @@ body {
 }
 
 /*
- * Fuenf Stapel muessen nebeneinander passen, auch bei voller Hand:
- * 5 x 2.3rem + 4 x 0.25rem = 12.5rem, plus 1.4rem Innenabstand.
+ * Die Karte in Handgroesse.
+ *
+ * Sie war 2.3rem breit, weil fuenf davon in ein 14.5rem breites Panel passen
+ * mussten. Das Panel ist weg, die Rechnung damit auch - fuenf Stapel zu 4.6rem
+ * mit 0.4rem Luft sind 24.6rem - und die Ablage ist im Browser gemessen 1896px
+ * breit, davon lagen vorher keine 300 in Gebrauch. Erst in dieser Groesse
+ * traegt das Motiv seine Aussage wirklich: bei 2.3rem las man die Farbe und
+ * riet den Rest.
  */
 .card {
   position: relative;
-  width: 2.3rem;
+  width: 4.6rem;
 }
 
 /*
@@ -987,9 +1035,9 @@ body {
 .card__behind {
   position: absolute;
   inset: 0 0 auto;
-  height: 2.9rem;
+  height: 5.8rem;
   border: 1px solid rgb(22 32 42 / 45%);
-  border-radius: 5px;
+  border-radius: 7px;
   opacity: 0.5;
 }
 
@@ -997,14 +1045,15 @@ body {
   position: relative;
   display: grid;
   place-items: center;
-  height: 2.9rem;
+  height: 5.8rem;
   border: 1px solid rgb(22 32 42 / 65%);
-  border-radius: 5px;
+  border-radius: 7px;
+  box-shadow: var(--lift);
 }
 
 .card__glyph {
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 3.1rem;
+  height: 3.1rem;
   fill: rgb(22 32 42 / 82%);
 }
 
@@ -1019,13 +1068,14 @@ body {
   position: absolute;
   top: -0.3rem;
   right: -0.3rem;
-  min-width: 1.15rem;
-  padding: 0 0.2rem;
+  min-width: 1.3rem;
+  padding: 0 0.25rem;
   border: 1px solid var(--parchment-edge);
   border-radius: 999px;
-  background: var(--ink);
+  /* Die Plakette sitzt auf der Karte, nicht auf dem Tisch - dunkle Tinte. */
+  background: var(--ink-base);
   color: var(--parchment);
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 700;
   line-height: 1.35;
   text-align: center;
@@ -1033,8 +1083,8 @@ body {
 
 .card__name {
   display: block;
-  margin-top: 0.2rem;
-  font-size: 0.6rem;
+  margin-top: 0.3rem;
+  font-size: 0.7rem;
   letter-spacing: 0.04em;
   color: var(--ink-muted);
   text-align: center;
@@ -1052,16 +1102,25 @@ body {
   display: flex;
 }
 
+/*
+ * Die zugedeckten Karten - in Handgroesse wie die offenen daneben.
+ *
+ * Ihr Muster ist aus Seetoenen gemischt und lag bisher auf Pergament, wo es
+ * dunkel und deutlich stand. Auf dem Tisch liegt es jetzt auf seinesgleichen
+ * und verschwaende ohne eine helle Kante. Die Kante und der Kontaktschatten
+ * machen aus dem Muster wieder ein Ding.
+ */
 .hand__backs span {
-  width: 1.5rem;
-  height: 2.2rem;
-  border: 1px solid rgb(22 32 42 / 65%);
-  border-radius: 4px;
+  width: 3rem;
+  height: 4.3rem;
+  border: 1px solid rgb(233 225 207 / 45%);
+  border-radius: 6px;
   background: repeating-linear-gradient(45deg, var(--sea-700) 0 3px, var(--sea-800) 3px 6px);
+  box-shadow: var(--lift);
 }
 
 .hand__backs span + span {
-  margin-left: -0.9rem;
+  margin-left: -1.8rem;
 }
 
 /*
@@ -1147,8 +1206,11 @@ body {
   padding: 0.3rem 0.5rem;
   border: 1px solid var(--parchment-edge);
   border-radius: 5px;
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
   background: var(--parchment-2);
   color: var(--ink);
+  box-shadow: var(--lift);
   font: inherit;
   font-size: 0.72rem;
   font-weight: 650;
@@ -1492,10 +1554,27 @@ body {
 
 /* --- Spielbildschirm ------------------------------------------------------ */
 
+/*
+ * Zwei Reihen: oben das Brett, unten die Ablage.
+ *
+ * Bis zum neuen Layout stand die Hoehe der Ablage als Zahl im Einzug des
+ * Bretts (`bottom: 11rem`). Eine Zahl, die an zwei Stellen stimmen muss, stimmt
+ * irgendwann an einer nicht mehr - beim naechsten Umbau der Ablage haette sie
+ * das Brett entweder beschnitten oder eine Luecke gelassen. Als Raster misst
+ * sich die Ablage selbst aus, und `1fr` gibt dem Brett den Rest.
+ *
+ * `minmax(0, 1fr)` und nicht `1fr`: ein Rasterfeld ist von Haus aus mindestens
+ * so hoch wie sein Inhalt, und das SVG darin wuerde es aufblaehen statt sich
+ * einzupassen.
+ */
 .game {
   position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.75rem;
   width: 100vw;
   height: 100vh;
+  padding: 0.75rem;
   overflow: hidden;
   background:
     radial-gradient(120% 80% at 50% 40%, var(--sea-500) 0%, transparent 70%), var(--sea-800);
@@ -1506,10 +1585,16 @@ body {
  * nicht unter sie gerechnet, sondern in die freie Flaeche dazwischen eingepasst.
  * Ohne diesen Einzug laegen genau die Randknoten unter den Panels, auf die man
  * in der Gruendungsphase klickt.
+ *
+ * Links und rechts derselbe Betrag, obwohl rechts nur noch das Verlaufssymbol
+ * sitzt. Das ist Absicht: das Brett passt sich mit `xMidYMid meet` in seine
+ * Flaeche ein und steht in deren Mitte - ein einseitig kleinerer Einzug wuerde
+ * es nicht groesser machen, sondern aus der Bildschirmmitte schieben.
  */
 .board-area {
-  position: absolute;
-  inset: 0.75rem 15.5rem 11rem 15.5rem;
+  position: relative;
+  min-height: 0;
+  margin: 0 14.75rem;
 }
 
 .board {
@@ -1517,15 +1602,32 @@ body {
   height: 100%;
 }
 
+/*
+ * Panels sind keine Fenster mehr, sondern Beschriftungen auf dem Tisch.
+ *
+ * Vier Dinge trugen denselben Pergamentkasten: die Spielerliste, der Status,
+ * die Bedienleiste und die Hand. Genau dieser Kasten liess das Spiel wie eine
+ * Anwendung aussehen und nicht wie ein Tisch, auf dem etwas liegt. Die Regel,
+ * nach der hier aufgeraeumt ist:
+ *
+ *   **Was man anfassen koennte, behaelt einen Koerper. Was nur Auskunft ist,
+ *   wird Schrift auf dem Tisch.**
+ *
+ * Karten, Wuerfel, der Kaufstapel, die Bauteile und die Knoepfe sind Dinge -
+ * sie behalten ihren hellen Koerper und bekommen den Kontaktschatten. Die
+ * Spielerliste und der Status sind keine Dinge; sie stehen jetzt einfach da.
+ *
+ * Die zwei Zeilen mit `--ink` sind der ganze Trick: darunter liegt kein
+ * Pergament mehr, also wird die Tinte zur Schrift auf dem Wasser - und alles,
+ * was im Panel `var(--ink)` benutzt (Sitze, Punkte, Zahlen, Beschriftungen),
+ * folgt ohne eine einzige weitere Regel.
+ */
 .panel {
   position: absolute;
   max-width: 14.5rem;
-  padding: 0.6rem 0.7rem;
-  border: 1px solid var(--parchment-edge);
-  border-radius: var(--radius);
-  background: var(--parchment);
+  --ink: var(--on-sea);
+  --ink-muted: var(--on-sea-muted);
   color: var(--ink);
-  box-shadow: var(--shadow);
   font-size: 0.8rem;
 }
 
@@ -1535,17 +1637,19 @@ body {
 }
 
 /*
- * Verlauf oben, Status unten - seit dem ersten Playtest andersherum als vorher.
+ * Der Status steht **in** der Ablage, ganz rechts - nicht mehr frei in der Ecke.
  *
- * Der Grund ist der Blick: wer am Zug ist, liest man staendig und beilaeufig,
- * den Verlauf liest man selten und dann genau. Das Beilaeufige gehoert in die
- * Naehe der Ablage, in der man ohnehin handelt; der Verlauf darf nach oben, wo
- * er niemandem im Weg steht. Vorher war es genau umgekehrt, und der Blick
- * sprang bei jedem Zug quer ueber den Bildschirm.
+ * Der Grund ist derselbe, aus dem er nach dem ersten Playtest schon einmal von
+ * oben nach unten gewandert ist: wer am Zug ist, liest man staendig und
+ * beilaeufig, und das Beilaeufige gehoert dorthin, wo man ohnehin hinsieht. Als
+ * freies Panel in der Ecke lag er zwar unten, aber diagonal gegenueber der
+ * Hand - der Blick sprang bei jedem Zug ueber den ganzen Bildschirm. In der
+ * Leiste liegt er auf derselben Linie und `margin-left: auto` haelt ihn am
+ * rechten Ende, wo ein Zug endet.
  */
 .panel--status {
-  bottom: 0.75rem;
-  right: 0.75rem;
+  position: static;
+  margin-left: auto;
   text-align: right;
 }
 
@@ -1562,10 +1666,6 @@ body {
  * sollen unten auf einer Linie stehen, nicht auf gleiche Hoehe gezogen werden.
  */
 .tray {
-  position: absolute;
-  right: 15.5rem;
-  bottom: 0.75rem;
-  left: 0.75rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -1579,8 +1679,41 @@ body {
   align-items: flex-start;
 }
 
+/*
+ * Die Bedienleiste liegt seit dem neuen Layout **quer statt hoch**.
+ *
+ * Sie war ein 14.5rem schmales Panel, in dem sich vier Zeilen uebereinander
+ * stapelten: Wuerfel, Bauleiste, Knoepfe, Phasentext. Jede Zeile ging dem Brett
+ * an Hoehe ab - und Hoehe ist genau das, woran es dem Brett fehlt: es passt
+ * sich mit `xMidYMid meet` ein und ist auf einem breiten Bildschirm immer
+ * hoehen- und nie breitenbegrenzt. Waagerecht gelegt braucht dieselbe Bedienung
+ * eine Zeile statt vier, und die Breite dafuer ist ohnehin da.
+ *
+ * `max-width: none` hebt die Panelbreite auf - sie galt fuer ein Panel, das in
+ * einer Ecke schwebt, und hier schwebt nichts mehr.
+ */
 .tray .panel--actions {
   position: static;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  max-width: none;
+}
+
+.tray .panel--actions .build {
+  margin-bottom: 0;
+}
+
+/*
+ * Der Fehler bricht die Zeile um und legt sich unter sie.
+ *
+ * Er ist selten und dann wichtig: als schmale Spalte in der Zeile waere er
+ * unlesbar, und ihn zu kuerzen hiesse, die Auskunft wegzulassen, die er ist.
+ * `width: 100%` in einer umbrechenden Flexzeile heisst genau „eigene Zeile".
+ */
+.tray .panel--actions .panel__error {
+  width: 100%;
 }
 
 /*
@@ -1629,12 +1762,13 @@ body {
   border: 1px solid var(--parchment-edge);
   border-radius: 7px;
   background: linear-gradient(160deg, var(--parchment) 0%, var(--parchment-2) 100%);
-  box-shadow: 0 2px 6px rgb(0 0 0 / 28%);
+  box-shadow: var(--lift);
 }
 
 .deck__count {
   position: relative;
-  color: var(--ink);
+  /* Steht auf dem Stapel, nicht auf dem Tisch. */
+  color: var(--ink-base);
   font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -1668,15 +1802,49 @@ body {
   margin-bottom: 0.5rem;
 }
 
+/*
+ * Die Zahl am Bauknopf: wie viele Teile noch im Vorrat liegen.
+ *
+ * Sie stand bis zum neuen Layout in einer eigenen Liste ueber der Bauleiste -
+ * dreimal dieselbe Silhouette mit einer Zahl, und direkt darunter dieselben
+ * drei Silhouetten noch einmal als Knoepfe. Zwei Zeilen je Bauteil, die eine
+ * zum Zaehlen, die andere zum Druecken, und beide beantworten dieselbe Frage.
+ *
+ * Tabellenziffern kommen aus `:root` - eine 3 und eine 13 duerfen den Knopf
+ * nicht in der Breite springen lassen. `min-width` haelt die Spalte auch bei
+ * einstelligen Zahlen ruhig.
+ */
+.build__left {
+  min-width: 1.1ch;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-align: right;
+}
+
+/*
+ * Aufgebraucht wird blass, nicht unsichtbar.
+ *
+ * Ein Eintrag, der verschwindet, sieht aus wie ein Anzeigefehler - und
+ * ausgerechnet die Null ist die Auskunft, auf die es ankommt: die letzte
+ * Strasse faellt sonst erst auf, wenn der Server sie ablehnt.
+ */
+.build__left--empty {
+  opacity: 0.4;
+}
+
 .build__pick {
   display: flex;
-  gap: 0.3rem;
+  gap: 0.35rem;
   align-items: center;
-  padding: 0.3rem 0.55rem 0.3rem 0.4rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.45rem;
   border: 1px solid var(--parchment-edge);
   border-radius: 8px;
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
   background: var(--parchment-2);
   color: var(--ink);
+  box-shadow: var(--lift);
   font: inherit;
   font-size: 0.78rem;
   font-weight: 650;
@@ -1707,17 +1875,99 @@ body {
 }
 
 /*
- * Der Verlauf beginnt unterhalb des Zahnrads.
+ * Der Verlauf: ein Symbol neben dem Zahnrad, das Blatt darunter.
  *
- * Beide wollen dieselbe Ecke, und das Zahnrad ist fest verankert. Es auf dem
- * Panel liegen zu lassen waere derselbe Fehler wie `.button--ghost`: seine
- * Farbe ist fuer Tiefsee gemischt und auf Pergament kaum zu sehen. Deshalb
- * weicht der Verlauf nach unten aus statt zur Seite - so bleibt seine Kante an
- * der Bildschirmkante, wo die anderen Panels auch sitzen.
+ * Er war bis zum neuen Layout ein Dauerpanel und hielt dafuer den ganzen
+ * rechten Streifen frei. Das steht schief zu dem, was ein paar Zeilen weiter
+ * oben schon festgehalten ist: **den Verlauf liest man selten und dann genau.**
+ * Was man selten liest, braucht eine Tuer und keine Wand.
+ *
+ * Die Tuer sieht aus wie das Zahnrad und sitzt daneben - gleiche Groesse,
+ * gleiche Farbe, gleiche Hoehe. Zwei Symbole in einer Reihe lesen sich als ein
+ * Ort fuer „alles, was nicht das Spiel ist"; eines davon anders zu gestalten
+ * hiesse, zwei Orte zu behaupten, wo einer ist.
+ */
+.log-corner {
+  position: fixed;
+  top: 0.85rem;
+  right: 0.95rem;
+  z-index: 2;
+}
+
+/*
+ * Die rechte Kante der Ecke liegt am Bildschirmrand wie bei jedem Panel, und
+ * das Symbol rueckt darin nach links am Zahnrad vorbei. Andersherum - die Ecke
+ * selbst nach links geschoben - haenge das aufgeklappte Blatt 3.45rem vor der
+ * Kante und stuende als einziges Panel nicht auf der Linie der anderen.
+ */
+.log-toggle {
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  margin-right: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--on-sea-muted);
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.log-toggle:hover,
+.log-toggle:focus-visible,
+.log-toggle--open {
+  color: var(--on-sea);
+}
+
+.log-toggle__mark {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/*
+ * Das Blatt haengt am Symbol und nicht am Bildschirmrand: es klappt unter der
+ * Tuer auf, durch die man es geoeffnet hat. Rechts ausgerichtet, damit es nach
+ * innen waechst statt ueber den Rand hinaus.
+ */
+/*
+ * Das Verlaufsblatt ist die eine Ausnahme unter den Panels - und zwar nach der
+ * Regel und nicht gegen sie: es ist ein Blatt, das man hervorzieht. Ein Ding.
+ * Also behaelt es seinen Koerper und holt sich die dunkle Tinte zurueck.
  */
 .panel--log {
-  top: 3.3rem;
-  right: 0.75rem;
+  top: 2.6rem;
+  right: 0;
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
+  /*
+   * Breiter als die 14.5rem, die `.panel` allen gab.
+   *
+   * Das Mass stammt aus der Zeit, als der Verlauf dauerhaft in der Ecke stand
+   * und der rechte Streifen schmal bleiben musste. Als Blatt, das man
+   * hervorzieht, gilt das Gegenteil: es ist offen, weil jemand gerade genau
+   * hinsehen will, und ein Satz wie „Spieler 1 wuerfelt 9" soll dann nicht auf
+   * drei Zeilen zerfallen.
+   *
+   * **`width` und nicht `max-width`** - daran ist der erste Versuch gescheitert.
+   * Das Blatt haengt in `.log-corner`, und die ist nur so breit wie das Symbol
+   * darin (rund 74px). Als Containing Block deckelt sie damit die Breite, die
+   * einem absolut positionierten Kind ueberhaupt zur Verfuegung steht; ein
+   * `max-width` von 21rem war schlicht nie erreichbar. Eine feste Breite steht
+   * ueber dieser Rechnung, und mit `right: 0` waechst das Blatt nach innen.
+   */
+  width: min(21rem, 90vw);
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--radius);
+  background: var(--parchment);
+  color: var(--ink);
+  box-shadow: var(--shadow);
 }
 
 .panel__title {
@@ -1747,19 +1997,13 @@ body {
   background: var(--accent);
 }
 
-.panel__hint {
-  margin: 0.5rem 0 0;
-  color: var(--ink-muted);
-  font-size: 0.75rem;
-}
-
 .panel__toggle {
   display: flex;
   gap: 0.35rem;
   align-items: center;
   margin-top: 0.5rem;
   padding-top: 0.45rem;
-  border-top: 1px solid rgb(22 32 42 / 12%);
+  border-top: 1px solid rgb(233 225 207 / 16%);
   color: var(--ink-muted);
   font-size: 0.72rem;
   cursor: pointer;
@@ -1773,8 +2017,10 @@ body {
   margin-top: 0.5rem;
   padding: 0.45rem 0.55rem;
   border-radius: 7px;
-  background: rgb(192 80 63 / 14%);
-  color: #7d2b1d;
+  /* Auf dem Tisch statt auf Pergament: das satte Rot verschwaende hier, der
+     Schleier muss dunkler und die Schrift heller werden. */
+  background: rgb(192 80 63 / 30%);
+  color: #f4cfc7;
   font-size: 0.75rem;
 }
 
@@ -1891,64 +2137,6 @@ body {
   align-items: flex-start;
 }
 
-/*
- * Wuerfel links, Bauvorrat rechts.
- *
- * Beide beantworten dieselbe Frage - was geht in diesem Zug -, und beide sind
- * Spielmaterial und keine Bedienung. Deshalb stehen sie in einer Zeile und die
- * Knoepfe darunter. `space-between` schiebt den Vorrat an den rechten Rand: er
- * ist eine Auskunft und braucht keine Naehe zum Becher.
- */
-.panel__top {
-  display: flex;
-  gap: 0.6rem;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 0.55rem;
-}
-
-/*
- * Der eigene Vorrat.
- *
- * Drei Zeilen statt einer Reihe: die Zahlen stehen damit untereinander und
- * lassen sich vergleichen, ohne dass der Blick springt. Tabellenziffern kommen
- * aus `:root` - eine 3 und eine 13 duerfen die Zeile nicht verschieben.
- */
-.stock {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.stock__item {
-  display: flex;
-  gap: 0.3rem;
-  align-items: center;
-  justify-content: flex-end;
-  font-size: 0.78rem;
-  font-weight: 650;
-  line-height: 1.15;
-}
-
-/*
- * Aufgebraucht wird blass, nicht unsichtbar.
- *
- * Ein Eintrag, der verschwindet, sieht aus wie ein Anzeigefehler - und
- * ausgerechnet die Null ist die Auskunft, auf die es ankommt: die letzte
- * Strasse faellt sonst erst auf, wenn der Server sie ablehnt.
- */
-.stock__item--empty {
-  opacity: 0.35;
-}
-
-.piece--stock {
-  width: 1.05rem;
-  height: 1.15rem;
-}
-
 .dice {
   display: flex;
   gap: 0.4rem;
@@ -1992,23 +2180,48 @@ body {
 }
 
 /* Wer werfen darf, hat einen Knopf vor sich - alle anderen eine Anzeige. */
+/*
+ * Wer werfen darf, hat einen Becher vor sich - alle anderen eine Anzeige.
+ *
+ * Der Unterschied war ein heller Schleier auf Pergament. Auf dem Tisch ist ein
+ * Schleier nichts; hier wird daraus ein Koerper mit Kontaktschatten, und die
+ * Tinte darin geht auf dunkel zurueck.
+ */
 .dice--waiting {
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
   border-color: var(--parchment-edge);
-  background: rgb(255 255 255 / 45%);
+  background: var(--parchment);
+  box-shadow: var(--lift);
+  color: var(--ink);
   cursor: pointer;
 }
 
+/*
+ * Ein Wuerfel ist ein Ding mit heller Flaeche - also braucht er die dunkle
+ * Tinte, auch wenn die Leiste um ihn herum ihre auf den Grund umgestellt hat.
+ *
+ * Ohne diese zwei Zeilen erbt `.die__pip` das helle `--ink` der Bedienleiste
+ * und zeichnet cremefarbene Augen auf eine cremefarbene Flaeche: im Browser
+ * standen da zwei leere Kaestchen. Derselbe Fehler wie bei den unsichtbaren
+ * Strassen in Etappe 3, nur ueber eine Variable statt ueber die Kaskade.
+ */
 .die {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   place-items: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  padding: 0.22rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0.26rem;
   border: 1px solid var(--parchment-edge);
-  border-radius: 6px;
+  border-radius: 7px;
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
   background: #fbf6ea;
-  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 8%);
+  box-shadow:
+    inset 0 -2px 0 rgb(0 0 0 / 8%),
+    var(--lift);
+  color: var(--ink);
   font-weight: 700;
 }
 
@@ -2024,8 +2237,8 @@ body {
 }
 
 .die__pip {
-  width: 0.32rem;
-  height: 0.32rem;
+  width: 0.36rem;
+  height: 0.36rem;
   border-radius: 50%;
   background: var(--ink);
 }
@@ -2101,7 +2314,9 @@ body {
 .log {
   margin: 0;
   padding: 0;
-  max-height: 8.5rem;
+  /* Offen heisst: jemand liest gerade. Dann darf mehr als ein halbes Dutzend
+     Zeilen dastehen, ohne dass man scrollt. */
+  max-height: 17rem;
   overflow-y: auto;
   list-style: none;
   color: var(--ink-muted);
@@ -2171,6 +2386,20 @@ body {
 .harbor circle {
   fill: #f6efdf;
   stroke-width: 0.055;
+}
+
+/*
+ * Die Stege vom Hafen an Land.
+ *
+ * Duenner als eine Strasse und in der Farbe des Hafens - sie sollen sagen,
+ * welche zwei Knoten der Hafen bedient, und dabei keinen Balken vortaeuschen,
+ * auf dem man bauen koennte. Sie laufen unter die Marke und werden von ihr
+ * verdeckt; deshalb steht der Kreis im Markup danach.
+ */
+.harbor__dock {
+  stroke-width: 0.045;
+  stroke-linecap: round;
+  opacity: 0.75;
 }
 
 .harbor text {

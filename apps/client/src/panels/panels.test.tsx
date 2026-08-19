@@ -18,6 +18,7 @@ import { actionTargets } from '../game/targets';
 import { ActionPanel } from './ActionPanel';
 import { TablePanel } from './TablePanel';
 import { StatusPanel } from './StatusPanel';
+import { LogPanel } from './LogPanel';
 
 const scenario = generateScenario(CLASSIC_34, 'panels-probe');
 const seats = defaultSeats(3);
@@ -168,9 +169,12 @@ describe('ActionPanel', () => {
 
   /*
    * Der Vorrat war bis zum ersten Playtest nirgends zu sehen: dass die letzte
-   * Strasse gelegt war, merkte man erst an der Absage des Servers.
+   * Strasse gelegt war, merkte man erst an der Absage des Servers. Seit dem
+   * neuen Layout steht er **am Bauknopf** und nicht mehr als eigene Liste
+   * daneben - dieselbe Silhouette stand vorher zweimal untereinander, einmal
+   * zum Zaehlen und einmal zum Druecken.
    */
-  it('zeigt den eigenen Bauvorrat neben den Wuerfeln', () => {
+  it('nennt am Bauknopf, wie viele Teile noch im Vorrat liegen', () => {
     const state = afterSetup();
     const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
 
@@ -189,9 +193,9 @@ describe('ActionPanel', () => {
       />,
     );
 
-    expect(screen.getByTestId('stock-road').textContent).toContain('13');
-    expect(screen.getByTestId('stock-settlement').textContent).toContain('3');
-    expect(screen.getByTestId('stock-city').textContent).toContain('4');
+    expect(screen.getByTestId('build-road').textContent).toContain('13');
+    expect(screen.getByTestId('build-settlement').textContent).toContain('3');
+    expect(screen.getByTestId('build-city').textContent).toContain('4');
   });
 
   it('laesst einen leeren Vorrat stehen, statt ihn wegzulassen', () => {
@@ -213,9 +217,39 @@ describe('ActionPanel', () => {
       />,
     );
 
-    const road = screen.getByTestId('stock-road');
-    expect(road.textContent).toContain('0');
-    expect(road.className).toContain('stock__item--empty');
+    // Ein fehlender Eintrag saehe aus wie ein Anzeigefehler. Die Null ist die
+    // Auskunft, um die es geht - sie steht da und wird als leer gekennzeichnet.
+    const left = screen.getByTestId('left-road');
+    expect(left.textContent).toContain('0');
+    expect(left.className).toContain('build__left--empty');
+  });
+
+  /*
+   * Der Satz „Spieler 1 ist am Zug" stand bis zum neuen Layout an zwei Ecken
+   * des Bildschirms: hier als `panel__hint` und in der Statusecke. Zweimal
+   * derselbe Satz ist einmal zu viel, und die Statusecke ist der Ort dafuer.
+   */
+  it('sagt die Phase nicht noch einmal, die schon in der Statusecke steht', () => {
+    const state = afterSetup();
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
+
+    render(
+      <ActionPanel
+        view={view}
+        targets={actionTargets(state, view.currentPlayerId)}
+        error={null}
+        stock={{ piecesLeft: { road: 13, settlement: 3, city: 4 }, color: '#c0392b' }}
+        buildMode={null}
+        onBuildMode={vi.fn()}
+        onRoll={vi.fn()}
+        onEndTurn={vi.fn()}
+        onOpenTrade={vi.fn()}
+        onDismissError={vi.fn()}
+      />,
+    );
+
+    expect(view.phaseText.length).toBeGreaterThan(0);
+    expect(screen.queryByText(view.phaseText)).toBeNull();
   });
 });
 
@@ -249,3 +283,45 @@ describe('StatusPanel', () => {
 function actingId(state: GameState): string {
   return state.players[state.currentPlayerIndex]!.id;
 }
+
+/*
+ * Der Verlauf liegt seit dem neuen Layout hinter einem Symbol.
+ *
+ * Der Grund steht schon im Blatt, seit die Panels nach dem ersten Playtest
+ * getauscht wurden: wer am Zug ist, liest man staendig und beilaeufig, den
+ * Verlauf liest man selten und dann genau. Was man selten liest, braucht keinen
+ * Dauerplatz - es braucht eine Tuer, die man findet.
+ */
+describe('LogPanel', () => {
+  const entries = [
+    { turn: 1, text: 'Anna setzt die Gründungssiedlung' },
+    { turn: 1, text: 'Ben baut eine Straße' },
+  ];
+
+  it('haelt die Eintraege hinter einem Knopf, der Verlauf heisst', () => {
+    render(<LogPanel entries={entries} />);
+
+    expect(screen.getByRole('button', { name: 'Verlauf' })).toBeDefined();
+    expect(screen.queryByText('Ben baut eine Straße')).toBeNull();
+  });
+
+  it('zeigt sie, sobald man ihn oeffnet - juengster Eintrag oben', () => {
+    render(<LogPanel entries={entries} />);
+
+    return userEvent.click(screen.getByRole('button', { name: 'Verlauf' })).then(() => {
+      const shown = screen.getAllByRole('listitem').map((item) => item.textContent);
+      expect(shown).toEqual(['Ben baut eine Straße', 'Anna setzt die Gründungssiedlung']);
+    });
+  });
+
+  it('macht ihn mit demselben Knopf wieder zu', async () => {
+    render(<LogPanel entries={entries} />);
+    const toggle = screen.getByRole('button', { name: 'Verlauf' });
+
+    await userEvent.click(toggle);
+    expect(screen.getByText('Ben baut eine Straße')).toBeDefined();
+
+    await userEvent.click(toggle);
+    expect(screen.queryByText('Ben baut eine Straße')).toBeNull();
+  });
+});

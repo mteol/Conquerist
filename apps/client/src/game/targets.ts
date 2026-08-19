@@ -69,15 +69,26 @@ export const EMPTY_TARGETS: ActionTargets = {
 /**
  * Welches Bauteil hinter einem Zug steckt - `null`, wenn es keins ist.
  *
- * Die Gruendungszuege stehen bewusst nicht hier: sie gehoeren zu keinem Knopf
- * in der Bauleiste, weil es in der Gruendung nichts zu waehlen gibt. Genau
- * diese Unterscheidung laesst das Brett in der Gruendung wie bisher leuchten
- * und in der Hauptphase erst nach einem Druck.
+ * **Die Gruendungszuege stehen hier, und das war einmal andersherum.** Die
+ * Begruendung dagegen lautete: in der Gruendung gibt es genau eine Sache zu
+ * setzen, ein Knopf davor entscheidet nichts. Das stimmt fuer sich genommen und
+ * geht am Punkt vorbei. Die Gruendung ist der Moment, in dem man die Bedienung
+ * **lernt**: wer seine ersten vier Zuege macht, indem er irgendwo auf ein
+ * leuchtendes Brett klickt, hat danach keinen Grund anzunehmen, dass es je
+ * anders liefe - und steht in der ersten Hauptrunde vor einem dunklen Brett.
+ * Der eine Druck, der nichts entscheidet, bringt bei, wie es weitergeht.
+ *
+ * Was dadurch von selbst faellt: die Bauknoepfe sind in der Gruendung nicht
+ * mehr alle grau. `buildable` zaehlt jetzt auch die Gruendungsstellen, also ist
+ * genau der Knopf bedienbar, der dort an der Reihe ist - erst die Siedlung,
+ * dann die Strasse.
  */
 export function buildKindOf(action: GameAction): BuildableKind | null {
   switch (action.type) {
+    case 'placeSetupRoad':
     case 'buildRoad':
       return 'road';
+    case 'placeSetupSettlement':
     case 'buildSettlement':
       return 'settlement';
     case 'buildCity':

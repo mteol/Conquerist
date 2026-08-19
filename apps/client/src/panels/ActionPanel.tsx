@@ -4,7 +4,6 @@ import { CITY_PATH, ROAD_PATH, SETTLEMENT_PATH, VIEWBOX } from '../board/shapes'
 import type { ActionTargets, BuildableKind } from '../game/targets';
 import type { GameView } from '../game/view';
 import { DiceTray } from './DiceTray';
-import { StockPanel } from './StockPanel';
 
 /**
  * Die Bedienung, die nicht auf dem Brett liegt.
@@ -51,6 +50,13 @@ const BUILD_LABELS: Readonly<Record<PieceId, string>> = {
   city: 'Stadt',
 };
 
+/** Fuer Vorlesewerkzeuge: „13 Straßen" liest sich vor, eine 13 neben einem Pfad nicht. */
+const STOCK_LABELS: Readonly<Record<PieceId, string>> = {
+  road: 'Straßen',
+  settlement: 'Siedlungen',
+  city: 'Städte',
+};
+
 export function ActionPanel({
   view,
   targets,
@@ -65,27 +71,36 @@ export function ActionPanel({
 }: ActionPanelProps): JSX.Element {
   return (
     <section className="panel panel--actions">
-      <div className="panel__top">
-        <DiceTray
-          spec={view.dice}
-          roll={view.lastRoll}
-          total={view.rollTotal}
-          canRoll={targets.roll !== null}
-          fell={view.rolled}
-          onRoll={onRoll}
-        />
-
-        {stock === null ? null : <StockPanel piecesLeft={stock.piecesLeft} color={stock.color} />}
-      </div>
+      <DiceTray
+        spec={view.dice}
+        roll={view.lastRoll}
+        total={view.rollTotal}
+        canRoll={targets.roll !== null}
+        fell={view.rolled}
+        onRoll={onRoll}
+      />
 
       {/*
        * Die Bauleiste. Jedes Bauteil traegt seine Silhouette vom Brett - wer
        * hier „Stadt" drueckt, sieht dieselbe Form gleich am Knoten stehen.
+       *
+       * **Der Vorrat steht seit dem neuen Layout hier und nicht daneben.** Es
+       * gab ihn als eigene Liste ueber der Bauleiste: dreimal dieselbe
+       * Silhouette mit einer Zahl, und direkt darunter dieselben drei
+       * Silhouetten noch einmal als Knoepfe. Zwei Zeilen fuer ein Bauteil, die
+       * eine zum Zaehlen, die andere zum Druecken - und beide beantworten
+       * dieselbe Frage: was geht jetzt noch. Jetzt traegt der Knopf seine Zahl.
+       *
+       * Die Null bleibt stehen und wird grau. Ein fehlender Eintrag saehe aus
+       * wie ein Anzeigefehler; „0" ist dagegen die Auskunft, um die es geht -
+       * am Tisch aus Holz sieht man den leeren Platz vor sich.
        */}
       <div className="build" role="group" aria-label="Bauen">
         {PIECE_IDS.map((piece) => {
           const spots = targets.buildable[piece];
           const active = buildMode === piece;
+          /** `null`, solange es keinen eigenen Sitz gibt - dann gibt es keinen Vorrat. */
+          const left = stock === null ? null : (stock.piecesLeft[piece] ?? 0);
 
           return (
             <button
@@ -106,6 +121,18 @@ export function ActionPanel({
             >
               <PieceMark piece={piece} color={stock?.color ?? 'currentColor'} />
               <span className="build__name">{BUILD_LABELS[piece]}</span>
+              {left === null ? null : (
+                <>
+                  <span
+                    aria-hidden="true"
+                    data-testid={`left-${piece}`}
+                    className={left === 0 ? 'build__left build__left--empty' : 'build__left'}
+                  >
+                    {left}
+                  </span>
+                  <span className="visually-hidden">{`noch ${left} ${STOCK_LABELS[piece]}`}</span>
+                </>
+              )}
             </button>
           );
         })}
@@ -137,8 +164,10 @@ export function ActionPanel({
         </button>
       </div>
 
-      <p className="panel__hint">{view.phaseText}</p>
-
+      {/*
+       * Hier stand `view.phaseText`. Er steht auch in der Statusecke, und zwei
+       * Ecken mit demselben Satz sind eine zu viel - siehe StatusPanel.
+       */}
       {error === null ? null : (
         <div role="alert" className="panel__error">
           {error}

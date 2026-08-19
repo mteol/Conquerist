@@ -99,6 +99,31 @@ function firstSetupVertex(): string {
   return action.vertex;
 }
 
+/**
+ * Ein Gruendungszug in zwei Schritten - so, wie ihn ein Mensch macht.
+ *
+ * Erst das Bauteil, das gerade an der Reihe ist (die Gruendung gibt genau eines
+ * frei), dann die erste angebotene Stelle. Seit die Gruendung demselben
+ * Zwei-Schritt-Weg folgt wie jeder andere Bau, tut das jeder Test, der sie
+ * durchklickt - und diese Funktion ist der Ort, an dem das einmal steht.
+ */
+async function setupStep(): Promise<boolean> {
+  const piece = ['build-settlement', 'build-road']
+    .map((id) => screen.getByTestId(id) as HTMLButtonElement)
+    .find((button) => !button.disabled);
+  if (piece === undefined) return false;
+
+  await userEvent.click(piece);
+
+  const target = screen
+    .getAllByTestId(/^(vertex|edge)-/)
+    .find((node) => node.dataset['target'] === 'true');
+  if (target === undefined) return false;
+
+  await userEvent.click(target);
+  return true;
+}
+
 describe('GameScreen', () => {
   it('beginnt in der Gruendungsphase beim ersten Spieler', () => {
     render(<LocalGame />);
@@ -110,22 +135,32 @@ describe('GameScreen', () => {
   it('setzt auf Klick eine Siedlung und schaltet auf die Strasse weiter', async () => {
     render(<LocalGame />);
 
+    await userEvent.click(screen.getByTestId('build-settlement'));
     await userEvent.click(screen.getByTestId(`vertex-${firstSetupVertex()}`));
 
-    // Nach der Siedlung leuchten nur noch die anschliessenden Kanten.
+    // Nach der Siedlung ist die Strasse an der Reihe - und wie ueberall sonst
+    // bleibt das Brett ruhig, bis sie gewaehlt ist.
     expect(
-      screen.getAllByTestId(/^vertex-/).filter((node) => node.dataset['target'] === 'true'),
+      screen.getAllByTestId(/^(vertex|edge)-/).filter((node) => node.dataset['target'] === 'true'),
     ).toHaveLength(0);
+    expect(screen.getByTestId('build-road')).toHaveProperty('disabled', false);
+    expect(screen.getByTestId('build-settlement')).toHaveProperty('disabled', true);
+
+    await userEvent.click(screen.getByTestId('build-road'));
     expect(
       screen.getAllByTestId(/^edge-/).filter((node) => node.dataset['target'] === 'true').length,
     ).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Straße/).length).toBeGreaterThan(0);
   });
 
   it('schreibt jeden Zug in den Verlauf', async () => {
     render(<LocalGame />);
 
+    await userEvent.click(screen.getByTestId('build-settlement'));
     await userEvent.click(screen.getByTestId(`vertex-${firstSetupVertex()}`));
+
+    // Der Verlauf liegt seit dem neuen Layout hinter seinem Symbol - er wird
+    // trotzdem geschrieben, waehrend er zu ist. Genau das steht hier.
+    await userEvent.click(screen.getByTestId('log-toggle'));
 
     expect(screen.getByText(/setzt die Gründungssiedlung/)).toBeDefined();
   });
@@ -142,13 +177,9 @@ describe('GameScreen', () => {
   it('sperrt das Bauen, solange nicht gewuerfelt ist', async () => {
     render(<LocalGame />);
 
-    // Gruendungsphase durchklicken: immer das erste angebotene Ziel.
+    // Gruendungsphase durchklicken: je Zug erst das Bauteil, dann die Stelle.
     for (let step = 0; step < 12; step += 1) {
-      const target = screen
-        .getAllByTestId(/^(vertex|edge)-/)
-        .find((node) => node.dataset['target'] === 'true');
-      if (target === undefined) break;
-      await userEvent.click(target);
+      if (!(await setupStep())) break;
     }
 
     // Gewuerfelt wird an den Wuerfeln - einen eigenen Knopf dafuer gibt es nicht.
@@ -235,29 +266,45 @@ describe('Bauen in zwei Schritten', () => {
     const edge = screen.getAllByTestId(/^edge-/).find((node) => node.dataset['target'] === 'true')!;
     await userEvent.click(edge);
 
+    await userEvent.click(screen.getByTestId('log-toggle'));
     expect(screen.getByText(/baut eine Straße/)).toBeDefined();
     expect(screen.queryByTestId('build-mode')).toBeNull();
     expect(litUp()).toBe(0);
   });
 
   /*
-   * Die Gruendung bleibt einstufig: dort gibt es genau eine Sache zu setzen,
-   * und ein Knopf davor waere ein Schritt, der nichts entscheidet.
+   * **Die Gruendung geht denselben Weg wie jeder andere Bau.**
+   *
+   * Sie war einstufig, und die Begruendung stand hier: dort gibt es genau eine
+   * Sache zu setzen, ein Knopf davor entscheidet nichts. Das stimmt fuer sich
+   * genommen - und geht am Punkt vorbei. Die Gruendung ist der Moment, in dem
+   * man das Muster **lernt**: wer seine ersten vier Zuege macht, indem er
+   * irgendwo auf ein leuchtendes Brett klickt, hat danach keinen Grund
+   * anzunehmen, dass es je anders liefe. Der eine Druck, der nichts
+   * entscheidet, bringt bei, wie das Spiel bedient wird.
    */
-  it('laesst die Gruendung ohne Bauwahl leuchten', () => {
+  it('haelt das Brett auch in der Gruendung ruhig, bis ein Bauteil gewaehlt ist', () => {
     render(<LocalGame />);
+
+    expect(litUp()).toBe(0);
+  });
+
+  it('leuchtet in der Gruendung, sobald die Siedlung gewaehlt ist', async () => {
+    render(<LocalGame />);
+
+    await userEvent.click(screen.getByTestId('build-settlement'));
 
     expect(
       screen.getAllByTestId(/^vertex-/).filter((node) => node.dataset['target'] === 'true').length,
     ).toBeGreaterThan(0);
   });
 
-  it('sperrt ein Bauteil, fuer das es keine Stelle gibt', () => {
+  it('bietet in der Gruendung nur an, was dort ueberhaupt an der Reihe ist', () => {
     render(<LocalGame />);
 
-    // In der Gruendung ist nichts davon ein regulaerer Bau.
+    // Zuerst die Siedlung. Die Strasse kommt danach, die Stadt gar nicht.
+    expect(screen.getByTestId('build-settlement')).toHaveProperty('disabled', false);
     expect(screen.getByTestId('build-road')).toHaveProperty('disabled', true);
-    expect(screen.getByTestId('build-settlement')).toHaveProperty('disabled', true);
     expect(screen.getByTestId('build-city')).toHaveProperty('disabled', true);
   });
 });

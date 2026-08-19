@@ -41,9 +41,14 @@ import type { LogEntry } from '../game/hotseat';
  * die sieht der Client gar nicht mehr -, sondern in den Zuegen, die erlaubt
  * sind.
  *
- * Das Brett liegt in `.board-area`, deren Einzug die Panels aussparen. Damit
- * liegt kein Feld je unter einem Panel - die Randknoten der Gruendung bleiben
- * anklickbar.
+ * Das Brett liegt in `.board-area` und die Ablage darunter in derselben
+ * Rasterspalte: das Brett bekommt damit **genau die Hoehe, die uebrig bleibt**,
+ * statt einen abgemessenen Abstand nach unten zu tragen. Vorher stand dort eine
+ * Zahl (11rem), die jeder Umbau der Ablage von Hand haette nachziehen muessen -
+ * und die beim ersten Vergessen entweder das Brett beschnitten oder eine Luecke
+ * gelassen haette. Die Einzuege links und rechts bleiben von Hand: sie sparen
+ * die schwebenden Panels aus, damit kein Feld je unter einem liegt - die
+ * Randknoten der Gruendung bleiben anklickbar.
  */
 export interface GameScreenProps {
   readonly view: PlayerView;
@@ -313,14 +318,21 @@ export function GameScreen({
       </div>
 
       <TablePanel view={display} />
-      <StatusPanel view={display} />
       <LogPanel entries={log} />
 
       {/*
        * Die Ablage liest sich von links nach rechts wie ein Zug: was man hat,
-       * was man kaufen kann, was man damit tut. Der Kaufstapel steht deshalb
-       * zwischen Hand und Bauleiste und nicht als dritter Knopf zwischen
-       * „Handel" und „Zug beenden" - er ist Spielmaterial und keine Bedienung.
+       * was man kaufen kann, was man damit tut, und ganz rechts, woran man ist.
+       * Der Kaufstapel steht deshalb zwischen Hand und Bauleiste und nicht als
+       * dritter Knopf zwischen „Handel" und „Zug beenden" - er ist
+       * Spielmaterial und keine Bedienung.
+       *
+       * **Der Status steht seit dem neuen Layout in dieser Zeile.** Er schwebte
+       * vorher frei in der Ecke unten rechts, und der Blick sprang bei jedem Zug
+       * diagonal ueber den Bildschirm - genau der Befund, aus dem er nach dem
+       * ersten Playtest schon einmal von oben nach unten gewandert ist. In der
+       * Leiste liegt er auf derselben Linie wie alles, was man bedient; der
+       * Blick wandert waagerecht statt quer.
        */}
       <div className="tray">
         <div className="tray__hand">
@@ -365,6 +377,8 @@ export function GameScreen({
           onOpenTrade={() => setTradeOpen(true)}
           onDismissError={onDismissError}
         />
+
+        <StatusPanel view={display} />
       </div>
 
       {mustDiscard > 0 && you !== undefined ? (
