@@ -165,13 +165,14 @@ describe('GameScreen', () => {
     expect(screen.getByText(/setzt die Gründungssiedlung/)).toBeDefined();
   });
 
-  it('zeigt nur die Hand dessen, der gerade handeln darf', () => {
+  it('zeigt genau eine offene Hand und von allen nur die Anzahl', () => {
     render(<LocalGame />);
 
     // Auch am selben Geraet: der Bildschirm wandert weiter, die Handkarten
-    // sollen es nicht. Genau eine offene Hand.
-    expect(screen.getAllByTestId(/^hand-p/)).toHaveLength(1);
-    expect(screen.getAllByTestId(/^hand-count-/)).toHaveLength(2);
+    // sollen es nicht. Genau ein Kartenstapel liegt offen, und der gehoert
+    // dem, der handeln darf; der Tisch zaehlt fuer alle drei nur.
+    expect(screen.getAllByTestId('hand-total')).toHaveLength(1);
+    expect(screen.getAllByTestId(/^hand-count-/)).toHaveLength(3);
   });
 
   it('sperrt das Bauen, solange nicht gewuerfelt ist', async () => {

@@ -1,15 +1,20 @@
 import type { JSX } from 'react';
-import { RESOURCE_IDS } from '@conquerist/shared';
-import { RESOURCE_LABELS } from '../game/labels';
 import type { GameView, PlayerRow as PlayerRowData } from '../game/view';
 
 /**
- * Der Tisch: wer sitzt da, wie viele Punkte, was auf der Hand.
+ * Der Tisch: wer sitzt da, wie viele Punkte, wie viele Karten.
+ *
+ * **Die eigene Zeile zeigt keine Aufschluesselung mehr.** Sie stand hier als
+ * `L2 H0 W0 K0 E1` - fuenf Anfangsbuchstaben mit Zahlen, an derselben Stelle,
+ * an der bei allen anderen „3 Karten" steht. Zweierlei war daran falsch: die
+ * Auskunft steht schon unten links als Kartenstapel, in Farbe und mit Motiv,
+ * und in dieser Form konnte sie niemand lesen, ohne den Code zu kennen. Der
+ * Tisch beantwortet die Frage, die man ueber **andere** stellt - wie viel hat
+ * er -, und die beantwortet er jetzt fuer alle gleich.
  *
  * Der Schalter „Fremde Haende verdecken" ist mit Etappe 4 verschwunden, und
  * das ist der Punkt: verdeckt ist keine Ansichtssache mehr, sondern der
- * Zustand. Was hier steht, ist genau das, was der Server geschickt hat -
- * `resources === null` heisst „gehoert jemand anderem", nicht „ausgeblendet".
+ * Zustand.
  *
  * Getrennte Mitspieler werden benannt statt eingefaerbt: eine Farbe allein
  * traegt keine Information, die jemand sonst nicht mitbekommt.
@@ -48,8 +53,6 @@ function PlayerRow({
   /** Karten seit dem vorigen Stand; 0 heisst: nichts zu zeigen. */
   readonly gained: number;
 }): JSX.Element {
-  const hand = player.resources;
-
   return (
     <div
       className={acting ? 'seat seat--acting' : 'seat'}
@@ -62,17 +65,9 @@ function PlayerRow({
       </span>
       <span className="seat__points">{player.victoryPoints} SP</span>
 
-      {hand === null ? (
-        <span className="seat__hand" data-testid={`hand-count-${player.id}`}>
-          {player.cardCount} Karten
-        </span>
-      ) : (
-        <span className="seat__hand" data-testid={`hand-${player.id}`}>
-          {RESOURCE_IDS.map(
-            (resource) => `${RESOURCE_LABELS[resource].slice(0, 1)}${hand[resource] ?? 0}`,
-          ).join(' ')}
-        </span>
-      )}
+      <span className="seat__hand" data-testid={`hand-count-${player.id}`}>
+        {player.cardCount} Karten
+      </span>
 
       {/*
        * Der Zuwachs steigt beim Erscheinen kurz auf - und bleibt dann stehen,

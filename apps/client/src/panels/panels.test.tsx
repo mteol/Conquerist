@@ -36,16 +36,18 @@ function afterSetup(): GameState {
 }
 
 describe('TablePanel', () => {
-  it('zeigt die eigenen Karten offen und von fremden nur die Anzahl', () => {
+  it('zaehlt fuer alle gleich, statt die eigene Hand aufzuschluesseln', () => {
     const state = afterSetup();
     const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
 
     render(<TablePanel view={view} />);
 
-    // Verdeckt ist keine Ansichtssache mehr, sondern der Zustand: genau eine
-    // offene Hand, und die gehoert dem, der zusieht.
-    expect(screen.getAllByTestId(/^hand-p/)).toHaveLength(1);
-    expect(screen.getAllByTestId(/^hand-count-/)).toHaveLength(2);
+    // Die eigene Zeile stand hier als „L2 H0 W0 K0 E1" - fuenf
+    // Anfangsbuchstaben an der Stelle, an der bei allen anderen „3 Karten"
+    // steht. Dieselbe Auskunft liegt unten links als Kartenstapel, in Farbe
+    // und mit Motiv; der Tisch beantwortet die Frage nach den *anderen*.
+    expect(screen.getAllByTestId(/^hand-count-/)).toHaveLength(3);
+    expect(screen.queryAllByTestId(/^hand-p/)).toHaveLength(0);
   });
 
   it('nennt einen getrennten Mitspieler beim Wort statt ihn nur einzufaerben', () => {

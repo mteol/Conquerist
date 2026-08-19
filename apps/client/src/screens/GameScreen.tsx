@@ -322,8 +322,23 @@ export function GameScreen({
       <LogPanel entries={log} />
 
       {/*
-       * Die Ablage liest sich von links nach rechts wie ein Zug: was man hat,
-       * was man kaufen kann, was man damit tut, und ganz rechts, woran man ist.
+       * **Die Ablage ist keine Zeile mehr, sondern zwei Ecken.**
+       *
+       * Als Zeile lag sie unter dem Brett und nahm ihm ihre ganze Hoehe ab -
+       * gemessen 187 von 889 px, und das bei einem Brett, das sich mit
+       * `xMidYMid meet` einpasst und deshalb auf jedem breiten Bildschirm
+       * hoehen- und nie breitenbegrenzt ist. Danebendrueber lagen links und
+       * rechts je 640 px leere See.
+       *
+       * Jetzt liegt sie **ueber** dem Brett in den zwei unteren Ecken, und das
+       * Brett bekommt die volle Hoehe. Ueberdecken kann sie dabei nichts: der
+       * Einzug von `.board-area` ist genau die Breite einer Ecke, das Brett
+       * steht also immer rechts von der linken und links von der rechten - die
+       * Rechnung dazu steht in `index.css` bei `--tray-strip`.
+       *
+       * Was man hat, liegt links; was man tun kann, rechts. Innerhalb der
+       * rechten Ecke liest es sich weiter wie ein Zug: woran man ist, was man
+       * kaufen kann, womit man wuerfelt und was man baut.
        * Der Kaufstapel steht deshalb zwischen Hand und Bauleiste und nicht als
        * dritter Knopf neben „Handel" und „Zug beenden" - er ist
        * Spielmaterial und keine Bedienung.
@@ -371,28 +386,32 @@ export function GameScreen({
           />
         </div>
 
-        <DeckPanel
-          left={display.deckLeft}
-          canBuy={targets.buyCard !== null}
-          onBuy={() => {
-            if (targets.buyCard !== null) onAct(targets.buyCard);
-          }}
-        />
+        <div className="tray__side">
+          <StatusPanel view={display} />
 
-        <ActionPanel
-          view={display}
-          targets={targets}
-          error={error}
-          stock={you === undefined ? null : { piecesLeft: you.piecesLeft, color: you.color }}
-          buildMode={buildMode}
-          onBuildMode={setBuildMode}
-          onRoll={() => {
-            if (targets.roll !== null) onAct(targets.roll);
-          }}
-          onDismissError={onDismissError}
-        />
+          <div className="tray__controls">
+            <DeckPanel
+              left={display.deckLeft}
+              canBuy={targets.buyCard !== null}
+              onBuy={() => {
+                if (targets.buyCard !== null) onAct(targets.buyCard);
+              }}
+            />
 
-        <StatusPanel view={display} />
+            <ActionPanel
+              view={display}
+              targets={targets}
+              error={error}
+              stock={you === undefined ? null : { piecesLeft: you.piecesLeft, color: you.color }}
+              buildMode={buildMode}
+              onBuildMode={setBuildMode}
+              onRoll={() => {
+                if (targets.roll !== null) onAct(targets.roll);
+              }}
+              onDismissError={onDismissError}
+            />
+          </div>
+        </div>
       </div>
 
       {mustDiscard > 0 && you !== undefined ? (

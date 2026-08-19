@@ -1092,15 +1092,6 @@ body {
   text-align: center;
 }
 
-.card__name {
-  display: block;
-  margin-top: 0.3rem;
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  color: var(--ink-muted);
-  text-align: center;
-}
-
 /* Zugedeckt: drei Rueckseiten und die Einladung, hinzusehen. */
 .hand__cover {
   display: flex;
@@ -1579,10 +1570,29 @@ body {
  * einzupassen.
  */
 .game {
+  /*
+   * Die Breite einer unteren Ecke - und zugleich der seitliche Einzug des
+   * Bretts. **Beides ist derselbe Wert, und daran haengt, dass sich Brett und
+   * Ablage nie ueberdecken koennen.**
+   *
+   * Das Brett passt sich mit `xMidYMid meet` in seine Flaeche ein: auf einem
+   * breiten Bildschirm ist es hoehen- und nie breitenbegrenzt, also braucht es
+   * bei voller Hoehe nur `Seitenverhaeltnis x Hoehe` an Breite - der Rest der
+   * Zeile bleibt leere See. Genau diesen Rest bekommen die zwei Ecken, je zur
+   * Haelfte. Was uebrig bliebe, wenn das Brett breiter waere als der Platz,
+   * faengt `max(...)` ab: dann gilt der alte feste Einzug, das Brett wird
+   * breitenbegrenzt und steht wieder ueber der Ablage statt neben ihr.
+   *
+   * 1.09 ist das Seitenverhaeltnis der `viewBox` (9.76 / 9.1 = 1.0725) plus
+   * etwas Luft. Es steht hier als Zahl und nicht als Variable aus dem Brett:
+   * eine CSS-Datei kann `viewBoxOf` nicht fragen, und ein zu kleiner Wert
+   * kostet nur Ecke, kein Brett.
+   */
+  --tray-strip: max(14.75rem, calc((100vw - 1.5rem - 1.09 * (100vh - 1.5rem)) / 2));
+
   position: relative;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 0.75rem;
+  grid-template-rows: minmax(0, 1fr);
   width: 100vw;
   height: 100vh;
   padding: 0.75rem;
@@ -1597,15 +1607,20 @@ body {
  * Ohne diesen Einzug laegen genau die Randknoten unter den Panels, auf die man
  * in der Gruendungsphase klickt.
  *
- * Links und rechts derselbe Betrag, obwohl rechts nur noch das Verlaufssymbol
- * sitzt. Das ist Absicht: das Brett passt sich mit `xMidYMid meet` in seine
- * Flaeche ein und steht in deren Mitte - ein einseitig kleinerer Einzug wuerde
- * es nicht groesser machen, sondern aus der Bildschirmmitte schieben.
+ * Links und rechts derselbe Betrag: das Brett passt sich mit `xMidYMid meet`
+ * ein und steht in der Mitte seiner Flaeche - ein einseitig kleinerer Einzug
+ * wuerde es nicht groesser machen, sondern aus der Bildschirmmitte schieben.
+ *
+ * **Der Betrag ist seit der Ecken-Ablage keine feste Zahl mehr**, sondern
+ * `--tray-strip` (siehe `.game`). Er ist nie kleiner als die alten 14.75rem,
+ * also wird das Brett an keiner Fenstergroesse kleiner als vorher - und dort,
+ * wo Platz war, faellt die Zeile unter dem Brett weg und es waechst um deren
+ * ganze Hoehe.
  */
 .board-area {
   position: relative;
   min-height: 0;
-  margin: 0 14.75rem;
+  margin: 0 var(--tray-strip);
 }
 
 .board {
@@ -1660,6 +1675,7 @@ body {
  */
 .panel--status {
   position: static;
+  width: 100%;
   margin-left: auto;
   text-align: right;
 }
@@ -1676,11 +1692,69 @@ body {
  * `flex-end` und nicht `stretch`: die drei Bereiche sind verschieden hoch und
  * sollen unten auf einer Linie stehen, nicht auf gleiche Hoehe gezogen werden.
  */
+/*
+ * Die Ablage liegt in den zwei unteren Ecken, ueber dem Brett.
+ *
+ * Sie war eine Rasterzeile unter dem Brett und hat ihm gemessene 187 von 889 px
+ * Hoehe abgenommen - waehrend links und rechts davon je 640 px leere See lagen.
+ * Als Ueberlagerung in den Ecken kostet sie nichts: das Brett laeuft ueber die
+ * volle Hoehe, und die Ecken sind genau so breit wie der Streifen, den es bei
+ * dieser Hoehe ohnehin nicht braucht.
+ *
+ * `pointer-events` steht bewusst zweimal da: die Ablage spannt sich ueber die
+ * ganze Breite, und ohne das `none` faenge ihre leere Mitte jeden Klick ab, der
+ * dem Brett gilt. Die Kinder holen sich das Fangen einzeln zurueck.
+ */
 .tray {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.tray > * {
+  pointer-events: auto;
+}
+
+/*
+ * Die zwei Ecken sind so breit wie der Streifen und nicht breiter.
+ *
+ * Das ist die halbe Garantie gegen Ueberdeckung: was breiter waere, ragte unter
+ * das Brett. Was nicht mehr in die Breite passt, bricht deshalb um und waechst
+ * nach oben - dort ist in einer Ecke Platz, unter dem Brett nicht.
+ */
+.tray__hand,
+.tray__side {
+  max-width: var(--tray-strip);
+}
+
+/*
+ * Die rechte Ecke: woran man ist, was man kaufen kann, womit man wuerfelt und
+ * was man baut. Der Statussatz traegt `width: 100%` und bekommt dadurch seine
+ * eigene Zeile - er steht oben, die Bedienung darunter in der Ecke.
+ */
+.tray__side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-end;
+}
+
+/*
+ * Kaufstapel, Wuerfel und Bauteile in einer Zeile - und umbrechend, damit sie
+ * in einer schmalen Ecke nach oben ausweichen statt unter das Brett.
+ */
+.tray__controls {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: flex-end;
+  justify-content: flex-end;
 }
 
 /*

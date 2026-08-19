@@ -117,8 +117,18 @@ function Stack({
         <ResourceGlyph resource={resource} />
       </span>
 
-      <span className="card__count">{amount}</span>
-      <span className="card__name">{RESOURCE_LABELS[resource]}</span>
+      <span className="card__count" aria-hidden="true">
+        {amount}
+      </span>
+
+      {/*
+       * Der Name steht nicht mehr unter der Karte - dieselbe Entscheidung wie
+       * bei den Bauteilen im Vorrat: er beschriftete ein Bild, das schon
+       * spricht (Gelaendefarbe plus Motiv), und kostete unter jeder Karte eine
+       * Zeile, die dem Brett an Hoehe abging. Fuer Vorlesewerkzeuge steht er
+       * hier weiter, zusammen mit der Menge; sichtbar bleibt er im `title`.
+       */}
+      <span className="visually-hidden">{`${amount} ${RESOURCE_LABELS[resource]}`}</span>
     </div>
   );
 }

@@ -3050,3 +3050,97 @@ abschafft, nimmt seine Regeln mit.
 
 - Weiterhin ungesehen: die zwei Viewport-Breakpoints (`26rem`, `62rem`).
 - Der schwarze Rand der Felder (`.hex`) ist nach wie vor unangetastet.
+
+## Das Brett bekommt die Fläche: Ablage in zwei Ecken (2026-08-19, `main`)
+
+Auftrag vom Menschen am Bildschirm: Überlappungen und überflüssige Auskünfte
+weg, und einmal genau hinsehen, wie das Brett steht und wie groß es ist. Dazu
+wurde eine lokale Partie im Browser gespielt und **gemessen**, statt geschätzt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                  |
+| ------------------- | ------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                            |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 298 / 33          |
+| `pnpm build`        | grün — `index.js` 407.35 kB (gzip 121.14), `index.css` 34.01 kB (7.67)    |
+| `pnpm format:check` | grün                                                                      |
+| Browser             | lokale Partie bei 1920×889, dazu 1280×800, 1024×700 und 900×950 im Rahmen |
+
+### Der Befund: das Brett hatte ein Drittel der Breite und drei Viertel der Höhe
+
+Gemessen bei 1920×889, gezeichnete Brettfläche (Felder plus Häfen, nicht das
+SVG-Element): **640 × 640 px.** Daneben lagen links und rechts je rund 640 px
+leere See, und darunter eine Ablage von 187 px, deren Mitte über gut 1200 px
+vollständig leer war. Das Brett ist mit `xMidYMid meet` auf jedem breiten
+Fenster höhen- und nie breitenbegrenzt — jede Zeile unter ihm geht ihm also
+direkt von der Größe ab, während der Platz daneben ungenutzt bleibt.
+
+### Die Ablage liegt jetzt in den zwei unteren Ecken
+
+`.game` ist eine Lage statt zweier Rasterzeilen; die Ablage liegt als
+Überlagerung darüber, links die Karten mit „Handel" und „Zug beenden", rechts
+Status, Kaufstapel, Würfel und Bauteile. Das Brett läuft über die volle Höhe.
+
+**Dass sich beide nie überdecken können, ist keine Sichtprüfung, sondern eine
+Rechnung.** Ein Wert trägt sie:
+
+```
+--tray-strip: max(14.75rem, (100vw - 1.5rem - 1.09 × (100vh - 1.5rem)) / 2)
+```
+
+Er ist zugleich der seitliche Einzug von `.board-area` **und** die Höchstbreite
+einer Ecke. Damit beginnt die Brettfläche genau dort, wo eine Ecke endet, und
+das Brett steht als `meet`-Einpassung immer mittig darin — es kann die Ecke also
+nicht erreichen. Der zweite Teil ist `max(...)`: wird der Streifen schmaler als
+der alte feste Einzug von 14.75rem, gilt wieder dieser, das Brett wird
+breitenbegrenzt und ist so groß wie vorher. **Das Brett wird an keiner
+Fenstergröße kleiner als vorher** — nachgemessen, indem die alten Regeln in der
+laufenden Partie wieder darübergelegt wurden:
+
+| Fenster  | vorher | nachher | Gewinn |
+| -------- | ------ | ------- | ------ |
+| 1920×889 | 640 px | 826 px  | +29 %  |
+| 1280×800 | 555 px | 698 px  | +26 %  |
+| 1024×700 | 459 px | 470 px  | +2 %   |
+| 900×950  | 358 px | 358 px  | ±0     |
+
+1.09 ist das Seitenverhältnis der `viewBox` (9.76 / 9.1 = 1.0725) plus Luft. Es
+steht als Zahl im Blatt, weil CSS `viewBoxOf` nicht fragen kann; ein zu kleiner
+Wert kostet nur Ecke, nie Brett.
+
+Was in einer schmalen Ecke nicht mehr in die Breite passt, bricht um und wächst
+**nach oben** — dort ist Platz, unter dem Brett nicht. Bei 1280×800 stapeln sich
+Kaufstapel, Würfel und Bauteile deshalb zu einer 321 px hohen Ecke, und das
+Brett bleibt unangetastet.
+
+### Zwei Auskünfte, die niemand brauchte
+
+**Die eigene Zeile am Tisch stand als `L2 H0 W0 K0 E1`** — fünf
+Anfangsbuchstaben mit Zahlen, an genau der Stelle, an der bei allen anderen „3
+Karten" steht. Zweierlei war daran falsch: dieselbe Auskunft liegt unten links
+als Kartenstapel, in Farbe und mit Motiv, und in dieser Form konnte sie niemand
+lesen, ohne den Code zu kennen. Der Tisch beantwortet die Frage, die man über
+**andere** stellt — wie viel hat er —, und die beantwortet er jetzt für alle
+gleich.
+
+**Der Name unter jeder Handkarte ist weg**, dieselbe Entscheidung wie beim
+Vorrat: er beschriftete ein Bild, das schon spricht (Geländefarbe plus Motiv),
+und kostete unter jeder Karte eine Zeile. Für Vorlesewerkzeuge steht er weiter
+da, zusammen mit der Menge; sichtbar bleibt er im `title`.
+
+### Überlappungen
+
+Bei 1920×889 wurden **alle** sichtbaren Elemente des Spielbildschirms paarweise
+auf Schnittflächen geprüft (99 Stück, ohne SVG-Innenleben). Übrig blieben nur
+gewollte: die Stapeltiefe hinter einer Karte und die Plakette auf ihrer Ecke.
+Die eine echte Kollision lag zwischen Verlaufs-Panel und Brett — sie ist mit der
+Ecken-Ablage weg, weil das Brett den oberen Rand nicht mehr braucht.
+
+### Offene Punkte
+
+- Der Verlauf legt sich beim Öffnen weiterhin über die See am rechten Rand; bei
+  einem sehr flachen Fenster reicht er ins Brett. Er ist ein Schalter, den man
+  wieder zumacht — beobachten.
+- Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen.
+- Der schwarze Rand der Felder (`.hex`) ist nach wie vor unangetastet.
