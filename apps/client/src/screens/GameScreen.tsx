@@ -387,8 +387,6 @@ export function GameScreen({
         </div>
 
         <div className="tray__side">
-          <StatusPanel view={display} />
-
           <div className="tray__controls">
             <DeckPanel
               left={display.deckLeft}
@@ -411,6 +409,8 @@ export function GameScreen({
               onDismissError={onDismissError}
             />
           </div>
+
+          <StatusPanel view={display} />
         </div>
       </div>
 
