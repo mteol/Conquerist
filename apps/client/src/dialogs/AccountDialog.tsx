@@ -62,8 +62,8 @@ export function AccountDialog({
 
         {warned ? (
           <p className="modal__hint modal__hint--warn">
-            Du hast {openGuestGames} offene Partien als Gast. Wenn du dich anmeldest, kommst du
-            ueber dieses Geraet nicht mehr an sie heran.
+            Du hast {openGuestGames} offene Partien als Gast. Wenn du dich anmeldest, kommst du über
+            dieses Gerät nicht mehr an sie heran.
           </p>
         ) : null}
 
@@ -103,7 +103,7 @@ export function AccountDialog({
              * so aussieht, als schicke es Post, waere ein Versprechen.
              */}
             <small className="field__note">
-              Tut heute noch nichts. Sie liegt fuer eine spaetere Passwort-Wiederherstellung.
+              Tut heute noch nichts. Sie liegt für eine spätere Passwort-Wiederherstellung.
             </small>
           </label>
         ) : null}

@@ -31,16 +31,28 @@ export function DiscardDialog({ player, required, onConfirm }: DiscardDialogProp
   const held = player.resources ?? EMPTY_RESOURCES;
   const total = RESOURCE_IDS.reduce((sum, resource) => sum + (chosen[resource] ?? 0), 0);
 
+  /**
+   * Ob dieser Schritt ueberhaupt etwas taete.
+   *
+   * **Eine Regel und nicht zwei.** Sie stand bis hierher nur im Handler: der
+   * Knopf sah in jeder Lage bedienbar aus, klemmte aber lautlos, sobald nichts
+   * mehr ging - bei einer Sorte, von der man nichts hat („von 0"), tat das `+`
+   * ueberhaupt nie etwas. Ein Bedienelement, das nichts bewirkt, muss das
+   * zeigen; dieselbe Ueberlegung wie beim Siegpunkt, der kein Knopf mehr ist.
+   * Damit Knopfzustand und Wirkung nicht auseinanderlaufen koennen, fragen
+   * beide dieselbe Funktion.
+   */
+  const canStep = (resource: ResourceId, delta: number): boolean => {
+    const next = (chosen[resource] ?? 0) + delta;
+    if (next < 0 || next > (held[resource] ?? 0)) return false;
+    // Nach oben ist auch die geforderte Zahl eine Grenze: wer vier von vier
+    // gewaehlt hat, ist fertig, und das sagen die toten Knoepfe mit.
+    return !(delta > 0 && total >= required);
+  };
+
   const change = (resource: ResourceId, delta: number): void => {
-    setChosen((current) => {
-      const next = (current[resource] ?? 0) + delta;
-      if (next < 0 || next > (held[resource] ?? 0)) return current;
-
-      const sum = RESOURCE_IDS.reduce((count, id) => count + (current[id] ?? 0), 0);
-      if (delta > 0 && sum >= required) return current;
-
-      return { ...current, [resource]: next };
-    });
+    if (!canStep(resource, delta)) return;
+    setChosen((current) => ({ ...current, [resource]: (current[resource] ?? 0) + delta }));
   };
 
   return (
@@ -62,6 +74,7 @@ export function DiscardDialog({ player, required, onConfirm }: DiscardDialogProp
                 <button
                   type="button"
                   aria-label={`${RESOURCE_LABELS[resource]} weniger`}
+                  disabled={!canStep(resource, -1)}
                   onClick={() => change(resource, -1)}
                 >
                   −
@@ -70,6 +83,7 @@ export function DiscardDialog({ player, required, onConfirm }: DiscardDialogProp
                 <button
                   type="button"
                   aria-label={`${RESOURCE_LABELS[resource]} mehr`}
+                  disabled={!canStep(resource, 1)}
                   onClick={() => change(resource, 1)}
                 >
                   +

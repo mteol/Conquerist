@@ -57,6 +57,15 @@ export function TradeAmounts({
   onGive,
   onWant,
 }: TradeAmountsProps): JSX.Element {
+  /**
+   * Der naechste Stand - oder `null`, wenn dieser Schritt nichts taete.
+   *
+   * **Dasselbe `null` sperrt jetzt auch den Knopf.** Es entschied bis hierher
+   * nur, ob etwas passiert; der Knopf sah dabei in jeder Lage bedienbar aus und
+   * klemmte lautlos an der Grenze - bei einer Sorte, von der man nichts hat,
+   * tat das `+` ueberhaupt nie etwas. Knopfzustand und Wirkung stammen deshalb
+   * aus derselben Funktion und koennen nicht auseinanderlaufen.
+   */
   const step = (
     amounts: ResourceAmounts,
     resource: ResourceId,
@@ -82,6 +91,7 @@ export function TradeAmounts({
                 <button
                   type="button"
                   aria-label={`${RESOURCE_LABELS[resource]} weniger anbieten`}
+                  disabled={step(give, resource, -1, held) === null}
                   onClick={() => {
                     const next = step(give, resource, -1, held);
                     if (next !== null) onGive(next);
@@ -93,6 +103,7 @@ export function TradeAmounts({
                 <button
                   type="button"
                   aria-label={`${RESOURCE_LABELS[resource]} mehr anbieten`}
+                  disabled={step(give, resource, 1, held) === null}
                   onClick={() => {
                     const next = step(give, resource, 1, held);
                     if (next !== null) onGive(next);
@@ -115,6 +126,7 @@ export function TradeAmounts({
               <button
                 type="button"
                 aria-label={`${RESOURCE_LABELS[resource]} weniger verlangen`}
+                disabled={step(want, resource, -1, Number.MAX_SAFE_INTEGER) === null}
                 onClick={() => {
                   // Nach oben offen: was man verlangt, hat man ja gerade nicht.
                   const next = step(want, resource, -1, Number.MAX_SAFE_INTEGER);

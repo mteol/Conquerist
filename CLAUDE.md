@@ -129,6 +129,31 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
   `.chip text { font-size: 0.32px }`, und die Augen ragten über den Chiprand.
   Wer eine Falle an einer Stelle behebt, sieht im selben Block nach, wo sie noch
   steht.
+- **`disabled` allein sieht man nicht.** An einem Knopf mit eigenem
+  Hintergrund ändert das Attribut die Farben nicht; ohne eine Regel für den
+  Zustand ist die Sperre im Browser gemessen **identisch** zum offenen Knopf.
+  Wer etwas sperrt, um es sichtbar zu machen, prüft nach, dass man es sieht —
+  sonst ist der Fix genau der Fehler, den er beheben sollte.
+- **Ein Bedienelement lügt in beide Richtungen.** Ein Knopf, der nie angeht
+  (der Siegpunkt), sagt „gerade nicht" über etwas, das nie geht; ein Knopf, der
+  immer angeht und an der Grenze lautlos klemmt (die `+` im Abwurf und im
+  Angebot), verspricht eine Wirkung, die es nicht gibt. Beide Male ist die Kur
+  dieselbe: **Zustand und Wirkung fragen dieselbe Funktion**, damit sie nicht
+  auseinanderlaufen können.
+- **Eine Sonde am falschen Ort sagt „kaputt" über etwas Heiles.**
+  `document.querySelectorAll('audio')` fand die Musikspur nicht — `new Audio()`
+  erzeugt ein Element, das gar nicht im Dokument hängt. Erst ein Haken um
+  `Audio`, `play()` und `AudioContext`, **vor** der ersten Geste gesetzt, hat
+  gezeigt, dass alles läuft. Vor dem Befund „geht nicht" steht die Frage, ob die
+  Messung überhaupt hinsehen kann.
+- **Ein Automat, der den ersten freien Knopf drückt, findet die toten.** Er hat
+  auf „Lehm +" gedrückt, weil der als erster nicht gesperrt war, und der Zähler
+  blieb stehen — ein Mensch hätte den Knopf gar nicht erst probiert. Beim
+  Durchklicken lohnt es sich, absichtlich das zu drücken, was niemand drückt.
+- **Ein Suchlauf, der nur Zeichenketten ansieht, findet keinen JSX-Text.**
+  „Der Kurs ergibt sich aus deinen Haefen" steht zwischen zwei Tags und trägt
+  keine Anführungszeichen; der erste Umlaut-Suchlauf meldete deshalb sauber.
+  Sichtbarer Text ist beides — Literal **und** Kinderknoten.
 - **Ein Befund, der an seinen Fundstellen repariert wird, kommt wieder.** Der
   Browser-Durchlauf hat `.button--ghost` als creme auf Pergament gemeldet,
   1,05:1, „an rund zehn Stellen unsichtbar". Behoben wurden damals die drei

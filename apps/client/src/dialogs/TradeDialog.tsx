@@ -87,7 +87,7 @@ export function TradeDialog({
         {tab === 'bank' ? (
           <>
             <p className="modal__hint">
-              Der Kurs ergibt sich aus deinen Haefen — der beste gilt automatisch.
+              Der Kurs ergibt sich aus deinen Häfen — der beste gilt automatisch.
             </p>
 
             <fieldset className="cards">

@@ -3583,3 +3583,120 @@ jedes Mal die Frage, ob diesmal wirklich etwas kaputt ist.
 
 Unverändert Etappe 10 — und davor der Browser-Durchlauf, der inzwischen die
 längste Liste des Projekts vor sich herschiebt.
+
+## Der Browser-Durchlauf, endlich (2026-08-19, `main`)
+
+Stand: nach `fd6a292`. Die Chrome-Erweiterung war verbunden, und damit ist zum
+ersten Mal seit Wochen nachgesehen statt behauptet worden. Bestätigt: alle drei
+Befunde vom Spieltisch, die Musik, das neue Layout, die Entwicklungskarten.
+Gefunden: drei Dinge, die kein Test sehen konnte.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 311 / 33       |
+| `pnpm build`        | grün — `index.js` 410.81 kB (gzip 122.12), `index.css` 35.07 kB (7.88) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | **gelaufen** — lokale Partie bei 1920×889, Gründung bis Runde 5        |
+
+### Was bestätigt ist — und zwar gemessen, nicht angesehen
+
+**Die Augen im Zahlenchip.** Radius der Scheibe 27,24 px, weiteste Reichweite
+eines Punktes 21,82 px — 80 % des Radius, 5,4 px Luft bis zum Rand. Der Befund
+ist weg und bleibt weg, weil dieselbe Rechnung jetzt im Test steht.
+
+**Die Häuser beim Stadtbau.** Nach dem Druck auf „Stadt" waren zwei Knoten
+markiert, beide mit Bauwerk, beide mit Hof darunter. Der helle Teller unter dem
+roten Haus liest sich auf Braun, Grau und Grün gleich gut.
+
+**Der Bankhandel.** Fünf Karten in Geländefarbe mit Motiv, die Bestände darunter
+(„0" blass), Doppelring bei der Auswahl — auf dem dunklen Wald und auf dem
+gelben Korn gleichermaßen sichtbar. „Abbrechen" misst jetzt `rgb(22 32 42)` auf
+`rgb(240 230 210)`, also rund 15:1 statt 1,05:1.
+
+**Das Layout.** Bei 1920×889: Status 1700–1819, Verlaufsknopf 1831–1865,
+Zahnrad 1871–1905 — eine Zeile, keine Überschneidung, 15 px Rand. Die Ablage
+endet rechts bei 1908, der Würfelbecher ist nicht angeschnitten. `scrollWidth`
+gleich `innerWidth`: nichts läuft seitlich über.
+
+**Die Musik läuft.** Nachgewiesen mit einer Sonde um `Audio`, `play()` und
+`AudioContext`, vor der ersten Geste gesetzt: nach dem ersten echten Klick steht
+im Protokoll `AudioContext` → `neu: /music/catan.mp3` → `play() gerufen` →
+`play() ok`, dazu `loop: true`, `paused: false`, `readyState: 4` und eine
+laufende Uhr. **Der erste Versuch, sie zu finden, ging daneben:**
+`document.querySelectorAll('audio')` fand nichts, weil `new Audio()` ein
+Element erzeugt, das gar nicht im Dokument hängt. Eine Sonde am falschen Ort
+sagt „kaputt" über etwas Heiles.
+
+**Die Entwicklungskarten** liegen als Karten unter der Hand, der Helm ist bei
+2,4 rem als Helm zu erkennen, der Name steht darunter.
+
+### Was der Durchlauf gefunden hat
+
+**1. Drei sichtbare Texte ohne Umlaute.** Im Handel stand „Der Kurs ergibt sich
+aus deinen **Haefen**", im Konto-Dialog „kommst du **ueber** dieses **Geraet**
+nicht mehr an sie heran" und „liegt **fuer** eine **spaetere**
+Passwort-Wiederherstellung". Die Grenze steht seit dem ersten Playtest im Blatt
+— alles, was ein Spieler liest, hat Umlaute — und ist an drei Stellen
+durchgerutscht. Gefunden mit einem Suchlauf über alle `.tsx` nach
+`ae|oe|ue`-Wörtern außerhalb von Kommentaren; **der erste Versuch fand nichts**,
+weil er nur Zeilen mit Anführungszeichen ansah und JSX-Text zwischen Tags keine
+hat.
+
+**2. Ein `+`, das nichts tut.** Im Abwurffenster stand „Lehm — von 0" mit einem
+bedienbaren `+` daneben. Beide Stepper (`DiscardDialog`, `TradeAmounts`) klemmen
+seit jeher **im Handler** und haben den Knopf nie gesperrt: an der Grenze
+passiert lautlos nichts. Aufgefallen ist es, weil ein Automatikklick genau
+darauf drückte und der Zähler stehenblieb.
+
+Es ist dieselbe Lüge wie der dauerhaft gesperrte Siegpunkt-Knopf, nur
+andersherum: dort sah etwas tot aus, das keine Handlung ist, hier sieht etwas
+lebendig aus, das nichts bewirkt. Behoben, indem **Knopfzustand und Wirkung
+dieselbe Funktion fragen** — `canStep` im Abwurf, das vorhandene `step` im
+Angebot, das ohnehin schon `null` für „geht nicht" zurückgibt. Zwei getrennte
+Ausdrücke derselben Regel wären auseinandergelaufen.
+
+Nach oben ist im Abwurf auch die geforderte Zahl eine Grenze: wer vier von vier
+gewählt hat, sieht alle `+` erlöschen.
+
+**3. Die Sperre war unsichtbar.** Und das ist der eigentliche Fund. Nach dem
+Einbau von `disabled` maß der Browser für gesperrten und offenen Stepper
+**exakt dieselbe** Schrift-, Grund- und Randfarbe und dieselbe Deckkraft:
+`disabled` allein ändert an einem Knopf mit eigenem Hintergrund nichts, und die
+Regel für den Zustand fehlte. Der Fix wäre also im Verhalten richtig und am
+Bildschirm nicht vorhanden gewesen — genau der Fehler, den er beheben sollte.
+`.cards__stepper button:disabled` trägt jetzt dieselben `opacity: 0.4` und
+`cursor: not-allowed` wie `.button:disabled` und `.pick__card:disabled`, damit
+„geht nicht" überall gleich aussieht. Dazu bekam die Hover-Regel ihr
+`:not(:disabled)`.
+
+### Wie das Durchspielen ging
+
+Die Gründung und ein paar Runden wurden per Skript geklickt (`dispatchEvent`
+auf die Knöpfe der Klickkarte). Zwei Dinge daran sind notierenswert:
+
+- **Synthetische Klicks reichen nicht überall.** Der Anlauf der Musik hängt an
+  `pointerdown`; ein abgeschicktes `click` löst ihn nicht aus. Was am Ton hängt,
+  muss echt geklickt werden.
+- **Ein Automat, der den ersten freien Knopf drückt, findet die toten.** Er hat
+  auf „Lehm +" gedrückt, weil der als erster nicht gesperrt war — und genau
+  daran ist Befund 2 aufgefallen. Ein Mensch hätte den Knopf gar nicht erst
+  probiert.
+
+### Offene Punkte
+
+- Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen —
+  nachgesehen wurde nur bei 1920×889.
+- Eine Sorte, von der man nichts hat, lässt sich im **Bankhandel** weiter
+  auswählen; nur die Stepper im Angebot sind jetzt ehrlich. Dieselbe Ableitung
+  wäre dort über `canTrade` möglich.
+- `.button--ghost` ist außerhalb von `.modal__box` weiter creme; der nächste
+  helle Untergrund bringt ihn zurück.
+- Der schwarze Rand der Felder (`.hex`) ist nach wie vor unangetastet.
+
+### Nächste Etappe
+
+Etappe 10 (Erweiterungen). Der Browser-Durchlauf steht zum ersten Mal seit
+Wochen **nicht** mehr davor.

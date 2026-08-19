@@ -3232,8 +3232,22 @@ body {
   cursor: pointer;
 }
 
-.cards__stepper button:hover {
+.cards__stepper button:hover:not(:disabled) {
   background: #fff;
+}
+
+/*
+ * Ein Schritt, der nichts bewirken kann, sieht auch so aus.
+ *
+ * **Ohne diese Regel waere die Sperre unsichtbar gewesen** - im Browser
+ * gemessen: gesperrter und offener Knopf hatten dieselbe Schrift-, Grund- und
+ * Randfarbe und dieselbe Deckkraft, `disabled` allein aendert an einem Knopf
+ * mit eigenem Hintergrund nichts. Dieselbe Setzung wie bei `.button:disabled`
+ * und `.pick__card:disabled`, damit „geht nicht" ueberall gleich aussieht.
+ */
+.cards__stepper button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 /*

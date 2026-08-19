@@ -48,7 +48,42 @@ describe('DiscardDialog', () => {
     await userEvent.click(screen.getByLabelText('Korn mehr'));
     await userEvent.click(screen.getByLabelText('Korn mehr'));
 
+    // Eine Kornkarte liegt da, also bleibt es bei einer - und der Knopf sagt
+    // das jetzt auch, statt lautlos zu klemmen.
     expect(screen.getByTestId('chosen-grain').textContent).toBe('1');
+    expect(screen.getByLabelText('Korn mehr')).toHaveProperty('disabled', true);
+  });
+
+  /*
+   * **Ein Knopf, der nichts bewirken kann, sieht jetzt auch so aus.** Im
+   * Browser-Durchlauf stand im Abwurffenster „Lehm — von 0" mit einem
+   * bedienbaren `+` daneben; gedrueckt hat es nie etwas getan. Dieselbe Sorte
+   * Luege wie ein dauerhaft gesperrter Siegpunkt-Knopf, nur andersherum.
+   */
+  it('sperrt die Schritte, die nichts bewirken koennen', () => {
+    render(<DiscardDialog player={player} required={4} onConfirm={vi.fn()} />);
+
+    // Erz liegt gar nicht auf der Hand.
+    expect(screen.getByLabelText('Erz mehr')).toHaveProperty('disabled', true);
+    // Und weniger als nichts geht nirgends.
+    expect(screen.getByLabelText('Lehm weniger')).toHaveProperty('disabled', true);
+    // Nach oben offen ist nur, was noch da ist.
+    expect(screen.getByLabelText('Lehm mehr')).toHaveProperty('disabled', false);
+  });
+
+  it('macht alle Schritte tot, sobald die geforderte Zahl beisammen ist', async () => {
+    render(<DiscardDialog player={player} required={4} onConfirm={vi.fn()} />);
+
+    for (const label of ['Lehm mehr', 'Lehm mehr', 'Lehm mehr', 'Holz mehr']) {
+      await userEvent.click(screen.getByLabelText(label));
+    }
+
+    expect(screen.getByRole('button', { name: /Abwerfen/ })).toHaveProperty('disabled', false);
+    // Vier von vier: mehr geht nirgends mehr, und man sieht es.
+    expect(screen.getByLabelText('Holz mehr')).toHaveProperty('disabled', true);
+    expect(screen.getByLabelText('Korn mehr')).toHaveProperty('disabled', true);
+    // Zuruecknehmen bleibt offen.
+    expect(screen.getByLabelText('Holz weniger')).toHaveProperty('disabled', false);
   });
 });
 
