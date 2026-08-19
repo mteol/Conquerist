@@ -9,7 +9,16 @@ import {
 import { seatsById, type Seat } from '../seats';
 import { RESOURCE_COLORS, TERRAIN_COLORS, harborLabel } from '../game/labels';
 import type { ActionTargets } from '../game/targets';
-import { edgeSegment, harborAnchor, hexCenter, hexCorners, vertexPoint, viewBoxOf } from './layout';
+import {
+  edgeMidpoint,
+  edgeSegment,
+  harborAnchor,
+  hexCenter,
+  hexCorners,
+  vertexPoint,
+  viewBoxOf,
+  type Point,
+} from './layout';
 import { CITY_PATH, SETTLEMENT_PATH } from './shapes';
 
 /**
@@ -67,6 +76,30 @@ const PADDING = 0.2;
  * Ueberstand dazu.
  */
 const HARBOR_REACH = 0.35;
+
+/** Der Radius der Hafenmarke. Steht auch in `index.css` als `r` am Kreis. */
+const HARBOR_MARK = 0.23;
+
+/**
+ * Wo ein Steg anfaengt - knapp innerhalb der Marke.
+ *
+ * Er lief bis hierher von der **Mitte** der Marke los und verschwand unter ihr.
+ * Das ging, solange er gerade war; eine gebogene Leine haette darunter einen
+ * Knick gezeigt. Knapp innerhalb und nicht genau am Rand, damit zwischen Marke
+ * und Leine keine Fuge aufreisst.
+ */
+const DOCK_START = HARBOR_MARK - 0.03;
+
+/**
+ * Wie weit die zwei Leinen nach aussen durchhaengen.
+ *
+ * Gerade Linien von einem Punkt zu zwei Ecken sind eine Gabel, und eine Gabel
+ * zeigt auf zwei Knoten, ohne dass sie deshalb nach Hafen aussieht. Ein
+ * gleichmaessiger Bogen nach aussen macht daraus zwei Leinen, die sich vom
+ * Poller zum Land spannen - und er unterscheidet sie zugleich von allem anderen
+ * auf dem Brett, denn Strassen sind immer gerade.
+ */
+const DOCK_BEND = 0.055;
 
 /** Augenwahrscheinlichkeit eines Chips - fuer die Punktreihe unter der Zahl. */
 const PIPS: Readonly<Record<number, number>> = {
@@ -185,17 +218,14 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
           >
             <title>{harborLabel(harbor)}</title>
             {edgeSegment(harbor.edge).map((landing, index) => (
-              <line
+              <path
                 key={index}
                 className="harbor__dock"
-                x1={mark.x}
-                y1={mark.y}
-                x2={landing.x}
-                y2={landing.y}
+                d={dockPath(mark, landing, edgeMidpoint(harbor.edge))}
                 style={{ stroke: ring }}
               />
             ))}
-            <circle cx={mark.x} cy={mark.y} r={0.23} style={{ stroke: ring }} />
+            <circle cx={mark.x} cy={mark.y} r={HARBOR_MARK} style={{ stroke: ring }} />
             <text x={mark.x} y={mark.y}>
               {harbor.ratio}:1
             </text>
@@ -317,6 +347,46 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
       ))}
     </svg>
   );
+}
+
+/**
+ * Eine Leine von der Hafenmarke an Land.
+ *
+ * Sie faengt innerhalb der Marke an und laeuft in einem Bogen zum Knoten. Der
+ * Kontrollpunkt liegt in der Mitte der Strecke, um `DOCK_BEND` von der
+ * Kantenmitte weggeschoben - dadurch biegen sich beide Leinen **nach aussen**
+ * und spiegelbildlich, ohne dass irgendwo ein Vorzeichen von der Lage des
+ * Hafens auf dem Brett abhinge.
+ */
+function dockPath(mark: Point, landing: Point, middle: Point): string {
+  const start = toward(mark, landing, DOCK_START);
+  const center = { x: (start.x + landing.x) / 2, y: (start.y + landing.y) / 2 };
+  const bend = pushedFrom(center, middle, DOCK_BEND);
+
+  return `M ${round(start.x)} ${round(start.y)} Q ${round(bend.x)} ${round(bend.y)} ${round(landing.x)} ${round(landing.y)}`;
+}
+
+/** Der Punkt in `distance` Abstand von `from` in Richtung `to`. */
+function toward(from: Point, to: Point, distance: number): Point {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy) || 1;
+
+  return { x: from.x + (dx / length) * distance, y: from.y + (dy / length) * distance };
+}
+
+/** `point`, um `distance` von `origin` weggeschoben. */
+function pushedFrom(point: Point, origin: Point, distance: number): Point {
+  const dx = point.x - origin.x;
+  const dy = point.y - origin.y;
+  const length = Math.hypot(dx, dy) || 1;
+
+  return { x: point.x + (dx / length) * distance, y: point.y + (dy / length) * distance };
+}
+
+/** Drei Nachkommastellen reichen auf einem Brett, das rund zehn Einheiten misst. */
+function round(value: number): string {
+  return value.toFixed(3);
 }
 
 function roadClass(built: boolean, isTarget: boolean): string {

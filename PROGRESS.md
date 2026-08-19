@@ -2963,3 +2963,90 @@ in dem man die Bedienung lernt.
   wirkt, ist es dieselbe Sorte Aenderung und eine Zeile.
 - Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen -
   und die linke Spalte ist mit den Knoepfen darunter hoeher geworden.
+
+## Zwei Rahmen, die niemand bestellt hat, und zwei Leinen statt einer Gabel (2026-08-19, `main`)
+
+Drei Befunde vom Menschen am Bildschirm, zwei davon derselbe Satz: „die Rahmen
+sind noch da und sollen weg". Einer davon war ein Fehler und kein Geschmack.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 298 / 33       |
+| `pnpm build`        | grün — `index.js` 407.36 kB (gzip 121.14), `index.css` 33.69 kB (7.58) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | lokale Partie, Gründung durchgespielt, ein Wurf, Hafen im Nahbild      |
+
+### Der Rahmen um die Handkarte war ein zweites `.card`
+
+Der Kasten um jede Handkarte stand nirgends im Kartenblatt - er kam aus dem
+Diagnoseblock **aus Etappe 0**. Dort lag ein zweites `.card`: Pergamentkasten
+mit `padding: 1rem`, Rand und Fläche, für eine Seite, die es seit Etappe 3 nicht
+mehr gibt. Es stand **weiter unten** im Blatt als die Handkarte und hat sie
+damit geschlagen — dieselbe Falle wie bei den heißen Zahlenchips, nur diesmal
+andersherum: nicht eine Regel, die nie gegriffen hat, sondern eine, die gegriffen
+hat, ohne dass sie jemand gemeint hätte.
+
+Im Browser gemessen, was das gekostet hat: von den 74 px, die `width: 4.6rem`
+ergibt, blieben der Karte selbst **40** — der Rest ging an einen Innenabstand,
+den niemand für sie geschrieben hat. Die Ablage war dadurch 46 px höher und das
+Brett genau so viel niedriger (642 statt 688 px bei 1920×911). Ein toter
+CSS-Block hat also fast genau so viel Bretthöhe gekostet, wie der Umzug der
+Zugknöpfe einen Commit vorher **bewusst** gekostet hat (43 px). Nur stand das
+nirgends.
+
+Gelöscht wurde der tote Block, nicht die Handkarte umbenannt: `.card__title`
+gehörte dazu und wurde ebenfalls von niemandem mehr benutzt (`ConnectionPanel`
+verwendet `.status`, `.metrics`, `.hint`, `.error`). Über der Handkarte steht
+jetzt, warum der Name einmal doppelt vergeben war.
+
+### Die Würfelschale ist weg, die Würfel bleiben
+
+`.dice--waiting` war eine Pergamentplatte mit Rand und Kontaktschatten — also
+derselbe Körper, den die Bauteile und der Kaufstapel in den zwei Commits davor
+verloren haben, und aus demselben Grund: **ein Würfel ist selbst das Ding.** Er
+hat eine helle Fläche, eine Kante und einen Schatten; eine zweite helle Fläche
+darunter macht daraus ein Bedienelement mit einem Bild darin.
+
+Was „du darfst werfen" jetzt trägt: das Atmen der Würfel, das Wort „Würfeln"
+darunter und der Zeiger. Das Wort ist der Träger, der ohne Bewegung auskommt —
+bei `prefers-reduced-motion` steht das Atmen still, und dann darf die Auskunft
+nicht mit ihm verschwinden.
+
+**Die zwei `--ink`-Zeilen mussten mit.** Sie stellten die Tinte auf dunkel, weil
+darunter Pergament lag. Ohne Pergament liegt die Wurfzahl auf der Tiefsee, und
+dunkle Tinte wäre dort dieselbe unsichtbare Schrift, die beim Tisch schon einmal
+die Würfelaugen verschluckt hat — nur andersherum. Im Browser nachgemessen:
+`.dice__total` steht jetzt auf `rgb(233 225 207)`.
+
+### Vom Hafen führen zwei Leinen an Land, keine Gabel
+
+Die Stege liefen als gerade Linien von der **Mitte** der Marke zu den zwei
+Knoten. Zwei gerade Linien von einem Punkt zu zwei Ecken sind eine Gabel; sie
+zeigt richtig auf beide Knoten und sieht dabei nach nichts aus.
+
+Jetzt ein `path` statt einer `line`: er fängt knapp **innerhalb** der Marke an
+(0.20 statt 0), damit unter dem Kreis kein Knick entsteht, und läuft in einem
+Bogen zum Knoten. Der Kontrollpunkt liegt in der Mitte der Strecke, um 0.055 von
+der Kantenmitte weggeschoben — dadurch biegen sich beide Leinen **nach außen**
+und spiegelbildlich, ohne dass irgendwo ein Vorzeichen von der Lage des Hafens
+auf dem Brett abhinge. Dazu 0.04 statt 0.045 Strichbreite.
+
+Der Bogen unterscheidet sie zugleich von allem anderen auf dem Brett: Straßen
+sind immer gerade. Und `fill: none` gehört dazu, sobald aus einer Linie ein Pfad
+wird - sonst füllt er die Fläche zwischen Sehne und Bogen aus.
+
+### Lehre
+
+**Ein Klassenname ist ein globaler Bezeichner, und CSS sagt nichts, wenn er
+doppelt vergeben ist.** Beide Blöcke waren für sich richtig, keiner war ein
+Tippfehler, und die Kaskade hat entschieden, wer gewinnt: der weiter unten. Wer
+eine Klasse anlegt, sucht sie einmal im Blatt — und wer einen Bildschirm
+abschafft, nimmt seine Regeln mit.
+
+### Offene Punkte
+
+- Weiterhin ungesehen: die zwei Viewport-Breakpoints (`26rem`, `62rem`).
+- Der schwarze Rand der Felder (`.hex`) ist nach wie vor unangetastet.

@@ -1020,6 +1020,17 @@ body {
  * traegt das Motiv seine Aussage wirklich: bei 2.3rem las man die Farbe und
  * riet den Rest.
  */
+/*
+ * **Dieser Klassenname war einmal doppelt vergeben, und das hat man gesehen.**
+ * Im Diagnoseblock aus Etappe 0 stand ein zweites `.card` - Pergamentkasten mit
+ * `padding: 1rem`, Rand und Flaeche, fuer eine Seite, die es nicht mehr gibt.
+ * Es stand **weiter unten** im Blatt und hat der Handkarte damit seinen Rahmen
+ * aufgezwungen. Im Browser gemessen: von den 74 px, die `width: 4.6rem` ergibt,
+ * blieben der Karte selbst 40 - der Rest ging an einen Innenabstand, den nie
+ * jemand fuer sie geschrieben hat. Die Ablage war dadurch 46 px hoeher und das
+ * Brett genau so viel niedriger (642 statt 688 px bei 1920x911). Der tote Block
+ * ist weg; wer hier einen Namen vergibt, sucht ihn vorher einmal im Blatt.
+ */
 .card {
   position: relative;
   width: 4.6rem;
@@ -2350,13 +2361,24 @@ body {
   align-items: flex-start;
 }
 
+/*
+ * Die Wuerfel liegen auf dem Tisch - der Becher darum ist weg.
+ *
+ * Er war eine Pergamentplatte mit Rand und Kontaktschatten, also derselbe
+ * Koerper, den auch die Bauteile und der Kaufstapel einmal hatten und aus
+ * demselben Grund verloren haben: **ein Wuerfel ist selbst das Ding.** Er hat
+ * eine helle Flaeche, eine Kante und einen Schatten; eine zweite helle Flaeche
+ * darunter macht daraus ein Bedienelement mit einem Bild darin.
+ *
+ * Der Knopf bleibt ein Knopf - er ist nur unsichtbar geworden. Was man
+ * anfasst, sind die Wuerfel.
+ */
 .dice {
   display: flex;
   gap: 0.4rem;
   align-items: center;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid transparent;
-  border-radius: 9px;
+  padding: 0;
+  border: 0;
   background: transparent;
   color: var(--ink);
   font: inherit;
@@ -2384,7 +2406,6 @@ body {
  */
 .dice__call {
   min-height: 1rem;
-  padding-left: 0.55rem;
   color: var(--ink-muted);
   font-size: 0.68rem;
   font-weight: 700;
@@ -2392,21 +2413,22 @@ body {
   text-transform: uppercase;
 }
 
-/* Wer werfen darf, hat einen Knopf vor sich - alle anderen eine Anzeige. */
 /*
- * Wer werfen darf, hat einen Becher vor sich - alle anderen eine Anzeige.
+ * Wer werfen darf, sieht es an drei Dingen - und keines davon ist ein Rahmen.
  *
- * Der Unterschied war ein heller Schleier auf Pergament. Auf dem Tisch ist ein
- * Schleier nichts; hier wird daraus ein Koerper mit Kontaktschatten, und die
- * Tinte darin geht auf dunkel zurueck.
+ * Der Unterschied war einmal ein heller Schleier, dann ein Pergamentkoerper mit
+ * Kontaktschatten. Beides ist weg; uebrig bleiben das Atmen der Wuerfel, das
+ * Wort „Wuerfeln" darunter und der Zeiger. Das Wort ist dabei der Traeger, der
+ * ohne Bewegung auskommt: bei `prefers-reduced-motion` steht das Atmen still,
+ * und dann darf die Auskunft nicht mit ihm verschwinden.
+ *
+ * **Und die zwei Zeilen mit `--ink` sind hier ersatzlos gefallen.** Sie stellten
+ * die Tinte auf dunkel, weil darunter Pergament lag. Ohne Pergament liegt die
+ * Wurfzahl auf der Tiefsee - dunkle Tinte waere dort dieselbe unsichtbare
+ * Schrift, die die Wuerfelaugen schon einmal verschluckt hat, nur andersherum.
+ * Der Wuerfel selbst setzt seine dunkle Tinte in `.die` weiterhin lokal.
  */
 .dice--waiting {
-  --ink: var(--ink-base);
-  --ink-muted: var(--ink-base-muted);
-  border-color: var(--parchment-edge);
-  background: var(--parchment);
-  box-shadow: var(--lift);
-  color: var(--ink);
   cursor: pointer;
 }
 
@@ -2610,9 +2632,12 @@ body {
  * verdeckt; deshalb steht der Kreis im Markup danach.
  */
 .harbor__dock {
-  stroke-width: 0.045;
+  /* Seit sie ein Bogen sind, sind sie ein `path` - und ein Pfad ohne diese
+     Zeile fuellt die Flaeche zwischen Sehne und Bogen aus. */
+  fill: none;
+  stroke-width: 0.04;
   stroke-linecap: round;
-  opacity: 0.75;
+  opacity: 0.8;
 }
 
 .harbor text {
@@ -3036,22 +3061,6 @@ body {
 .page__subtitle {
   margin: 0.25rem 0 0;
   color: var(--on-sea-muted);
-}
-
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  align-items: flex-start;
-  padding: 1rem;
-  border: 1px solid rgb(233 225 207 / 15%);
-  border-radius: var(--radius);
-  background: rgb(233 225 207 / 5%);
-}
-
-.card__title {
-  margin: 0;
-  font-size: 1rem;
 }
 
 .status {
