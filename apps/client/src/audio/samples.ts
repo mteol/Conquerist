@@ -16,6 +16,7 @@ import type { Cue } from './cues';
  */
 export const SAMPLES: Partial<Record<Cue, string>> = {
   // 'ui.click':         '/sounds/click.mp3',      // trockener Knopf, ~50 ms
+  // 'ui.card':          '/sounds/card.mp3',       // Karte angehoben, ~80 ms
   // 'ui.confirm':       '/sounds/confirm.mp3',    // kurze Bestaetigung, ~120 ms
   // 'ui.cancel':        '/sounds/cancel.mp3',     // Ruecknahme, ~120 ms
   // 'ui.error':         '/sounds/error.mp3',      // abgelehnt, leise, ~300 ms

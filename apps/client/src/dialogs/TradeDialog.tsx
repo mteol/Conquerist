@@ -5,9 +5,9 @@ import {
   type ResourceAmounts,
   type ResourceId,
 } from '@conquerist/shared';
-import { RESOURCE_COLORS, RESOURCE_LABELS } from '../game/labels';
+import { RESOURCE_LABELS } from '../game/labels';
 import type { PlayerRow } from '../game/view';
-import { ResourceGlyph } from '../panels/ResourceGlyph';
+import { ResourceCard } from '../panels/ResourceCard';
 import { CloseButton } from './CloseButton';
 import { NO_AMOUNTS, TradeAmounts, isTradeShapeValid } from './TradeAmounts';
 
@@ -211,7 +211,10 @@ function Choice({
   readonly onPick: () => void;
 }): JSX.Element {
   return (
-    <label className="cards__choice" style={{ background: RESOURCE_COLORS[resource] }}>
+    // `data-sound`, weil ein `label` kein Knopf ist: der delegierte Klick in
+    // `useAudio` hoerte sonst nichts davon, und die Karte bliebe stumm,
+    // waehrend jeder Knopf daneben klickt.
+    <label className="cards__choice" data-sound="card">
       <input
         type="radio"
         name={group}
@@ -221,22 +224,7 @@ function Choice({
         onChange={onPick}
       />
 
-      <ResourceGlyph resource={resource} />
-      <span className="cards__choice-name">{RESOURCE_LABELS[resource]}</span>
-
-      {/*
-       * Die Null bleibt stehen und wird blass - dieselbe Entscheidung wie beim
-       * Bauvorrat: ein fehlender Eintrag saehe aus wie ein Anzeigefehler, „0"
-       * ist dagegen genau die Auskunft, um die es geht.
-       */}
-      <span
-        className={
-          held === 0 ? 'cards__choice-held cards__choice-held--empty' : 'cards__choice-held'
-        }
-        aria-hidden="true"
-      >
-        {held ?? ''}
-      </span>
+      <ResourceCard resource={resource} held={held} />
     </label>
   );
 }

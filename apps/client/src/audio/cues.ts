@@ -12,6 +12,14 @@ export const CUES = [
   'ui.confirm',
   'ui.cancel',
   'ui.error',
+  /*
+   * Eine Karte, die angefasst wird - Rohstoff waehlen, Menge stellen.
+   *
+   * Ein eigener Klang und nicht `ui.click`, weil es kein Knopf ist: eine Karte
+   * raschelt, ein Knopf klackt. Der Unterschied traegt eine echte Auskunft -
+   * am Ton hoert man, ob man gerade Material bewegt oder etwas ausloest.
+   */
+  'ui.card',
 
   'build.road',
   'build.settlement',

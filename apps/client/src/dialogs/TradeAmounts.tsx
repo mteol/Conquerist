@@ -6,6 +6,7 @@ import {
   type ResourceId,
 } from '@conquerist/shared';
 import { RESOURCE_LABELS } from '../game/labels';
+import { ResourceCard } from '../panels/ResourceCard';
 
 /**
  * Die Mengenwahl fuer einen Tausch: links, was hinausgeht, rechts, was hereinkommt.
@@ -85,12 +86,12 @@ export function TradeAmounts({
           const held = owned[resource] ?? 0;
           return (
             <div key={resource} className="cards__item">
-              <span className="cards__label">{RESOURCE_LABELS[resource]}</span>
-              <span className="cards__held">von {held}</span>
+              <ResourceCard resource={resource} held={held} />
               <div className="cards__stepper">
                 <button
                   type="button"
                   aria-label={`${RESOURCE_LABELS[resource]} weniger anbieten`}
+                  data-sound="card"
                   disabled={step(give, resource, -1, held) === null}
                   onClick={() => {
                     const next = step(give, resource, -1, held);
@@ -103,6 +104,7 @@ export function TradeAmounts({
                 <button
                   type="button"
                   aria-label={`${RESOURCE_LABELS[resource]} mehr anbieten`}
+                  data-sound="card"
                   disabled={step(give, resource, 1, held) === null}
                   onClick={() => {
                     const next = step(give, resource, 1, held);
@@ -121,11 +123,17 @@ export function TradeAmounts({
         <legend>Du möchtest</legend>
         {RESOURCE_IDS.map((resource) => (
           <div key={resource} className="cards__item">
-            <span className="cards__label">{RESOURCE_LABELS[resource]}</span>
+            {/*
+             * `held={null}` haelt die Zeile leer, statt sie wegzulassen: was
+             * man verlangt, hat man ja gerade nicht - aber ohne die Zeile
+             * waeren die zwei Spalten verschieden hoch.
+             */}
+            <ResourceCard resource={resource} held={null} />
             <div className="cards__stepper">
               <button
                 type="button"
                 aria-label={`${RESOURCE_LABELS[resource]} weniger verlangen`}
+                data-sound="card"
                 disabled={step(want, resource, -1, Number.MAX_SAFE_INTEGER) === null}
                 onClick={() => {
                   // Nach oben offen: was man verlangt, hat man ja gerade nicht.
@@ -139,6 +147,7 @@ export function TradeAmounts({
               <button
                 type="button"
                 aria-label={`${RESOURCE_LABELS[resource]} mehr verlangen`}
+                data-sound="card"
                 onClick={() => {
                   const next = step(want, resource, 1, Number.MAX_SAFE_INTEGER);
                   if (next !== null) onWant(next);

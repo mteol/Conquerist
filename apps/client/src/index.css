@@ -1297,17 +1297,16 @@ body {
   margin: 0.6rem 0 0.4rem;
 }
 
+/*
+ * Der Knopf ist nur der Griff - die Karte darin ist der Koerper. Dieselbe
+ * Setzung wie beim Kaufstapel und bei den Entwicklungskarten.
+ */
 .pick__card {
-  display: grid;
-  place-items: center;
-  gap: 0.15rem;
-  width: 3.1rem;
-  padding: 0.4rem 0.2rem;
-  border: 1px solid rgb(22 32 42 / 55%);
+  padding: 0;
+  border: 0;
   border-radius: 6px;
-  color: var(--ink);
+  background: none;
   font: inherit;
-  font-size: 0.62rem;
   cursor: pointer;
 }
 
@@ -3306,26 +3305,19 @@ body {
   text-transform: uppercase;
 }
 
+/*
+ * Eine Sorte mit ihrem Schrittzaehler.
+ *
+ * **Der Pergamentkasten ist weg.** Er umrahmte einmal drei Textzeilen; jetzt
+ * steht darin eine Karte, und eine Karte in einem Kasten ist ein Ding in einer
+ * Kiste. Der Zaehler haengt darunter, wo er hingehoert - er bedient die Karte,
+ * er ist nicht Teil von ihr.
+ */
 .cards__item {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.3rem;
   align-items: center;
-  min-width: 4rem;
-  padding: 0.4rem 0.35rem;
-  border: 1px solid var(--parchment-edge);
-  border-radius: 8px;
-  background: var(--parchment-2);
-}
-
-.cards__label {
-  font-size: 0.78rem;
-  font-weight: 650;
-}
-
-.cards__held {
-  color: var(--ink-muted);
-  font-size: 0.68rem;
 }
 
 .cards__stepper {
@@ -3366,14 +3358,17 @@ body {
 }
 
 /*
- * Eine Sorte zur Auswahl im Bankhandel.
+ * **Ein Rohstoff als Karte - und zwar ueberall dieselbe.**
  *
- * **Sie war das einzige Stueck im Spiel, an dem ein Rohstoff keine Farbe
- * hatte**: fuenf gleiche Pergamentpillen mit Text, waehrend derselbe Rohstoff
- * auf der Hand und in „Erfindung"/„Monopol" eine Karte in der Gelaendefarbe
- * mit seinem Motiv ist. Jetzt traegt er auch hier beides.
+ * Es gab ihn fuenfmal: als Stapel auf der Hand, als Farbplatte in „Erfindung",
+ * als Karte im Bankhandel und als nackten Text im Abwurffenster, im Angebot und
+ * in den Angebotsbedingungen. Die drei letzten waren ausgerechnet die Stellen,
+ * an denen man unter Zeitdruck aussucht, was man hergibt. Jetzt bauen alle
+ * Fenster um **eine** Karte herum (`panels/ResourceCard.tsx`) - nur die
+ * Handkarte bleibt draussen, die ist ein anderes Ding.
  */
-.cards__choice {
+.rescard {
+  position: relative;
   display: grid;
   gap: 0.08rem;
   justify-items: center;
@@ -3382,33 +3377,52 @@ body {
   border: 1px solid rgb(22 32 42 / 55%);
   border-radius: 6px;
   color: var(--ink-base);
-  cursor: pointer;
 }
 
 /* Kleiner als auf der Handkarte - die Karte hier ist eine Auswahl, kein Stapel. */
-.cards__choice .card__glyph {
+.rescard .card__glyph {
   width: 1.8rem;
   height: 1.8rem;
 }
 
-.cards__choice-name {
+.rescard__name {
   font-size: 0.6rem;
   font-weight: 650;
 }
 
 /*
- * Die Zeile steht immer da, auch leer: beim Bekommen sagt ein Bestand nichts,
- * und ohne sie waeren die zwei Reihen verschieden hoch.
+ * Die Zeile steht auch leer da, wo sie nichts zu sagen hat: beim Bekommen ist
+ * ein Bestand keine Auskunft, und ohne die Zeile waeren zwei Reihen
+ * nebeneinander verschieden hoch.
  */
-.cards__choice-held {
+.rescard__held {
   min-height: 0.95rem;
-  font-size: 0.66rem;
-  font-weight: 700;
+  font-size: 0.62rem;
   font-variant-numeric: tabular-nums;
 }
 
-.cards__choice-held--empty {
+.rescard__held--empty {
   opacity: 0.45;
+}
+
+/* Ein Posten aus mehreren Sorten - was in einem Angebot ueber den Tisch geht. */
+.rescards {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: center;
+}
+
+.rescards__empty {
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+}
+
+/* Die Huelle um eine waehlbare Karte: ein `label` mit verstecktem Radiofeld. */
+.cards__choice {
+  display: block;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 /*
@@ -3420,14 +3434,14 @@ body {
  * des Dialogs muss der Ring auch noch stehen. Zwei Ringe stehen auf jedem
  * dieser Gruende.
  */
-.cards__choice:has(input:checked) {
+.cards__choice:has(input:checked) .rescard {
   box-shadow:
     0 0 0 2px var(--ink-base),
     0 0 0 4px var(--accent);
 }
 
 /* Das Feld ist versteckt, sein Fokus darf es nicht sein. */
-.cards__choice:has(input:focus-visible) {
+.cards__choice:has(input:focus-visible) .rescard {
   outline: 2px solid var(--ink-base);
   outline-offset: 4px;
 }
@@ -3601,9 +3615,25 @@ body {
   animation: offer-enter 220ms ease-out both;
 }
 
+/*
+ * Was ueber den Tisch geht - als zwei Kartenreihen mit einem „für" dazwischen.
+ *
+ * Es stand als Satz da („2 Holz, 1 Erz für 1 Erz"), und das ist die Stelle, an
+ * der unter einer laufenden Frist entschieden wird. Karten sind ein Blick,
+ * ein Satz ist eine Zeile Lesen.
+ */
 .offer__terms {
-  margin: 0 0 0.3rem;
-  font-size: 1.05rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  margin: 0.2rem 0 0.6rem;
+}
+
+.offer__for {
+  color: var(--ink-muted);
+  font-size: 0.9rem;
 }
 
 .offer__clock {

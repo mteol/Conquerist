@@ -7,6 +7,7 @@ import {
   type ResourceAmounts,
   type TradeResponse,
 } from '@conquerist/shared';
+import { ResourceRow } from '../panels/ResourceCard';
 import { NO_AMOUNTS, TradeAmounts, isTradeShapeValid } from './TradeAmounts';
 
 /**
@@ -180,8 +181,19 @@ export function TradeOfferDialog({
       <div className="modal__box modal__box--enter">
         <h2>{mine ? 'Dein Angebot liegt' : `${nameOf(trade.offer.from)} bietet an`}</h2>
 
+        {/*
+         * **Die Bedingungen als Karten und nicht als Satz.**
+         *
+         * Hier wird unter einer laufenden Frist entschieden, und „2 Holz, 1 Erz
+         * für 1 Erz" ist ein Satz, den man liest. Dieselben Karten wie ueberall
+         * sonst sind ein Blick - und die Namen stehen weiter darauf, also
+         * verliert weder das Vorlesewerkzeug noch jemand, der Farben schlecht
+         * unterscheidet.
+         */}
         <p className="offer__terms">
-          <b>{resourceList(trade.offer.give)}</b> für <b>{resourceList(trade.offer.want)}</b>
+          <ResourceRow amounts={trade.offer.give} />
+          <span className="offer__for">für</span>
+          <ResourceRow amounts={trade.offer.want} />
         </p>
 
         <p className="offer__clock" data-testid="offer-clock">
@@ -225,11 +237,15 @@ export function TradeOfferDialog({
                           <dl className="counter__terms">
                             <div>
                               <dt>Du gibst</dt>
-                              <dd>{resourceList(response.want)}</dd>
+                              <dd>
+                                <ResourceRow amounts={response.want} />
+                              </dd>
                             </div>
                             <div>
                               <dt>Du bekommst</dt>
-                              <dd>{resourceList(response.give)}</dd>
+                              <dd>
+                                <ResourceRow amounts={response.give} />
+                              </dd>
                             </div>
                           </dl>
 

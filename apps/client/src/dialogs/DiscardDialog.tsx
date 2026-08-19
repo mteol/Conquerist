@@ -6,6 +6,7 @@ import {
   type ResourceId,
 } from '@conquerist/shared';
 import { RESOURCE_LABELS } from '../game/labels';
+import { ResourceCard } from '../panels/ResourceCard';
 import type { PlayerRow } from '../game/view';
 
 /**
@@ -68,12 +69,12 @@ export function DiscardDialog({ player, required, onConfirm }: DiscardDialogProp
         <div className="cards">
           {RESOURCE_IDS.map((resource) => (
             <div key={resource} className="cards__item">
-              <span className="cards__label">{RESOURCE_LABELS[resource]}</span>
-              <span className="cards__held">von {held[resource] ?? 0}</span>
+              <ResourceCard resource={resource} held={held[resource] ?? 0} />
               <div className="cards__stepper">
                 <button
                   type="button"
                   aria-label={`${RESOURCE_LABELS[resource]} weniger`}
+                  data-sound="card"
                   disabled={!canStep(resource, -1)}
                   onClick={() => change(resource, -1)}
                 >
@@ -83,6 +84,7 @@ export function DiscardDialog({ player, required, onConfirm }: DiscardDialogProp
                 <button
                   type="button"
                   aria-label={`${RESOURCE_LABELS[resource]} mehr`}
+                  data-sound="card"
                   disabled={!canStep(resource, 1)}
                   onClick={() => change(resource, 1)}
                 >

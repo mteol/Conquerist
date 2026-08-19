@@ -3854,3 +3854,98 @@ Klick an, und ein achtseitiger Würfel fliegt gar nicht erst.
 ### Nächste Etappe
 
 Etappe 10 (Erweiterungen).
+
+## Eine Karte für alle Rohstoffe — und ein Klang dafür (2026-08-19, `main`)
+
+Stand: nach `d05ab4c`. Die Kartenoptik aus dem Bankhandel gilt jetzt überall, wo
+ein Rohstoff vorkommt — und die Karten sind nicht mehr stumm.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                  |
+| ------------------- | ------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                            |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 320 / 34          |
+| `pnpm build`        | grün — `index.js` 413.16 kB (gzip 122.99), `index.css` 36.22 kB (8.17)    |
+| `pnpm format:check` | grün                                                                      |
+| Browser             | lokale Partie 1920×889: Bankhandel, Angebot, Gegenangebot, Klang gemessen |
+
+### Den Rohstoff gab es fünfmal
+
+Als Stapel auf der Hand, als Farbplatte in „Erfindung", als Karte im Bankhandel
+— und als **nackten Text** im Abwurffenster, im Angebotsformular und in den
+Bedingungen eines Angebots. Die drei letzten waren ausgerechnet die Stellen, an
+denen man unter einer laufenden Frist aussucht, was man hergibt.
+
+Jetzt gibt es **eine** Karte (`panels/ResourceCard.tsx`), und die Fenster bauen
+um sie herum: der Bankhandel legt ein `label` mit verstecktem Radiofeld darum,
+Abwurf und Angebot einen Schrittzähler darunter, die Bedingungen gar nichts. Wer
+die Karte ändert, ändert sie überall.
+
+**Die Handkarte bleibt draußen.** Sie ist 4,6 rem breit, trägt Stapeltiefe und
+liegt auf dem Tisch statt in einem Fenster — ein anderes Ding, nicht eine
+größere Ausgabe von diesem.
+
+Drei Kleinigkeiten, die dabei mit abfielen:
+
+- **`von 3` statt einer nackten Zahl.** Der Bankhandel schrieb den Bestand als
+  Ziffer unter den Namen; das Abwurffenster sagte „von 3". Jetzt sagen es beide
+  gleich — und die leere Zeile auf der Empfangsseite bleibt, sonst wären die
+  zwei Reihen verschieden hoch.
+- **Der Pergamentkasten um Abwurf und Angebot ist weg.** Er umrahmte einmal drei
+  Textzeilen; eine Karte in einem Kasten wäre ein Ding in einer Kiste.
+- **`.cards__label`, `.cards__held` und `.pick__name` sind gelöscht**, nicht nur
+  ungenutzt. Tote Klassennamen im Blatt sind in diesem Projekt schon einmal
+  teuer geworden.
+
+### Die Karten waren als einzige Bedienelemente im Spiel stumm
+
+Der delegierte Klick sucht `closest('button, [role="button"]')`. Eine wählbare
+Rohstoffkarte ist ein **`label`** mit einem versteckten Radiofeld darin — also
+fand er nichts, und im Bankhandel klickte jeder Knopf, nur die Karte nicht.
+
+Behoben an zwei Stellen:
+
+1. `[data-sound]` steht mit in der Auswahl. Wer einen Klang an ein Element
+   schreibt, meint damit auch, dass es einen bekommt — und das Attribut gab es
+   längst.
+2. Ein Klang mehr im Vokabular: **`ui.card`**, ein kurzer weicher Rauschstrich
+   nach unten (3400 → 2100 Hz, 75 ms, `gain` 0.13). Ein eigener Klang und nicht
+   `ui.click`, weil es kein Knopf ist: **eine Karte raschelt, ein Knopf klackt.**
+   Der Unterschied trägt eine echte Auskunft — am Ton hört man, ob man Material
+   bewegt oder etwas auslöst. Ihn tragen die Rohstoffkarten und die
+   Schrittzähler, die ja Kartenmengen stellen.
+
+Das Vokabular steht damit bei 24 Klängen; `samples.ts` führt den neuen wie alle
+anderen als auskommentierte Zeile.
+
+### Im Browser gemessen
+
+Sonde um `createBufferSource`/`createOscillator`, Zähler vor jedem Klick
+zurückgesetzt:
+
+| Klick                            | Ergebnis                                              |
+| -------------------------------- | ----------------------------------------------------- |
+| Schrittzähler `+` (ein `button`) | 1 Klangquelle, `data-sound="card"`, Wert 0 → 1        |
+| Rohstoffkarte (ein **`label`**)  | 1 Klangquelle, Radiofeld gewählt, `tagName` = `LABEL` |
+
+Der zweite ist der Beweis: vor der Änderung wäre der Zähler auf 0 geblieben.
+
+Gesehen: Bankhandel (zwei gleich hohe Reihen, „von 0/2/1"), Angebotsformular
+(Karten mit Zählern darunter, gesperrte `+` sichtbar blass), Bedingungen eines
+Angebots (**Korn ×2 „für" Holz ×1** als zwei Karten mit Plaketten statt „2 Korn
+für 1 Holz") und das Gegenangebot.
+
+### Offene Punkte
+
+- Im **Gegenangebot** brechen die zwei Spalten bei fünf Sorten auf je zwei
+  Zeilen um, und die zweite Zeile steht linksbündig unter der ersten. Es liest
+  sich, ist aber nicht schön — der Dialog ist dort am schmalsten.
+- `ui.card` ist nur über die Sonde belegt, **gehört** hat ihn noch niemand: der
+  Musikregler des Rechners steht auf 0 %, die Effekte auf 30 %.
+- Der Klang des Wurfs liegt weiterhin vollständig auf der Landung (siehe den
+  Abschnitt davor).
+
+### Nächste Etappe
+
+Etappe 10 (Erweiterungen).

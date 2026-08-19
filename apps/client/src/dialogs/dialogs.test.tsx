@@ -136,8 +136,15 @@ describe('TradeDialog', () => {
       />,
     );
 
-    const cards = RESOURCE_IDS.map((resource) =>
-      screen.getByLabelText(`${RESOURCE_LABELS[resource]} abgeben`).closest('label')!,
+    // Die Karte sitzt seit der gemeinsamen `ResourceCard` **im** Label und ist
+    // nicht mehr das Label selbst - die Huelle traegt die Auswahl, der Koerper
+    // die Farbe.
+    const cards = RESOURCE_IDS.map(
+      (resource) =>
+        screen
+          .getByLabelText(`${RESOURCE_LABELS[resource]} abgeben`)
+          .closest('label')!
+          .querySelector('.rescard') as HTMLElement,
     );
 
     for (const card of cards) {

@@ -107,7 +107,16 @@ export function AudioProvider({ children }: { readonly children: ReactNode }): J
       const target = event.target;
       if (!(target instanceof Element)) return;
 
-      const button = target.closest('button, [role="button"]');
+      /*
+       * **`[data-sound]` steht mit in der Auswahl, und das ist keine Kosmetik.**
+       *
+       * Ein Rohstoff zum Auswaehlen ist ein `label` mit einem versteckten
+       * Radiofeld darin - kein Knopf, also fand `closest` nichts, und die
+       * Karten im Bankhandel waren als einzige Bedienelemente im Spiel
+       * vollkommen stumm. Wer einen Klang ans Element schreibt, meint damit
+       * auch, dass es einen bekommt.
+       */
+      const button = target.closest('button, [role="button"], [data-sound]');
       if (button === null) return;
       // Ein Knopf, der nichts tut, klingt auch nicht - sonst meldete der Ton
       // einen Erfolg, den es nicht gab.

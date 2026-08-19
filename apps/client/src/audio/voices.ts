@@ -58,6 +58,25 @@ const knock = (at: number, gain: number, from: number): Layer => ({
 
 export const VOICES: Record<Cue, Recipe> = {
   'ui.click': { layers: [knock(0, 0.16, 1800)] },
+  /*
+   * Papier statt Holz: ein kurzer, weicher Rauschstrich nach unten. Leiser als
+   * der Klick - eine Karte anzuheben ist keine Handlung, die sich meldet,
+   * sondern eine, die man nebenbei tut.
+   */
+  'ui.card': {
+    layers: [
+      {
+        kind: 'noise',
+        filter: 'bandpass',
+        from: 3400,
+        to: 2100,
+        q: 0.7,
+        attack: 4,
+        decay: 75,
+        gain: 0.13,
+      },
+    ],
+  },
   'ui.confirm': {
     layers: [
       {

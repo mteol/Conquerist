@@ -1,7 +1,7 @@
 import { useState, type JSX } from 'react';
 import { RESOURCE_IDS, type ResourceId } from '@conquerist/shared';
-import { RESOURCE_COLORS, RESOURCE_LABELS } from '../game/labels';
-import { ResourceGlyph } from '../panels/ResourceGlyph';
+import { RESOURCE_LABELS } from '../game/labels';
+import { ResourceCard } from '../panels/ResourceCard';
 import { CloseButton } from './CloseButton';
 
 /**
@@ -48,12 +48,12 @@ export function ResourcePickDialog({
               type="button"
               className="pick__card"
               data-testid={`pick-${resource}`}
+              data-sound="card"
               disabled={picks.length >= count}
-              style={{ background: RESOURCE_COLORS[resource] }}
+              aria-label={RESOURCE_LABELS[resource]}
               onClick={() => setPicks((current) => [...current, resource])}
             >
-              <ResourceGlyph resource={resource} />
-              <span className="pick__name">{RESOURCE_LABELS[resource]}</span>
+              <ResourceCard resource={resource} />
             </button>
           ))}
         </div>

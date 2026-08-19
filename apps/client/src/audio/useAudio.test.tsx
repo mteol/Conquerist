@@ -42,6 +42,15 @@ function Harness({ event }: { readonly event: SoundEvent | null }): JSX.Element 
       <button type="button" data-sound="confirm">
         Zusagen
       </button>
+      {/*
+       * Kein Knopf: so sieht eine waehlbare Rohstoffkarte aus - ein `label` mit
+       * einem versteckten Radiofeld darin. Genau daran hat der delegierte Klick
+       * bis eben vorbeigehoert.
+       */}
+      <label data-sound="card">
+        <input type="radio" name="probe" aria-label="Karte" />
+        Karte
+      </label>
     </>
   );
 }
@@ -73,6 +82,20 @@ describe('der delegierte Klick', () => {
     await userEvent.click(screen.getByText('Gesperrt'));
 
     expect(played).toEqual([]);
+  });
+
+  /*
+   * **Ein `label` ist kein Knopf**, und `closest('button')` fand deshalb
+   * nichts: die Rohstoffkarten im Bankhandel waren als einzige Bedienelemente
+   * im Spiel vollkommen stumm. Wer einen Klang an ein Element schreibt, meint
+   * damit auch, dass es einen bekommt.
+   */
+  it('laesst auch etwas klingen, das kein Knopf ist', async () => {
+    mount();
+
+    await userEvent.click(screen.getByText('Karte'));
+
+    expect(played).toEqual(['ui.card']);
   });
 
   it('laesst data-sound den Vorgabeklang schlagen', async () => {
