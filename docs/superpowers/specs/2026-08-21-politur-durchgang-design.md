@@ -131,8 +131,27 @@ genau eine Sache, die man tun kann, der Bildschirm sagt sie in Worten, und
 trotzdem muß man sie erst noch einmal in einer Ecke bestätigen. Der erste
 Eindruck des Spiels ist ein Brett, das nicht reagiert.
 
-**Was folgt.** In `setup`-Phasen ist der Schritt „was" bereits beantwortet; die
-Knoten werden sofort markiert. Der Zweischritt bleibt, wo er etwas entscheidet.
+**Und der Code weiß das bereits.** Über `boardTargets` in `GameScreen.tsx` steht
+wörtlich:
+
+> 3. **Nichts gewählt.** Dann bleibt das Brett ruhig, was das Bauen angeht —
+>    aber die Gründung und der Räuber leuchten weiter. Beide sind keine Wahl:
+>    in der Gründung gibt es genau eine Sache zu setzen […] Ein Knopf davor wäre
+>    ein Schritt, der nichts entscheidet.
+
+Der Räuber tut das auch. Die Gründung nicht — weil `buildKindOf` für
+`placeSetupSettlement` und `placeSetupRoad` dieselben Sorten zurückgibt wie für
+`buildSettlement` und `buildRoad`, und der Filter darunter nur auf die Sorte
+sieht. Der Kommentar beschreibt also ein Verhalten, das die Zeile darunter nicht
+liefert.
+
+Das ist der wertvollste Fund dieses Durchgangs: kein Entwurfsfehler, sondern
+eine Absicht, die auf halbem Weg hängengeblieben ist. Der Eingriff ist ein
+Zweig, kein Umbau.
+
+**Was folgt.** Der Filter läßt `placeSetup…` durch, ohne nach `buildMode` zu
+fragen — genau wie er den Räuber durchläßt. Der Zweischritt bleibt, wo er etwas
+entscheidet.
 
 ### B4 — Die Statuszeile steht zweimal, wortgleich in der Sache
 
@@ -148,19 +167,33 @@ Kasten mit Akzentrahmen, der auf dem Brett schwimmt, und das Brett ist der Held
 **Was folgt.** Eine Zeile, an einem Ort. Der Abbruch gehört dorthin, wo die
 Auskunft steht.
 
-### B5 — Würfel und leere Hand sind graue Kacheln
+### B5 — Der Würfel vor dem Wurf ist eine graue Kachel
 
 Vor dem ersten Wurf stehen unten rechts zwei einfarbig graue Rechtecke ohne
-Augen, ohne Beschriftung, ohne Rahmen (`aria-label` sagt korrekt „Noch kein
-Wurf" — sichtbar sagt es nichts). Unten links stehen für eine leere Hand zwei
-schraffierte leere Kacheln.
+Augen, ohne Beschriftung, ohne Rahmen. `aria-label` sagt korrekt „Noch kein
+Wurf"; sichtbar sagt es nichts. Im Blatt ist es eine Zeile:
 
-Beides liest sich als fehlendes Bild, nicht als Zustand. Regel 8 sagt: leere
-Flächen laden zu einer Handlung ein, statt sich zu entschuldigen. Diese hier tun
-weder das eine noch das andere — sie sehen kaputt aus.
+```css
+.die--blank {
+  opacity: 0.45;
+}
+```
 
-**Was folgt.** Der Becher vor dem Wurf zeigt, daß er ein Becher ist. Die leere
-Hand sagt, was sie füllen würde.
+Ein Würfelkörper, halb abgeblendet. Das liest sich als fehlendes Bild, nicht als
+Zustand — es ist derselbe Griff wie bei „der Kaufstapel dimmt seine Auskunft
+mit" (B5 vom 16.08.): die Oberfläche zeigt „noch nicht", indem sie etwas blasser
+macht, und blasser ist keine Auskunft.
+
+**Was folgt.** Der Becher vor dem Wurf zeigt, daß er ein Becher ist, statt ein
+Würfel zu sein, den man nicht richtig sieht.
+
+**Was hier ausdrücklich nicht steht.** Die zwei schraffierten Kacheln unten
+links, die im ersten Durchsehen wie eine leere Hand aussahen, sind
+`.hand__cover` — die Zudeckung beim Zugwechsel, mit „Karten ansehen" daneben.
+Sie sind kein Befund, sie sind die Einstellung „beim Zugwechsel zudecken" bei
+der Arbeit. Die wirklich leere Hand hat einen eigenen Satz („Keine Karten auf
+der Hand.") und ist im Durchlauf nie zu sehen gewesen, weil lokal immer
+zugedeckt wird.
 
 ### B6 — Drei Regler in Betriebssystem-Form
 
@@ -219,10 +252,14 @@ dreht, wieder derjenige, der das Brett verschwinden läßt.
 
 ### 3. Zustand ist gezeichnet, nicht ausgegraut
 
-Aus B5 und B6 und aus dem alten B5 („der Kaufstapel dimmt seine Auskunft mit")
-kommt derselbe Satz: die Oberfläche zeigt Zustände, indem sie Dinge blasser
-macht. Blasser ist keine Auskunft. Ein Becher, der noch nicht geworfen wurde,
-sieht aus wie ein Becher; eine Hand ohne Karten sagt, was hineingehört.
+Aus B5 und aus dem alten B5 („der Kaufstapel dimmt seine Auskunft mit") kommt
+derselbe Satz: die Oberfläche zeigt Zustände, indem sie Dinge blasser macht.
+Blasser ist keine Auskunft. Ein Becher, der noch nicht geworfen wurde, sieht aus
+wie ein Becher.
+
+**Der Gegenbeweis steht daneben und ist der Maßstab.** Die zugedeckte Hand macht
+nichts blasser — sie zeigt drei Kartenrücken und einen Knopf, der sagt, was ein
+Klick bringt. Genau das ist gemeint.
 
 ### 4. Die Meßlatte kommt in `CLAUDE.md`
 
