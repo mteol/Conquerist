@@ -21,6 +21,7 @@ import {
 } from './layout';
 import { CITY_PATH, SETTLEMENT_PATH } from './shapes';
 import { TerrainPatterns, terrainFill } from './terrain';
+import { Numeral } from '../type/Numerals';
 
 /**
  * Das Brett. Zeichnet den Zustand und meldet, wo geklickt wurde - mehr nicht.
@@ -234,14 +235,37 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
             pointerEvents="none"
           >
             <circle cx={center.x} cy={center.y} r={0.34} />
-            <text
-              x={center.x}
-              y={center.y}
-              data-hot={isHot(placement.chip) ? 'true' : 'false'}
-              className={isHot(placement.chip) ? 'chip__hot' : undefined}
-            >
-              {placement.chip}
-            </text>
+            {/*
+             * Die Zahl ist gezeichnet und nicht gesetzt - dieselben Ziffern,
+             * aus denen auch die Wortmarke geschnitten ist (`type/Numerals`).
+             *
+             * Der Chip ist das meistbetrachtete Ding einer Partie. Er lag
+             * bisher als 'Segoe UI Bold' auf einem Gelaende, dessen Tannen,
+             * Zacken und Furchen von Hand gezeichnet sind; dieser eine Bruch
+             * hat das ganze Brett nach Anwendung aussehen lassen.
+             *
+             * Nebenbei faellt damit die alte Falle weg. Die Augen darunter
+             * sind aus genau diesem Grund schon Kreise geworden - eine
+             * gezeichnete Form hat keine Metrik, die eine fehlende Schrift
+             * veraendern koennte. Fuer die Zahl darueber galt derselbe Satz
+             * die ganze Zeit mit, sie war nur nicht drangekommen.
+             *
+             * Die heisse Sechs und die heisse Acht stehen eine Spur groesser
+             * (0.29 gegen 0.26) - so wie vorher 0.36 gegen 0.32. Die Farbe
+             * kommt als `style` und nicht aus dem Blatt: `.chip text.chip__hot`
+             * hat zwei Etappen lang nicht gegolten, weil `.chip text` darueber
+             * stand, und ein `style` kann das nicht passieren.
+             */}
+            <Numeral
+              value={placement.chip}
+              cx={center.x}
+              cy={center.y - 0.03}
+              cap={isHot(placement.chip) ? 0.29 : 0.26}
+              fill={isHot(placement.chip) ? 'var(--bad-ink)' : 'var(--ink-base)'}
+              className={
+                isHot(placement.chip) ? 'chip__numeral chip__numeral--hot' : 'chip__numeral'
+              }
+            />
             {/*
              * Die Augen als **gezeichnete Punkte** und nicht als eine Reihe
              * Mittelpunkte in einem `text`.

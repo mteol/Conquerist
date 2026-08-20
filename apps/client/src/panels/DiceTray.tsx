@@ -1,5 +1,6 @@
 import type { CSSProperties, JSX } from 'react';
 import type { DiceSpec, Roll } from '@conquerist/shared';
+import { NumeralText } from '../type/Numerals';
 
 /**
  * Die Wuerfel - und zugleich der Zug, mit dem man sie wirft.
@@ -107,8 +108,19 @@ export function DiceTray({
 
         {/* Die Summe erscheint mit dem Wurf, nicht vor ihm. */}
         {total === null || flying ? null : (
-          <span className="dice__total" aria-hidden="true">
-            {total}
+          <span className="dice__total">
+            {/*
+             * Gezeichnet und nicht gesetzt - dieselben Ziffern wie auf dem
+             * Zahlenchip (`type/Numerals`). Das ist hier keine Zierde: was
+             * hier faellt, steht gleich darauf auf dem Brett, und solange die
+             * eine Zahl gezeichnet und die andere gesetzt war, sah man den
+             * zwei gleichen Zahlen nicht an, dass sie dieselbe sind.
+             *
+             * Stumm wie vorher: die Summe steht im `aria-label` der Schale
+             * („Wurf: ..., zusammen ...") und waere hier ein zweites Mal zu
+             * hoeren.
+             */}
+            <NumeralText value={total} />
           </span>
         )}
       </button>

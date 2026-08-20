@@ -238,6 +238,76 @@ body {
   color: #2a1f06;
 }
 
+/*
+ * Die gezeichneten Ziffern (`type/Numerals.tsx`).
+ *
+ * Eine einzige Zeile, und die Regel steht bewusst **am Traeger und nicht am
+ * Pfad**. `.numeral path { fill }` waere eine Klasse plus ein Typ - und ein
+ * geerbter Wert verliert gegen jede Regel, die das Kind direkt trifft. Das
+ * `style` am Chip, das der roten Sechs ihre Farbe gibt, waere damit still
+ * ueberholt worden: genau die Falle aus `CLAUDE.md`, nur diesmal von der
+ * anderen Seite. Am Traeger gesetzt erben die Pfade den Wert, und ein `style`
+ * am selben Element schlaegt ihn.
+ *
+ * `currentColor` heisst: die Zahl traegt die Tinte ihrer Umgebung. Wo ein
+ * Panel seine `--ink` auf den dunklen Grund umgestellt hat, folgt sie ohne
+ * eine weitere Zeile.
+ */
+.numeral {
+  fill: currentColor;
+}
+
+/*
+ * Die Fase - das Bedienbare wird aus demselben Winkel geschnitten wie das
+ * Brett.
+ *
+ * **Die Idee steht schon zweimal im Spiel.** Die Wortmarke ist so gezeichnet:
+ * wo eine Schrift rundet, sitzt eine Schraege, Stammbreite 17, Fase 17. Die
+ * Zahlen auf dem Brett sind seit `type/Numerals.tsx` genauso geschnitten. Was
+ * dazwischen lag - jeder Knopf, jedes Feld, jeder Dialog - trug einen
+ * gleichmaessigen Radius, also genau die eine Form, die auf jeder Oberflaeche
+ * sitzt und auf keiner gemeint ist. Drittens dasselbe Werkzeug: damit ist es
+ * ein System und nicht ein huebscher Titel ueber einer Anwendung.
+ *
+ * **Es kostet keinen Radius und keinen Schatten.** `corner-shape` schneidet
+ * die Ecke, die `border-radius` bereits vermasst hat; die Betraege bleiben
+ * also unveraendert stehen, und `box-shadow` folgt der neuen Kontur von
+ * selbst. Ein `clip-path` haette dieselbe Form gemacht **und den
+ * Kontaktschatten mit abgeschnitten** - und der ist der ganze Unterschied
+ * zwischen „liegt auf dem Tisch" und „ist ein Rechteck".
+ *
+ * Wo `corner-shape` fehlt, bleibt die Ecke rund. Das ist kein Ausfall,
+ * sondern der Stand von vorher: niemand sieht etwas Kaputtes, nur etwas
+ * weniger Eigenes.
+ *
+ * **Was die Fase nicht bekommt, und warum.** Karten, Wuerfel, Zahlenchips und
+ * Bauteile sind Spielmaterial und haben ihre Form aus der Wirklichkeit - eine
+ * Spielkarte mit geschnittenen Ecken ist keine Karte mehr, sondern ein
+ * Plaettchen. Geschnitten wird, was Oberflaeche ist: was man drueckt, was man
+ * ausfuellt, und die Rahmen, die das Spiel halten. Die Trennlinie ist damit
+ * nicht Geschmack, sondern eine Auskunft (Regel 6) - gedrucktes Papier gegen
+ * gestanzte Bedienung.
+ */
+.button,
+.menu__entry,
+.mode,
+.way,
+.way > input,
+.resume__card,
+.lobby__seat,
+.lobby__setting,
+.lobby__invite input,
+.lobby__namefield input,
+.field input,
+.cards__stepper button,
+.modal__box,
+.panel--log,
+.panel__error,
+.offline__text,
+.counter {
+  corner-shape: bevel;
+}
+
 /* --- Hauptmenue ----------------------------------------------------------- *
  *
  * Die erste Flaeche. Sie traegt einen Titel, drei Wege und sonst nichts.
@@ -624,11 +694,32 @@ body {
  * nicht als Vorschaubildchen.
  */
 .start {
+  /*
+   * Traeger fuer die Seekarte darin - ohne das richtete sie sich am Fenster
+   * aus und nicht an dieser Flaeche.
+   */
+  position: relative;
   display: grid;
   grid-template-columns: minmax(20rem, 27rem) 1fr;
   min-height: 100vh;
   background:
     radial-gradient(120% 90% at 85% 15%, var(--sea-700) 0%, transparent 60%), var(--sea-900);
+}
+
+/*
+ * Dieselbe See wie im Spiel - sonst waere der Wechsel vom Aufbau ins Spiel ein
+ * Wechsel der Welt.
+ *
+ * **Aber enger maskiert, und das ist der Unterschied zwischen Wasser und
+ * Tapete.** Im Spiel liegt das Netz neben dem Brett, also auf leerer See; hier
+ * traegt die linke Spalte eine Ueberschrift und ein Formular. Mit der Maske
+ * des Spielbildschirms liefen die Linien quer durch beide - und ein Netz unter
+ * einem Text ist keine Karte mehr, sondern Zierat hinter einer Auskunft
+ * (Regel 6). Es bleibt deshalb bei der Ecke, in der wirklich See ist: um das
+ * Vorschaubrett herum, und es verliert sich, bevor es die Spalte erreicht.
+ */
+.start .sea-chart {
+  mask-image: radial-gradient(56% 80% at 84% 30%, #000 0%, #000 26%, transparent 80%);
 }
 
 .start__panel {
@@ -1659,6 +1750,81 @@ body {
 }
 
 /*
+ * Die Seekarte unter allem.
+ *
+ * **Warum sie ueberhaupt hier liegt**, steht in `screens/SeaChart.tsx`. Hier
+ * steht nur, wie laut sie sein darf - und die Antwort ist: kaum.
+ *
+ * `inset: 0` - das Netz fuellt genau seinen Traeger. Wer es auf eine Flaeche
+ * mit Polster legt, gleicht **dort** aus (siehe `.game .sea-chart`) und nicht
+ * hier: der negative Einzug stand eine Fassung lang in dieser Regel, und der
+ * Startbildschirm hat ihn geerbt, obwohl er kein Polster hat. Gemessen ragte
+ * das Netz dort 12 px ueber jede Seite hinaus und schob der Seite einen
+ * waagerechten Rollbalken unter - Regel 7, keine springenden Layouts, und
+ * zwar ausgeloest von einem Element, das man gar nicht anfassen kann.
+ *
+ * Die Maske ist der Grund, warum das Netz nicht wie eine aufgelegte Grafik
+ * wirkt: es verliert sich zum Rand hin, statt an einer Kante aufzuhoeren -
+ * dieselbe Auskunft, die das Hexfeld im Hauptmenue ueber seine Ruhelage gibt.
+ * Ihre Mitte sitzt bei 42 % und nicht bei 50 %, weil der Verlauf darunter dort
+ * schon seine hellste Stelle hat; zwei Mitten in derselben Flaeche saehen aus
+ * wie ein Versehen. Wer das Netz auf eine andere Flaeche legt, schreibt die
+ * Maske dort neu, statt hier eine Stellschraube einzuziehen - sie meint jedes
+ * Mal etwas anderes, naemlich wo auf dieser Flaeche Wasser ist.
+ */
+.sea-chart {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  pointer-events: none;
+  mask-image: radial-gradient(120% 100% at 50% 42%, #000 0%, #000 50%, transparent 94%);
+}
+
+/*
+ * Sehr leise, und das ist der Punkt (Regel 4: das Brett ist der Held).
+ *
+ * 7 % auf der Tiefsee sind knapp ueber der Wahrnehmungsschwelle - man
+ * bemerkt das Netz beim zweiten Hinsehen und nie beim ersten. Wer den Wert
+ * anhebt, prueft ihn **neben** dem Brett und nicht auf leerer Flaeche: allein
+ * betrachtet wirkt jedes Netz zu schwach.
+ *
+ * Die Strichbreite steht in Nutzerkoordinaten - das Bild ist 2 Einheiten hoch
+ * und fuellt mit `slice` die kurze Achse, auf einem 900 px hohen Fenster ist
+ * eine Einheit also 450 px und 0.0022 davon rund ein Pixel. Eine Linie, die
+ * mit dem Fenster mitwaechst, waere auf einem grossen Bildschirm ein Balken.
+ */
+.sea-chart line,
+.sea-chart__rose {
+  fill: none;
+  stroke: rgb(233 225 207 / 7%);
+  stroke-width: 0.0022;
+}
+
+/*
+ * Der Ring der Rose ist die Konstruktionslinie und darf noch leiser sein als
+ * die Strahlen: er kreuzt sie alle und wuerde bei gleicher Staerke an
+ * sechzehn Stellen einen hellen Punkt setzen.
+ */
+.sea-chart__rose {
+  stroke: rgb(233 225 207 / 5%);
+}
+
+/*
+ * Auf dem Spielbildschirm greift das Netz ueber den Polsterrand.
+ *
+ * Ein absolut gesetztes Kind richtet sich am **Polsterrand** seines
+ * Elternteils aus, und `.game` hat 0.75rem Polster. Mit `inset: 0` bliebe
+ * rings ein Streifen unbedeckt, auf dem der Verlauf ohne Netz weiterlaeuft -
+ * eine Kante, die aussieht wie ein Fehler im Blatt. Der Betrag ist derselbe
+ * wie das Polster, weil er dieselbe Strecke meint; ueberzaehlig wird davon
+ * nichts, weil `.game` seinen Ueberhang ohnehin abschneidet.
+ */
+.game .sea-chart {
+  inset: -0.75rem;
+}
+
+/*
  * Der Punkt, an dem die schwebenden Panels unschaedlich werden: das Brett wird
  * nicht unter sie gerechnet, sondern in die freie Flaeche dazwischen eingepasst.
  * Ohne diesen Einzug laegen genau die Randknoten unter den Panels, auf die man
@@ -2518,11 +2684,36 @@ body {
  * der linken ausgerichtet ruecke sie mit, sobald neben den Augen die Summe
  * erscheint und der Becher breiter wird.
  */
+/*
+ * **Die Schale hat keinen Koerper mehr, also braucht sie die helle Tinte.**
+ *
+ * Genau das steht seit dem Wegfall des Bechers weiter unten an
+ * `.dice--waiting` als bereits getan beschrieben - „dunkle Tinte waere dort
+ * dieselbe unsichtbare Schrift". Getan war es nie: dort wurden die zwei Zeilen
+ * nur **entfernt**, und ohne eine Umstellung faellt `--ink` auf den Grundwert
+ * aus `:root` zurueck, und der ist die dunkle Tinte. Gemessen stand die
+ * Wurfsumme damit bei 1.13:1 auf der Tiefsee und die Aufforderung „Wuerfeln"
+ * bei 2.5:1 - die eine praktisch unsichtbar, die andere unter jeder Norm.
+ *
+ * **Die Zeilen stehen an der Huelle und nicht am Becher.** Die Aufforderung
+ * ist eine Schwester der Wuerfel und keine Tochter; am Becher gesetzt haette
+ * die Umstellung die Summe geholt und das Wort daneben stehen lassen - also
+ * genau den halben Fix, der aussieht wie ein ganzer.
+ *
+ * Der Wuerfel holt sich seine dunkle Tinte in `.die` zurueck: er ist das
+ * einzige Ding hier mit einer hellen Flaeche.
+ *
+ * Aufgefallen ist beides erst, als die Summe eine gezeichnete Form wurde und
+ * jemand nachsah, ob sie ankommt. **Ein Kommentar, der eine Absicht
+ * beschreibt, ist kein Nachweis, dass sie im Blatt steht.**
+ */
 .dice-tray {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
   align-items: flex-end;
+  --ink: var(--on-sea);
+  --ink-muted: var(--on-sea-muted);
 }
 
 /*
@@ -2586,11 +2777,16 @@ body {
  * ohne Bewegung auskommt: bei `prefers-reduced-motion` steht das Atmen still,
  * und dann darf die Auskunft nicht mit ihm verschwinden.
  *
- * **Und die zwei Zeilen mit `--ink` sind hier ersatzlos gefallen.** Sie stellten
- * die Tinte auf dunkel, weil darunter Pergament lag. Ohne Pergament liegt die
- * Wurfzahl auf der Tiefsee - dunkle Tinte waere dort dieselbe unsichtbare
- * Schrift, die die Wuerfelaugen schon einmal verschluckt hat, nur andersherum.
- * Der Wuerfel selbst setzt seine dunkle Tinte in `.die` weiterhin lokal.
+ * **Die zwei Zeilen mit `--ink` sind hier gefallen** - sie stellten die Tinte
+ * auf dunkel, weil darunter Pergament lag. Ohne Pergament liegt die Wurfzahl
+ * auf der Tiefsee, und dunkle Tinte waere dort dieselbe unsichtbare Schrift,
+ * die die Wuerfelaugen schon einmal verschluckt hat, nur andersherum.
+ *
+ * **Der Wegfall allein hat das nicht erledigt**, und dieser Satz stand hier
+ * zwei Etappen lang, als haette er es. `--ink` faellt ohne Umstellung auf den
+ * Grundwert aus `:root` zurueck, und der ist dunkel; die helle Tinte steht
+ * deshalb jetzt an `.dice` selbst. Der Wuerfel setzt seine dunkle in `.die`
+ * weiterhin lokal.
  */
 .dice--waiting {
   cursor: pointer;
@@ -2930,31 +3126,24 @@ body {
   stroke-width: 0.014;
 }
 
-.chip text {
-  fill: #16202a;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  font-size: 0.32px;
-  font-weight: 700;
-  text-anchor: middle;
-  dominant-baseline: central;
-}
-
 /*
- * Die Sechs und die Acht - die zwei Zahlen, die am haeufigsten fallen.
+ * Die Zahl auf dem Chip steht **nicht mehr hier**.
  *
- * Die Regel heisst `.chip text.chip__hot` und nicht `.chip__hot`: darueber
- * steht `.chip text` (eine Klasse plus ein Typ), und die schlaegt eine Klasse
- * allein. Die Farbe stand deshalb zwar im Blatt, gesehen hat sie nie jemand -
- * beim ersten Playtest waren die heissen Zahlen so schwarz wie alle anderen.
+ * Sie war ein `text` in 'Segoe UI Bold' und ist eine gezeichnete Form
+ * geworden (`type/Numerals.tsx`, gesetzt in `BoardSvg`). Groesse und Farbe
+ * kommen deshalb vom Element und nicht aus dem Blatt - die Groesse als
+ * Versalhoehe in Brettmassen, die Farbe als `style`.
  *
- * Rot ist nicht der einzige Traeger: die Punktreihe darunter ist bei diesen
- * beiden am laengsten, und sie faerbt sich mit. Wer Rot schlecht sieht, zaehlt
- * die Punkte - das ist dieselbe Auskunft.
+ * **Das ist die Lehre aus zwei Etappen und nicht Geschmack.** An dieser
+ * Stelle standen `.chip text` und `.chip text.chip__hot`, und zweimal hat
+ * eine Klasse plus ein Typ eine Klasse allein geschlagen: die rote Sechs hat
+ * nie gegolten, und die Augen ragten ueber den Chiprand. Was am Element
+ * steht, kann kein Selektor mehr ueberholen.
+ *
+ * Rot ist dabei nicht der einzige Traeger: die Punktreihe unter der Zahl ist
+ * bei der Sechs und der Acht am laengsten, und sie faerbt sich mit. Wer Rot
+ * schlecht sieht, zaehlt die Punkte - das ist dieselbe Auskunft.
  */
-.chip text.chip__hot {
-  fill: var(--bad-ink);
-  font-size: 0.36px;
-}
 
 /*
  * Die Augen unter der Zahl.

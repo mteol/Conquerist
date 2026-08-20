@@ -12,6 +12,7 @@ import { render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { EMPTY_TARGETS, actionTargets } from '../game/targets';
 import { BoardSvg } from './BoardSvg';
+import { NUMERAL_CAP, numeralWidth } from '../type/Numerals';
 
 const scenario = generateScenario(CLASSIC_34, 'board-probe');
 const seats = defaultSeats(3);
@@ -61,9 +62,95 @@ describe('BoardSvg', () => {
 
     for (const placement of scenario.hexes) {
       if (placement.chip === undefined) continue;
-      const number = screen.getByTestId(`chip-${placement.hex}`).querySelector('text');
-      expect(number?.dataset['hot']).toBe(hot.has(placement) ? 'true' : 'false');
+      const number = screen.getByTestId(`chip-${placement.hex}`).querySelector('.chip__numeral');
+      expect(number?.classList.contains('chip__numeral--hot')).toBe(hot.has(placement));
     }
+  });
+
+  /*
+   * **Was die Zahl sagt, sagte bisher niemand nach.**
+   *
+   * Geprueft wurde hier nur die Markierung „heiss" - dass auf dem Chip
+   * ueberhaupt die richtige Zahl steht, stand nirgends. Solange sie ein `text`
+   * war, fiel das kaum auf; jetzt ist sie eine Folge gezeichneter Formen, und
+   * eine falsch nachgeschlagene Ziffer waere eine stille Verwechslung. Genau
+   * dafuer traegt jeder Pfad, welche Ziffer er ist.
+   */
+  it('zeichnet auf jedem Chip die Zahl, die dort hingehoert', () => {
+    render(<BoardSvg state={start} targets={EMPTY_TARGETS} seats={seats} onPick={vi.fn()} />);
+
+    let counted = 0;
+
+    for (const placement of scenario.hexes) {
+      if (placement.chip === undefined) continue;
+
+      const drawn = [
+        ...screen
+          .getByTestId(`chip-${placement.hex}`)
+          .querySelectorAll('.chip__numeral [data-digit]'),
+      ];
+
+      expect(drawn.map((path) => path.getAttribute('data-digit')).join('')).toBe(
+        String(placement.chip),
+      );
+      counted += 1;
+    }
+
+    expect(counted).toBeGreaterThan(0);
+  });
+
+  /*
+   * **Die Zahl bleibt auf dem Chip - gerechnet, nicht geschaetzt.**
+   *
+   * Dieselbe Pruefung, die die Augen darunter schon haben, und aus demselben
+   * Grund: eine Zahl, die ueber den Chiprand ragt, sieht nach Fehler aus, und
+   * ob sie es tut, haengt an Versalhoehe, Ziffernzahl und Versatz zugleich.
+   * Als `text` war das nicht nachrechenbar - die Breite haette an den Metriken
+   * einer Schrift gehangen, die auf dem Rechner des Spielers fehlen kann.
+   * Gezeichnet ist sie es: die Zahl steht in ihrer eigenen Streckung im Blatt.
+   *
+   * Die zweistellige Zwoelf ist dabei der Ernstfall, die heisse Sechs mit
+   * ihrer groesseren Versalhoehe der zweite - beide kommen im Aufbau vor.
+   */
+  it('haelt die Zahl innerhalb des Chips - gerechnet, nicht geschaetzt', () => {
+    render(<BoardSvg state={start} targets={EMPTY_TARGETS} seats={seats} onPick={vi.fn()} />);
+
+    /** Der Radius, mit dem `BoardSvg` die Chipscheibe zeichnet. */
+    const CHIP = 0.34;
+    let widest = 0;
+
+    for (const placement of scenario.hexes) {
+      if (placement.chip === undefined) continue;
+
+      const group = screen.getByTestId(`chip-${placement.hex}`);
+      const disc = group.querySelector(':scope > circle')!;
+      const cx = Number(disc.getAttribute('cx'));
+      const cy = Number(disc.getAttribute('cy'));
+
+      const numeral = group.querySelector('.chip__numeral')!;
+      const [, x, y, scale] = /translate\(([-\d.]+) ([-\d.]+)\) scale\(([\d.]+)\)/
+        .exec(numeral.getAttribute('transform')!)!
+        .map(Number) as unknown as [unknown, number, number, number];
+
+      const width = numeralWidth(placement.chip) * scale;
+      const height = NUMERAL_CAP * scale;
+
+      // Die weiteste der vier Ecken entscheidet, nicht die Mitte einer Kante.
+      for (const corner of [
+        [x, y],
+        [x + width, y],
+        [x, y + height],
+        [x + width, y + height],
+      ]) {
+        const reach = Math.hypot(corner[0]! - cx, corner[1]! - cy);
+
+        expect(reach).toBeLessThan(CHIP);
+        widest = Math.max(widest, reach);
+      }
+    }
+
+    // Ohne diese Zeile bestuende der Test auch, wenn gar keine Zahl mehr da waere.
+    expect(widest).toBeGreaterThan(0);
   });
 
   /*

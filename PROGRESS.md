@@ -4125,3 +4125,164 @@ nicht wieder als „ungesehen" durchgeht.
 
 Etappe 10 (Erweiterungen) — unverändert. Davor lohnt der Spielbildschirm auf
 schmalen Geräten: er ist unter ~500 px Breite gemessen unbedienbar.
+
+## Ein Winkel für alles: Ziffern, Seekarte, Fase (2026-08-20, `main`)
+
+Stand: nach `9f46423`. Die Frage war nicht, ob die Oberfläche funktioniert — sie
+tut es —, sondern warum sie trotz aller Arbeit brav aussieht. Der Blick in den
+Browser hat es in einem Bild beantwortet: gezeichnetes Gelände mit Tannen,
+Zacken und Furchen, und darauf sitzen die Zahlenchips in **`Segoe UI Bold`**.
+Das meistbetrachtete Ding einer Partie war das einzige, das nach Webseite
+aussah.
+
+Der Befund dahinter ist größer. `Wordmark.tsx` hat dem Spiel ein eigenes
+Buchstabensystem gegeben — Versalhöhe 100, Stammbreite 17, Fase 17 außen und 10
+innen, „aus demselben Winkel geschnitten wie das Brett". Es stand **genau
+einmal** auf dem Hauptmenü und danach nie wieder. Ein guter Titel über einer
+Anwendung ist kein System.
+
+Drei Züge, alle aus diesem einen Winkel:
+
+1. **Die Ziffern** (`type/Numerals.tsx`) — zehn Zeichen auf dem Raster der
+   Wortmarke, auf dem Zahlenchip und an der Würfelsumme.
+2. **Die Seekarte** (`screens/SeaChart.tsx`) — Rhumbenlinien unter Brett und
+   Aufbau, statt eines leeren Radialverlaufs auf dem größten Anteil des Bildes.
+3. **Die Fase** — `corner-shape: bevel` auf allem Bedienbaren, statt des einen
+   Radius, der überall passt und nirgends gemeint ist.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 326 / 35       |
+| `pnpm build`        | grün — `index.js` 418.50 kB (gzip 124.69), `index.css` 37.12 kB (8.46) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | 1184×615 und 380×740: Menü, Aufbau, lokale Partie bis zum ersten Wurf  |
+
+Zwei neue Tests in `BoardSvg.test.tsx`, zwei bestehende umgehängt. Der Zuwachs
+ist echt und nicht nur Umbau: dass auf einem Chip **die richtige Zahl** steht,
+stand vorher nirgends — geprüft war nur die Markierung „heiß".
+
+### Die Ziffern: dieselbe Begründung, die die Augen schon hatten
+
+Die Punkte unter der Chipzahl sind in `d05ab4c` gezeichnete Kreise geworden, und
+der Grund stand schon damals da: **eine gezeichnete Form hat keine Metrik, die
+eine fehlende Schrift verändern könnte.** Für die Zahl darüber galt derselbe
+Satz die ganze Zeit mit — sie war nur nicht drangekommen. Jetzt ist sie es, und
+damit fallen `.chip text` und `.chip text.chip__hot` ersatzlos weg: genau die
+zwei Regeln, an denen sich die Spezifitätsfalle aus `CLAUDE.md` zweimal
+geschlossen hat. Was am Element steht, kann kein Selektor mehr überholen.
+
+**Alle zehn Ziffern haben denselben Vorschub (81), auch die schmale Eins.** Bei
+den Buchstaben ist er je Zeichen verschieden; hier wäre das ein Fehler. Regel 3
+verlangt Tabellenziffern, und „11" darf gegen „10" auf dem Nachbarchip nicht
+wackeln.
+
+### Ohne Browser gezeichnet — und trotzdem nachgesehen
+
+Zehn Ziffern von Hand als Pfaddaten zu schreiben und zu hoffen, ist keine
+Methode. Solange die Chrome-Erweiterung nicht verbunden war, ist deshalb erst
+ein **Scanline-Füller** entstanden, der `M/H/V/L/Z` nach even-odd rastert und
+als ASCII ausgibt. Er hat sich sofort bezahlt gemacht: sechs Ziffern saßen, drei
+nicht. Die **1** hatte eine zu kurze Fahne, die **3** eine so tiefe Taille, dass
+sie in Richtung „8" kippte, und die **7** stand mit dem Fuß so weit links, dass
+sie aus ihrem Vorschub fiel. Alle drei waren im ASCII in einem Blick zu sehen —
+und keine davon hätte ein Test gefunden.
+
+Später kam der Browser doch, und die Erweiterung hat ihre eigene Falle
+mitgebracht: der Viewport steht fest auf einer Größe, die `resize_window` nicht
+ändert, und **nach jedem `zoom` liefert `screenshot` weiter dessen Ausschnitt** —
+zweimal sah es aus, als sei die Seite zusammengebrochen. Beides löst ein neuer
+Tab; für echte Fensterbreiten bleibt der Iframe-Trick aus `9f46423`.
+
+### Die See war der größte leere Anteil des Bildes
+
+Der Spielbildschirm gibt dem Brett die Höhe und schiebt die Ablagen in die zwei
+unteren Ecken. Was dabei entsteht, sind links und rechts Streifen von je
+mindestens 236 px, dazu der Rand oben — zusammen rund ein Drittel der Fläche,
+und darauf stand ein Radialverlauf.
+
+Was dort jetzt liegt, ist nicht Zierat, sondern Material: das Netz der
+Kompasslinien ist **das** Kennzeichen einer Seekarte, und um dieses Brett herum
+ist Wasser mit Häfen daran. Sechzehn Peilungen, neun Knoten, und alle Knoten
+benutzen **dieselben** Richtungen — das ist der Punkt an einer Rhumbenlinie, sie
+hält ihre Peilung, und deshalb verzahnt sich das Netz, statt sternförmig zu
+zerfallen. **Der Hauptknoten sitzt in der Mitte, also unter dem Brett:** die
+Linien kommen nicht irgendwoher, sie kommen unter der Insel hervor.
+
+Acht Nebenknoten und nicht sechzehn wie in der Vorlage. Die Vorlage ist auch das
+ganze Blatt und hat kein Brett in der Mitte; bei sechzehn wird aus dem Netz ein
+Gewebe, und ein Gewebe trägt Textur — dann streitet die See mit dem Gelände
+darauf (Regel 4).
+
+**Auf dem Startbildschirm hängt eine engere Maske**, und das ist der Unterschied
+zwischen Wasser und Tapete. Mit der Maske des Spielbildschirms liefen die Linien
+quer durch Überschrift und Formular; ein Netz unter einem Text ist keine Karte
+mehr, sondern Zierat hinter einer Auskunft (Regel 6). Es bleibt jetzt bei der
+Ecke, in der wirklich See ist.
+
+### Die Fase kostet keinen Schatten — und das war die Bedingung
+
+`clip-path` hätte dieselbe Form gemacht **und den Kontaktschatten
+mitgeschnitten**, und der ist der ganze Unterschied zwischen „liegt auf dem
+Tisch" und „ist ein Rechteck". `corner-shape: bevel` schneidet stattdessen die
+Ecke, die `border-radius` ohnehin schon vermaßt hat: kein Betrag ändert sich,
+`box-shadow` folgt der neuen Kontur von selbst, und wo die Eigenschaft fehlt,
+bleibt die Ecke rund — also der Stand von vorher, kein Ausfall.
+
+Geschnitten wird nicht alles. **Karten, Würfel, Zahlenchips und Bauteile
+behalten ihre Form**, weil sie Spielmaterial sind und sie aus der Wirklichkeit
+haben — eine Spielkarte mit geschnittenen Ecken ist keine Karte mehr, sondern
+ein Plättchen. Die Trennlinie ist damit eine Auskunft und kein Geschmack:
+gedrucktes Papier gegen gestanzte Bedienung.
+
+### Zwei Fehler, gemessen statt geahnt
+
+**Der eine ist älter als diese Arbeit.** Die Würfelsumme stand mit **1.13:1** auf
+der Tiefsee, die Aufforderung „Würfeln" daneben mit **2.5:1**. Die Ursache steht
+seit `9b51b83` im Blatt — und zwar als Kommentar, der beschreibt, was gerade
+nicht passiert ist: an `.dice--waiting` heißt es, die zwei `--ink`-Zeilen seien
+gefallen, weil dunkle Tinte auf der Tiefsee „dieselbe unsichtbare Schrift" wäre.
+Gefallen sind sie; **umgestellt wurde nichts**, und ohne Umstellung fällt `--ink`
+auf den Grundwert aus `:root` zurück — und der ist dunkel.
+
+Die Lehre ist nicht die Farbe, sondern der Satz daneben: **ein Kommentar, der
+eine Absicht beschreibt, ist kein Nachweis, dass sie im Blatt steht.**
+Aufgefallen ist es erst, als die Summe eine gezeichnete Form wurde und jemand
+nachgesehen hat, ob sie ankommt. Die Zeilen stehen jetzt an `.dice-tray` und
+nicht an `.dice`: die Aufforderung ist eine Schwester der Würfel und keine
+Tochter, am Becher gesetzt hätte die Umstellung die Summe geholt und das Wort
+daneben stehen lassen — der halbe Fix, der aussieht wie ein ganzer. Gemessen
+jetzt **11.18:1** und **5.83:1**, der Würfel behält seine dunkle Tinte lokal
+(15.28:1 auf Pergament).
+
+**Der andere war frisch und selbst gemacht.** `.sea-chart` trug `inset: -0.75rem`,
+um das Polster von `.game` auszugleichen. Der Startbildschirm hat kein Polster,
+die Regel aber trotzdem geerbt: das Netz ragte dort 12 px über jede Seite hinaus
+und schob der Seite einen **waagerechten Rollbalken** unter — Regel 7, und
+ausgelöst von einem Element, das man nicht einmal anfassen kann. Der Ausgleich
+steht jetzt dort, wo das Polster steht (`.game .sea-chart`), und nicht im
+Bauteil. Gemessen auf allen drei Bildschirmen und bei 380 px: `scrollWidth -
+clientWidth` = 0.
+
+### Offene Punkte
+
+- Die Hafenmarken (`2:1`, `3:1`) stehen weiter in `Segoe UI` — mitten auf dem
+  Brett, neben den gezeichneten Chipzahlen. Sie brauchen einen Doppelpunkt, den
+  das Ziffernraster nicht kennt.
+- Kleine laufende Zahlen (`0 SP`, `0 Karten`, die Bauvorräte) bleiben
+  Fließtext. Das ist Absicht — eine Anzeigeschrift mitten im Satz ist keine
+  Persönlichkeit, sondern ein Setzfehler —, aber es ist eine Grenze, die jemand
+  anders ziehen könnte.
+- `corner-shape` ist jung. Wo es fehlt, ist die Ecke rund; geprüft wurde nur in
+  Chrome 151.
+- Die Deutlichkeit des Netzes (7 % Strahlen, 5 % Ring) ist am Auge gesetzt und
+  nicht gemessen. Sie liegt bewusst unter jeder Kontrastnorm — sie trägt keine
+  Information.
+
+### Nächste Etappe
+
+Etappe 10 (Erweiterungen) — unverändert. Der schmale Spielbildschirm aus dem
+Nachtrag zu `9f46423` steht weiter davor: unter rund 500 px ist das Brett 0 px
+breit, und das ist ein eigener Entwurf und keine Zeile im Stilblatt.

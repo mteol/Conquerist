@@ -84,6 +84,27 @@ Laufweite in der Anzeige, weite Sperrung in Kleinlabels, **überall
 Tabellenziffern**. In einem Spiel, in dem dauernd Zahlen verglichen werden,
 darf keine Ziffer springen.
 
+**Und es gibt eine eigene Anzeigeschrift — gezeichnet, nicht geladen.**
+`screens/Wordmark.tsx` (zehn Buchstaben) und `type/Numerals.tsx` (zehn Ziffern)
+sitzen auf **einem** Raster: Versalhöhe 100, Stammbreite 17, Fase 17 außen und
+10 im engen Innenraum. Wo eine Schrift rundet, sitzt eine Schräge. Wer ein
+Zeichen ändert oder hinzufügt, hält diese drei Zahlen ein — eine Fase von 12 an
+einer Stelle sieht nicht nach Variante aus, sondern nach Versehen. Die Ziffern
+haben **alle denselben Vorschub** (81), auch die schmale Eins; genau darin
+besteht eine Tabellenziffer.
+
+Sie ist eine **Anzeigeschrift** und keine zweite Grundschrift. Sie steht, wo
+die Zahl der Inhalt ist und groß dasteht — Zahlenchip, Würfelsumme. Eine
+laufende Zeile („0 Karten", „wirft 3 ab") bleibt Fließtext; eine Anzeigeschrift
+mitten im Satz ist keine Persönlichkeit, sondern ein Setzfehler.
+
+**Derselbe Winkel trägt auch die Bedienung.** `corner-shape: bevel` schneidet
+Knöpfe, Felder, Rahmen und Dialoge aus demselben 45-Grad-Schnitt (eine Regel,
+`index.css`). Nicht geschnitten wird Spielmaterial — Karten, Würfel, Chips,
+Bauteile haben ihre Form aus der Wirklichkeit. Und **nie per `clip-path`**: das
+schneidet den Kontaktschatten mit ab, und der ist der ganze Unterschied
+zwischen „liegt auf dem Tisch" und „ist ein Rechteck".
+
 **4. Das Brett ist der Held.** Es bekommt den Platz und die Sättigung; Panels,
 Leisten und Dialoge sind ruhig und ordnen sich unter. Boldness wird an einer
 Stelle ausgegeben, nicht auf jeder Fläche.
@@ -234,6 +255,27 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
   und der Absendeknopf war offen. Wer Zustand hält, der zu *einem* Vorgang
   gehört, setzt ihn zurück, sobald sich der Vorgang ändert; „wird ja neu
   gerendert" heißt nicht „fängt neu an".
+- **Ein Kommentar, der eine Absicht beschreibt, ist kein Nachweis, dass sie im
+  Blatt steht.** An `.dice--waiting` stand zwei Etappen lang, die zwei
+  `--ink`-Zeilen seien gefallen, weil dunkle Tinte auf der Tiefsee „dieselbe
+  unsichtbare Schrift" wäre. Gefallen sind sie — **umgestellt wurde nichts**,
+  und ohne Umstellung fällt `--ink` auf den Grundwert aus `:root` zurück, und
+  der ist dunkel. Die Würfelsumme stand damit bei gemessenen 1,13:1, die
+  Aufforderung „Würfeln" bei 2,5:1. Wer einen Wegfall beschreibt, schreibt
+  dazu, was **stattdessen** gilt, und misst es nach.
+- **Eine Variable, die ein Kind setzt, holt seine Geschwister nicht ab.** Die
+  Kur oben gehört an `.dice-tray` und nicht an `.dice`: „Würfeln" steht *neben*
+  dem Becher, nicht darin. Am Becher gesetzt hätte die Umstellung die Summe
+  geholt und das Wort daneben stehen lassen — der halbe Fix, der aussieht wie
+  ein ganzer. Vor einer Zeile mit `--ink` steht die Frage, wer alles davon
+  erben muss.
+- **Ein negativer Einzug gehört dorthin, wo das Polster steht.** `.sea-chart`
+  trug `inset: -0.75rem`, um das Polster von `.game` auszugleichen. Der
+  Startbildschirm hat kein Polster und erbte die Regel trotzdem: das Netz ragte
+  12 px über jede Seite hinaus und schob der Seite einen waagerechten
+  Rollbalken unter — von einem Element, das man nicht anfassen kann. Ein
+  Bauteil kennt das Polster seines Trägers nicht; der Ausgleich steht beim
+  Träger.
 - **Ein Protokollcode gehört nicht in einen Satz für den Spieler.**
   `ServerError` klebte den Code vor die Meldung, und auf dem Bildschirm stand
   „REJECTED: Angeboten werden kann nur, was auf der Hand liegt". Der Server
@@ -421,6 +463,10 @@ Was im Server steht (Etappe 4/5, `identity/` seit Etappe 7 erweitert):
 Was im Client steht:
 - `seats.ts` — reicht Typ und Palette aus `shared` durch, plus lokale Besetzung
 - `board/` — Feld/Knoten/Kante zu Punkten (Spitze oben), das SVG-Brett
+- `type/` — die gezeichnete Anzeigeschrift. `Numerals.tsx` hält die zehn
+  Ziffern, `Numeral` setzt sie in ein SVG (Brett), `NumeralText` in eine Zeile
+  (Satz). Die Buchstaben liegen aus historischen Gründen noch in
+  `screens/Wordmark.tsx` — ein Raster, zwei Dateien.
 - `game/` — Klickkarten, Anzeigemodell, Hotseat- und Online-Zustand
 - `net/` — Transport, Sitzungsgeheimnis, Einladungslink
 - `panels/`, `dialogs/`, `screens/`, `diagnostics/` — Oberfläche.

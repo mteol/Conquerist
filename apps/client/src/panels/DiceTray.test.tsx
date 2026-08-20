@@ -33,10 +33,17 @@ function tray(props: Partial<ComponentProps<typeof DiceTray>> = {}): JSX.Element
 }
 
 describe('DiceTray', () => {
-  it('zeigt die Summe des Wurfs', () => {
+  /*
+   * Die Summe ist eine gezeichnete Form und kein Text mehr - `textContent` ist
+   * an dieser Stelle leer und waere es auch dann, wenn gar keine Zahl mehr
+   * dastuende. Gelesen wird deshalb, welche Ziffern gezeichnet sind.
+   */
+  it('zeigt die Summe des Wurfs - gezeichnet, nicht gesetzt', () => {
     render(tray());
 
-    expect(screen.getByTestId('dice').textContent).toContain('8');
+    const drawn = [...screen.getByTestId('dice').querySelectorAll('.dice__total [data-digit]')];
+
+    expect(drawn.map((path) => path.getAttribute('data-digit')).join('')).toBe('8');
   });
 
   it('sagt die Augen an, statt sie nur zu zeichnen', () => {
