@@ -319,6 +319,45 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
   derselben Zahl, aber die Tabellen darunter sind nicht mehr dieselben. Wer
   eine Spalte braucht, hängt hinten einen neuen Schritt an
   (`MIGRATIONS` in `apps/server/src/db/database.ts`).
+- **Eine Deckkraft unter einem Pixel Strichbreite ist nicht die Deckkraft, die
+  dasteht.** Die Geländetextur stand auf `stroke-width: 0.012` — im Browser
+  gemessen **0.78 Pixel**. Unterhalb eines Pixels zeichnet der Browser nicht
+  dünner, sondern blasser: er verteilt den Strich auf zwei Pixelreihen und
+  rechnet die Deckung herunter. Von 17 Prozent kamen rund 13 an, auf einem
+  Grund, gegen den sie ohnehin nur 1.23:1 standen — die Textur war nicht
+  „leise", wie ihr Kommentar behauptete, sie war **weg**. Wer eine Feinheit in
+  Brettmaßen setzt, rechnet sie einmal in Pixel um; unter 1 px gilt die Zahl im
+  Blatt nicht mehr.
+- **Dieselbe Tinte auf sechs Farben ist nicht sechsmal dieselbe Textur, und
+  derselbe Kontrast auf sechs Mustern auch nicht.** Zweimal am selben Tag: erst
+  stand die Einheitstinte auf der Wüste bei 1.41:1 und auf dem dunklen Wald bei
+  1.23:1 — am schwächsten genau dort, wo die Unterscheidung am nötigsten war.
+  Dann standen alle sechs auf 1.50:1, und Hügel und Acker sahen trotzdem
+  doppelt so laut aus: der Ziegelverband belegt **25.3 Prozent** seiner Kachel,
+  der Wald **9.8**. Ein Muster aus durchlaufenden Linien füllt eine Fläche, ein
+  Muster aus vereinzelten Marken tupft sie an. Wer eine Textur einstellt,
+  rechnet gegen den **eigenen** Grund und gegen die **eigene** Deckung.
+- **Ein weicher heller Rand um ein Objekt ist ein Glow, auch wenn er
+  „Küstensaum" heißt.** Drei gleichmäßig verteilte Untiefen (0.34/0.20/0.10 bei
+  7/10/15 Prozent) liefen zu einem Verlauf zusammen und sahen aus wie das, was
+  Designregel 5 hinauswirft. Was Wasser um eine Küste tut, ist ungleichmäßig:
+  am Land deutlich, nach außen sich verlierend. Eine Stufung, die man nicht
+  zählen kann, ist keine.
+- **Ein grüner Testlauf ist kein Beweis, dass die Tests halten.** Zwei neue
+  Testdateien haben `StartScreen.test.tsx` zum Kippen gebracht — und auf dem
+  gestashten Stand, ohne eine einzige Änderung, fielen **zwei von drei** vollen
+  Läufen. Der Fehler war die ganze Zeit da; die zusätzliche Last hat ihn nur
+  sichtbar gemacht. Wer einen Flake sieht, misst ihn **auf dem Stand davor**,
+  bevor er die eigene Änderung verdächtigt.
+- **`userEvent.clear(feld)` und `userEvent.type(feld, …)` sind zwei Sitzungen
+  und teilen keinen Zustand.** Die Direkt-API legt für jeden Aufruf ein neues
+  `setup()` an; was der eine Aufruf an Tastendrücken in der Schlange hat, weiß
+  der nächste nicht, und user-event setzt obendrein echte Verzögerungen
+  zwischen die Tasten. Unter 35 parallelen Testdateien landeten Restzeichen aus
+  `brett-zwei` im nächsten Feld (`"weiAnna"`). Eine gemeinsame Sitzung mit
+  `delay: null` — und danach auf den Wert **im Feld** warten, denn bei einem
+  kontrollierten Input kommt er aus dem React-Zustand zurück, und wer sofort
+  danach liest, liest den Stand von vorher.
 
 ## Etappenplan
 0. ✅ Monorepo-Grundgerüst, WS-Ping/Pong

@@ -4286,3 +4286,186 @@ clientWidth` = 0.
 Etappe 10 (Erweiterungen) — unverändert. Der schmale Spielbildschirm aus dem
 Nachtrag zu `9f46423` steht weiter davor: unter rund 500 px ist das Brett 0 px
 breit, und das ist ein eigener Entwurf und keine Zeile im Stilblatt.
+
+## Das Gelände kommt an: Textur, Deckung, Küste (2026-08-20, `main`)
+
+Stand: nach `0b72a31`. Der Auftrag war „das Spielfeld ist ein bisschen
+charakterlos, der Stil ist aber gut" — also nicht die Farbwelt umwerfen,
+sondern herausfinden, warum die Handschrift, die Wortmarke und Ziffern
+inzwischen haben, an der Feldkante aufhört.
+
+Die Antwort war eine Messung und keine Geschmacksfrage.
+
+### Der Befund: die Textur stand im Blatt und kam nie an
+
+Bei 65 Pixeln je Bretteinheit — das Brett stand in einem 1184er Fenster auf
+644 Pixeln — war der Texturstrich **0.78 Pixel** breit. Unterhalb eines Pixels
+zeichnet der Browser nicht dünner, sondern blasser: er verteilt den Strich auf
+zwei Pixelreihen und rechnet die Deckung herunter. Von den 17 Prozent im Blatt
+kamen rund 13 an, auf einem Waldgrün, gegen das sie ohnehin nur **1.23:1**
+standen. Eine Tanne war dabei **6.8 Pixel** hoch.
+
+Die Textur war also nicht „leise" (so stand es im Kommentar) — sie war **weg**,
+und das Feld las sich als Farbfläche mit einer 1.56 Pixel starken Kante drum
+herum. Das Stärkste am Feld war seine Grenze. Genau daher der Eindruck
+„Farbraster statt Landschaft".
+
+**Ein Kommentar, der eine Absicht beschreibt, ist kein Nachweis, dass sie
+ankommt** — die Falle steht seit zwei Etappen in `CLAUDE.md`, und sie hat hier
+ein drittes Mal zugeschnappt, diesmal nicht über Spezifität, sondern über
+Subpixel.
+
+### Drei Züge
+
+1. **Der Strich auf 0.02** (1.3 Pixel). Das ist die Untergrenze, ab der eine
+   Deckkraft überhaupt bedeutet, was dasteht.
+2. **Die Stärke je Gelände**, gegen den eigenen Grund gerechnet statt einmal
+   für alle geraten — und die Richtung nach der Helligkeit des Grundes.
+3. **Ein Küstensaum** aus drei Untiefen, statt allein eines Schlagschattens.
+
+### Die Tinte: eine Farbe ist nicht sechsmal dieselbe Textur
+
+Die alte Einheitstinte stand auf der Wüste bei 1.41:1 und auf dem Wald bei
+1.23:1 — dort, wo das Feld am dunkelsten ist und die Unterscheidung am
+nötigsten wäre, war sie am schwächsten. Jeder Zielwert ist jetzt ausgerechnet
+(Luminanz nach WCAG, Tinte über Grund gemischt).
+
+**Die Richtung folgt aus der Helligkeit und aus nichts sonst.** Auf dem Wald
+(Luminanz 0.114) braucht dunkle Tinte 46 Prozent für das, wofür helle 20
+genügen; eine dunkle Marke auf einem dunklen Feld wird zum Loch, bevor sie
+sichtbar wird. Wald und Hügel zeichnen deshalb in Pergament, die vier helleren
+Gelände in Tiefsee-Tinte. Dieselbe Rechnung wie bei der Straßenkontur: was auf
+jedem Untergrund gelten soll, richtet sich nach dem Untergrund.
+
+### Der zweite Befund: Dichte ist nicht Kontrast
+
+Mit sechsmal 1.50 im Blatt sahen Hügel und Acker am Bildschirm trotzdem
+deutlich lauter aus als der Rest. Nachgemessen (Pfadlänge mal Strichbreite,
+bei gefüllten Marken die Fläche des abgetasteten Umrisses, gegen die
+Kachelfläche) belegt der Ziegelverband **25.3 Prozent** seiner Kachel, der Wald
+**9.8** — Faktor 2.58. Ein Muster aus durchlaufenden Linien füllt eine Fläche,
+ein Muster aus vereinzelten Marken tupft sie an; derselbe Kontrast je Strich
+ergibt dann nicht dieselbe Textur.
+
+Gedämpft wird mit `sqrt(11.2 / Deckung)`, gedeckelt bei 1 — die dichten
+Gelände werden leiser, die dünnen nicht lauter. **Die Wurzel ist ein Kompromiss
+und wird im Blatt auch so genannt:** voll linear korrigiert wäre der
+Ziegelverband auf 1.22 gefallen, also fast zurück auf den Zustand, den diese
+Etappe beheben sollte.
+
+| Gelände   | Deckung | Dämpfung | Ziel  | Alpha | Tinte     |
+| --------- | ------- | -------- | ----- | ----- | --------- |
+| forest    | 9.8 %   | 1.000    | 1.500 | 20 %  | Pergament |
+| pasture   | 12.0 %  | 0.965    | 1.483 | 23 %  | Tiefsee   |
+| mountains | 12.0 %  | 0.969    | 1.484 | 26 %  | Tiefsee   |
+| desert    | 15.9 %  | 0.841    | 1.421 | 19 %  | Tiefsee   |
+| fields    | 17.7 %  | 0.797    | 1.398 | 19 %  | Tiefsee   |
+| hills     | 25.3 %  | 0.666    | 1.333 | 19 %  | Pergament |
+
+### Was der Blick aus der Nähe noch gefunden hat
+
+Die viewBox lässt sich als Zoom benutzen — echtes SVG-Zoom, das alles korrekt
+größer rendert, im Gegensatz zum `zoom` der Chrome-Erweiterung, der weiter den
+alten Ausschnitt liefert. Vergrößert kamen zwei Dinge heraus, die im Ganzen
+nicht auffielen:
+
+- **Der Acker war ein Streifenmuster.** Zwischen zwei Furchen lag weniger als
+  das Vierfache der Strichbreite — dicht genug, dass das Auge es als Flimmern
+  liest statt als Furche. Kachelhöhe von 0.09 auf 0.115, und die Auslenkung ist
+  mitgewachsen: eine flachere Welle in einer höheren Kachel wäre eine gerade
+  Linie geworden.
+- **Die Weide war mit Vögeln bestreut.** Drei gerade Halme aus einem Punkt,
+  symmetrisch und gleich lang, sind kein Büschel, sondern ein **Ypsilon**. Die
+  äußeren Halme sind jetzt Bögen; der mittlere bleibt gerade, denn drei Bögen
+  wären eine Palme.
+
+### Die Küste: erst ein Glow, dann eine Karte
+
+Der Schlagschatten sagt „die Landmasse liegt auf der See". Er sagt nichts
+darüber, **was** die See ist — und der Hintergrund tut das bereits, mit
+Rhumbenlinien und Kompassrose. Es fehlte der Übergang.
+
+Die Säume sind kein eigener Umriss der Landmasse, sondern dieselben neunzehn
+Sechsecke noch einmal, als breite Kontur und unter den Feldern: was nach innen
+ragt, verschwindet unter den Nachbarn, sichtbar bleibt der Überstand zur See.
+Damit skalieren sie **mit** dem Brett, anders als der Schlagschatten — richtig,
+denn sie gehören zur Karte, nicht zum Licht im Raum.
+
+**Der erste Versuch war ein Glow.** Gleichmäßig verteilte Breiten und
+Deckkräfte (0.34/0.20/0.10 bei 7/10/15 Prozent) liefen zu einem weichen hellen
+Schein zusammen — genau das, was Designregel 5 hinauswirft. Was Wasser um eine
+Küste tut, ist etwas anderes: unmittelbar am Land flach und deutlich, nach
+außen sich verlierend. Das innerste Band ist deshalb schmal und mit Abstand das
+kräftigste (0.07 bei 26 Prozent).
+
+Die Deckkraft steht an der **Gruppe** und nicht am Strich: neunzehn Konturen
+überlappen sich an jeder Feldecke, und zwei halbdurchsichtige Striche
+übereinander sind dunkler als einer — am Strich gesetzt zeigte die Küste an
+jeder Ecke einen Knoten.
+
+### Ein fremder Testfehler, den die neue Last aufgedeckt hat
+
+`pnpm test` fiel plötzlich in `StartScreen.test.tsx`, mit Werten wie
+`"weiAnna"` und `"eiAnna"` — Restzeichen aus einem **vorherigen** Tippvorgang
+(`brett-zwei`), die verspätet im nächsten Feld landeten. Der fallende Test
+wechselte von Lauf zu Lauf.
+
+**Gemessen statt vermutet:** auf dem gestashten Stand, ohne eine einzige
+Änderung am Brett, fielen **zwei von drei** vollen Läufen. Der Fehler war
+vorher da; die vier neuen Tests haben nur die Last erhöht, unter der er
+sichtbar wird. Der grüne Lauf zu Beginn der Etappe war Glück.
+
+Zwei Ursachen greifen ineinander, und die erste Kur hat nur die erste
+erwischt (danach fiel noch einer von vier Läufen):
+
+1. Die **Direkt-API** von user-event legt für jeden Aufruf eine neue Sitzung
+   an; `clear` und `type` teilen deshalb keinen Zustand, und was die eine an
+   Tastendrücken in der Schlange hat, weiß die andere nicht. Dazu setzt
+   user-event echte Verzögerungen zwischen Tastendrücke — auf einer ruhigen
+   Maschine unsichtbar, unter 35 parallelen Testdateien nicht mehr. Kur: eine
+   gemeinsame Sitzung mit `delay: null`.
+2. Das Feld ist **kontrolliert**, sein Wert kommt aus dem React-Zustand
+   _zurück_. Wer unmittelbar nach dem Tippen das Brett ausliest, liest im
+   Zweifel das von vorher — und `zeichnet zu einem anderen Seed ein anderes
+Brett` vergleicht dann zweimal dasselbe. Kur: auf den Wert im Feld warten,
+   denn er stammt aus demselben Zustandswechsel wie das Brett.
+
+Danach fünf von fünf Läufen grün.
+
+### Ein Befund, der offen bleibt
+
+Beim Messen der schmalen Fenster (Iframe-Trick) kam heraus, dass der bekannte
+Layout-Befund **schlimmer ist als bisher notiert**. Weiter oben stand „unter
+~500 px Breite unbedienbar"; gemessen wird das Brett schon weit vorher
+unbrauchbar klein:
+
+| Fenster | Brett  |
+| ------- | ------ |
+| 1184 px | 684 px |
+| 900 px  | 400 px |
+| 700 px  | 200 px |
+| 560 px  | 60 px  |
+| 480 px  | 0 px   |
+
+Bei 900 px Fenster ist der Texturstrich wieder unter einem Pixel — aber das ist
+kein Texturbefund, sondern eine Folge davon, dass das Brett dort schon zu klein
+zum Spielen ist. Repariert wird die Ursache; die Textur zu deckeln wäre ein
+Pflaster auf dem falschen Problem. Der Befund gehört vor Etappe 10.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                                        |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 330 / 35                      |
+| `pnpm test` fünfmal | grün, fünf von fünf (vorher fielen zwei von drei)                                     |
+| `pnpm build`        | grün — `index.js` 419.02 kB (gzip 124.87), `index.css` 37.58 kB (8.56)                |
+| `pnpm format:check` | grün                                                                                  |
+| Browser             | Gründungsphase durchgeklickt: Straßen und Häuser lesen auf der lauteren Textur sauber |
+
+Vier neue Tests. Zwei halten die Kacheln (jede trägt ihre Geländeklasse — die
+Kopplung ins Blatt ist eine Zeichenkette und bricht sonst still; und keine
+Kachel schrumpft wieder unter die Größe, bei der eine Form eine Form bleibt).
+Zwei halten die Küste: dass die Säume **unter** den Feldern liegen (rutschen
+sie dahinter, liegt ein Pergamentschleier über dem ganzen Brett) und dass jedes
+Band jedes Feld säumt und von außen nach innen schmaler wird.

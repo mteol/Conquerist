@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, userEvent } from '../test/dom';
+import { render, screen, userEvent, waitFor } from '../test/dom';
 import { StartScreen, blueprintsFor } from './StartScreen';
 
 describe('Startbildschirm', () => {
@@ -40,12 +40,10 @@ describe('Startbildschirm', () => {
         .join('');
 
     const seed = screen.getByLabelText('Seed');
-    await userEvent.clear(seed);
-    await userEvent.type(seed, 'brett-eins');
+    await neuTippen(seed, 'brett-eins');
     const first = terrainOf();
 
-    await userEvent.clear(seed);
-    await userEvent.type(seed, 'brett-zwei');
+    await neuTippen(seed, 'brett-zwei');
 
     expect(terrainOf()).not.toBe(first);
   });
@@ -55,8 +53,7 @@ describe('Startbildschirm', () => {
     render(<StartScreen onStartLocal={onStart} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
 
     const firstName = screen.getAllByLabelText(/^Name von Spieler/)[0]!;
-    await userEvent.clear(firstName);
-    await userEvent.type(firstName, 'Anna');
+    await neuTippen(firstName, 'Anna');
     await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
 
     expect(onStart).toHaveBeenCalledTimes(1);
@@ -71,8 +68,7 @@ describe('Startbildschirm', () => {
     render(<StartScreen onStartLocal={onStart} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
 
     const seed = screen.getByLabelText('Seed');
-    await userEvent.clear(seed);
-    await userEvent.type(seed, 'immer-gleich');
+    await neuTippen(seed, 'immer-gleich');
     await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
     await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
 
@@ -170,3 +166,48 @@ describe('Startbildschirm', () => {
     expect(screen.queryByText(/Deine Partien/i)).toBeNull();
   });
 });
+
+/**
+ * Ein Feld leeren und neu beschreiben - in **einer** Sitzung und ohne Verzoegerung.
+ *
+ * Hier stand dreimal `userEvent.clear(feld)` gefolgt von `userEvent.type(...)`,
+ * und das ist unter Last kaputtgegangen: zwei von drei vollen Laeufen fielen,
+ * mal der eine Test, mal der andere, mit Werten wie `"weiAnna"` und
+ * `"eiAnna"` - Restzeichen aus einem **vorherigen** Tippvorgang (`brett-zwei`),
+ * die verspaetet im naechsten Feld landeten.
+ *
+ * Zwei Ursachen greifen ineinander. Erstens legt die Direkt-API von user-event
+ * fuer **jeden** Aufruf eine neue Sitzung an; `clear` und `type` teilen deshalb
+ * keinen Zustand, und was die eine an Tastendruecken noch in der Schlange hat,
+ * weiss die andere nicht. Zweitens setzt user-event zwischen Tastendruecke
+ * echte Verzoegerungen - auf einer ruhigen Maschine unsichtbar, unter 35
+ * parallel laufenden Testdateien nicht mehr.
+ *
+ * Eine gemeinsame Sitzung mit `delay: null` nimmt beides weg. **Der Fehler war
+ * schon vor dieser Etappe da** und ist nur aufgefallen, weil neue Tests die
+ * Last erhoeht haben - gemessen auf dem Stand davor, ohne die Aenderungen am
+ * Brett.
+ */
+async function neuTippen(feld: HTMLElement, text: string): Promise<void> {
+  const user = userEvent.setup({ delay: null });
+
+  await user.clear(feld);
+  await user.type(feld, text);
+
+  /*
+   * **Und dann warten, bis der Wert wirklich dasteht.** Die gemeinsame Sitzung
+   * allein hat den Fehler nur seltener gemacht (einer von vier Laeufen statt
+   * zwei von drei), weil hier ein zweiter Grund mitwirkt: das Feld ist
+   * kontrolliert, sein Wert kommt aus dem React-Zustand **zurueck**. Wer
+   * unmittelbar nach dem Tippen das Brett ausliest, liest im Zweifel das von
+   * vorher - und `zeichnet zu einem anderen Seed ein anderes Brett` vergleicht
+   * dann zweimal dasselbe und meldet einen Fehler, den es nicht gibt.
+   *
+   * Der Wert im Feld ist dafuer die richtige Sonde: er stammt aus demselben
+   * Zustandswechsel wie das Brett. Steht er, ist auch alles neu gezeichnet,
+   * was am Seed haengt.
+   */
+  await waitFor(() => {
+    expect((feld as HTMLInputElement).value).toBe(text);
+  });
+}

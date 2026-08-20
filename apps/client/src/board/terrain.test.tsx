@@ -56,6 +56,62 @@ describe('TerrainPatterns', () => {
   });
 
   /**
+   * Die Kachel traegt ihre Gelaendeklasse - und daran haengt ihre Farbe.
+   *
+   * Die Staerke der Textur steht seit dieser Etappe **je Gelaende** im Blatt
+   * (`.terrain-tile--forest` und die fuenf anderen in `index.css`), weil eine
+   * Tinte auf sechs verschiedenen Gruenden nicht sechsmal dieselbe Textur ist.
+   * Die Kopplung zwischen hier und dort ist eine Zeichenkette, und eine
+   * Zeichenkette bricht still: wer die Klasse umbenennt, bekommt keinen
+   * Fehler, sondern eine Kachel, die auf `--terrain-ink` aus dem Nichts
+   * zurueckfaellt - also unsichtbar wird. Genau der Fall, den der erste
+   * Messbefund dieser Etappe beschreibt.
+   *
+   * Was hier **nicht** geprueft werden kann, ist die Farbe selbst: jsdom
+   * rechnet keine Kaskade aus. Geprueft wird die Klasse; dass sie ankommt,
+   * ist im Browser gemessen und steht in `PROGRESS.md`.
+   */
+  it('gibt jeder Kachel ihre Gelaendeklasse', () => {
+    const { container } = render(<Probe />);
+
+    for (const terrain of TERRAINS) {
+      const tile = container.querySelector(`#${patternId(terrain)}`)!;
+      const classes = (tile.getAttribute('class') ?? '').split(/\s+/);
+
+      expect(classes, `${terrain} traegt keine Gelaendeklasse`).toContain(
+        `terrain-tile--${terrain}`,
+      );
+    }
+  });
+
+  /**
+   * Nichts wird so klein, dass die Form verschwindet.
+   *
+   * Eine Tanne war einmal **6.8 Pixel** hoch (65 Pixel je Bretteinheit, im
+   * Browser gemessen) - in dieser Groesse ist eine Silhouette kein Baum mehr,
+   * sondern ein Fleck, und ein Fleck traegt die Gelaendeunterscheidung nicht,
+   * um derentwillen die Textur ueberhaupt existiert. Die Kacheln sind deshalb
+   * gewachsen, und diese Untergrenze haelt fest, dass sie es bleiben: wer eine
+   * Kachel wieder zusammenschrumpft, faellt hier auf und nicht erst im
+   * Browser, wo man es nur sieht, wenn man danach sucht.
+   *
+   * 0.13 Umkreisradien sind bei 65 Pixeln je Einheit rund achteinhalb Pixel.
+   * Der Acker und die Wueste sind ausgenommen: dort traegt kein Umriss die
+   * Aussage, sondern eine **Richtung** - eine Furche darf flach sein.
+   */
+  it('haelt jede Kachel gross genug, dass ihre Form eine Form bleibt', () => {
+    const FLACH: readonly TerrainId[] = ['fields', 'desert'];
+
+    for (const terrain of TERRAINS) {
+      const { w, h } = TILES[terrain];
+
+      expect(w, `${terrain}: die Kachel ist zu schmal`).toBeGreaterThanOrEqual(0.28);
+      if (FLACH.includes(terrain)) continue;
+      expect(h, `${terrain}: die Kachel ist zu flach fuer ihre Marke`).toBeGreaterThanOrEqual(0.13);
+    }
+  });
+
+  /**
    * Die Naht: was den einen Rand beruehrt, beruehrt den anderen genauso.
    *
    * Geprueft werden nur die Pfade, die die Kachel wirklich durchqueren - wer
