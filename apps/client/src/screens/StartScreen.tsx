@@ -17,7 +17,6 @@ import { ConnectionPanel } from '../diagnostics/ConnectionPanel';
 import type { Identity } from '../game/useOnlineGame';
 import { AccountCorner } from './AccountCorner';
 import { SeatPiece } from './LobbyScreen';
-import { SeaChart } from './SeaChart';
 
 /** Tut nichts - Vorgabewert fuer die drei Konto-Aktionen ohne Identitaet. */
 function noop(): void {
@@ -224,11 +223,6 @@ export function StartScreen({
 
   return (
     <main className="start">
-      {/* Dieselbe See wie im Spiel. Der Aufbau und die Partie liegen auf
-          demselben Wasser - alles andere waere zwischen zwei Klicks ein
-          Wechsel der Welt. */}
-      <SeaChart />
-
       {/* Dieselbe Ecke wie im Hauptmenue, ohne `order`: dieser Bildschirm
           hat keinen Eingang, den sie nachzeichnen muesste. */}
       <AccountCorner

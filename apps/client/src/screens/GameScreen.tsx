@@ -22,7 +22,6 @@ import { DevelopmentCards } from '../panels/DevelopmentCards';
 import { ResourcePickDialog } from '../dialogs/ResourcePickDialog';
 import { LogPanel } from '../panels/LogPanel';
 import { StatusPanel } from '../panels/StatusPanel';
-import { SeaChart } from './SeaChart';
 import { TablePanel } from '../panels/TablePanel';
 import { DiscardDialog } from '../dialogs/DiscardDialog';
 import { TradeDialog } from '../dialogs/TradeDialog';
@@ -313,15 +312,6 @@ export function GameScreen({
 
   return (
     <main className="game">
-      {/*
-       * Die See zuerst, damit alles Weitere darauf liegt.
-       *
-       * Sie ist absolut gesetzt und faengt keine Zeiger; im Stapel steht sie
-       * ohne eigenes `z-index` schlicht als erstes Kind - dieselbe Ordnung,
-       * die `.tray` und `.board-area` schon untereinander haben.
-       */}
-      <SeaChart />
-
       <div className="board-area">
         <BoardSvg
           state={view}

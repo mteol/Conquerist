@@ -103,35 +103,6 @@ const DOCK_START = HARBOR_MARK - 0.03;
  */
 const DOCK_BEND = 0.055;
 
-/**
- * Die Untiefen vor der Kueste - Breite je Band, in Umkreisradien.
- *
- * **Warum es sie gibt.** Die Landmasse lag bis hierher mit einem Schlagschatten
- * auf der See, und ein Schlagschatten sagt „liegt darauf". Eine Seekarte sagt
- * etwas anderes: sie sagt, wie tief das Wasser ist, und zeichnet das als
- * gestufte Saeume vor der Kueste. Der Hintergrund traegt schon Rhumbenlinien
- * und eine Kompassrose (`screens/SeaChart`); zwischen ihnen und dem Brett fehlte
- * genau der Uebergang, der aus zwei Bildern eines macht.
- *
- * **Wie sie gebaut sind.** Kein eigener Umriss der Landmasse - es sind
- * dieselben neunzehn Sechsecke noch einmal, nur als Kontur und unter den
- * Feldern. Die Konturen der inneren Felder verschwinden dabei unter ihren
- * Nachbarn; sichtbar bleibt genau das, was nach aussen ragt. Derselbe Gedanke
- * wie beim Schlagschatten an `.hexfields`, nur ohne Filter - und damit
- * skalieren die Saeume **mit** dem Brett, was hier richtig ist: sie gehoeren
- * zur Karte, nicht zum Licht im Raum.
- *
- * **Die Zahlen sind gegen `PADDING` gerechnet.** Das breiteste Band steht auf
- * 0.34; eine Kontur ragt ihre halbe Breite nach aussen, also 0.17, und
- * `PADDING` ist 0.2. Der Saum bleibt damit in der viewBox, ohne dass sie
- * wachsen muesste.
- */
-const SHOALS: readonly { readonly band: string; readonly width: number }[] = [
-  { band: 'far', width: 0.34 },
-  { band: 'mid', width: 0.16 },
-  { band: 'near', width: 0.07 },
-];
-
 /** Augenwahrscheinlichkeit eines Chips - fuer die Punktreihe unter der Zahl. */
 const PIPS: Readonly<Record<number, number>> = {
   2: 1,
@@ -167,18 +138,6 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
   const robber = hexCenter(hexFromId(state.robber));
   /** Welche Felder auf dem Brett liegen - die Hafenmarken brauchen die Seeseite. */
   const onBoard = new Set(board.topology.hexes);
-  /*
-   * Die Eckenzuege der Felder - einmal gerechnet, zweimal gebraucht: die
-   * Untiefen zeichnen dieselben Sechsecke wie die Felder selbst. Zweimal
-   * rechnen hiesse, dass ein spaeterer Eingriff an einer Stelle den Saum
-   * gegen das Land verschieben koennte, ohne dass es jemandem auffaellt.
-   */
-  const outlines = state.scenario.hexes.map((placement) => ({
-    hex: placement.hex,
-    points: hexCorners(hexFromId(placement.hex))
-      .map((corner) => `${corner.x},${corner.y}`)
-      .join(' '),
-  }));
 
   return (
     <svg
@@ -198,37 +157,58 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
        *
        * Uebrig bleibt eine richtungslose Randabdunklung: kein Licht von oben,
        * also auch kein Reflex - nur eine Kante, an der die Farbe in den Karton
-       * zieht. Die Tiefe kommt jetzt aus der Textur und aus dem Kuestenschatten,
-       * nicht aus einer Beleuchtung.
+       * zieht. Die Tiefe kommt aus der Textur und aus dem Schlagschatten an
+       * `.hexfields`, nicht aus einer Beleuchtung.
        */}
       <defs>
         <radialGradient id="hex-matte" cx="0.5" cy="0.5" r="0.62">
           <stop offset="0.58" stopColor="#000000" stopOpacity="0" />
           <stop offset="1" stopColor="#000000" stopOpacity="0.13" />
         </radialGradient>
+
+        {/*
+         * Der Kuestenschatten - als **SVG-Filter** und nicht als CSS-Filter.
+         *
+         * Hier stand `filter: drop-shadow(...)` im Blatt, und das hat einen
+         * halbdurchsichtigen schwarzen **Kasten** ueber die ganze Bounding-Box
+         * des Bretts gelegt: 943 Pixel breit, rund zehn Prozent dunkler als
+         * die Flaeche daneben, mit einer harten Kante an jeder Seite. Gemessen
+         * betrug der Sprung an der linken Brettgrenze 3.6 Helligkeitseinheiten
+         * mit dem Filter und 0.7 ohne ihn - und 0.7 ist der Hintergrundverlauf
+         * allein.
+         *
+         * **Der Kasten hat obendrein den Verlauf plattgedrueckt.** Ausserhalb
+         * seiner Grenze lag die See bei 54.1, innerhalb bei ebenfalls 54.1 -
+         * ohne ihn sind es 57.2 zu 54.1. Der Radialverlauf, der dem
+         * Spielbildschirm seine Tiefe gibt, war innerhalb des Bretts also gar
+         * nicht zu sehen.
+         *
+         * Ein SVG-`filter` mit ausdruecklicher Region tut dasselbe ohne den
+         * Kasten (nachgemessen: Kante 0.7, wie ohne jeden Filter). Der Preis
+         * ist, dass die Masse jetzt in **Brettmassen** stehen und damit mit dem
+         * Brett wachsen - anders als vorher, wo sie CSS-Pixel waren. Das ist
+         * hier zu verschmerzen und sogar stimmiger: der Saum gehoert zur Karte
+         * und nicht zum Licht im Raum.
+         */}
+        <filter
+          id="coast-shadow"
+          filterUnits="objectBoundingBox"
+          x="-20%"
+          y="-20%"
+          width="140%"
+          height="140%"
+        >
+          <feDropShadow
+            dx="0"
+            dy="0.03"
+            stdDeviation="0.03"
+            floodColor="#040e15"
+            floodOpacity="0.62"
+          />
+        </filter>
+
         <TerrainPatterns />
       </defs>
-
-      {/*
-       * Die Untiefen - drei Saeume, von aussen nach innen immer schmaler und
-       * immer deutlicher. Warum, steht bei `SHOALS`.
-       *
-       * **Die Deckkraft haengt an der Gruppe und nicht am Strich**, und das ist
-       * kein Geschmack: neunzehn Konturen ueberlappen sich an jeder Feldecke,
-       * und zwei halbdurchsichtige Striche uebereinander sind dunkler als
-       * einer. Am Strich gesetzt saeumte die Kueste deshalb nicht gleichmaessig,
-       * sondern zeigte an jeder Ecke einen Knoten. An der Gruppe gesetzt wird
-       * erst das ganze Band gezeichnet und dann als ein Bild abgeblendet.
-       */}
-      <g className="coast" pointerEvents="none" aria-hidden="true">
-        {SHOALS.map((shoal) => (
-          <g key={shoal.band} className={`coast__shoal coast__shoal--${shoal.band}`}>
-            {outlines.map((outline) => (
-              <polygon key={outline.hex} points={outline.points} strokeWidth={shoal.width} />
-            ))}
-          </g>
-        ))}
-      </g>
 
       {/*
        * Alle Felder in **einer** Gruppe, damit der Schlagschatten die Landmasse
@@ -241,8 +221,10 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
        * Nachbarn gehoben, und aus einem Brett waere ein Stapel geworden.
        */}
       <g className="hexfields">
-        {state.scenario.hexes.map((placement, index) => {
-          const points = outlines[index]!.points;
+        {state.scenario.hexes.map((placement) => {
+          const points = hexCorners(hexFromId(placement.hex))
+            .map((corner) => `${corner.x},${corner.y}`)
+            .join(' ');
           const isTarget = targets.hexes.has(placement.hex);
 
           return (

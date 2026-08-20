@@ -706,22 +706,6 @@ body {
     radial-gradient(120% 90% at 85% 15%, var(--sea-700) 0%, transparent 60%), var(--sea-900);
 }
 
-/*
- * Dieselbe See wie im Spiel - sonst waere der Wechsel vom Aufbau ins Spiel ein
- * Wechsel der Welt.
- *
- * **Aber enger maskiert, und das ist der Unterschied zwischen Wasser und
- * Tapete.** Im Spiel liegt das Netz neben dem Brett, also auf leerer See; hier
- * traegt die linke Spalte eine Ueberschrift und ein Formular. Mit der Maske
- * des Spielbildschirms liefen die Linien quer durch beide - und ein Netz unter
- * einem Text ist keine Karte mehr, sondern Zierat hinter einer Auskunft
- * (Regel 6). Es bleibt deshalb bei der Ecke, in der wirklich See ist: um das
- * Vorschaubrett herum, und es verliert sich, bevor es die Spalte erreicht.
- */
-.start .sea-chart {
-  mask-image: radial-gradient(56% 80% at 84% 30%, #000 0%, #000 26%, transparent 80%);
-}
-
 .start__panel {
   display: flex;
   flex-direction: column;
@@ -1747,81 +1731,6 @@ body {
   overflow: hidden;
   background:
     radial-gradient(120% 80% at 50% 40%, var(--sea-500) 0%, transparent 70%), var(--sea-800);
-}
-
-/*
- * Die Seekarte unter allem.
- *
- * **Warum sie ueberhaupt hier liegt**, steht in `screens/SeaChart.tsx`. Hier
- * steht nur, wie laut sie sein darf - und die Antwort ist: kaum.
- *
- * `inset: 0` - das Netz fuellt genau seinen Traeger. Wer es auf eine Flaeche
- * mit Polster legt, gleicht **dort** aus (siehe `.game .sea-chart`) und nicht
- * hier: der negative Einzug stand eine Fassung lang in dieser Regel, und der
- * Startbildschirm hat ihn geerbt, obwohl er kein Polster hat. Gemessen ragte
- * das Netz dort 12 px ueber jede Seite hinaus und schob der Seite einen
- * waagerechten Rollbalken unter - Regel 7, keine springenden Layouts, und
- * zwar ausgeloest von einem Element, das man gar nicht anfassen kann.
- *
- * Die Maske ist der Grund, warum das Netz nicht wie eine aufgelegte Grafik
- * wirkt: es verliert sich zum Rand hin, statt an einer Kante aufzuhoeren -
- * dieselbe Auskunft, die das Hexfeld im Hauptmenue ueber seine Ruhelage gibt.
- * Ihre Mitte sitzt bei 42 % und nicht bei 50 %, weil der Verlauf darunter dort
- * schon seine hellste Stelle hat; zwei Mitten in derselben Flaeche saehen aus
- * wie ein Versehen. Wer das Netz auf eine andere Flaeche legt, schreibt die
- * Maske dort neu, statt hier eine Stellschraube einzuziehen - sie meint jedes
- * Mal etwas anderes, naemlich wo auf dieser Flaeche Wasser ist.
- */
-.sea-chart {
-  position: absolute;
-  inset: 0;
-  width: auto;
-  height: auto;
-  pointer-events: none;
-  mask-image: radial-gradient(120% 100% at 50% 42%, #000 0%, #000 50%, transparent 94%);
-}
-
-/*
- * Sehr leise, und das ist der Punkt (Regel 4: das Brett ist der Held).
- *
- * 7 % auf der Tiefsee sind knapp ueber der Wahrnehmungsschwelle - man
- * bemerkt das Netz beim zweiten Hinsehen und nie beim ersten. Wer den Wert
- * anhebt, prueft ihn **neben** dem Brett und nicht auf leerer Flaeche: allein
- * betrachtet wirkt jedes Netz zu schwach.
- *
- * Die Strichbreite steht in Nutzerkoordinaten - das Bild ist 2 Einheiten hoch
- * und fuellt mit `slice` die kurze Achse, auf einem 900 px hohen Fenster ist
- * eine Einheit also 450 px und 0.0022 davon rund ein Pixel. Eine Linie, die
- * mit dem Fenster mitwaechst, waere auf einem grossen Bildschirm ein Balken.
- */
-.sea-chart line,
-.sea-chart__rose {
-  fill: none;
-  stroke: rgb(233 225 207 / 7%);
-  stroke-width: 0.0022;
-}
-
-/*
- * Der Ring der Rose ist die Konstruktionslinie und darf noch leiser sein als
- * die Strahlen: er kreuzt sie alle und wuerde bei gleicher Staerke an
- * sechzehn Stellen einen hellen Punkt setzen.
- */
-.sea-chart__rose {
-  stroke: rgb(233 225 207 / 5%);
-}
-
-/*
- * Auf dem Spielbildschirm greift das Netz ueber den Polsterrand.
- *
- * Ein absolut gesetztes Kind richtet sich am **Polsterrand** seines
- * Elternteils aus, und `.game` hat 0.75rem Polster. Mit `inset: 0` bliebe
- * rings ein Streifen unbedeckt, auf dem der Verlauf ohne Netz weiterlaeuft -
- * eine Kante, die aussieht wie ein Fehler im Blatt. Der Betrag ist derselbe
- * wie das Polster, weil er dieselbe Strecke meint; ueberzaehlig wird davon
- * nichts, weil `.game` seinen Ueberhang ohnehin abschneidet.
- */
-.game .sea-chart {
-  inset: -0.75rem;
 }
 
 /*
@@ -3054,69 +2963,15 @@ body {
  * sind die Strassen unsichtbar" lag am Untergrund, und ein Kuestensaum ist
  * die Kante, die dort bisher gefehlt hat.
  *
- * **Die Masse sind CSS-Pixel, keine Brettmasse** - im Browser gemessen und
- * gegen die eigene Annahme entschieden. Der erste Versuch stand auf
- * `0 0.045px 0.07px`, weil hier Nutzerkoordinaten erwartet wurden (ein Feld
- * misst 1, ein Schatten von 0.07 waere also rund vier Pixel). Gerendert kam
- * nichts heraus. Eine Probe in Rot hat es gezeigt: bei 0.4px ist der Saum
- * knapp zwei Pixel breit, nicht zwanzig - `filter` rechnet an diesem `g` in
- * Pixeln, so wie an jedem Knopf und jeder Karte im Blatt darueber.
- *
- * Der Schatten skaliert damit **nicht** mit dem Brett, und das ist hier
- * richtig: er kommt nicht aus der Karte, sondern aus dem Licht im Raum, und
- * das ist auf einem kleinen Fenster dasselbe wie auf einem grossen.
+ * **Der Filter selbst steht im SVG und nicht mehr hier**, und das ist eine
+ * Fehlerbehebung: `filter: drop-shadow(...)` an dieser Stelle hat einen
+ * halbdurchsichtigen schwarzen Kasten ueber die ganze Bounding-Box des
+ * Bretts gelegt - 943 Pixel breit, mit harter Kante. Warum, wie gemessen
+ * wurde und was stattdessen gilt, steht bei `coast-shadow` in
+ * `board/BoardSvg.tsx`.
  */
 .hexfields {
-  filter: drop-shadow(0 3px 4px rgb(4 14 21 / 62%));
-}
-
-/*
- * Die Untiefen vor der Kueste.
- *
- * Der Schlagschatten oben sagt „die Landmasse liegt auf der See". Er sagt
- * nichts darueber, **was** die See ist - und der Hintergrund tut das schon:
- * Rhumbenlinien und eine Kompassrose (`screens/SeaChart`). Zwischen einer
- * gezeichneten Seekarte und einem Brett mit Schlagschatten fehlte der
- * Uebergang; drei gestufte Saeume sind der, den eine Seekarte selbst benutzt.
- *
- * **Pergament und nicht Blau.** Untiefen sind auf jeder Karte heller als
- * tiefes Wasser, und `--on-sea` ist die Farbe, die auf dieser Flaeche ohnehin
- * schon steht - kein neuer Ton fuer eine Sache, die aus vorhandenem Material
- * zu haben ist (Designregel 2).
- *
- * Die Deckkraft steht an der **Gruppe**; warum, steht bei `SHOALS` in
- * `board/BoardSvg.tsx`. Kurz: sonst zeigt jede Feldecke einen Knoten.
- */
-.coast polygon {
-  fill: none;
-  stroke: var(--on-sea);
-  stroke-linejoin: round;
-}
-
-/*
- * **Nah deutlich, fern verlaufend - und nicht drei gleiche Ringe.**
- *
- * Der erste Versuch verteilte Breite und Deckkraft gleichmaessig (0.34/0.20/
- * 0.10 bei 7/10/15 Prozent). Vergroessert sah das nicht nach Untiefen aus,
- * sondern nach einem weichen hellen Schein um die Landmasse - also nach
- * **Glow**, und Dauer-Glow wirft Designregel 5 hinaus.
- *
- * Was Wasser um eine Kueste tut, ist etwas anderes: es ist unmittelbar am Land
- * flach und deutlich und verliert sich nach aussen. Das innerste Band ist
- * deshalb schmal und mit Abstand das kraeftigste (0.07 bei 26 Prozent), die
- * zwei aeusseren breit und blass. Der Sprung von 9 auf 26 Prozent ist die
- * Stufe, an der man den Saum als gezeichnet erkennt statt als Schein.
- */
-.coast__shoal--far {
-  opacity: 0.05;
-}
-
-.coast__shoal--mid {
-  opacity: 0.09;
-}
-
-.coast__shoal--near {
-  opacity: 0.26;
+  filter: url(#coast-shadow);
 }
 
 .hex {
