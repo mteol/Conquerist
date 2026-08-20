@@ -2848,6 +2848,32 @@ body {
 
 /* --- Das Brett ------------------------------------------------------------ */
 
+/*
+ * Die Landmasse liegt auf der See, nicht in ihr.
+ *
+ * Der Schatten haengt an der **Gruppe** aller Felder und nicht am einzelnen
+ * Feld: innen stossen die Sechsecke ohne Luecke aneinander, dort ist keine
+ * Kante, an der etwas fallen koennte, und uebrig bleibt genau der Umriss zur
+ * See. Das ist zugleich die Antwort auf einen alten Befund - „am Brettrand
+ * sind die Strassen unsichtbar" lag am Untergrund, und ein Kuestensaum ist
+ * die Kante, die dort bisher gefehlt hat.
+ *
+ * **Die Masse sind CSS-Pixel, keine Brettmasse** - im Browser gemessen und
+ * gegen die eigene Annahme entschieden. Der erste Versuch stand auf
+ * `0 0.045px 0.07px`, weil hier Nutzerkoordinaten erwartet wurden (ein Feld
+ * misst 1, ein Schatten von 0.07 waere also rund vier Pixel). Gerendert kam
+ * nichts heraus. Eine Probe in Rot hat es gezeigt: bei 0.4px ist der Saum
+ * knapp zwei Pixel breit, nicht zwanzig - `filter` rechnet an diesem `g` in
+ * Pixeln, so wie an jedem Knopf und jeder Karte im Blatt darueber.
+ *
+ * Der Schatten skaliert damit **nicht** mit dem Brett, und das ist hier
+ * richtig: er kommt nicht aus der Karte, sondern aus dem Licht im Raum, und
+ * das ist auf einem kleinen Fenster dasselbe wie auf einem grossen.
+ */
+.hexfields {
+  filter: drop-shadow(0 3px 4px rgb(4 14 21 / 62%));
+}
+
 .hex {
   stroke: #16202a;
   stroke-width: 0.024;
@@ -2858,6 +2884,46 @@ body {
   cursor: pointer;
 }
 
+/*
+ * Die Mattierung - eine Kante, kein Licht.
+ *
+ * Hier standen `.hex__light` und `.hex__bevel`: ein Verlauf ueber der Flaeche
+ * und ein zweiter als Fase mit einem hellen Grat an der Oberkante. Der Grat war
+ * der Fehler. Ein heller Grat ist ein **Glanzlicht**, Glanz heisst glatt, und
+ * ein Plaettchen aus Karton hat keines - das Brett sah aus wie aus Plastik.
+ *
+ * Was bleibt, ist richtungslos: aussen etwas dunkler, wie Farbe, die in den
+ * Karton zieht. Es gibt keine Lichtquelle mehr, also auch keinen Reflex. Die
+ * Tiefe kommt jetzt aus der Textur und aus dem Kuestenschatten.
+ */
+.hex__matte {
+  fill: url(#hex-matte);
+}
+
+/*
+ * Die Gelaendetextur.
+ *
+ * **Sehr leise, und das ist der Punkt.** Die Vorgaengerin war ein Motivband am
+ * unteren Feldrand bei 46 % - dort ging das, weil sie wenig Flaeche belegte.
+ * Eine Textur ueber das **ganze** Feld laeuft unter jeder Strasse und hinter
+ * jedem Bauwerk durch; bei derselben Staerke wuerde sie mit allem streiten, was
+ * auf dem Brett Information traegt. Die Gelaendeunterscheidung kommt jetzt aus
+ * dem Muster und nicht aus der Deutlichkeit einer einzelnen Form: Spitzen gegen
+ * Rundungen gegen Furchen liest man auch leise, weil sie eine Flaeche fuellen.
+ *
+ * Warum es sie ueberhaupt gibt, steht in `board/terrain.tsx`.
+ */
+.terrain-fill {
+  fill: rgb(12 20 14 / 16%);
+}
+
+.terrain-line {
+  fill: none;
+  stroke: rgb(12 20 14 / 17%);
+  stroke-width: 0.012;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .chip circle {
   fill: #f6efdf;
   stroke: #16202a;

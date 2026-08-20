@@ -20,6 +20,7 @@ import {
   type Point,
 } from './layout';
 import { CITY_PATH, SETTLEMENT_PATH } from './shapes';
+import { TerrainPatterns, terrainFill } from './terrain';
 
 /**
  * Das Brett. Zeichnet den Zustand und meldet, wo geklickt wurde - mehr nicht.
@@ -145,63 +146,128 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
       role="img"
       aria-label="Spielbrett"
     >
+      {/*
+       * Matt und nicht glaenzend - und das ist eine Korrektur.
+       *
+       * Hier standen zwei Verlaeufe: einer ueber der Flaeche, einer als Fase
+       * mit einem hellen Grat an der Oberkante. Ein heller Grat ist ein
+       * **Glanzlicht**, und Glanz heisst glatt. Ein Plaettchen aus Karton oder
+       * ein Holzfeld hat keines; das Brett sah damit aus wie aus Plastik.
+       *
+       * Uebrig bleibt eine richtungslose Randabdunklung: kein Licht von oben,
+       * also auch kein Reflex - nur eine Kante, an der die Farbe in den Karton
+       * zieht. Die Tiefe kommt jetzt aus der Textur und aus dem Kuestenschatten,
+       * nicht aus einer Beleuchtung.
+       */}
+      <defs>
+        <radialGradient id="hex-matte" cx="0.5" cy="0.5" r="0.62">
+          <stop offset="0.58" stopColor="#000000" stopOpacity="0" />
+          <stop offset="1" stopColor="#000000" stopOpacity="0.13" />
+        </radialGradient>
+        <TerrainPatterns />
+      </defs>
+
+      {/*
+       * Alle Felder in **einer** Gruppe, damit der Schlagschatten die Landmasse
+       * meint und nicht jedes Feld einzeln.
+       *
+       * Ein Filter sieht die fertig gezeichnete Gruppe: innen stossen die Felder
+       * ohne Luecke aneinander, dort gibt es also keine Kante, an der etwas
+       * fallen koennte. Uebrig bleibt genau der Umriss zur See - die Kueste.
+       * Neunzehn einzelne Schatten haetten dagegen jedes Feld ueber seinen
+       * Nachbarn gehoben, und aus einem Brett waere ein Stapel geworden.
+       */}
+      <g className="hexfields">
+        {state.scenario.hexes.map((placement) => {
+          const hex = hexFromId(placement.hex);
+          const points = hexCorners(hex)
+            .map((corner) => `${corner.x},${corner.y}`)
+            .join(' ');
+          const isTarget = targets.hexes.has(placement.hex);
+
+          return (
+            <g key={placement.hex}>
+              <polygon
+                data-testid={`hex-${placement.hex}`}
+                data-target={isTarget ? 'true' : 'false'}
+                className={isTarget ? 'hex hex--target' : 'hex'}
+                points={points}
+                fill={TERRAIN_COLORS[placement.terrain]}
+                onClick={isTarget ? () => onPick({ kind: 'hex', id: placement.hex }) : undefined}
+              />
+
+              {/*
+               * Die Textur ist dasselbe Sechseck noch einmal, nur mit der
+               * Kachel gefuellt. Kein `clipPath` noetig: eine Fuellung endet am
+               * Rand ihrer Form, und die Form **ist** das Feld.
+               */}
+              <polygon
+                className="terrain"
+                pointerEvents="none"
+                points={points}
+                fill={terrainFill(placement.terrain)}
+              />
+
+              <polygon className="hex__matte" pointerEvents="none" points={points} />
+            </g>
+          );
+        })}
+      </g>
+
+      {/*
+       * Die Zahlenchips liegen **ausserhalb** der Feldgruppe.
+       *
+       * Sie sind kein Gelaende, sondern etwas, das darauf gelegt wurde - und
+       * genau so sollen sie aussehen. Drinnen haetten sie ausserdem den Filter
+       * der Gruppe mitbekommen, und der rastert, was er anfasst: die Zahl waere
+       * durch den Schlagschatten gegangen, den sie gar nicht wirft.
+       */}
       {state.scenario.hexes.map((placement) => {
-        const hex = hexFromId(placement.hex);
-        const center = hexCenter(hex);
-        const points = hexCorners(hex)
-          .map((corner) => `${corner.x},${corner.y}`)
-          .join(' ');
-        const isTarget = targets.hexes.has(placement.hex);
+        if (placement.chip === undefined) return null;
+        const center = hexCenter(hexFromId(placement.hex));
 
         return (
-          <g key={placement.hex}>
-            <polygon
-              data-testid={`hex-${placement.hex}`}
-              data-target={isTarget ? 'true' : 'false'}
-              className={isTarget ? 'hex hex--target' : 'hex'}
-              points={points}
-              fill={TERRAIN_COLORS[placement.terrain]}
-              onClick={isTarget ? () => onPick({ kind: 'hex', id: placement.hex }) : undefined}
+          <g
+            className="chip"
+            key={placement.hex}
+            data-testid={`chip-${placement.hex}`}
+            pointerEvents="none"
+          >
+            <circle cx={center.x} cy={center.y} r={0.34} />
+            <text
+              x={center.x}
+              y={center.y}
+              data-hot={isHot(placement.chip) ? 'true' : 'false'}
+              className={isHot(placement.chip) ? 'chip__hot' : undefined}
+            >
+              {placement.chip}
+            </text>
+            {/*
+             * Die Augen als **gezeichnete Punkte** und nicht als eine Reihe
+             * Mittelpunkte in einem `text`.
+             *
+             * Als Text ragten sie ueber den Chiprand hinaus, und der Grund
+             * war zweifach. Erstens die alte Falle aus CLAUDE.md: die
+             * Schriftgroesse stand in `.chip__pips` (eine Klasse), darueber
+             * aber `.chip text` (eine Klasse plus ein Typ) - die 0.19px
+             * haben nie gegolten, gerendert wurden 0.32px. Fuenf Punkte in
+             * dieser Groesse sind breiter als der Chip, in den sie gehoeren.
+             * Zweitens, und schlimmer: die Breite haengt an den Metriken
+             * einer Schrift. Wieviel Vorschub ein `·` in Segoe UI
+             * bekommt, laesst sich nicht ausrechnen, und auf einem Rechner
+             * ohne Segoe UI ist es eine andere Zahl.
+             *
+             * Gezeichnete Kreise haben keine Metrik. Fuenf Punkte im
+             * Abstand 0.055 sind 0.22 breit, der aeusserste sitzt damit
+             * 0.272 vom Mittelpunkt - der Chip misst 0.34. Das gilt in
+             * jeder Schrift und auf jedem Rechner.
+             */}
+            <ChipPips
+              count={PIPS[placement.chip] ?? 0}
+              x={center.x}
+              y={center.y + 0.225}
+              hot={isHot(placement.chip)}
             />
-            {placement.chip === undefined ? null : (
-              <g className="chip" pointerEvents="none">
-                <circle cx={center.x} cy={center.y} r={0.34} />
-                <text
-                  x={center.x}
-                  y={center.y}
-                  data-hot={isHot(placement.chip) ? 'true' : 'false'}
-                  className={isHot(placement.chip) ? 'chip__hot' : undefined}
-                >
-                  {placement.chip}
-                </text>
-                {/*
-                 * Die Augen als **gezeichnete Punkte** und nicht als eine Reihe
-                 * Mittelpunkte in einem `text`.
-                 *
-                 * Als Text ragten sie ueber den Chiprand hinaus, und der Grund
-                 * war zweifach. Erstens die alte Falle aus CLAUDE.md: die
-                 * Schriftgroesse stand in `.chip__pips` (eine Klasse), darueber
-                 * aber `.chip text` (eine Klasse plus ein Typ) - die 0.19px
-                 * haben nie gegolten, gerendert wurden 0.32px. Fuenf Punkte in
-                 * dieser Groesse sind breiter als der Chip, in den sie gehoeren.
-                 * Zweitens, und schlimmer: die Breite haengt an den Metriken
-                 * einer Schrift. Wieviel Vorschub ein `·` in Segoe UI
-                 * bekommt, laesst sich nicht ausrechnen, und auf einem Rechner
-                 * ohne Segoe UI ist es eine andere Zahl.
-                 *
-                 * Gezeichnete Kreise haben keine Metrik. Fuenf Punkte im
-                 * Abstand 0.055 sind 0.22 breit, der aeusserste sitzt damit
-                 * 0.272 vom Mittelpunkt - der Chip misst 0.34. Das gilt in
-                 * jeder Schrift und auf jedem Rechner.
-                 */}
-                <ChipPips
-                  count={PIPS[placement.chip] ?? 0}
-                  x={center.x}
-                  y={center.y + 0.225}
-                  hot={isHot(placement.chip)}
-                />
-              </g>
-            )}
           </g>
         );
       })}

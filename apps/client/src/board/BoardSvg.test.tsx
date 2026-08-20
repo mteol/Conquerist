@@ -61,9 +61,7 @@ describe('BoardSvg', () => {
 
     for (const placement of scenario.hexes) {
       if (placement.chip === undefined) continue;
-      const number = screen
-        .getByTestId(`hex-${placement.hex}`)
-        .parentElement!.querySelector('text');
+      const number = screen.getByTestId(`chip-${placement.hex}`).querySelector('text');
       expect(number?.dataset['hot']).toBe(hot.has(placement) ? 'true' : 'false');
     }
   });
@@ -93,8 +91,8 @@ describe('BoardSvg', () => {
     for (const placement of scenario.hexes) {
       if (placement.chip === undefined) continue;
 
-      const group = screen.getByTestId(`hex-${placement.hex}`).parentElement!;
-      const disc = group.querySelector('.chip > circle')!;
+      const group = screen.getByTestId(`chip-${placement.hex}`);
+      const disc = group.querySelector(':scope > circle')!;
       const cx = Number(disc.getAttribute('cx'));
       const cy = Number(disc.getAttribute('cy'));
 

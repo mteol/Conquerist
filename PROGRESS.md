@@ -3949,3 +3949,179 @@ für 1 Holz") und das Gegenangebot.
 ### Nächste Etappe
 
 Etappe 10 (Erweiterungen).
+
+## Die Felder werden Material: matt und flächig texturiert (2026-08-20, `main`)
+
+Stand: nach `355d18b`. Ein Feld war bis hierher genau zwei Dinge: eine Füllfarbe
+und eine 0.024 breite Kontur. Damit war das Brett — nach Designregel 4 der Held
+des Bildschirms — die flachste Fläche darauf, flacher als die Karten, die Würfel
+und der Kaufstapel. Und die Farbe trug die Geländeinformation **allein**, was
+Regel 7 widerspricht.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                   |
+| ------------------- | -------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                             |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 324 / 35           |
+| `pnpm build`        | grün — `index.js` 415.94 kB (gzip 123.74), `index.css` 36.43 kB (8.24)     |
+| `pnpm format:check` | grün                                                                       |
+| Browser             | lokale Partie 1920×889: Gründung durchgeklickt, 6 Siedlungen und 6 Straßen |
+
+Vier neue Tests (`board/terrain.test.tsx`), dazu zwei bestehende in
+`BoardSvg.test.tsx` auf den Chip umgehängt, der jetzt außerhalb der Feldgruppe
+liegt (`data-testid="chip-…"` statt eines Weges über `parentElement`).
+
+### Zwei Fassungen, und die erste war eine Lehre
+
+**Fassung eins** setzte je Feld fünf gezeichnete Objekte in ein Band am unteren
+Rand — Tannen, Ähren, ein Schaf, Ziegel — und gab den Feldern einen
+Lichtverlauf mit heller Fase an der Oberkante. Beides war falsch, und beides
+sah man erst im Browser:
+
+- **Ein heller Grat an der Oberkante ist ein Glanzlicht, und Glanz heißt
+  glatt.** Ein Plättchen aus Karton oder ein Holzfeld hat keines. Das Brett sah
+  aus wie aus Plastik — technisch sauber, materiell falsch.
+- **Fünf Objekte in einem Band sind ein gesetztes Designelement, kein
+  Gelände.** Man sah ein Motiv auf einer leeren Fläche, nicht ein Feld, das aus
+  etwas besteht.
+
+**Fassung zwei** ist die ausgelieferte: matt und flächig. Die Verläufe sind weg,
+an ihrer Stelle steht eine **richtungslose** Randabdunklung (`hex-matte`, ein
+Radialverlauf von durchsichtig auf 13 %) — es gibt keine Lichtquelle mehr, also
+auch keinen Reflex, nur eine Kante, an der die Farbe in den Karton zieht. Die
+Tiefe kommt jetzt aus der Textur und aus dem Küstenschatten.
+
+### Die Textur ist eine Kachel, kein Motiv
+
+`board/terrain.tsx` hält sechs `<pattern>`-Kacheln: Tannen im Wald, Grasbüschel
+auf der Weide, Furchen im Acker, Ziegelverband in der Lehmgrube, Zacken im
+Gebirge, Dünenwellen in der Wüste. Das Feld wird damit gefüllt — ein zweites
+Sechseck über der Geländefarbe, **kein `clipPath` nötig**: eine Füllung endet am
+Rand ihrer Form, und die Form _ist_ das Feld.
+
+**`userSpaceOnUse` und nicht `objectBoundingBox`.** Das ist die eine
+Entscheidung, an der hier alles hängt: die Voreinstellung würde jede Kachel auf
+die Fläche des einzelnen Feldes rechnen, und zwei benachbarte Waldfelder zeigten
+zwei Kacheln statt eines Waldes. Mit `userSpaceOnUse` hängt die Textur am Brett;
+sie läuft über die Feldgrenze durch. Der Unterschied zwischen Landschaft und
+Raster kostet ein Attribut.
+
+Damit fällt auch die ganze Freistellungsrechnung der ersten Fassung weg: der
+Zahlenchip ist deckend, eine Textur darunter verdeckt nichts, und Straßen und
+Bauwerke liegen ohnehin darüber.
+
+### Die Textur ist sehr leise, und das ist der Punkt
+
+`.terrain-fill` steht auf 16 %, `.terrain-line` auf 17 % — gerechnet ergibt das
+zwischen Marke und Feld einen Kontrast von **1.22 (Wald) bis 1.39 (Wüste)**.
+
+Das ist bewusst weit weniger als die 46 %, mit denen das Motivband der ersten
+Fassung endete. Eine Fläche verträgt weniger Kontrast als ein Einzelmotiv: was
+über das **ganze** Feld läuft, läuft auch unter jeder Straße und hinter jedem
+Bauwerk durch. Die Geländeunterscheidung kommt jetzt aus dem **Muster** und
+nicht aus der Deutlichkeit einer einzelnen Form — Spitzen gegen Rundungen gegen
+Furchen liest man auch leise, weil sie eine Fläche füllen. Genau das war der
+Ausweg aus der Zwickmühle, in der Fassung eins steckte: dort musste eine einzige
+Lasur auf sechs ungleichen Geländefarben gleichzeitig sichtbar und
+zurückhaltend sein, und das ging nicht (Wald erreichte selbst bei 66 % nur 2.18,
+während die Wüste bei 4.9 zum Fleck wurde — derselbe feste Aufschlag auf
+ungleiche Werte wie bei der Aufprallwelle im Hauptmenü).
+
+### Was der Test prüft — und was er nicht mehr prüft
+
+Bei einer gekachelten Fläche ist das Wichtigste unsichtbar, solange es stimmt,
+und springt sofort ins Auge, sobald es nicht stimmt: **die Naht.** Eine Linie,
+die bei x = 0 auf einer anderen Höhe anfängt als sie bei x = Breite endet, macht
+aus jeder Kachelgrenze einen Knick — und aus einer Textur ein Gitter.
+`terrain.test.tsx` rechnet das für jeden Pfad nach, der die Kachel durchquert.
+
+Dazu: jedes Gelände hat eine Kachel, jede Kachel steht auf `userSpaceOnUse` (die
+Aussage oben ist damit eingerastet, nicht bloß aufgeschrieben), und keine
+gezeichnete Marke ragt aus ihrer Kachel — was hinausragt, wird abgeschnitten,
+und ein abgeschnittener Baum sieht aus wie ein Zeichenfehler. Geprüft werden
+dabei die **Stützpunkte**, nicht jede Zahl im `d`: die Dünenwelle braucht
+Kontrollpunkte außerhalb der Kachel, sonst bekäme sie ihren Ausschlag nicht.
+
+Weggefallen ist die Freistellungsrechnung der ersten Fassung (Abstand jedes
+Motivpunkts zu den sechs Kantengeraden und zum Chipradius). Sie hatte ihren
+Zweck erfüllt und dabei zweimal zugeschlagen — eine Tanne stand 0.24 Einheiten
+zu hoch, ein Schafskopf ragte in den Chip —, aber mit einer Textur, die überall
+durchläuft, prüft sie nichts mehr.
+
+### Zwei Fallen auf dem Weg, beide vom Messen aufgedeckt
+
+**`drop-shadow` rechnet an einem SVG-Element in Pixeln, nicht in Brettmaßen.**
+Der Küstenschatten stand zuerst auf `0 0.045px 0.07px` — in der Annahme, ein
+Feld messe 1, das wären also rund vier Pixel. Gerendert kam nichts heraus. Eine
+Probe in Rot zeigte: bei `0.4px` ist der Saum knapp zwei Pixel breit, nicht
+zwanzig. Er skaliert damit **nicht** mit dem Brett, und das ist richtig — er
+kommt nicht aus der Karte, sondern aus dem Licht im Raum.
+
+Die Probe selbst log dabei zweimal, bevor sie die Wahrheit sagte: ein Inline-Stil
+wurde vom nächsten React-Rendern überschrieben, und ein Wert im Blatt kam wegen
+hängendem CSS-HMR gar nicht an. Beide Male sah es aus, als zeige der Filter
+nichts. Erst `invert(1)` — sichtbar oder nicht, ohne Zwischentöne — bewies, dass
+die Regel überhaupt greift.
+
+**Zwei gleiche Marken in regelmäßigem Versatz sind immer ein Raster.** Das
+Gebirge hatte zuerst zwei identische Winkel je Kachel, um eine halbe Kachel
+versetzt. Am Bildschirm ergab das ein sauberes Rautengitter — eine Steppdecke,
+kein Gebirge. Erst vier Winkel in vier Größen an ungleichen Abständen lösen es
+auf. Wald und Weide haben aus demselben Grund je drei Marken statt zwei.
+
+Der Schlagschatten hängt weiterhin an **einer** Gruppe über allen Feldern: innen
+stoßen die Sechsecke ohne Lücke aneinander, dort kann nichts fallen, übrig
+bleibt der Umriss zur See. Neunzehn einzelne Schatten hätten aus einem Brett
+einen Stapel gemacht.
+
+### Offene Punkte
+
+- `hex-matte` und die sechs Kachel-Ids sind Dokument-IDs. Stünden zwei Bretter
+  zugleich im DOM, gäbe es sie doppelt; identisch definiert, also folgenlos,
+  aber es ist eine Annahme und keine Garantie.
+- Der Küstenschatten ist der einzige Wert am Brett, der nicht mitskaliert.
+- Die Textur ist bei 1.22 bis 1.39 Kontrast bewusst unterhalb jeder
+  Kontrastnorm. Sie ist ein **zusätzlicher** Träger neben der Farbe, kein Ersatz
+  — wer die Farbe nicht unterscheiden kann, unterscheidet die Muster, aber nur
+  bei ausreichender Feldgröße (siehe Nachtrag).
+
+### Nachtrag: die Breakpoints, gemessen — und ein Fund, der älter ist als diese Arbeit
+
+Das Fenster ließ sich nicht verkleinern (`resize_window` meldete Erfolg,
+`innerWidth` blieb bei 1920). Ein **Iframe auf `localhost:5173`** löst das: darin
+ist `100vw` die Iframe-Breite, also bekommt die App einen echten schmalen
+Viewport, ohne dass das Fenster mitspielen muss.
+
+**Der Startbildschirm ist in Ordnung.** Die `62rem`-Grenze schaltet wie gebaut:
+einspaltig bis 988 px, zweispaltig ab 1096 px, das Brett per `order: -1` oben.
+Auf 386 px misst es 335×312, also 34,3 px je Umkreisradius. Die Prägung ist
+dort am Rand ihrer Lesbarkeit — sie wirkt als Textur, einzelne Tannen oder Ähren
+liest man nicht mehr. Der Unterschied zwischen Spitzen (Wald), Zacken (Gebirge)
+und Senkrechten (Korn) bleibt trotzdem sichtbar, und die Zahlenchips sind
+lesbar. Nichts bricht.
+
+**Der Spielbildschirm ist auf einem Handy unbenutzbar**, und das hat mit dieser
+Arbeit nichts zu tun. `--tray-strip` ist der Einzug je Seite und fällt wegen
+`max(14.75rem, …)` **nie unter 236 px**; `.board-area` bekommt ihn zweimal als
+`margin`. Gemessene Reihe (Breite des Bretts über der Viewport-Breite):
+
+| Viewport | 382 | 496 | 636 | 764 | 896 | 1020 | 1196 | 1436 |
+| -------- | --- | --- | --- | --- | --- | ---- | ---- | ---- |
+| Brett    | 0   | 0   | 140 | 268 | 400 | 524  | 700  | 889  |
+
+Unter rund 500 px ist das Brett **null Pixel breit**. Nachgewiesen, dass es
+vorbestehend ist: mit `git stash` auf den Stand von `355d18b` zurück, dieselbe
+Messung im Iframe — Brett 0×816, `.terrain` 0 (der Stash griff also wirklich).
+Danach `git stash pop`.
+
+Das ist **nicht** in diesem Zug behoben: die Ecken-Ablage neben dem Brett ist
+eine bewusste Entscheidung aus `etappe-10`, und sie auf schmalen Geräten
+aufzulösen ist ein eigener Entwurf (die Ablagen müssten unter das Brett
+wandern), keine Zeile im Stilblatt. Es steht hier, damit es beim nächsten Mal
+nicht wieder als „ungesehen" durchgeht.
+
+### Nächste Etappe
+
+Etappe 10 (Erweiterungen) — unverändert. Davor lohnt der Spielbildschirm auf
+schmalen Geräten: er ist unter ~500 px Breite gemessen unbedienbar.
