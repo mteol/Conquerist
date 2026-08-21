@@ -55,6 +55,42 @@ describe('Handkarten', () => {
     expect(screen.getByText(/Keine Karten/)).toBeDefined();
   });
 
+  /**
+   * Der Stapelversatz kommt als Zahl und nicht als fertige Verschiebung.
+   *
+   * **Der Grund ist eine Falle, die schon zugeschnappt ist** - in der anderen
+   * Richtung: in `CLAUDE.md` steht, dass eine CSS-Regel ein gleichnamiges
+   * SVG-Attribut schlaegt. Hier gewinnt der Inline-Stil, das Ergebnis ist
+   * dasselbe: eine Regel, die im Blatt steht und nie greift. Ein
+   * `transform: translateY(...)` am `style` haette die Faecherung beim
+   * Darueberfahren stillgelegt - sie waere gelaufen, haette aber nichts
+   * bewirkt, und niemand haette gesehen, woran es liegt.
+   *
+   * Geprueft wird deshalb genau die Grenze: die Karte sagt, **wo** sie im
+   * Stapel liegt, das Blatt entscheidet, **was** daraus wird.
+   */
+  it('laesst dem Blatt die Verschiebung und gibt nur die Lage im Stapel', () => {
+    const { container } = render(
+      <HandPanel resources={hand} cardCount={6} covered={false} onReveal={vi.fn()} />,
+    );
+
+    const behind = [...container.querySelectorAll<HTMLElement>('.card__behind')];
+    expect(behind.length).toBeGreaterThan(0);
+
+    for (const card of behind) {
+      expect(card.style.getPropertyValue('--i'), 'die Lage im Stapel fehlt').not.toBe('');
+      expect(card.style.transform, 'ein Inline-transform schlaegt jede Faecherregel im Blatt').toBe(
+        '',
+      );
+    }
+
+    // Und die Lagen zaehlen von unten nach oben durch, statt alle gleich zu sein.
+    const lagen = [
+      ...container.querySelectorAll<HTMLElement>('[data-testid="stack-lumber"] .card__behind'),
+    ].map((card) => Number(card.style.getPropertyValue('--i')));
+    expect(lagen).toEqual([1, 2]);
+  });
+
   it('zeigt fremde Haende gar nicht erst an', () => {
     // `resources === null` heisst seit Etappe 5 „gehoert jemand anderem".
     const { container } = render(

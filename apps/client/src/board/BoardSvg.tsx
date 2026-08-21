@@ -20,7 +20,7 @@ import {
   type Point,
 } from './layout';
 import { CITY_PATH, SETTLEMENT_PATH } from './shapes';
-import { TerrainPatterns, terrainFill } from './terrain';
+import { LAYERS, TerrainPatterns, terrainFill } from './terrain';
 import { Numeral } from '../type/Numerals';
 
 /**
@@ -242,13 +242,25 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
                * Die Textur ist dasselbe Sechseck noch einmal, nur mit der
                * Kachel gefuellt. Kein `clipPath` noetig: eine Fuellung endet am
                * Rand ihrer Form, und die Form **ist** das Feld.
+               *
+               * **Zweimal, und das ist der Grund.** Ein `<pattern>` wiederholt
+               * sich exakt; eine Lage allein ist deshalb immer ein Raster, egal
+               * wie unregelmaessig die Kachel gezeichnet ist. Die zweite Lage
+               * laeuft auf einer Periode, die mit der ersten keinen gemeinsamen
+               * Teiler hat - gemeinsam wiederholen sie sich erst nach Dutzenden
+               * von Einheiten, und das Brett misst sieben. Warum das noetig
+               * war, steht in `board/terrain.tsx`.
                */}
-              <polygon
-                className="terrain"
-                pointerEvents="none"
-                points={points}
-                fill={terrainFill(placement.terrain)}
-              />
+              {LAYERS.map((layer) => (
+                <polygon
+                  key={layer}
+                  className="terrain"
+                  data-layer={layer}
+                  pointerEvents="none"
+                  points={points}
+                  fill={terrainFill(placement.terrain, layer)}
+                />
+              ))}
 
               <polygon className="hex__matte" pointerEvents="none" points={points} />
             </g>

@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import type { CSSProperties, JSX } from 'react';
 import { RESOURCE_IDS, type ResourceAmounts } from '@conquerist/shared';
 import { RESOURCE_COLORS, RESOURCE_LABELS } from '../game/labels';
 import { ResourceGlyph } from './ResourceGlyph';
@@ -89,6 +89,16 @@ export function HandPanel({
  * Die Tiefe ist gedeckelt: ab vier Karten wird der Stapel nicht mehr hoeher,
  * sonst waechst er bei einem Kornmonopol aus der Ecke heraus. Die Plakette
  * traegt die genaue Zahl - die Tiefe ist nur der schnelle Eindruck.
+ *
+ * **Der Versatz steht als Zahl da und nicht als fertige Verschiebung.** Er war
+ * ein `transform` im `style`-Attribut, und ein Inline-Stil laesst sich aus dem
+ * Blatt nicht mehr ueberschreiben - eine Faecherregel beim Darueberfahren waere
+ * wirkungslos geblieben und haette wie ein kaputtes `:hover` ausgesehen. Genau
+ * die Falle steht in `CLAUDE.md` in der anderen Richtung (eine CSS-Regel
+ * schlaegt ein SVG-Attribut); hier gewinnt der Inline-Stil, das Ergebnis ist
+ * dasselbe: eine Regel, die dasteht und nie greift. Uebergeben wird deshalb
+ * nur `--i`, die Lage im Stapel; **was** damit geschieht, entscheidet
+ * `.card__behind` in `index.css`.
  */
 function Stack({
   resource,
@@ -106,10 +116,7 @@ function Stack({
           key={index}
           className="card__behind"
           aria-hidden="true"
-          style={{
-            background: RESOURCE_COLORS[resource],
-            transform: `translateY(${(index + 1) * -2.5}px)`,
-          }}
+          style={{ background: RESOURCE_COLORS[resource], '--i': index + 1 } as CSSProperties}
         />
       ))}
 

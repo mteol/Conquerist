@@ -4469,3 +4469,195 @@ Kachel schrumpft wieder unter die Größe, bei der eine Form eine Form bleibt).
 Zwei halten die Küste: dass die Säume **unter** den Feldern liegen (rutschen
 sie dahinter, liegt ein Pergamentschleier über dem ganzen Brett) und dass jedes
 Band jedes Feld säumt und von außen nach innen schmaler wird.
+
+## Drei Befunde aus dem Playtest: Raster, Stapel, Bumerang (2026-08-21, `main`)
+
+Drei Dinge am Tisch bemängelt, drei Ursachen, die alle drei messbar waren und
+keine davon Geschmack.
+
+### 1. „Alles zu symmetrisch in den Feldern"
+
+Und Acker und Wüste trugen obendrein **dieselbe** Textur: beide eine
+durchlaufende Sinuswelle, einmal 0.3 breit und einmal 0.34. Zwei verschiedene
+`d`-Zeichenketten, dieselbe Form — der Unterschied lag allein in der Füllfarbe,
+und damit war die Textur genau dort wirkungslos, wo sie gebraucht wird. Farbe
+ist nie der einzige Träger (Designregel 7).
+
+Der Rastereindruck hatte drei Ursachen:
+
+1. **Eine Kachel wiederholt sich, und zwar exakt** — das ist die Definition von
+   `<pattern>` und keine Schwäche der Zeichnung. Bei 0.4 Breite passte die
+   Waldkachel gut viermal in eine Feldbreite; das Auge braucht drei
+   Wiederholungen für ein Raster und bekam vier.
+2. **Gleich große Marken sind ein Gitter**, auch wenn sie unregelmäßig stehen —
+   drei Tannen derselben Höhe lesen sich als Punktraster mit Jitter.
+3. **Eine gespiegelte Marke ist die symmetrischste Form überhaupt.** Die
+   Gebirgszacken waren gleichschenklige Winkel, also viermal dieselbe Figur.
+
+Behoben in dieser Reihenfolge:
+
+- **Zwei Lagen je Gelände mit teilerfremden Perioden.** Wald ist 0.62 breit,
+  seine Streulage 0.97; dasselbe Bild kommt erst nach 0.62 × 97 = 60 Einheiten
+  wieder. Das Brett misst sieben — es gibt auf ihm keine zweite Stelle, die
+  aussieht wie eine erste. Kein `Math.random()`: Zufall in der Zeichnung wäre
+  ein Bild, das bei jedem Rendern anders aussieht.
+- **Die Streulage trägt die größten Marken** und ist dünn besetzt — der alte
+  Baum, der Doppelgipfel, der Dünenkamm, der Feldstein. Größe als Unterschied
+  wirkt nur, wenn das Große selten ist.
+- **Marken in verschiedenen Größen und Arten je Kachel.** Wald: sechs Tannen
+  von 0.1 bis 0.2, und `spread` variiert dazu die Breite je Höhe — ohne den
+  zweiten Freiheitsgrad ist jede Tanne dieselbe Tanne in einem anderen Zoom.
+  Neben den Graten liegt Geröll, neben den Furchen Stoppeln, neben den Rippeln
+  Kiesel.
+- **Kein Grat ist mehr gleichschenklig**; welche Flanke länger ist, wechselt.
+- **Der Ziegelverband ist wild statt regelmäßig** — vier Lagen von 0.09 bis
+  0.115 Höhe, zwei bis drei Steine je Lage, jeder anders lang. Der alte halbe
+  Versatz war ein Läuferverband, und ein Läuferverband ist gerade _das_ Gitter.
+  Keine Fuge liegt mehr auf der Kachelkante: eine Linie bei y = 0 wird von der
+  Kachel halbiert und käme schmaler heraus als ihre Nachbarinnen.
+- **Die Wüste ist neu gezeichnet:** gebrochene Rippel in fünf Längen plus zwei
+  Kiesel. Durchlaufend gegen gebrochen liest man auch leise — und das ist der
+  Unterschied zum Acker, den vorher nur die Farbe machte.
+
+**Drei neue Prüfungen, und alle drei hätten den alten Stand gefangen:**
+
+- dass die zwei Lagen sich erst nach mehr als zwölf Einheiten gemeinsam
+  wiederholen (sonst ist die zweite Lage nur eine zweite Kachel — 0.6 und 0.9
+  sieht harmlos aus und fällt auf 1.8),
+- dass die Marken einer Kachel mindestens anderthalbfach verschieden groß sind,
+- dass die **größte** Marke eines Geländes in keinem anderen noch einmal
+  vorkommt, **formgleich geprüft und nicht zeichengleich**: jede Marke wird auf
+  ihren eigenen Rahmen normiert, Größe und Ort fallen heraus. Genau daran wäre
+  Acker/Wüste gescheitert. Die Kontrollpunkte zählen dabei mit — die alte
+  Ackerwelle hatte drei Stützpunkte auf einer Geraden, ihre ganze Welle steckte
+  in den Kontrollpunkten.
+
+### 2. Die Kartenstapel fächern beim Darüberfahren auf
+
+Für alle drei Stapel an _einer_ Stelle im Blatt: Rohstoffe in der Hand,
+Entwicklungskarten daneben, Kaufstapel in der anderen Ecke. Drei Pixel zur
+Seite, drei nach oben und zwei Grad je Lage, Drehpunkt unten in der Mitte — die
+Bewegung, mit der man einen Stapel mit dem Daumen aufspreizt. Sie erklärt, was
+die Plakette behauptet: dass darunter noch welche liegen.
+
+**Der Versatz musste dafür erst aus dem `style`-Attribut heraus.** Er stand als
+fertiges `transform` an jeder Karte, und ein Inline-Stil schlägt jede Regel im
+Blatt — die Fächerregel wäre gelaufen und hätte nichts bewirkt. Das ist die
+Falle aus `CLAUDE.md` in der anderen Richtung (dort schlägt eine CSS-Regel ein
+SVG-Attribut); das Ergebnis ist dasselbe: eine Regel, die dasteht und nie
+greift. Übergeben wird jetzt nur `--i`, die Lage im Stapel.
+
+**`--fan` ist ein Schalter (0/1) und keine Strecke.** Der Grund steht bei
+`prefers-reduced-motion`: Bewegung abbestellen heißt, den Schalter
+zurückzulegen. `transform: none` hätte alle Karten aufeinandergelegt — aus einem
+Stapel wäre eine Karte geworden, und das ist keine ruhigere Oberfläche, sondern
+eine falsche. Hätte der Fächer seine Zielwerte selbst geführt, müsste die
+Ruhelage dort ein zweites Mal stehen; zwei Stellen mit denselben Zahlen laufen
+auseinander.
+
+Dazu hebt sich die oberste Karte um zwei Pixel und der Schatten geht von
+`--lift` auf das neue `--lift-raised` — ohne ihn ist die Verschiebung nur eine
+Verschiebung und keine Höhe. Beim spielbaren Ring musste die Spezifität
+nachgezählt werden: `box-shadow` ist eine Eigenschaft und keine Liste, die
+Anhebe-Regel wirft den Ring mit weg. Die Ausnahme hat dieselben drei Klassen
+und steht **später** — das ist der ganze Ausschlag.
+
+### 3. Was eine Entwicklungskarte tut, steht jetzt auf dem Bildschirm
+
+Der Satz stand im `title` und war damit praktisch nicht da: ein
+Browser-Kurzhinweis kommt nach rund einer Sekunde Stillstand, in der Schrift des
+Betriebssystems — und auf einem **gesperrten** Knopf in den meisten Browsern gar
+nicht. Ausgerechnet die gesperrte Karte ist die, bei der man nachliest; die
+spielbare drückt man.
+
+Jetzt eine Zeile über der Reihe: Name als Eyebrow, darunter der Satz. **Über der
+Reihe und nicht an der Karte** — ein Zettel an der Karte wäre 4.6rem breit und
+deckte beim Ritter fünf Zeilen lang die Nachbarn zu. **Absolut gesetzt**, damit
+die Karten nicht rücken, wenn er kommt und geht: eine Erklärung, die den Stapel
+verschiebt, auf den man gerade zielt, nimmt einem das Ziel weg. `pointer-events:
+none`, sonst flackerte sie an ihrer eigenen Unterkante.
+
+**Zeigen und Verbergen hängen am Listeneintrag, nicht am Knopf** — ein gesperrter
+Knopf feuert keine Mausereignisse. `onFocus`/`onBlur` daneben, weil eine
+Erklärung, die nur die Maus findet, für die Tastatur nicht existiert; dazu
+`aria-describedby` an jeder Karte, damit sie auch ohne Zeigegerät da ist.
+
+### 4. Der Wurf sah aus wie ein Bumerang — und das war die Verteilung
+
+„Kurz zur Mitte fliegen und dann zurück bouncen." Anfang und Ende sind derselbe
+Ort, die Bahn muss also umkehren; ob das nach Wurf oder nach Gummiband aussieht,
+entscheidet allein, **wo** der Rückweg stattfindet.
+
+**Gemessen, nicht vermutet** (Animation angehalten und Bild für Bild
+ausgelesen):
+
+| Zeit | alt: x / y      | neu: x / y      |
+| ---- | --------------- | --------------- |
+| 13 % | —               | −363 / −220     |
+| 15 % | −244 / **−271** | —               |
+| 26 % | —               | −461 / **−293** |
+| 30 % | −461 / −293     | —               |
+| 42 % | —               | **−313 / 0**    |
+| 52 % | **−89 / 0**     | −201 / −18      |
+| 63 % | −42 / **−82**   | —               |
+| 66 % | —               | −49 / 0         |
+
+Zwei Fehler stehen in dieser Tabelle:
+
+1. **Der Aufschlag lag zu spät und zu nah.** Von 460 Pixeln Rückweg lagen 370 in
+   der Luft und 90 auf dem Tisch — man sah einen Bogen hin und einen Bogen
+   zurück. Jetzt schlägt er bei 42 % auf und weit draußen (−313), und die
+   restlichen 58 % der Zeit rollt er über den Tisch. Das ist die längste
+   zusammenhängende Bewegung des ganzen Wurfs.
+2. **Der Aufstieg war viel zu schnell und die Sprünge viel zu hoch.** Nach der
+   Hälfte der Steigzeit stand der Würfel auf 92 % der Höhe und hing dann oben
+   herum; ein geworfener Körper ist zur Halbzeit auf drei Vierteln (`v·t −
+g·t²/2`), jetzt sind es 75 %. Und der zweite Sprung stand auf 0.28 des
+   Scheitels, also **82 Pixel** — ein Wurf, kein Aufprall. Die Sprunghöhen
+   stehen jetzt in `rem` und nicht im Verhältnis zum Scheitel: wie hoch ein
+   Würfel zurückkommt, hängt an ihm und nicht daran, wie weit jemand ihn
+   geworfen hat. 24, 10, 4 Pixel — je gut vier Zehntel des vorigen.
+
+Dafür ist der Wurf von **einem** `transform` auf **vier Lagen** gegangen: Weg,
+Sprung, Drehung, Schatten. In einem `transform` haben die vier nur _eine_
+Zeitkurve, und dann sieht jede aus wie der Mittelwert der drei anderen. Getrennt
+bekommt jede ihre eigene — waagerecht Reibung, senkrecht Schwerkraft (hinauf
+`ease-out`, herunter `ease-in`, je Halbwelle einzeln).
+
+**Der Schatten ist der eigentliche Tisch.** Er hängt an der waagerechten Bahn
+und nicht am Sprung: er folgt dem Wurf, aber nicht der Höhe — genau das macht
+ihn zur Fläche, auf der etwas liegen kann. Weit und blass heißt „weit oben", eng
+und dunkel heißt „gleich aufgeschlagen". `translateZ(-2.2rem)` statt `z-index`:
+in einem `preserve-3d`-Raum sortiert der Browser nach Tiefe, ein `z-index` ist
+dort wirkungslos, und der Schatten schnitte quer durch den Würfel.
+
+**Die Drehung rollt jetzt, statt zu taumeln.** Bis zum Aufschlag drehen sich
+beide Achsen, danach steht `--fx` fest und nur noch `rotateY` läuft — in
+Vierteln (270, 180, 90, 0) und auf denselben Prozentzahlen wie die Aufschläge:
+ein Würfel kippt beim Aufsetzen und nicht dazwischen.
+
+`THROW_MS` ist von 1080 auf 1180 mitgewachsen. Es ist die einzige Kopplung
+zwischen Blatt und Ablauf und bricht still.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                 |
+| ------------------- | ------------------------------------------------------------------------ |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                           |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 335 / 35         |
+| `pnpm build`        | grün — `index.js` 422.14 kB (gzip 125.50), `index.css` 41.69 (9.07)      |
+| `pnpm format:check` | grün                                                                     |
+| Browser             | Brett im Spiel angesehen; Wurfbahn angehalten und Bild für Bild gemessen |
+
+Neun neue Tests. Fünf halten die Textur (beide Lagen je Gelände, das gemeinsame
+Vielfache der Perioden, der Größenunterschied in der Kachel, die eigene
+Leitmarke je Gelände, die Kachelgrößen jetzt für beide Lagen). Drei halten die
+Erklärzeile (sie kommt und geht, sie kommt **auch an der gesperrten Karte**, und
+der Satz hängt zusätzlich ohne Maus an jeder Karte). Einer hält die Grenze
+zwischen Komponente und Blatt: die Karte sagt, _wo_ sie im Stapel liegt, das
+Blatt entscheidet, _was_ daraus wird.
+
+### Was offen bleibt
+
+Der Layout-Befund von gestern steht unverändert: unter rund 900 px Fensterbreite
+ist das Brett zu klein zum Spielen. Er gehört weiter vor Etappe 10.

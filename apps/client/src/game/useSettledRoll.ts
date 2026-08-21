@@ -32,11 +32,17 @@ import { cameFromRoll } from './view';
 /**
  * Wie lange der Tisch anhaelt.
  *
- * Etwas laenger als die Animation in `index.css` (950 ms) plus der Versatz des
+ * Etwas laenger als die Animation in `index.css` (1050 ms) plus der Versatz des
  * zweiten Wuerfels (70 ms): der Tisch soll aufgehen, **nachdem** beide liegen,
  * nicht waehrend der zweite noch rollt.
+ *
+ * **Die 100 ms mehr sind das Auslaufen.** Der Wurf ist von einem Bogen zu einem
+ * Wurf mit drei Aufschlaegen geworden, und ein Wuerfel, der zur Ruhe kommt,
+ * braucht sichtbar Zeit dafuer - ohne sie sieht das Ausrollen aus wie ein
+ * Abbruch. Wer die Animation dort aendert, aendert diese Zahl mit: sie ist die
+ * einzige Kopplung zwischen Blatt und Ablauf, und sie bricht still.
  */
-export const THROW_MS = 1080;
+export const THROW_MS = 1180;
 
 /** Was am Wurf haengt und deshalb mit ihm wartet. */
 export interface Rollable {

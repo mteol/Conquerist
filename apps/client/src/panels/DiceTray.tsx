@@ -168,29 +168,68 @@ function labelFor(
  * in Pixeln: der Wuerfel soll ueber das Brett fliegen, und wie gross das ist,
  * weiss nur das Fenster. Zwei Wuerfel bekommen verschiedene Scheitel und einen
  * Versatz - zwei gleich fliegende Wuerfel sind ein Wuerfel.
+ *
+ * ---
+ *
+ * **Drei Huellen und nicht eine, und der Grund ist ein Playtest-Befund.**
+ *
+ * Bis hierher trug **ein** Element die ganze Bewegung: Weg, Hoehe, Groesse und
+ * Drehung in einem einzigen `transform`. Die Bahn ging vom Platz hinaus zum
+ * Scheitel und auf demselben Weg zurueck, und genau so las sie sich auch -
+ * „kurz zur Mitte fliegen und zurueck bouncen". Ein Bumerang, kein Wurf.
+ *
+ * Ein Wuerfel, der auf einen Tisch faellt, tut drei Dinge **gleichzeitig und
+ * verschieden schnell**: er zieht waagerecht durch (gleichmaessig, bis die
+ * Reibung ihn bremst), er springt senkrecht (schnell hinauf, schneller herunter,
+ * und jeder Sprung kleiner als der vorige), und er dreht sich (in der Luft frei,
+ * am Boden nur noch um eine Achse, in Vierteln). In **einem** `transform` haben
+ * diese drei nur **eine** Zeitkurve - und dann sieht jede von ihnen aus wie der
+ * Mittelwert der drei. Getrennt bekommt jede ihre eigene.
+ *
+ * Dazu kommt der Schatten, und der ist der eigentliche Tisch: er bleibt unten
+ * liegen, waehrend der Wuerfel steigt, und wird dabei weit und blass. Ohne ihn
+ * gibt es keine Flaeche, auf die etwas fallen koennte - man sieht ein Ding, das
+ * groesser und wieder kleiner wird. Deshalb haengt er an der **waagerechten**
+ * Huelle und nicht am Wuerfel: er soll dem Wurf folgen, nicht dem Sprung.
  */
 function Cube({ value, index }: { readonly value: number; readonly index: number }): JSX.Element {
   const face = FACE_TURN[value] ?? FACE_TURN[1]!;
 
   return (
     <span
-      className="cube"
+      className="throw"
       data-testid={`cube-${value}`}
       style={
         {
-          '--fx': `${face.x}deg`,
-          '--fy': `${face.y}deg`,
           '--peak-x': index === 0 ? '-24vw' : '-33vw',
           '--peak-y': index === 0 ? '-33vh' : '-26vh',
-          animationDelay: `${index * 70}ms`,
+          /*
+           * Der Versatz steht als **Variable** und nicht als `animationDelay`.
+           *
+           * Vier Animationen (Weg, Sprung, Drehung, Schatten) gehoeren zu
+           * einem Wurf und muessen deshalb im selben Augenblick anfangen -
+           * `animation-delay` vererbt sich aber nicht, und der zweite Wuerfel
+           * haette seinen Schatten und seine Drehung eine Siebzigstelsekunde
+           * vor sich selbst geworfen. Eine Variable erreicht alle vier.
+           */
+          '--delay': `${index * 70}ms`,
         } as CSSProperties
       }
     >
-      {CUBE_FACES.map((side) => (
-        <span key={side.name} className={`cube__face cube__face--${side.name}`}>
-          <Die faces={6} value={side.value} />
+      <span className="throw__shadow" />
+
+      <span className="throw__hop">
+        <span
+          className="cube"
+          style={{ '--fx': `${face.x}deg`, '--fy': `${face.y}deg` } as CSSProperties}
+        >
+          {CUBE_FACES.map((side) => (
+            <span key={side.name} className={`cube__face cube__face--${side.name}`}>
+              <Die faces={6} value={side.value} />
+            </span>
+          ))}
         </span>
-      ))}
+      </span>
     </span>
   );
 }

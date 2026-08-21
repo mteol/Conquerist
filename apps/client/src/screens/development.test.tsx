@@ -325,6 +325,101 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     expect(screen.getByTestId('devcard-count-knight').textContent).toBe('3');
   });
 
+  /**
+   * Was die Karte tut, steht auf dem Bildschirm und nicht mehr im `title`.
+   *
+   * **Warum das eine eigene Pruefung wert ist:** ein `title` sieht im Code aus
+   * wie eine Erklaerung und ist im Browser kaum eine - er kommt nach rund einer
+   * Sekunde Stillstand, in der Schrift des Betriebssystems, und auf einem
+   * **gesperrten** Knopf in den meisten Browsern gar nicht. Genau die gesperrte
+   * Karte ist aber die, bei der man nachliest: die spielbare drueckt man.
+   *
+   * Deshalb haengen Zeigen und Verbergen am Listeneintrag und nicht am Knopf.
+   * Der Unterschied ist im Code eine Zeile und in der Wirkung der ganze Zweck.
+   */
+  it('erklaert beim Darueberfahren, was eine Karte tut', async () => {
+    const state = playable({
+      turn: 4,
+      players: afterSetup().players.map((entry, index) =>
+        index === 0 ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] } : entry,
+      ),
+    });
+
+    render(screenFor(state));
+
+    // Vorher steht nichts da: eine Erklaerung ohne Anlass ist Dekoration.
+    expect(screen.queryByTestId('devcard-hint')).toBeNull();
+
+    await userEvent.hover(screen.getByTestId('devcard-knight'));
+
+    const hint = screen.getByTestId('devcard-hint');
+    expect(hint.textContent).toContain('Ritter');
+    expect(hint.textContent).toContain('Räuber');
+
+    await userEvent.unhover(screen.getByTestId('devcard-knight'));
+    expect(screen.queryByTestId('devcard-hint')).toBeNull();
+  });
+
+  it('erklaert auch die Karte, die man gerade nicht spielen darf', async () => {
+    const state = playable({
+      turn: 4,
+      players: afterSetup().players.map((entry, index) =>
+        index === 0 ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 4 }] } : entry,
+      ),
+    });
+
+    render(screenFor(state));
+
+    const card = screen.getByTestId('devcard-monopoly');
+    expect(card).toHaveProperty('disabled', true);
+
+    /*
+     * Gefahren wird ueber den Listeneintrag - genau dort, wo die Oberflaeche
+     * zuhoert. Auf dem gesperrten Knopf selbst gaebe es nichts zu hoeren, und
+     * das ist der Grund fuer die ganze Umstellung.
+     */
+    await userEvent.hover(card.closest('li')!);
+
+    expect(screen.getByTestId('devcard-hint').textContent).toContain('Monopol');
+  });
+
+  /**
+   * Dieselbe Auskunft fuer Vorlesewerkzeuge - und zwar ohne Zeigegeraet.
+   *
+   * Eine Erklaerung, die nur beim Darueberfahren erscheint, gibt es fuer eine
+   * Tastatur nicht und fuer eine Sprachausgabe erst recht nicht. Sie haengt
+   * deshalb zusaetzlich als `aria-describedby` an der Karte selbst.
+   */
+  it('haengt den Satz auch ohne Maus an jede Karte', () => {
+    const state = playable({
+      turn: 4,
+      players: afterSetup().players.map((entry, index) =>
+        index === 0
+          ? {
+              ...entry,
+              developmentCards: [
+                { id: 'knight', boughtOnTurn: 1 },
+                { id: 'victoryPoint', boughtOnTurn: 1 },
+              ],
+            }
+          : entry,
+      ),
+    });
+
+    const { container } = render(screenFor(state));
+
+    for (const id of ['knight', 'victoryPoint']) {
+      const card = screen.getByTestId(`devcard-${id}`);
+      const described = card.getAttribute('aria-describedby');
+
+      expect(described, `${id} verweist auf keine Erklaerung`).not.toBeNull();
+      expect(
+        container.querySelector(`#${described}`)?.textContent,
+        `${id}: die Erklaerung, auf die verwiesen wird, ist leer`,
+      ).toBeTruthy();
+    }
+  });
+
   it('zeigt fremde Entwicklungskarten nirgends', () => {
     const state = playable({
       turn: 4,

@@ -84,6 +84,18 @@
    */
   --lift: 0 1px 1px rgb(0 0 0 / 30%), 0 3px 7px rgb(0 0 0 / 26%);
 
+  /*
+   * Dasselbe Ding, eine Fingerbreite angehoben.
+   *
+   * Der Kontaktschatten wird dabei nicht dunkler, sondern **weiter und
+   * weicher** - das ist der ganze Unterschied zwischen „liegt" und „ist
+   * angehoben", und wer ihn nur dunkler macht, bekommt einen fetteren Rand
+   * statt Hoehe. Die Zahlen sind dieselben, die der Kaufstapel seit Etappe 8
+   * als `drop-shadow` an der obersten Karte fuehrt; sie standen dort doppelt
+   * im Blatt und stehen jetzt einmal hier.
+   */
+  --lift-raised: 0 2px 2px rgb(0 0 0 / 26%), 0 9px 12px rgb(0 0 0 / 34%);
+
   font-family: 'Segoe UI', system-ui, ui-sans-serif, sans-serif;
   font-size: 16px;
   line-height: 1.5;
@@ -304,6 +316,7 @@ body {
 .panel--log,
 .panel__error,
 .offline__text,
+.devcards__hint,
 .counter {
   corner-shape: bevel;
 }
@@ -1107,6 +1120,18 @@ body {
  * ist weg; wer hier einen Namen vergibt, sucht ihn vorher einmal im Blatt.
  */
 .card {
+  /*
+   * Der Ruheversatz je Karte im Stapel.
+   *
+   * `0px` und nicht `0`: `calc()` rechnet mit Typen, und eine nackte Null ist
+   * eine Zahl und keine Laenge. `translate(calc(1 * 0), …)` waere damit
+   * ungueltig und die ganze Verschiebung fiele aus - still, wie alles
+   * Ungueltige in CSS.
+   */
+  --step-x: 0px;
+  --step-y: -2.5px;
+  --fan: 0;
+
   position: relative;
   width: 4.6rem;
 }
@@ -1117,6 +1142,9 @@ body {
  * Versatz ausschliesslich nach oben. Seitlich waere er huebscher, wuerde aber
  * bei fuenf Stapeln aus dem Panel herauslaufen - und ein Stapel, der seinen
  * Nachbarn ueberlappt, sagt etwas, das nicht stimmt.
+ *
+ * **Beim Darueberfahren faechert er auf** - siehe die gemeinsame Regel gleich
+ * darunter.
  */
 .card__behind {
   position: absolute;
@@ -1127,6 +1155,57 @@ body {
   opacity: 0.5;
 }
 
+/*
+ * Das Auffaechern - fuer alle drei Stapel des Spiels an **einer** Stelle:
+ * Rohstoffe in der Hand, Entwicklungskarten daneben, Kaufstapel in der anderen
+ * Ecke.
+ *
+ * **Was es erklaert** (Designregel 5): dass unter der obersten Karte weitere
+ * liegen und wie viele. Die Plakette sagt die Zahl, die Ruhetiefe deutet sie
+ * an - beim Hinsehen zeigt der Stapel sie. Es ist die Bewegung, mit der man
+ * einen Stapel auf dem Tisch mit dem Daumen aufspreizt, um zu sehen, was drin
+ * ist. Sie steht hier gemeinsam, weil sie ueberall dasselbe heissen soll; drei
+ * eigene Faecher waeren drei Dialekte fuer einen Satz.
+ *
+ * **Zwei Zahlen kommen von aussen und eine von hier.** `--i` ist die Lage im
+ * Stapel und kommt aus der Komponente; `--step-x/y` ist der Ruheversatz und
+ * steht am jeweiligen Stapel, weil der Kaufstapel als einziger keinen Nachbarn
+ * hat, dem er in die Flaeche laufen koennte. Der Faecher selbst - drei Pixel
+ * zur Seite, drei nach oben, zwei Grad Drehung je Lage - steht nur hier.
+ *
+ * **`--fan` ist ein Schalter und keine Strecke**, 0 oder 1. Der Grund steht in
+ * `prefers-reduced-motion` weiter unten: Bewegung abbestellen heisst, den
+ * Schalter zurueckzulegen, und nicht, die Ruhelage ein zweites Mal
+ * hinzuschreiben. Zwei Stellen mit denselben Zahlen laufen irgendwann
+ * auseinander, und dann steht die Ruhe an der einen Stelle woanders als an der
+ * anderen.
+ *
+ * Der Drehpunkt liegt unten in der Mitte: so faechert der Stapel wie eine Hand,
+ * die man am unteren Rand haelt. Oben gedreht waere es ein Wedel, in der Mitte
+ * gedreht kippten die Karten durcheinander.
+ */
+.card__behind,
+.devcard__behind,
+.deck__behind {
+  transform-origin: 50% 100%;
+  transform: translate(
+      calc(var(--i) * (var(--step-x) + var(--fan) * 3px)),
+      calc(var(--i) * (var(--step-y) + var(--fan) * -3px))
+    )
+    rotate(calc(var(--i) * var(--fan) * 2deg));
+  transition: transform 190ms cubic-bezier(0.2, 0.7, 0.3, 1.2);
+}
+
+/*
+ * Drei Karten Tiefe, drei Pixel und zwei Grad je Lage: der Faecher bleibt
+ * schmaler als die Karte und laeuft dem Nachbarstapel nicht in die Flaeche. Ein
+ * Faecher, der ueber seinen Nachbarn greift, sagt etwas, das nicht stimmt -
+ * derselbe Grund, aus dem der Ruheversatz nur nach oben geht.
+ */
+.card:hover {
+  --fan: 1;
+}
+
 .card__face {
   position: relative;
   display: grid;
@@ -1135,6 +1214,20 @@ body {
   border: 1px solid rgb(22 32 42 / 65%);
   border-radius: 7px;
   box-shadow: var(--lift);
+  transition:
+    transform 190ms cubic-bezier(0.2, 0.7, 0.3, 1.2),
+    box-shadow 190ms ease;
+}
+
+/*
+ * Die oberste Karte hebt sich mit an - sonst faechert der Stapel hinter einer
+ * Karte auf, die liegen bleibt, und das sieht aus, als rutsche etwas weg.
+ * Der Schatten geht dabei von `--lift` auf `--lift-raised`: ohne ihn ist die
+ * Verschiebung nur eine Verschiebung und keine Hoehe.
+ */
+.card:hover .card__face {
+  transform: translateY(-2px);
+  box-shadow: var(--lift-raised);
 }
 
 .card__glyph {
@@ -1278,18 +1371,105 @@ body {
  * Was dieser Zug nicht hergibt, liegt blass da: die Regel wird sichtbar, statt
  * erst beim Klick als Absage aufzutauchen.
  */
+/*
+ * Die Huelle um die Reihe. Sie gibt es nur, damit die Erklaerzeile einen Bezug
+ * hat, an dem sie haengen kann - absolut gesetzt braucht sie einen gesetzten
+ * Vorfahren, und das darf nicht die Reihe selbst sein: die bricht um.
+ */
 .devcards {
+  position: relative;
+  margin: 0.65rem 0 0;
+}
+
+.devcards__row {
   display: flex;
   flex-wrap: wrap;
   /* Oben und seitlich Luft fuer Stapeltiefe und Plakette, die aus der Karte
      herausragen - dieselbe Rechnung wie bei `.hand__stacks`. */
   gap: 0.4rem;
-  margin: 0.65rem 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/*
+ * Was die Karte tut - beim Darueberfahren und beim Antabben.
+ *
+ * **Sie kostet keinen Platz im Layout.** Absolut ueber der Reihe: die Karten
+ * ruecken nicht, wenn der Satz kommt und geht. Eine Erklaerung, die den Stapel
+ * verschiebt, auf den man gerade zielt, nimmt einem das Ziel weg.
+ *
+ * **Und sie faengt keine Maus ab.** Ohne `pointer-events: none` laege sie
+ * ueber dem Brett und nimmt Klicks weg, die dorthin gehoeren; ausserdem
+ * flackerte sie, sobald der Zeiger von der Karte an ihre eigene Unterkante
+ * geriete: Zettel weg, Zeiger wieder auf der Karte, Zettel da.
+ *
+ * **Geschnitten und nicht gerundet.** Sie steht in der Fasenliste weiter oben,
+ * bei den Knoepfen und Rahmen: sie erklaert die Karten, ist aber selbst keine -
+ * Spielmaterial hat runde Ecken, Oberflaeche hat geschnittene. Der Radius
+ * gehoert dazu, denn `corner-shape` schneidet die Ecke, die `border-radius`
+ * schon vermessen hat; ohne ihn bliebe der Zettel rechteckig.
+ */
+.devcards__hint {
+  position: absolute;
+  bottom: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: max-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 7px;
+  background: var(--ink-base);
+  color: var(--parchment);
+  box-shadow: var(--lift-raised);
+  pointer-events: none;
+
+  /*
+   * Der Zettel kommt herein und geht ohne Abgang wieder weg.
+   *
+   * Die Ruhelage des Elements ist **sichtbar** - das ist Bedingung, keine
+   * Nachlaessigkeit: bei `prefers-reduced-motion` laeuft die Dauer auf 0.01 ms,
+   * die Animation steht sofort an ihrem Ende, und ein Ende, das „unsichtbar"
+   * hiesse, waere ein Zettel, den es fuer diese Leute nie gaebe. Die Falle
+   * steht in `CLAUDE.md`; hier ist sie umgangen, indem nur der **Anfang**
+   * versteckt.
+   */
+  animation: hint-in 140ms ease-out;
+}
+
+@keyframes hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+}
+
+/* Der Name zuerst, klein und gesperrt: fuenf Karten liegen nebeneinander, und
+   ein Satz ohne Anschrift sagt nicht, welche gemeint ist. */
+.devcards__hint-name {
+  color: var(--accent);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.devcards__hint-text {
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
 .devcard {
+  /* Ruheversatz und Faecherschalter - erklaert bei `.card__behind`. */
+  --step-x: 0px;
+  --step-y: -2.5px;
+  --fan: 0;
+
   position: relative;
   width: 4.6rem;
   padding: 0;
@@ -1324,6 +1504,24 @@ body {
   opacity: 0.5;
 }
 
+/*
+ * Auffaechern wie bei den Rohstoffen - eine Bewegung, eine Bedeutung.
+ *
+ * **Auch die gesperrte Karte faechert.** Sie ist gerade nicht spielbar, aber
+ * sie liegt da, und wie viele es sind, gilt unabhaengig davon. Was der
+ * gesperrte Zustand sagt, sagt er ueber `opacity` und den Zeiger; ihm auch noch
+ * die Tiefe zu nehmen, hiesse zweimal dasselbe sagen und dabei eine
+ * Information verlieren.
+ *
+ * **Die Tastatur bekommt sie mit.** Was ein Zeiger kann und eine Tastatur
+ * nicht, ist keine Feinheit, sondern eine halbe Oberflaeche - und an derselben
+ * Bedingung haengt die Erklaerzeile darueber.
+ */
+.devcard:hover,
+.devcard:focus-visible {
+  --fan: 1;
+}
+
 .devcard__face {
   position: relative;
   display: grid;
@@ -1335,6 +1533,15 @@ body {
   border-radius: 7px;
   background: var(--parchment-2);
   box-shadow: var(--lift);
+  transition:
+    transform 190ms cubic-bezier(0.2, 0.7, 0.3, 1.2),
+    box-shadow 190ms ease;
+}
+
+.devcard:hover .devcard__face,
+.devcard:focus-visible .devcard__face {
+  transform: translateY(-2px);
+  box-shadow: var(--lift-raised);
 }
 
 .devcard__glyph {
@@ -1362,6 +1569,26 @@ body {
 .devcard--ready .devcard__face {
   box-shadow:
     var(--lift),
+    0 0 0 2px var(--accent);
+}
+
+/*
+ * **Der Ring darf beim Anheben nicht verschwinden, und er tut es von selbst.**
+ *
+ * `box-shadow` ist eine Eigenschaft und keine Liste, die sich ergaenzt: die
+ * Anhebe-Regel oben setzt sie neu und wirft den Ring mit weg. Sie ist ausserdem
+ * spezifischer (`.devcard:hover .devcard__face` sind drei Klassen gegen zwei),
+ * gewaenne also auch, wenn sie weiter oben staende. Diese Regel hier hat
+ * dieselben drei und steht **spaeter** - das ist der ganze Ausschlag.
+ *
+ * Genau die Buchhaltung, die `CLAUDE.md` zweimal verlangt: wer eine bestehende
+ * Regel ueberschreibt, zaehlt ihre Spezifitaet nach, sonst steht eine Farbe im
+ * Blatt, die nie erscheint.
+ */
+.devcard--ready:hover .devcard__face,
+.devcard--ready:focus-visible .devcard__face {
+  box-shadow:
+    var(--lift-raised),
     0 0 0 2px var(--accent);
 }
 
@@ -2026,6 +2253,15 @@ body {
 }
 
 .deck__body {
+  /*
+   * Der Ruheversatz geht hier nach rechts **und** nach oben - anders als bei
+   * den Handkarten, denn der Kaufstapel hat keinen Nachbarn, dem er in die
+   * Flaeche laufen koennte.
+   */
+  --step-x: 2px;
+  --step-y: -2px;
+  --fan: 0;
+
   position: relative;
   width: 4.6rem;
   height: 5.8rem;
@@ -2047,6 +2283,19 @@ body {
   border-radius: 7px;
   background: linear-gradient(160deg, var(--parchment) 0%, var(--parchment-2) 100%);
   box-shadow: var(--lift);
+}
+
+/*
+ * Beim Darueberfahren spreizt sich der Stapel auf - dieselbe Bewegung wie in
+ * der Hand, damit sie ueberall dasselbe heisst: „darunter liegen noch welche".
+ *
+ * Sie ergaenzt, was die oberste Karte schon tut (sie hebt sich an und kippt,
+ * siehe `.deck__face` weiter unten). Bis hierher fasste die Bewegung nur das
+ * Ziehen; jetzt zeigt sie auch, woraus gezogen wird.
+ */
+.deck__pile:not(:disabled):hover .deck__body,
+.deck__pile:focus-visible .deck__body {
+  --fan: 1;
 }
 
 /*
@@ -2320,8 +2569,33 @@ body {
   .build__pick:focus-visible .build__piece,
   .build__pick--active .build__piece,
   .deck__pile:not(:disabled):hover .deck__face,
-  .deck__pile:focus-visible .deck__face {
+  .deck__pile:focus-visible .deck__face,
+  .card:hover .card__face,
+  .devcard:hover .devcard__face,
+  .devcard:focus-visible .devcard__face {
     transform: none;
+  }
+
+  /*
+   * Der Faecher faellt weg, der Stapel bleibt.
+   *
+   * Zurueckgelegt wird der **Schalter** und nicht das `transform` der
+   * einzelnen Karte: das traegt auch die Ruhelage des Stapels, und
+   * `transform: none` haette alle Karten aufeinandergelegt - aus einem Stapel
+   * waere eine Karte geworden. Das ist keine ruhigere Oberflaeche, sondern eine
+   * falsche.
+   *
+   * Und darum ist `--fan` eine 0/1-Schaltung: die Ruhezahlen stehen weiter nur
+   * an einer Stelle. Haette der Faecher seine Zielwerte selbst gefuehrt,
+   * muesste hier die ganze Ruhelage noch einmal stehen - zwei Stellen, die
+   * dasselbe behaupten, und eine davon veraltet.
+   */
+  .card:hover,
+  .devcard:hover,
+  .devcard:focus-visible,
+  .deck__pile:not(:disabled):hover .deck__body,
+  .deck__pile:focus-visible .deck__body {
+    --fan: 0;
   }
 }
 
@@ -2811,20 +3085,93 @@ body {
 }
 
 /*
+ * Der Wurf in vier Lagen - Weg, Sprung, Drehung, Schatten.
+ *
+ * **Warum vier und nicht eine.** Bis hierher stand alles in einem `transform`
+ * am Kubus, und damit hatten die vier Bewegungen **eine** Zeitkurve. Genau
+ * daran ist der Wurf gescheitert: er sah aus, als flogen die Wuerfel kurz zur
+ * Mitte und wieder zurueck. Was ihn zum Bumerang machte, waren zwei Dinge - der
+ * Rueckweg lief in der Luft statt am Boden, und Steigen und Ziehen teilten
+ * sich dieselbe Beschleunigung. Ein geworfener Wuerfel zieht dagegen
+ * gleichmaessig durch und springt dabei mehrfach immer kuerzer: die waagerechte
+ * Bewegung hoert erst auf, wenn die Reibung sie aufbraucht, die senkrechte
+ * schon beim ersten Aufprall.
+ *
+ * Getrennt bekommt jede Bewegung ihre eigene Kurve, und der Schatten - der
+ * eigentliche Traeger des Wortes „Tisch" - bleibt unten liegen, waehrend der
+ * Wuerfel steigt.
+ *
+ * `z-index` hebt den Wurf ueber das Brett; er fliegt darueber, nicht darunter.
+ * Alle vier Lagen teilen sich `--delay` aus `DiceTray.tsx`, sonst faengt der
+ * Schatten des zweiten Wuerfels vor dem Wuerfel an.
+ */
+.throw {
+  position: relative;
+  z-index: 4;
+  display: block;
+  width: 3rem;
+  height: 3rem;
+  transform-style: preserve-3d;
+  animation: throw-path 1050ms linear var(--delay) both;
+}
+
+/*
+ * Der Sprung. Er traegt auch die Groesse: naeher an der Kamera ist groesser,
+ * und beides gehoert zur Hoehe.
+ *
+ * `preserve-3d` steht hier, weil sonst die `perspective` der Buehne nicht bis
+ * zum Kubus durchreicht - eine Zwischenhuelle ohne 3D-Kontext plattet alles
+ * darunter zu einem Bild, und aus dem Wuerfel wuerde ein Aufkleber.
+ */
+.throw__hop {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  animation: throw-hop 1050ms linear var(--delay) both;
+}
+
+/*
+ * Der Schatten ist der Tisch.
+ *
+ * Er haengt an der waagerechten Bahn und nicht am Sprung: er folgt dem Wurf,
+ * aber nicht der Hoehe - genau das macht ihn zur Flaeche, auf der etwas liegen
+ * kann. Weit und blass heisst „weit oben", eng und dunkel heisst „gleich
+ * aufgeschlagen"; das ist dieselbe Auskunft wie in `--lift` gegen
+ * `--lift-raised`, nur bewegt.
+ *
+ * **`translateZ` und nicht `z-index`.** In einem `preserve-3d`-Raum sortiert
+ * der Browser nach Tiefe und nicht nach Stapelindex - ein `z-index: -1` ist
+ * dort schlicht wirkungslos, und der Schatten schnitte quer durch den Wuerfel,
+ * dessen vordere Flaeche 1.5rem vor der Mitte sitzt. Zwei Zentimeter nach
+ * hinten legen ihn sauber dahinter, und das ist obendrein die Stelle, an der
+ * ein Schatten hingehoert.
+ */
+.throw__shadow {
+  position: absolute;
+  bottom: -0.3rem;
+  left: 50%;
+  width: 2.7rem;
+  height: 0.62rem;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(0 0 0 / 68%), transparent);
+  transform: translateX(-50%) translateZ(-2.2rem);
+  animation: throw-shadow 1050ms linear var(--delay) both;
+}
+
+/*
  * Ein Wuerfel als Koerper.
  *
- * `z-index` hebt ihn ueber das Brett - er fliegt darueber und nicht darunter.
  * Der Ruhezustand traegt schon die Enddrehung, damit zwischen dem Ende der
  * Animation und dem Aushaengen des Kubus keine falsche Flaeche aufblitzt.
  */
 .cube {
-  position: relative;
-  z-index: 4;
-  width: 3rem;
-  height: 3rem;
+  display: block;
+  width: 100%;
+  height: 100%;
   transform: rotateX(var(--fx)) rotateY(var(--fy));
   transform-style: preserve-3d;
-  animation: die-throw 950ms cubic-bezier(0.34, 0.62, 0.3, 1) both;
+  animation: throw-spin 1050ms linear var(--delay) both;
 }
 
 .cube__face {
@@ -2868,42 +3215,231 @@ body {
 }
 
 /*
- * Der Wurf: hinaus ueber das Brett und zurueck in die Ablage.
+ * Die waagerechte Bahn: hinaus ueber das Brett, dann ueber den Tisch zurueck.
  *
- * **Er faengt und endet an Ort und Stelle** - `translate3d(0,0,0)` an beiden
- * Enden. Damit braucht niemand die Bildschirmkoordinaten der Ablage zu messen;
- * der Wuerfel springt aus seinem Platz heraus und faellt in ihn zurueck.
- * `--peak-x` und `--peak-y` stehen in `vw`/`vh` und kommen aus `DiceTray.tsx`:
- * wie weit „ueber das Brett" ist, weiss nur das Fenster.
+ * **Sie faengt und endet an Ort und Stelle** - `translateX(0)` an beiden Enden.
+ * Damit braucht niemand die Bildschirmkoordinaten der Ablage zu messen; der
+ * Wuerfel verlaesst seinen Platz und kommt darauf zur Ruhe. `--peak-x` steht in
+ * `vw` und kommt aus `DiceTray.tsx`: wie weit „ueber das Brett“ ist, weiss nur
+ * das Fenster.
  *
- * **Die Drehung laeuft rueckwaerts auf ihr Ziel zu.** Der Kubus startet mit drei
- * ganzen Umdrehungen *vor* seiner Endlage und dreht sich in sie hinein - er
- * taumelt sichtbar und liegt am Ende trotzdem exakt auf der geworfenen Zahl,
- * ohne dass irgendwo eine Zufallszahl im Spiel waere. Das Ergebnis steht
- * schliesslich vorher fest (Architekturregel 2).
+ * **Wo der Bumerang herkam, und es war die Verteilung.** Anfang und Ende sind
+ * derselbe Ort - die Bahn muss also irgendwann umkehren, daran fuehrt kein Weg
+ * vorbei. Ob das nach Wurf oder nach Gummiband aussieht, entscheidet allein,
+ * **wo** der Rueckweg stattfindet. In der ersten Fassung lag der Aufschlag bei
+ * 52 Prozent und dicht an der Ablage: von 460 Pixeln Rueckweg lagen 370 in der
+ * Luft und 90 auf dem Tisch. Man sah einen Bogen hin und einen Bogen zurueck -
+ * genau die Beschreibung, die aus dem Playtest kam.
  *
- * `scale` am Scheitel ist die Tiefe: ein Wuerfel, der auf einen zufliegt, wird
- * groesser. Ohne das saehe der Bogen aus wie ein Schieben auf der Tischplatte.
+ * Jetzt schlaegt er bei 42 Prozent auf, und zwar **weit draussen** (bei gut
+ * zwei Dritteln des Scheitelwegs). Die restlichen 58 Prozent der Zeit rollt er
+ * ueber den Tisch, und das ist die laengste zusammenhaengende Bewegung des
+ * ganzen Wurfs. Wer ihn ansieht, sieht ihn rollen.
+ *
+ * Die Kurven: hinaus mit `ease-out`, weil ein Wurf aus der Hand ausrollt; ueber
+ * den Scheitel eine weiche S-Kurve; ab dem Aufschlag eine lange Verzoegerung -
+ * das ist die Reibung, und sie ist der Grund, warum die Bewegung ueberhaupt
+ * aufhoert.
  */
-@keyframes die-throw {
+@keyframes throw-path {
   0% {
-    transform: translate3d(0, 0, 0) scale(1) rotateX(calc(var(--fx) - 1080deg))
-      rotateY(calc(var(--fy) - 1440deg));
+    transform: translate3d(0, 0, 0);
+    animation-timing-function: cubic-bezier(0.25, 0.5, 0.5, 1);
   }
 
-  38% {
-    transform: translate3d(var(--peak-x), var(--peak-y), 0) scale(1.6)
-      rotateX(calc(var(--fx) - 540deg)) rotateY(calc(var(--fy) - 720deg));
+  26% {
+    transform: translate3d(var(--peak-x), 0, 0);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
   }
 
-  /* Aufprall: kurz ueber der Ablage, schon fast in der Endlage. */
-  86% {
-    transform: translate3d(0, -0.9rem, 0) scale(1.06) rotateX(calc(var(--fx) - 24deg))
-      rotateY(calc(var(--fy) + 16deg));
+  /* Aufschlag - weit draussen. Ab hier ist alles Rollen. */
+  42% {
+    transform: translate3d(calc(var(--peak-x) * 0.68), 0, 0);
+    animation-timing-function: cubic-bezier(0.16, 0.62, 0.3, 1);
   }
 
   100% {
-    transform: translate3d(0, 0, 0) scale(1) rotateX(var(--fx)) rotateY(var(--fy));
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/*
+ * Der Sprung: einmal hoch, dann drei Aufschlaege, jeder kuerzer als der vorige.
+ *
+ * **Die Aufschlaege sind das, was den Tisch behauptet.** Ein Bogen ohne
+ * Aufschlag ist ein Flug; erst dass die Hoehe dreimal auf null geht und jedes
+ * Mal weniger zurueckkommt, sagt, dass da unten etwas ist.
+ *
+ * **Die Sprunghoehen stehen in `rem` und nicht im Verhaeltnis zum Scheitel.**
+ * Das war der zweite Messbefund: der zweite Sprung stand auf 0.28 des Scheitels
+ * und war damit **82 Pixel** hoch - ein Wurf, kein Aufprall. Ein Wuerfel ist
+ * klein und schwer und springt schlecht; wie hoch er zurueckkommt, haengt an
+ * ihm und nicht daran, wie weit jemand ihn geworfen hat. 1.5rem, 0.6rem,
+ * 0.22rem - je gut vier Zehntel des vorigen.
+ *
+ * **Jede Halbwelle bekommt ihre eigene Kurve.** Hinauf `ease-out`, weil die
+ * Schwerkraft bremst; herunter `ease-in`, weil sie beschleunigt. Und zwar die
+ * quadratischen: mit der ersten Kurve stand der Wuerfel nach der Haelfte der
+ * Steigzeit schon auf 92 Prozent der Hoehe und hing dann oben herum. Ein
+ * geworfener Koerper ist zur Halbzeit auf drei Vierteln - das ist keine
+ * Geschmacksfrage, sondern `v*t - g*t^2/2`.
+ *
+ * `scale` gehoert dazu: was hoeher liegt, ist naeher an der Kamera und damit
+ * groesser. Ohne das waere der Bogen ein Schieben auf der Tischplatte.
+ */
+@keyframes throw-hop {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  26% {
+    transform: translate3d(0, var(--peak-y), 0) scale(1.55);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  42% {
+    transform: translate3d(0, 0, 0) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  54% {
+    transform: translate3d(0, -1.5rem, 0) scale(1.07);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  66% {
+    transform: translate3d(0, 0, 0) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  76% {
+    transform: translate3d(0, -0.6rem, 0) scale(1.03);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  85% {
+    transform: translate3d(0, 0, 0) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  92% {
+    transform: translate3d(0, -0.22rem, 0) scale(1.01);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/*
+ * Die Drehung - **rueckwaerts auf ihr Ziel zu**.
+ *
+ * Der Kubus startet mit ganzen Umdrehungen *vor* seiner Endlage und dreht sich
+ * in sie hinein: er taumelt sichtbar und liegt am Ende trotzdem exakt auf der
+ * geworfenen Zahl, ohne dass irgendwo eine Zufallszahl im Spiel waere. Das
+ * Ergebnis steht schliesslich vorher fest (Architekturregel 2).
+ *
+ * **In der Luft frei, am Boden nur noch um eine Achse.** Das ist der
+ * Unterschied zwischen Taumeln und Rollen, und er ist der Kern des ganzen
+ * Umbaus: bis zum Aufschlag drehen sich beide Achsen, danach steht `--fx` fest
+ * und nur noch `rotateY` laeuft weiter. Ein Wuerfel, der auf dem Tisch liegt,
+ * kann sich nicht mehr in zwei Richtungen ueberschlagen; er kippt ueber seine
+ * Kanten.
+ *
+ * **Und er kippt in Vierteln.** Die letzten Schluesselbilder stehen auf 270,
+ * 180, 90 und 0 Grad - jede Zwischenstufe ist damit wieder eine Lage, in der
+ * eine Flaeche unten liegt. Krumme Winkel dazwischen saehen aus, als schwebe
+ * der Wuerfel durch seine eigene Kante. Die Vierteldrehungen liegen auf
+ * denselben Prozentzahlen wie die Aufschlaege: ein Wuerfel kippt beim
+ * Aufsetzen und nicht dazwischen.
+ */
+@keyframes throw-spin {
+  0% {
+    transform: rotateX(calc(var(--fx) - 1080deg)) rotateY(calc(var(--fy) - 1440deg));
+    animation-timing-function: linear;
+  }
+
+  26% {
+    transform: rotateX(calc(var(--fx) - 360deg)) rotateY(calc(var(--fy) - 720deg));
+    animation-timing-function: linear;
+  }
+
+  42% {
+    transform: rotateX(var(--fx)) rotateY(calc(var(--fy) - 270deg));
+    animation-timing-function: cubic-bezier(0.25, 0.6, 0.4, 1);
+  }
+
+  66% {
+    transform: rotateX(var(--fx)) rotateY(calc(var(--fy) - 180deg));
+    animation-timing-function: cubic-bezier(0.25, 0.6, 0.4, 1);
+  }
+
+  85% {
+    transform: rotateX(var(--fx)) rotateY(calc(var(--fy) - 90deg));
+    animation-timing-function: cubic-bezier(0.3, 0.6, 0.4, 1);
+  }
+
+  100% {
+    transform: rotateX(var(--fx)) rotateY(var(--fy));
+  }
+}
+
+/*
+ * Der Schatten: eng und dunkel am Boden, weit und blass in der Hoehe.
+ *
+ * Er laeuft auf **denselben** Prozentzahlen wie der Sprung - er ist dessen
+ * Gegenstueck und muesste sonst irgendwo eine eigene Physik behaupten. Am
+ * Scheitel ist er fast weg; an jedem Aufschlag ist er am dunkelsten, und genau
+ * dort sieht man ihn als Aufschlag und nicht als Verlauf.
+ */
+@keyframes throw-shadow {
+  0% {
+    opacity: 0.55;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  26% {
+    opacity: 0.12;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(2.1);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  42% {
+    opacity: 0.6;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  54% {
+    opacity: 0.4;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1.24);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  66% {
+    opacity: 0.58;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  76% {
+    opacity: 0.48;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1.1);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  85% {
+    opacity: 0.56;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  100% {
+    opacity: 0.55;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1);
   }
 }
 

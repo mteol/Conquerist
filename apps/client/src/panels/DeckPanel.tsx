@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import type { CSSProperties, JSX } from 'react';
 
 /**
  * Der Entwicklungsstapel - als Stapel, nicht als Knopf mit Beschriftung.
@@ -51,11 +51,17 @@ export function DeckPanel({ left, canBuy, onBuy }: DeckPanelProps): JSX.Element 
       >
         <span className="deck__body">
           <span className="deck__behind-stack" aria-hidden="true">
+            {/*
+             * Nur die Lage im Stapel wird uebergeben, nicht die fertige
+             * Verschiebung: ein `transform` im `style` liesse sich vom Blatt
+             * nicht mehr ueberschreiben, und genau das braucht die Faecherung
+             * beim Darueberfahren. Was aus `--i` wird, steht in `index.css`.
+             */}
             {Array.from({ length: behind }, (_unused, index) => (
               <span
                 key={index}
                 className="deck__behind"
-                style={{ transform: `translate(${(index + 1) * 2}px, ${(index + 1) * -2}px)` }}
+                style={{ '--i': index + 1 } as CSSProperties}
               />
             ))}
           </span>
