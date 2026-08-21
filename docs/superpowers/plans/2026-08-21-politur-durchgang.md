@@ -1597,25 +1597,28 @@ EOF
 
 **Spec-Abdeckung.** Jeder Abschnitt der Spec gegen eine Aufgabe:
 
-| Spec                                                     | Aufgabe                 |
-| -------------------------------------------------------- | ----------------------- |
-| B1 — Brett null Pixel unter 496 px                       | 1                       |
-| B2 — Wartebereich 1326 px, zwei Drittel leer, kein Brett | 4                       |
-| B3 — Gründung markiert nichts                            | 2                       |
-| B4 — doppelte Statuszeile + Leiste über dem Brett        | 2 (Zeile), 3 (Leiste)   |
-| B5 — `.die--blank`                                       | 6                       |
-| B6 — native Regler                                       | 7                       |
-| B7 — Startknopf-Gewicht, Diagnose, Chips, Titel          | 5                       |
-| B7 — Tischliste 11 px grau                               | **keine** — siehe unten |
-| Richtung 1 — Fläche statt Rolle                          | 4, 5                    |
-| Richtung 2 — Brett auf jeder Breite                      | 1                       |
-| Richtung 3 — Zustand gezeichnet                          | 6, 7                    |
-| Richtung 4 — Regel 9 in `CLAUDE.md`                      | 9                       |
-| Schritt 5b — vier Dialoge                                | 8                       |
+| Spec                                                     | Aufgabe               |
+| -------------------------------------------------------- | --------------------- |
+| B1 — Brett null Pixel unter 496 px                       | 1                     |
+| B2 — Wartebereich 1326 px, zwei Drittel leer, kein Brett | 4                     |
+| B3 — Gründung markiert nichts                            | 2                     |
+| B4 — doppelte Statuszeile + Leiste über dem Brett        | 2 (Zeile), 3 (Leiste) |
+| B5 — `.die--blank`                                       | 6                     |
+| B6 — native Regler                                       | 7                     |
+| B7 — Startknopf-Gewicht, Diagnose, Chips, Titel          | 5                     |
+| B7 — Tischliste 10,88 px                                 | 10 (neu)              |
+| B8 — volle Spielerzeile zerfaellt                        | 10 (neu)              |
+| Richtung 1 — Fläche statt Rolle                          | 4, 5                  |
+| Richtung 2 — Brett auf jeder Breite                      | 1                     |
+| Richtung 3 — Zustand gezeichnet                          | 6, 7                  |
+| Richtung 4 — Regel 9 in `CLAUDE.md`                      | 9                     |
+| Schritt 5b — vier Dialoge                                | 8                     |
 
-**Eine Lücke gefunden und hier benannt statt versteckt:** der letzte Punkt aus B7 — „Die Tischliste oben links setzt „0 SP · 0 Karten" in gedämpftem Grau bei rund 11 px auf die dunkle See" — hat keine Aufgabe. Er ist ein Kontrastbefund, und Kontrast braucht eine Messung, die dieser Durchgang nicht gemacht hat: es steht kein Kontrastwert dabei, nur „schlecht lesbar". Ihn blind aufzuhellen hieße, eine Zahl zu raten, wo die Spec selbst „erst messen, dann erklären" verlangt.
+**Die Lücke von gestern ist geschlossen, und sie hat einen neuen Befund geliefert.** Der letzte Punkt aus B7 stand als „gedämpftes Grau, schlecht lesbar" ohne Kontrastwert in der Spec, und er hatte deshalb keine Aufgabe — ihn blind aufzuhellen hieße, eine Zahl zu raten, wo die Spec selbst „erst messen, dann erklären" verlangt.
 
-**Er gehört als Step in Aufgabe 8**, wo ohnehin gemessen wird: Kontrast von `.table__stat` (o. ä.) gegen `--sea-800` ausrechnen, gegen 4.5:1 halten, und beheben, wenn er darunter liegt. Das ist unten als Task 8, Step 2b nachgetragen.
+**Er ist am 21.08. gemessen worden, und er ist keiner:** `rgb(148 167 176)` auf `rgb(15 44 59)` sind **8,41:1**, der Name 16,14:1 — beides weit über 4,5:1. Was bleibt, ist die Größe (10,88 px), und das ist eine andere Frage.
+
+**Dieselbe Messung hat B8 gefunden**, und der ist schwerer: eine volle Spielerzeile zerfällt in gestapelte Wortspalten. Beides zusammen ist jetzt **Aufgabe 10**.
 
 **Platzhalter.** Kein „TBD", kein „ähnlich wie Aufgabe N".
 
@@ -1633,36 +1636,185 @@ Die dritte hatte einen Testfall im Plan, der auf `null` geprüft hätte und rot 
 
 ### Nachtrag zu Task 8
 
-- [ ] **Step 2b: Den Kontrast der Tischliste messen**
+---
 
-Der offene Punkt aus B7. In der laufenden Partie:
+## Task 10: Die Spielerzeile verträgt, was in ihr steht
+
+B8 und der Rest von B7. Gemessen am 21.08.: mit dem kürzesten Inhalt bleiben in
+`.seat` **3 px Luft**, und mit realistischem Inhalt bricht jedes Feld um — „12 SP"
+steht als „12" über „SP" in einer 13 px breiten Spalte.
+
+**Files:**
+
+- Modify: `apps/client/src/index.css` — `.seat` und seine Kinder
+- Test: `apps/client/src/panels/panels.test.tsx`
+
+**Interfaces:**
+
+- Consumes: nichts aus früheren Aufgaben
+- Produces: eine Zeile, die ein weiteres Feld verträgt — Voraussetzung für die
+  Bonus-Plaketten (eigener Entwurf, eigene Spec)
+
+- [ ] **Step 1: Den Ist-Zustand messen**
+
+Prüfstand, lokale Partie. Der schlimmste Fall wird gesetzt, statt auf ihn zu
+warten — er hängt sonst an einem Würfelwurf:
 
 ```js
 const w = document.getElementById('frame').contentWindow,
   d = w.document;
-const lum = (c) => {
-  const [r, g, b] = c
-    .match(/[\d.]+/g)
-    .slice(0, 3)
-    .map(Number)
-    .map((v) => {
-      const s = v / 255;
-      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-    });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+const seat = d.querySelector('.seat');
+const orig = seat.innerHTML;
+seat.innerHTML =
+  '<span class="seat__name">Maximiliane (du)</span>' +
+  '<span class="seat__points">12 SP</span>' +
+  '<span class="seat__hand">19 Karten</span>' +
+  '<span class="seat__gain">+3</span>' +
+  '<span class="seat__pending">wirft 4 ab</span>';
+await new Promise((r) => setTimeout(r, 150));
+const res = {
+  hoehe: Math.round(seat.getBoundingClientRect().height),
+  felder: [...seat.children].map((e) => ({
+    cls: e.className,
+    box: Math.round(e.getBoundingClientRect().width),
+    zeilen: Math.round(e.getBoundingClientRect().height),
+  })),
 };
-[...d.querySelectorAll('.table li span, .table li')].slice(0, 6).map((e) => {
-  const cs = w.getComputedStyle(e);
-  const l1 = lum(cs.color),
-    l2 = lum(w.getComputedStyle(d.querySelector('.game')).backgroundColor);
-  return {
-    text: e.innerText.slice(0, 14),
-    px: cs.fontSize,
-    ratio: +((Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)).toFixed(2),
-  };
+seat.innerHTML = orig;
+res;
+```
+
+Erwartet (Vorher-Wert vom 21.08.): Höhe 45 px statt 27, `seat__points` 13 px
+breit und 36 px hoch — also drei Zeilen für zwei Wörter.
+
+- [ ] **Step 2: Den fehlschlagenden Test schreiben**
+
+In `apps/client/src/panels/panels.test.tsx`:
+
+```tsx
+describe('die Spielerzeile bei vollem Inhalt', () => {
+  it('laesst Maszzahlen nicht umbrechen', async () => {
+    const css = await readFile(new URL('../index.css', import.meta.url), 'utf8');
+
+    /*
+     * jsdom legt kein Layout aus - der Umbruch selbst ist hier nicht messbar.
+     * Was der Test festhaelt, ist die Zusicherung: eine Zahl mit ihrer Einheit
+     * ist ein Wort. Die Breiten misst der Pruefstand im Browser.
+     */
+    const points = css.match(/\.seat__points \{[\s\S]*?\n\}/)?.[0];
+    const hand = css.match(/\.seat__hand \{[\s\S]*?\n\}/)?.[0];
+
+    expect(points).toMatch(/white-space:\s*nowrap/);
+    expect(hand).toMatch(/white-space:\s*nowrap/);
+  });
+
+  it('laesst die Zeile umbrechen statt ihre Felder', async () => {
+    const css = await readFile(new URL('../index.css', import.meta.url), 'utf8');
+    const seat = css.match(/\n\.seat \{[\s\S]*?\n\}/)?.[0];
+
+    // Was nicht in eine Zeile passt, geht in eine zweite darunter - nicht in
+    // fuenf Spalten aus gestapelten Woertern.
+    expect(seat).toMatch(/flex-wrap:\s*wrap/);
+  });
 });
 ```
 
-Die Selektoren aus dem echten Markup von `TablePanel.tsx` nehmen, nicht raten. Der Hintergrund ist ein Verlauf — `backgroundColor` gibt die Grundfarbe darunter, und das ist der ungünstigste Fall, also der richtige zum Messen.
+`readFile` aus `node:fs/promises` importieren, falls die Datei ihn noch nicht hat.
 
-Liegt ein Wert unter **4.5:1**, ist es ein Befund: in die Spec, dann beheben. Liegt keiner darunter, steht das genauso in der Spec — dann war „schlecht lesbar" ein Eindruck und keine Messung, und das ist auch ein Ergebnis.
+- [ ] **Step 3: Den Test laufen lassen**
+
+```bash
+cd apps/client && npx vitest run src/panels/panels.test.tsx -t "vollem Inhalt"
+```
+
+Erwartet: beide FAIL — heute steht dort `nowrap` an der Zeile und nichts an den
+Feldern.
+
+- [ ] **Step 4: Die Zeile umbauen**
+
+In `index.css` am `.seat`-Block:
+
+```css
+/*
+ * Die Zeile bricht um, ihre Felder nicht.
+ *
+ * Gemessen am 21.08.: mit „Spieler 1 (du) · 0 SP · 0 Karten" blieben 3 Pixel
+ * Luft. Das Markup fuehrt aber zwei weitere Felder, die bei gewoehnlichem
+ * Spiel dazukommen - der Zuwachs und der Hinweis („wirft 4 ab", „getrennt").
+ * Mit ihnen und einem 16 Zeichen langen Namen wuchs die Zeile auf 45 Pixel,
+ * und **nichts** wurde abgeschnitten: `white-space: normal` liess jedes Feld
+ * umbrechen. „12 SP" stand als „12" ueber „SP" in einer 13 Pixel breiten
+ * Spalte.
+ *
+ * Das sah nicht nach „passt knapp nicht" aus, sondern nach einem Unfall. Die
+ * Kur ist die Umkehrung: die **Zeile** darf umbrechen, das **Feld** nicht.
+ * Eine Maszzahl mit ihrer Einheit ist ein Wort.
+ */
+.seat {
+  flex-wrap: wrap;
+}
+
+.seat__points,
+.seat__hand,
+.seat__gain,
+.seat__pending {
+  white-space: nowrap;
+}
+
+/* Der Name darf schrumpfen, die Zahlen nicht - er ist das einzige Feld, das
+   ohne Verlust kuerzer werden kann, und `text-overflow` sagt, dass gekuerzt
+   wurde. */
+.seat__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+```
+
+Die Zahlen tragen ohnehin schon Tabellenziffern — nachsehen, ob `.seat__points`
+und `.seat__hand` `font-variant-numeric: tabular-nums` haben, und ergänzen, wenn
+nicht (Regel 3: in einem Spiel, in dem dauernd Zahlen verglichen werden, darf
+keine Ziffer springen).
+
+- [ ] **Step 5: Tests laufen lassen**
+
+```bash
+cd apps/client && npx vitest run src/panels/panels.test.tsx
+```
+
+Erwartet: alle PASS.
+
+- [ ] **Step 6: Im Browser nachmessen**
+
+Derselbe Ausdruck wie Step 1.
+
+Erwartet: kein Feld höher als eine Textzeile (rund 17 px), `seat__points`
+mindestens so breit wie „12 SP" es braucht. Die Zeile darf zweizeilig werden —
+das ist der Entwurf, nicht der Fehler.
+
+Danach der Blick auf den echten Bildschirm ohne gesetztes Markup: die
+gewöhnliche Zeile („Spieler 1 (du) · 0 SP · 0 Karten") muß **einzeilig
+bleiben**. Wird sie durch `flex-wrap: wrap` zweizeilig, ist der Umbau zu weit
+gegangen.
+
+- [ ] **Step 7: Committen**
+
+```bash
+cd /c/code/Conquerist && pnpm typecheck && pnpm test && rm -f apps/client/public/_probe.html
+git add apps/client/src/index.css apps/client/src/panels/panels.test.tsx
+git commit -F - <<'EOF'
+Die Zeile bricht um, ihre Felder nicht
+
+Mit dem kuerzesten Inhalt blieben in einer Spielerzeile drei Pixel Luft. Das
+Markup fuehrt aber zwei Felder, die bei gewoehnlichem Spiel dazukommen - der
+Zuwachs und der Hinweis. Mit ihnen brach jedes Feld einzeln um: „12 SP" stand
+als „12" ueber „SP" in einer 13 Pixel breiten Spalte, der Name auf drei Zeilen,
+die Zeile wuchs von 27 auf 45 Pixel.
+
+Nichts davon war abgeschnitten - es war `white-space: normal`. Die Kur ist die
+Umkehrung: die Zeile darf umbrechen, das Feld nicht. Eine Maszzahl mit ihrer
+Einheit ist ein Wort.
+EOF
+```

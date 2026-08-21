@@ -219,8 +219,46 @@ Es ist die einzige Stelle im Spiel, an der das Betriebssystem durchschlägt.
   Sechseck-Chips, die Handkarten-Frage zwei Zeilen darunter sind native Radios.
 - **Der Titel „Partie starten — lokal" bricht auf drei Zeilen**, rund 180 px —
   die Hälfte des Überhangs dieses Bildschirms steht in seiner Überschrift.
-- **Die Tischliste oben links** setzt „0 SP · 0 Karten" in gedämpftem Grau bei
-  rund 11 px auf die dunkle See.
+- **Die Tischliste oben links** setzt „0 SP · 0 Karten" bei 10,88 px.
+
+### B8 — Eine volle Spielerzeile zerfällt in Wortspalten
+
+**Nachgetragen am 21.08., beim Prüfen eines anderen Entwurfs gemessen.**
+
+`.seat` ist eine Flexzeile mit `flex-wrap: nowrap` und 182 px Breite. Mit dem
+kürzesten möglichen Inhalt — „Spieler 1 (du)", „0 SP", „0 Karten" — bleiben
+**3 px Luft**. Das Markup führt aber zwei weitere Felder, die bei ganz
+gewöhnlichem Spiel dazukommen: der Zuwachs (`+3`) und der Hinweis („wirft 4 ab",
+„getrennt").
+
+Gemessen mit realistischem Inhalt (16 Zeichen Name — das ist das `maxLength` des
+Formulars —, „12 SP", „19 Karten", „+3", „wirft 4 ab"):
+
+| Feld            | Breite |  Höhe |
+| --------------- | -----: | ----: |
+| `seat__name`    |  74 px | 38 px |
+| `seat__points`  |  13 px | 36 px |
+| `seat__hand`    |  38 px | 33 px |
+| `seat__gain`    |  26 px | 17 px |
+| `seat__pending` |  41 px | 34 px |
+
+Die Zeile wächst von 27 px auf 45 px, und **nichts wird abgeschnitten** —
+`white-space: normal`, also bricht jedes Feld um. „12 SP" steht in einer 13 px
+breiten Spalte als „12" über „SP", „19 Karten" als „19" über „Karten", der Name
+auf drei Zeilen. Es sieht nicht nach „paßt knapp nicht" aus, sondern nach einem
+Layout-Unfall.
+
+**Was folgt.** Die Zeile bekommt eine Ordnung, die verträgt, daß Felder
+dazukommen: die Zahlen `white-space: nowrap` (eine Maßzahl bricht nicht um), und
+was nicht in eine Zeile paßt, geht in eine zweite darunter statt in fünf
+Spalten. Der Platz dafür ist da — das Panel darf bis 232 px.
+
+**Und ein Befund, der sich beim Messen aufgelöst hat.** Der Punkt oben stand
+zuerst als „gedämpftes Grau, schlecht lesbar" hier. Gemessen ist er das nicht:
+`rgb(148 167 176)` auf `rgb(15 44 59)` ergibt **8,41:1**, der Name sogar
+16,14:1 — beides weit über 4,5:1. „Schlecht lesbar" war ein Eindruck aus einer
+verkleinerten Aufnahme und keine Messung. Was bleibt, ist die **Größe**
+(10,88 px), und das ist eine andere Frage als der Kontrast.
 
 ## Die Richtung
 
