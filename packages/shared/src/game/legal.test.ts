@@ -211,3 +211,20 @@ describe('legalActions in tradePending', () => {
     expectAllAccepted(offered(), 'p1');
   });
 });
+
+describe('legalActions im Auftakt', () => {
+  const inOpening = () =>
+    testGame({
+      phase: { kind: 'opening', rolls: {}, pending: ['p2', 'p3'], round: 0 },
+      turn: 0,
+    });
+
+  it('bietet dem Vordersten das Wuerfeln an', () => {
+    expect(legalActions(inOpening(), 'p2')).toEqual([{ type: 'rollDice', player: 'p2' }]);
+  });
+
+  it('bietet den Wartenden nichts an', () => {
+    expect(legalActions(inOpening(), 'p3')).toEqual([]);
+    expect(legalActions(inOpening(), 'p1')).toEqual([]);
+  });
+});

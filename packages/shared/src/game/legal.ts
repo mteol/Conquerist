@@ -9,6 +9,7 @@ import {
   canPlaceRoadAt,
   canPlaceSettlementAt,
 } from './build.js';
+import { openingRoller } from './phase.js';
 import type { PlayerId } from './player.js';
 import { canAcceptTrade, canRejectCounter, canRespondTrade } from './playerTrade.js';
 import { canMoveRobber, victimsAt } from './robber.js';
@@ -44,6 +45,10 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
   switch (state.phase.kind) {
     case 'finished':
       return [];
+
+    case 'opening':
+      // Im Auftakt gibt es genau eine Sache zu tun, und nur fuer einen.
+      return openingRoller(state.phase) === player ? [{ type: 'rollDice', player }] : [];
 
     case 'setup': {
       if (setupPlayer(state) !== player) return [];
