@@ -13,6 +13,7 @@ import {
   type GameState,
 } from '@conquerist/shared';
 import { defaultSeats } from '../seats';
+import { afterOpening } from '../test/opening';
 import { actingPlayers, discardCountForView, gameViewOf } from './view';
 
 const scenario = generateScenario(CLASSIC_34, 'view-probe');
@@ -20,7 +21,7 @@ const seats = defaultSeats(3);
 const ids = seats.map((seat) => seat.id);
 
 function afterSetup(): GameState {
-  let state = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
+  let state = afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'view-probe'));
 
   while (state.phase.kind === 'setup') {
     const player = setupPlayer(state)!;
@@ -33,8 +34,25 @@ function afterSetup(): GameState {
 }
 
 describe('Anzeigemodell', () => {
-  it('nennt in der Gruendung den Spieler aus der Schlange, nicht den Index', () => {
+  it('nennt im Auftakt den Vordersten der Warteschlange', () => {
     const state = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
+    if (state.phase.kind !== 'opening') throw new Error('Die Partie beginnt im Auftakt');
+
+    expect(actingPlayers(state)).toEqual([state.phase.pending[0]]);
+  });
+
+  it('laesst im Auftakt niemanden handeln, wenn die Runde vollstaendig ist', () => {
+    const state = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
+    const leer = {
+      ...state,
+      phase: { kind: 'opening' as const, rolls: {}, pending: [], round: 0 },
+    };
+
+    expect(actingPlayers(leer)).toEqual([]);
+  });
+
+  it('nennt in der Gruendung den Spieler aus der Schlange, nicht den Index', () => {
+    const state = afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'view-probe'));
     expect(actingPlayers(state)).toEqual([setupPlayer(state)]);
   });
 
@@ -83,7 +101,16 @@ describe('Anzeigemodell', () => {
   });
 
   it('sagt in jeder Phase, was zu tun ist', () => {
-    const setup = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
+    const auftakt = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
+    expect(gameViewOf(playerViewOf(auftakt, ids[0]!, seats, 0)).phaseText).toContain('Auftakt');
+
+    const stechen = {
+      ...auftakt,
+      phase: { kind: 'opening' as const, rolls: {}, pending: [ids[0]!], round: 1 },
+    };
+    expect(gameViewOf(playerViewOf(stechen, ids[0]!, seats, 0)).phaseText).toContain('Stechen');
+
+    const setup = afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'view-probe'));
     expect(gameViewOf(playerViewOf(setup, ids[0]!, seats, 0)).phaseText).toContain('Gründung');
 
     const rolling = afterSetup();

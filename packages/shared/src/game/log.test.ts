@@ -8,7 +8,7 @@ import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
 import { describeTransition } from './log.js';
 import { yieldTotal } from './dice.js';
-import { CENTER_VERTEX, giving, hand, testGame } from './fixtures.js';
+import { afterOpening, CENTER_VERTEX, giving, hand, testGame } from './fixtures.js';
 import type { GameAction } from './actions.js';
 import type { GameState } from './state.js';
 
@@ -35,16 +35,20 @@ function apply(state: GameState, action: GameAction): GameState {
 
 describe('Verlaufssaetze', () => {
   it('nennt die Gruendungssiedlung beim Namen des Spielers', () => {
-    const before = createGame(scenario, CLASSIC_RULES, ids, 'log-probe');
-    const action = legalActions(before, setupPlayer(before)!)[0]!;
+    const before = afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'log-probe'));
+    const actor = setupPlayer(before)!;
+    const action = legalActions(before, actor)[0]!;
     const after = apply(before, action);
 
-    expect(describeTransition(before, action, after, seats)).toContain('Spieler 1');
+    // Wer zuerst setzt, hat der Auftakt entschieden - der Name kommt deshalb
+    // aus dem Sitz und steht nicht fest im Test.
+    const name = seats.find((seat) => seat.id === actor)!.name;
+    expect(describeTransition(before, action, after, seats)).toContain(name);
     expect(describeTransition(before, action, after, seats)).toContain('Gründungssiedlung');
   });
 
   it('nennt beim Wurf die Augenzahl', () => {
-    let state = createGame(scenario, CLASSIC_RULES, ids, 'log-probe');
+    let state = afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'log-probe'));
     while (state.phase.kind === 'setup') {
       state = apply(state, legalActions(state, setupPlayer(state)!)[0]!);
     }
@@ -81,11 +85,11 @@ describe('Verlaufssaetze', () => {
   });
 
   it('faellt fuer unbekannte Sitze auf die Id zurueck statt zu werfen', () => {
-    const before = createGame(scenario, CLASSIC_RULES, ids, 'log-probe');
+    const before = afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'log-probe'));
     const action = legalActions(before, setupPlayer(before)!)[0]!;
     const after = apply(before, action);
 
-    expect(describeTransition(before, action, after, [])).toContain('p1');
+    expect(describeTransition(before, action, after, [])).toContain(action.player);
   });
 });
 

@@ -11,12 +11,13 @@ import {
   type GameState,
 } from '@conquerist/shared';
 import { actionTargets, targetsFrom } from './targets';
+import { afterOpening } from '../test/opening';
 
 const scenario = generateScenario(CLASSIC_34, 'targets-probe');
 const ids = ['p1', 'p2', 'p3'];
 
 function fresh(): GameState {
-  return createGame(scenario, CLASSIC_RULES, ids, 'targets-probe');
+  return afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'targets-probe'));
 }
 
 /** Spielt die Gruendungsphase mit der jeweils ersten erlaubten Wahl durch. */

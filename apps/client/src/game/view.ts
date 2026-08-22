@@ -138,6 +138,10 @@ function setupPlayerOf(view: PhaseSource): PlayerId | null {
  */
 export function actingPlayers(view: PhaseSource): readonly PlayerId[] {
   switch (view.phase.kind) {
+    case 'opening':
+      // Im Auftakt wird reihum geworfen: es handelt genau der Vorderste der
+      // Warteschlange, und niemand, wenn die Runde vollstaendig ist.
+      return view.phase.pending.slice(0, 1);
     case 'setup': {
       const player = setupPlayerOf(view);
       return player === null ? [] : [player];
@@ -170,6 +174,12 @@ function phaseTextOf(view: PlayerView): string {
   const currentName = (): string => nameOf(view.players[view.currentPlayerIndex]!.id);
 
   switch (view.phase.kind) {
+    case 'opening': {
+      // „Stechen" muss dranstehen, sonst sieht ein zweiter Wurf desselben
+      // Spielers wie ein Fehler aus.
+      const auftakt = view.phase.round === 0 ? 'Auftakt' : 'Stechen';
+      return `${auftakt}: ${nameOf(view.phase.pending[0] ?? null)} würfelt`;
+    }
     case 'setup':
       return view.phase.settlement === null
         ? `Gründung: ${nameOf(setupPlayerOf(view))} setzt eine Siedlung`

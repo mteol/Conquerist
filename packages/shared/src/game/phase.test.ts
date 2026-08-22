@@ -79,8 +79,8 @@ describe('die Auftaktphase', () => {
       kind: 'opening',
       rolls: {
         p1: [
-          { die: 'w6a', value: 5 },
-          { die: 'w6b', value: 4 },
+          { die: 'first', value: 5 },
+          { die: 'second', value: 4 },
         ],
       },
       pending: ['p2', 'p3'],

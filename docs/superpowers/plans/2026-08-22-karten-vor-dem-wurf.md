@@ -24,6 +24,7 @@
 ### Task 1: `robberPending` weiß, wohin zurück
 
 **Files:**
+
 - Modify: `packages/shared/src/game/phase.ts` (Variante `robberPending`)
 - Modify: `packages/shared/src/game/robber.ts:95` und `:168` (`applyMoveRobber`)
 - Modify: `packages/shared/src/game/reducer.ts:108`
@@ -31,6 +32,7 @@
 - Test: `packages/shared/src/game/robber.test.ts`
 
 **Interfaces:**
+
 - Produces: `{ kind: 'robberPending', resume: 'main' | 'rollPending' }`; `applyMoveRobber` gibt in `phase.resume` zurück statt fest nach `main`
 
 - [ ] **Step 1: Write the failing test**
@@ -101,7 +103,7 @@ In `phase.ts` die Variante ersetzen:
 In `robber.ts`, in `applyMoveRobber` (:168):
 
 ```ts
-  const moved: GameState = { ...state, robber: hex, phase: { kind: phase.resume } };
+const moved: GameState = { ...state, robber: hex, phase: { kind: phase.resume } };
 ```
 
 `phase` ist dort die schon geprüfte `robberPending`-Phase; steht sie noch nicht als lokale Variable bereit, sie am Kopf der Funktion aus `state.phase` holen und wie die übrigen Regeln der Datei auf `kind` prüfen.
@@ -151,10 +153,12 @@ git commit -m "Der Raeuberumweg merkt sich, woher er kam"
 ### Task 2: Kaufen und Ausspielen sind zwei Bedingungen
 
 **Files:**
+
 - Modify: `packages/shared/src/game/developmentRules.ts:43-55` (`canActNow`)
 - Test: `packages/shared/src/game/developmentRules.test.ts`
 
 **Interfaces:**
+
 - Produces: `canBuyNow(state, player): RuleViolation | null` (nur `main`); `canPlayNow(state, player): RuleViolation | null` (`main` oder `rollPending`)
 
 - [ ] **Step 1: Write the failing test**
@@ -261,11 +265,13 @@ git commit -m "Kaufen und Ausspielen sind nicht mehr dieselbe Frage"
 ### Task 3: Die Freigabe
 
 **Files:**
+
 - Modify: `packages/shared/src/game/reducer.ts:49` (`PHASE_ACTIONS.rollPending`)
 - Modify: `packages/shared/src/game/legal.ts:69` (`case 'rollPending'`)
 - Test: `packages/shared/src/game/legal.test.ts`, `packages/shared/src/game/reducer.test.ts`
 
 **Interfaces:**
+
 - Consumes: `canPlayNow` aus Task 2, `resume` aus Task 1
 - Produces: `legalActions` nennt in `rollPending` neben `rollDice` die spielbaren Karten
 
@@ -408,10 +414,12 @@ git commit -m "Die vier Karten duerfen vor den Wurf"
 ### Task 4: Die Hand vor dem Wurf
 
 **Files:**
+
 - Modify: ggf. `apps/client/src/panels/HandPanel.tsx`, `apps/client/src/panels/ActionPanel.tsx`
 - Test: `apps/client/src/screens/development.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `legalActions` aus Task 3 über `ActionTargets` (`apps/client/src/game/targets.ts`)
 
 - [ ] **Step 1: Write the failing test**
@@ -438,6 +446,7 @@ Die Aufbauhilfen der Datei verwenden (`development.test.tsx` hat bereits welche 
 Run: `pnpm --filter @conquerist/client exec vitest run src/screens/development.test.tsx`
 
 **Zwei mögliche Ausgänge, beide in Ordnung:**
+
 - **PASS sofort** → die Panels ziehen ihre Sperre schon aus `actions`, es ist nichts zu tun. Dann Schritt 3 überspringen und den Test als Wächter behalten.
 - **FAIL** → irgendwo im Client steht eine eigene Phasenabfrage. Sie ist der Fehler und wird in Schritt 3 entfernt.
 
@@ -462,6 +471,7 @@ git commit -m "Die Hand ist vor dem Wurf bedienbar"
 ### Task 5: Abnahme
 
 **Files:**
+
 - Modify: `PROGRESS.md`
 
 - [ ] **Step 1: Die ganze Abnahme fahren**

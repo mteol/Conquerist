@@ -15,14 +15,17 @@ import { render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { useLocalGame } from '../game/useLocalGame';
 import { GameScreen } from './GameScreen';
+import { afterOpening } from '../test/opening';
 
 const scenario = generateScenario(CLASSIC_34, 'screen-probe');
 const seats = defaultSeats(3);
-const start = createGame(
-  scenario,
-  CLASSIC_RULES,
-  seats.map((seat) => seat.id),
-  'screen-probe',
+const start = afterOpening(
+  createGame(
+    scenario,
+    CLASSIC_RULES,
+    seats.map((seat) => seat.id),
+    'screen-probe',
+  ),
 );
 
 /**

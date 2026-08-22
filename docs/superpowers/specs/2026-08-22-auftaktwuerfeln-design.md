@@ -33,14 +33,14 @@ etwas anderes bedeutet als Ertrag.
 
 ## Die Entscheidungen
 
-| Frage           | Antwort                                                        |
-| --------------- | -------------------------------------------------------------- |
-| Wann            | **Einmal**, vor der Gründung                                   |
-| Wer wirft wann  | **Reihum** in Sitzreihenfolge, jeder löst selbst aus           |
-| Gleichstand     | **Stechen** unter den Gleichen, wieder reihum, so oft wie nötig |
-| Wirkung         | `players` wird **rotiert**, der Sieger steht auf Index 0        |
-| Bühne           | **Auf dem Brett**, mit der vorhandenen Wurfbahn                 |
-| Frist           | **Keine**                                                      |
+| Frage          | Antwort                                                         |
+| -------------- | --------------------------------------------------------------- |
+| Wann           | **Einmal**, vor der Gründung                                    |
+| Wer wirft wann | **Reihum** in Sitzreihenfolge, jeder löst selbst aus            |
+| Gleichstand    | **Stechen** unter den Gleichen, wieder reihum, so oft wie nötig |
+| Wirkung        | `players` wird **rotiert**, der Sieger steht auf Index 0        |
+| Bühne          | **Auf dem Brett**, mit der vorhandenen Wurfbahn                 |
+| Frist          | **Keine**                                                       |
 
 ## Der Entwurf
 
@@ -67,7 +67,7 @@ z.object({
   pending: z.array(PlayerIdSchema),
   /** 0 ist die erste Runde, ab 1 ist es ein Stechen. */
   round: z.number().int().min(0),
-})
+});
 ```
 
 `rolls` hält **nur die laufende Runde**. Ein Stechen ersetzt sie, statt sie zu
@@ -88,7 +88,7 @@ sieht ein zweiter Wurf wie ein Fehler aus.
 
 `PHASE_ACTIONS` bekommt `opening: ['rollDice']`. Die Aktion heißt „ich werfe die
 Würfel"; **was** ein Wurf bewirkt, entscheidet die Phase. Das ist genau die
-Arbeitsteilung, die `reducer.ts:33` für sich beansprucht — er prüft, *wer* *wann*
+Arbeitsteilung, die `reducer.ts:33` für sich beansprucht — er prüft, _wer_ _wann_
 handeln darf, und gibt die Auslegung an die Regeldatei ab.
 
 Der Gewinn ist groß und einmalig: Protokoll (`protocol/`), Envelope, die
@@ -184,14 +184,14 @@ sonst nichts") — sie kommt jetzt nur nicht.
 
 ## Was daran neu ist und was nicht
 
-| Bauteil                          | Gibt es schon als             |
-| -------------------------------- | ----------------------------- |
-| Phase mit Warteschlange          | `discardPending`              |
-| Mehrere handeln nacheinander     | `setupPlayerIndex`, Schlange  |
-| Wurf aus dem Zustand             | `rollAll`, `lastRoll`         |
-| Wurf auf dem Brett zeigen        | `useSettledRoll`, `DiceTray`  |
-| Phase reist zum Client           | `playerView.ts:177`           |
-| Aktion je Phase erlaubt          | `PHASE_ACTIONS`               |
+| Bauteil                      | Gibt es schon als            |
+| ---------------------------- | ---------------------------- |
+| Phase mit Warteschlange      | `discardPending`             |
+| Mehrere handeln nacheinander | `setupPlayerIndex`, Schlange |
+| Wurf aus dem Zustand         | `rollAll`, `lastRoll`        |
+| Wurf auf dem Brett zeigen    | `useSettledRoll`, `DiceTray` |
+| Phase reist zum Client       | `playerView.ts:177`          |
+| Aktion je Phase erlaubt      | `PHASE_ACTIONS`              |
 
 **Wirklich neu ist ein Ding:** eine Aktion, deren Bedeutung von der Phase
 abhängt. Alles übrige ist eine zweite Anwendung von etwas, das schon steht.

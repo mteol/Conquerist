@@ -26,10 +26,12 @@
 ### Task 1: `nearestTarget` — aus einem Punkt wird ein Ziel
 
 **Files:**
+
 - Create: `apps/client/src/board/pick.ts`
 - Create: `apps/client/src/board/pick.test.ts`
 
 **Interfaces:**
+
 - Consumes: `vertexPoint`, `edgeMidpoint`, `hexCenter` aus `./layout.js`; `ActionTargets` aus `../game/targets`; `Place` aus `./BoardSvg`
 - Produces:
   - `interface TargetPoint { readonly place: Place; readonly point: Point }`
@@ -90,7 +92,9 @@ describe('nearestTarget', () => {
   it('haelt die Reichweite ein', () => {
     const nahe = vertexPoint(CENTER);
 
-    expect(nearestTarget({ x: nahe.x + PICK_REACH - 0.01, y: nahe.y }, [at(CENTER)])).not.toBeNull();
+    expect(
+      nearestTarget({ x: nahe.x + PICK_REACH - 0.01, y: nahe.y }, [at(CENTER)]),
+    ).not.toBeNull();
     expect(nearestTarget({ x: nahe.x + PICK_REACH + 0.01, y: nahe.y }, [at(CENTER)])).toBeNull();
   });
 
@@ -125,7 +129,9 @@ describe('targetPoints', () => {
     const punkte = targetPoints(targets);
 
     expect(punkte.map((eintrag) => eintrag.place.kind).sort()).toEqual(['edge', 'hex', 'vertex']);
-    expect(punkte.find((eintrag) => eintrag.place.kind === 'hex')?.point).toEqual(hexCenter({ q: 1, r: 0 }));
+    expect(punkte.find((eintrag) => eintrag.place.kind === 'hex')?.point).toEqual(
+      hexCenter({ q: 1, r: 0 }),
+    );
   });
 
   it('gibt bei leeren Zielen eine leere Liste', () => {
@@ -247,10 +253,12 @@ git commit -m "Aus einem Punkt auf dem Brett wird genau ein Ziel"
 ### Task 2: Die Fangfläche
 
 **Files:**
+
 - Modify: `apps/client/src/board/BoardSvg.tsx` (Trefferkreise um :608-616, :495, :238)
 - Test: `apps/client/src/board/BoardSvg.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `targetPoints`, `nearestTarget` aus `./pick`
 - Produces: `BoardSvg` ruft `onPick` über **eine** Fangfläche statt über Trefferkreise je Ziel
 
@@ -329,23 +337,23 @@ Steht `createSVGPoint` in jsdom nicht bereit, statt `SVGPoint` mit der inversen 
 Als **letztes** Kind des SVG (damit sie über allem liegt):
 
 ```tsx
-      <rect
-        data-testid="board-catcher"
-        className="board__catcher"
-        x={viewBox.x}
-        y={viewBox.y}
-        width={viewBox.width}
-        height={viewBox.height}
-        fill="transparent"
-        onClick={(event) => {
-          const svg = event.currentTarget.ownerSVGElement;
-          if (svg === null) return;
-          const point = viewBoxPointOf(svg, event.clientX, event.clientY);
-          if (point === null) return;
-          const place = nearestTarget(point, points);
-          if (place !== null) onPick(place);
-        }}
-      />
+<rect
+  data-testid="board-catcher"
+  className="board__catcher"
+  x={viewBox.x}
+  y={viewBox.y}
+  width={viewBox.width}
+  height={viewBox.height}
+  fill="transparent"
+  onClick={(event) => {
+    const svg = event.currentTarget.ownerSVGElement;
+    if (svg === null) return;
+    const point = viewBoxPointOf(svg, event.clientX, event.clientY);
+    if (point === null) return;
+    const place = nearestTarget(point, points);
+    if (place !== null) onPick(place);
+  }}
+/>
 ```
 
 `points` ist `useMemo(() => targetPoints(targets), [targets])`. Die `viewBox`-Werte kommen aus derselben Quelle wie das `viewBox`-Attribut (`viewBoxOf(...)`, :145) — **nicht** noch einmal ausrechnen.
@@ -369,11 +377,13 @@ git commit -m "Eine Fangflaeche statt vieler ueberlappender Kreise"
 ### Task 3: Tippen, dann bestätigen
 
 **Files:**
+
 - Modify: `apps/client/src/screens/GameScreen.tsx` (`pick` ab :225, JSX ab :313)
 - Modify: `apps/client/src/index.css`
 - Test: `apps/client/src/screens/GameScreen.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `Place` aus `../board/BoardSvg`
 - Produces: `GameScreen` hält `pending: Place | null`; `onPick` setzt es, ein Knopf „Hier setzen" führt aus
 
@@ -436,57 +446,59 @@ Expected: FAIL — der erste Tipp handelt sofort, es gibt keinen Knopf.
 In `GameScreen.tsx` die vorhandene `pick`-Funktion **umbenennen** zu `commit` (der Rumpf bleibt Zeile für Zeile, wie er ist — er kennt Strassenbau und Räuberauswahl und darf sich nicht ändern) und davor setzen:
 
 ```tsx
-  /**
-   * Was angetippt, aber noch nicht ausgefuehrt ist.
-   *
-   * Der Zwischenschritt ist keine Bequemlichkeit, sondern die Bedingung dafuer,
-   * dass es **einen** Weg fuer Maus und Finger gibt: bei 34 px zwischen
-   * benachbarten Knoten und 44 px Fingerkuppe ist ein Tipp mehrdeutig, und ein
-   * Fehlgriff war bis hierher sofort und unwiderruflich.
-   */
-  const [pending, setPending] = useState<Place | null>(null);
+/**
+ * Was angetippt, aber noch nicht ausgefuehrt ist.
+ *
+ * Der Zwischenschritt ist keine Bequemlichkeit, sondern die Bedingung dafuer,
+ * dass es **einen** Weg fuer Maus und Finger gibt: bei 34 px zwischen
+ * benachbarten Knoten und 44 px Fingerkuppe ist ein Tipp mehrdeutig, und ein
+ * Fehlgriff war bis hierher sofort und unwiderruflich.
+ */
+const [pending, setPending] = useState<Place | null>(null);
 
-  const pick = useCallback((place: Place) => setPending(place), []);
+const pick = useCallback((place: Place) => setPending(place), []);
 
-  const confirm = useCallback(() => {
-    if (pending === null) return;
-    commit(pending);
-    setPending(null);
-  }, [pending, commit]);
+const confirm = useCallback(() => {
+  if (pending === null) return;
+  commit(pending);
+  setPending(null);
+}, [pending, commit]);
 ```
 
 Escape räumt ab:
 
 ```tsx
-  useEffect(() => {
-    if (pending === null) return;
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') setPending(null);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [pending]);
+useEffect(() => {
+  if (pending === null) return;
+  const onKey = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') setPending(null);
+  };
+  window.addEventListener('keydown', onKey);
+  return () => window.removeEventListener('keydown', onKey);
+}, [pending]);
 ```
 
 Wechselt die Phase oder der handelnde Spieler, muss die Auswahl fallen — sonst steht ein Geist auf einem Ziel, das es nicht mehr gibt:
 
 ```tsx
-  useEffect(() => setPending(null), [view.phase.kind, view.you]);
+useEffect(() => setPending(null), [view.phase.kind, view.you]);
 ```
 
 Im JSX, nach dem `BoardSvg`:
 
 ```tsx
-      {pending !== null && (
-        <div className="confirm" role="group" aria-label="Auswahl bestätigen">
-          <button type="button" className="button button--go" onClick={confirm}>
-            Hier setzen
-          </button>
-          <button type="button" className="button button--ghost" onClick={() => setPending(null)}>
-            Abbrechen
-          </button>
-        </div>
-      )}
+{
+  pending !== null && (
+    <div className="confirm" role="group" aria-label="Auswahl bestätigen">
+      <button type="button" className="button button--go" onClick={confirm}>
+        Hier setzen
+      </button>
+      <button type="button" className="button button--ghost" onClick={() => setPending(null)}>
+        Abbrechen
+      </button>
+    </div>
+  );
+}
 ```
 
 Den **Geist** zeichnet das Brett: `BoardSvg` bekommt `pending` als zusätzliche Prop und zeichnet an dieser Stelle das Bauteil halbdurchsichtig (dieselbe Form wie das gebaute, mit `opacity`). Die Bauteilform steht in `board/shapes.ts` — von dort nehmen, nicht neu zeichnen.
@@ -510,6 +522,7 @@ git commit -m "Zwischen Absicht und Ausfuehrung steht ein Knopf"
 ### Task 4: Der Umschaltpunkt im Stilblatt
 
 **Files:**
+
 - Modify: `apps/client/src/index.css` (Abschnitt „Spielbildschirm", ab :1916)
 
 **Interfaces:** keine — reines Blatt.
@@ -543,6 +556,7 @@ Am Ende des Abschnitts „Spielbildschirm":
 ```
 
 Darin:
+
 - `.tray__hand` an den unteren Rand, zugeklappt ~3,2rem hoch, mit sichtbaren Kartenkanten; aufgeklappt über einen Zustand am Element (`[data-open='true']`) oder `:focus-within`.
 - `.tray__controls` als senkrechte Reihe runder Knöpfe am rechten Rand.
 - `.panel--table` auf eine Zeile.
@@ -552,7 +566,9 @@ Darin:
 
 ```css
 @media (orientation: portrait) and (max-width: 30rem) {
-  .rotate-hint { display: flex; }
+  .rotate-hint {
+    display: flex;
+  }
 }
 ```
 
@@ -575,6 +591,7 @@ git commit -m "Unter 60rem legt sich die Ablage auf die See"
 ### Task 5: Abnahme im Browser
 
 **Files:**
+
 - Modify: `PROGRESS.md`
 
 - [ ] **Step 1: Die ganze Abnahme fahren**

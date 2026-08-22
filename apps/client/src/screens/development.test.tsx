@@ -15,6 +15,7 @@ import {
 import { render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { GameScreen } from './GameScreen';
+import { afterOpening } from '../test/opening';
 
 const seats = defaultSeats(3);
 const ids = seats.map((seat) => seat.id);
@@ -22,7 +23,7 @@ const scenario = generateScenario(CLASSIC_34, 'karten-probe');
 
 /** Eine Partie bis nach der Gruendung, damit die Hauptphase laeuft. */
 function afterSetup(): GameState {
-  let state = createGame(scenario, CLASSIC_RULES, ids, 'karten-probe');
+  let state = afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'karten-probe'));
   while (state.phase.kind === 'setup') {
     const result = reduce(state, legalActions(state, setupPlayer(state)!)[0]!);
     if (!result.ok) throw new Error(result.error.message);
@@ -31,14 +32,24 @@ function afterSetup(): GameState {
   return state;
 }
 
-/** Hauptphase, reicher erster Spieler - so ist der Kauf ueberhaupt moeglich. */
+/**
+ * Hauptphase, reicher Zuschauer - so ist der Kauf ueberhaupt moeglich.
+ *
+ * Gebunden an die **Id** und nicht an den Index: seit dem Auftakt dreht sich
+ * die Sitzreihenfolge auf den hoechsten Wurf, und `screenFor` zeigt die Sicht
+ * von `ids[0]`. Waere hier weiter Index 0 gemeint, saehe der Test einem anderen
+ * beim Spielen zu als dem, den er reich gemacht hat.
+ */
 function playable(overrides: Partial<GameState> = {}): GameState {
   const base = afterSetup();
+  const viewer = ids[0]!;
+
   return {
     ...base,
     phase: { kind: 'main' },
-    players: base.players.map((entry, index) =>
-      index === 0
+    currentPlayerIndex: base.players.findIndex((entry) => entry.id === viewer),
+    players: base.players.map((entry) =>
+      entry.id === viewer
         ? { ...entry, resources: { brick: 4, lumber: 4, wool: 4, grain: 4, ore: 4 } }
         : entry,
     ),
@@ -90,8 +101,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('zeigt die eigenen Karten und laesst nur die spielbaren anklicken', () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? {
               ...entry,
               developmentCards: [
@@ -114,8 +125,10 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     const onAct = vi.fn();
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0 ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] } : entry,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
+          ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] }
+          : entry,
       ),
     });
 
@@ -130,8 +143,10 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     const onAct = vi.fn();
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0 ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 1 }] } : entry,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
+          ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 1 }] }
+          : entry,
       ),
     });
 
@@ -154,8 +169,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     const onAct = vi.fn();
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? { ...entry, developmentCards: [{ id: 'yearOfPlenty', boughtOnTurn: 1 }] }
           : entry,
       ),
@@ -182,8 +197,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     const onAct = vi.fn();
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? { ...entry, developmentCards: [{ id: 'roadBuilding', boughtOnTurn: 1 }] }
           : entry,
       ),
@@ -209,8 +224,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     const onAct = vi.fn();
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? {
               ...entry,
               developmentCards: [{ id: 'roadBuilding', boughtOnTurn: 1 }],
@@ -253,8 +268,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('gibt jeder Karte ein Motiv und laesst den Namen daneben stehen', () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? {
               ...entry,
               developmentCards: [
@@ -286,8 +301,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('macht aus dem Siegpunkt keinen dauerhaft gesperrten Knopf', () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? { ...entry, developmentCards: [{ id: 'victoryPoint', boughtOnTurn: 1 }] }
           : entry,
       ),
@@ -304,8 +319,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('zaehlt mehrere Karten derselben Sorte auf einer Plakette', () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? {
               ...entry,
               developmentCards: [
@@ -340,8 +355,10 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('erklaert beim Darueberfahren, was eine Karte tut', async () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0 ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] } : entry,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
+          ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] }
+          : entry,
       ),
     });
 
@@ -363,8 +380,10 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('erklaert auch die Karte, die man gerade nicht spielen darf', async () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0 ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 4 }] } : entry,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
+          ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 4 }] }
+          : entry,
       ),
     });
 
@@ -393,8 +412,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('haengt den Satz auch ohne Maus an jede Karte', () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? {
               ...entry,
               developmentCards: [
@@ -423,8 +442,10 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('zeigt fremde Entwicklungskarten nirgends', () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 1 ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 1 }] } : entry,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[1]
+          ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 1 }] }
+          : entry,
       ),
     });
 

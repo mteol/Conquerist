@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { CLASSIC_RULES } from '../rules/index.js';
 import {
   CENTER_EDGE,
+  afterOpening,
   CENTER_VERTEX,
   NEXT_EDGE,
   TEST_PLAYERS,
@@ -12,6 +13,7 @@ import {
   testGame,
 } from './fixtures.js';
 import { legalActions } from './legal.js';
+import { setupPlayer } from './setup.js';
 import { applyOfferTrade, applyRespondTrade } from './playerTrade.js';
 import { reduce } from './reducer.js';
 import { createGame } from './setup.js';
@@ -39,12 +41,14 @@ function expectAllAccepted(state: GameState, player: string): number {
 
 describe('legalActions', () => {
   it('nennt in der Gruendungsphase lauter setzbare Knoten', () => {
-    const state = createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'legal');
-    const actions = legalActions(state, 'p1');
+    const state = afterOpening(createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'legal'));
+    // Wer zuerst setzt, hat der Auftakt entschieden.
+    const actor = setupPlayer(state)!;
+    const actions = legalActions(state, actor);
 
     expect(actions.length).toBeGreaterThan(0);
     expect(actions.every((action) => action.type === 'placeSetupSettlement')).toBe(true);
-    expectAllAccepted(state, 'p1');
+    expectAllAccepted(state, actor);
   });
 
   it('nennt nach der Siedlung nur die Kanten an ihr', () => {

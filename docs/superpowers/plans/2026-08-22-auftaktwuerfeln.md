@@ -27,10 +27,12 @@
 ### Task 1: Die Phase im Schema
 
 **Files:**
+
 - Modify: `packages/shared/src/game/phase.ts`
 - Test: `packages/shared/src/game/phase.test.ts`
 
 **Interfaces:**
+
 - Consumes: `RollSchema` aus `./dice.js`, `PlayerIdSchema` aus `./player.js`
 - Produces: Phasenvariante `{ kind: 'opening', rolls: Record<string, Roll>, pending: PlayerId[], round: number }`; `openingRoller(phase): PlayerId | null`
 
@@ -45,7 +47,12 @@ describe('die Auftaktphase', () => {
   it('nimmt Wuerfe, Warteschlange und Runde auf', () => {
     const phase = {
       kind: 'opening',
-      rolls: { p1: [{ die: 'w6a', value: 5 }, { die: 'w6b', value: 4 }] },
+      rolls: {
+        p1: [
+          { die: 'w6a', value: 5 },
+          { die: 'w6b', value: 4 },
+        ],
+      },
       pending: ['p2', 'p3'],
       round: 0,
     };
@@ -54,13 +61,17 @@ describe('die Auftaktphase', () => {
   });
 
   it('lehnt eine negative Stechrunde ab', () => {
-    expect(() => PhaseSchema.parse({ kind: 'opening', rolls: {}, pending: [], round: -1 })).toThrow();
+    expect(() =>
+      PhaseSchema.parse({ kind: 'opening', rolls: {}, pending: [], round: -1 }),
+    ).toThrow();
   });
 });
 
 describe('openingRoller', () => {
   it('nennt den Vordersten der Warteschlange', () => {
-    expect(openingRoller({ kind: 'opening', rolls: {}, pending: ['p2', 'p3'], round: 0 })).toBe('p2');
+    expect(openingRoller({ kind: 'opening', rolls: {}, pending: ['p2', 'p3'], round: 0 })).toBe(
+      'p2',
+    );
   });
 
   it('gibt null zurueck, wenn die Runde vollstaendig ist', () => {
@@ -140,10 +151,12 @@ git commit -m "Der Auftakt bekommt eine Phase"
 ### Task 2: Die Auswertung
 
 **Files:**
+
 - Create: `packages/shared/src/game/opening.ts`
 - Create: `packages/shared/src/game/opening.test.ts`
 
 **Interfaces:**
+
 - Consumes: `rollAll`, `yieldTotal` aus `./dice.js`; `ok`, `GameState`, `ReduceResult` aus `./state.js`
 - Produces: `applyOpeningRoll(state: GameState): ReduceResult`; `highestRollers(state: GameState, rolls: Readonly<Record<string, Roll>>): readonly PlayerId[]`; `rotateToFirst(players: GameState['players'], id: PlayerId): GameState['players']`
 
@@ -173,9 +186,18 @@ describe('highestRollers', () => {
   it('nennt den Hoechsten', () => {
     const state = inOpening();
     const rolls = {
-      p1: [{ die: 'w6a', value: 3 }, { die: 'w6b', value: 2 }],
-      p2: [{ die: 'w6a', value: 6 }, { die: 'w6b', value: 4 }],
-      p3: [{ die: 'w6a', value: 1 }, { die: 'w6b', value: 1 }],
+      p1: [
+        { die: 'w6a', value: 3 },
+        { die: 'w6b', value: 2 },
+      ],
+      p2: [
+        { die: 'w6a', value: 6 },
+        { die: 'w6b', value: 4 },
+      ],
+      p3: [
+        { die: 'w6a', value: 1 },
+        { die: 'w6b', value: 1 },
+      ],
     };
 
     expect(highestRollers(state, rolls)).toEqual(['p2']);
@@ -184,9 +206,18 @@ describe('highestRollers', () => {
   it('nennt bei Gleichstand alle Gleichen in Sitzreihenfolge', () => {
     const state = inOpening();
     const rolls = {
-      p1: [{ die: 'w6a', value: 5 }, { die: 'w6b', value: 4 }],
-      p2: [{ die: 'w6a', value: 2 }, { die: 'w6b', value: 1 }],
-      p3: [{ die: 'w6a', value: 6 }, { die: 'w6b', value: 3 }],
+      p1: [
+        { die: 'w6a', value: 5 },
+        { die: 'w6b', value: 4 },
+      ],
+      p2: [
+        { die: 'w6a', value: 2 },
+        { die: 'w6b', value: 1 },
+      ],
+      p3: [
+        { die: 'w6a', value: 6 },
+        { die: 'w6b', value: 3 },
+      ],
     };
 
     expect(highestRollers(state, rolls)).toEqual(['p1', 'p3']);
@@ -196,7 +227,12 @@ describe('highestRollers', () => {
     // Im Stechen wirft nur, wer gleichauf lag. Die uebrigen duerfen nicht
     // dadurch gewinnen, dass ihr fehlender Wurf als Null zaehlt.
     const state = inOpening();
-    const rolls = { p2: [{ die: 'w6a', value: 1 }, { die: 'w6b', value: 1 }] };
+    const rolls = {
+      p2: [
+        { die: 'w6a', value: 1 },
+        { die: 'w6b', value: 1 },
+      ],
+    };
 
     expect(highestRollers(state, rolls)).toEqual(['p2']);
   });
@@ -213,7 +249,9 @@ describe('rotateToFirst', () => {
 
   it('laesst die Liste stehen, wenn der Sieger schon vorn sitzt', () => {
     const state = inOpening();
-    expect(rotateToFirst(state.players, 'p1').map((player) => player.id)).toEqual([...TEST_PLAYERS]);
+    expect(rotateToFirst(state.players, 'p1').map((player) => player.id)).toEqual([
+      ...TEST_PLAYERS,
+    ]);
   });
 });
 
@@ -318,7 +356,10 @@ export function highestRollers(
 ): readonly PlayerId[] {
   const totals = state.players
     .filter((player) => rolls[player.id] !== undefined)
-    .map((player) => ({ id: player.id, total: yieldTotal(state.rules.dice, rolls[player.id] ?? []) }));
+    .map((player) => ({
+      id: player.id,
+      total: yieldTotal(state.rules.dice, rolls[player.id] ?? []),
+    }));
 
   const best = Math.max(...totals.map((entry) => entry.total));
 
@@ -402,10 +443,12 @@ git commit -m "Der Auftakt wertet aus: hoechster Wurf, Stechen, Rotation"
 ### Task 3: Der Reducer laesst den Auftakt zu
 
 **Files:**
+
 - Modify: `packages/shared/src/game/reducer.ts` (`PHASE_ACTIONS` ab :47, `actorFor` ab :79, `applyAction` ab :175)
 - Test: `packages/shared/src/game/reducer.test.ts`
 
 **Interfaces:**
+
 - Consumes: `applyOpeningRoll` aus `./opening.js`, `openingRoller` aus `./phase.js`
 - Produces: `reduce(state, { type: 'rollDice', player })` wirkt im Auftakt als Auftaktwurf
 
@@ -470,6 +513,7 @@ In `reducer.ts`:
 import { applyOpeningRoll } from './opening.js';
 import { openingRoller, setupPlacementCount, setupPlayerIndex } from './phase.js';
 ```
+
 (die vorhandene `phase.js`-Importzeile ergänzen, nicht verdoppeln)
 
 `PHASE_ACTIONS` bekommt als ersten Eintrag:
@@ -481,7 +525,7 @@ import { openingRoller, setupPlacementCount, setupPlayerIndex } from './phase.js
 In `actorFor`, vor der `setup`-Zeile:
 
 ```ts
-  if (state.phase.kind === 'opening') return openingRoller(state.phase);
+if (state.phase.kind === 'opening') return openingRoller(state.phase);
 ```
 
 In `applyAction`:
@@ -497,9 +541,13 @@ In `applyAction`:
 In `finalize` den Auftakt wie die Gründung ausnehmen — dort gibt es nichts zu gewinnen:
 
 ```ts
-  if (scored.phase.kind === 'opening' || scored.phase.kind === 'setup' || scored.phase.kind === 'finished') {
-    return scored;
-  }
+if (
+  scored.phase.kind === 'opening' ||
+  scored.phase.kind === 'setup' ||
+  scored.phase.kind === 'finished'
+) {
+  return scored;
+}
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -519,10 +567,12 @@ git commit -m "rollDice bedeutet im Auftakt etwas anderes"
 ### Task 4: `legalActions` im Auftakt
 
 **Files:**
+
 - Modify: `packages/shared/src/game/legal.ts` (Schalter ab :48)
 - Test: `packages/shared/src/game/legal.test.ts`
 
 **Interfaces:**
+
 - Consumes: `openingRoller` aus `./phase.js`
 - Produces: `legalActions(state, player)` gibt im Auftakt `[{ type: 'rollDice', player }]` für den Vordersten, sonst `[]`
 
@@ -582,12 +632,14 @@ git commit -m "Der Wuerfelknopf erscheint im Auftakt von allein"
 Der Eingriff, der den Bestand anfasst: bis hier war der Auftakt erreichbar, aber niemand landete darin. Jetzt schon — und jeder Test, der bisher von `setup` als Startphase ausging, fällt.
 
 **Files:**
+
 - Modify: `packages/shared/src/game/setup.ts:30-66` (`createGame`)
 - Modify: `packages/shared/src/game/fixtures.ts` (neuer Helfer `afterOpening`)
 - Test: `packages/shared/src/game/setup.test.ts`
 - Reparatur: alles, was `pnpm test` danach meldet
 
 **Interfaces:**
+
 - Consumes: `reduce` aus `./reducer.js` (nur in `fixtures.ts`)
 - Produces: `createGame(...)` liefert `phase: { kind: 'opening', rolls: {}, pending: [...playerIds], round: 0 }`; `afterOpening(state: GameState): GameState`
 
@@ -711,10 +763,12 @@ git commit -m "Jede Partie beginnt mit dem Auftakt"
 ### Task 6: Der Verlaufssatz
 
 **Files:**
+
 - Modify: `packages/shared/src/game/log.ts` (`case 'rollDice'` ab :60)
 - Test: `packages/shared/src/game/log.test.ts`
 
 **Interfaces:**
+
 - Consumes: `yieldTotal` aus `./dice.js` (steht dort vermutlich schon)
 - Produces: Verlaufssatz für den Auftaktwurf
 
@@ -744,7 +798,12 @@ describe('der Verlaufssatz im Auftakt', () => {
     const before = testGame({
       phase: {
         kind: 'opening',
-        rolls: { p1: [{ die: 'w6a', value: 4 }, { die: 'w6b', value: 3 }] },
+        rolls: {
+          p1: [
+            { die: 'w6a', value: 4 },
+            { die: 'w6b', value: 3 },
+          ],
+        },
         pending: ['p2'],
         round: 0,
       },
@@ -774,18 +833,18 @@ Expected: FAIL — der Satz spricht von Ertrag.
 In `log.ts`, im `case 'rollDice'`, **vor** der Ertragsauswertung:
 
 ```ts
-      if (before.phase.kind === 'opening') {
-        const total = yieldTotal(before.rules.dice, after.lastRoll ?? []);
+if (before.phase.kind === 'opening') {
+  const total = yieldTotal(before.rules.dice, after.lastRoll ?? []);
 
-        if (after.phase.kind === 'setup') {
-          const first = after.players[0]?.id;
-          return `Auftakt: ${who} wuerfelt ${total} - ${first === undefined ? 'niemand' : nameOf(first)} beginnt`;
-        }
-        if (after.phase.kind === 'opening' && after.phase.round > before.phase.round) {
-          return `Auftakt: ${who} wuerfelt ${total} - Gleichstand, es wird gestochen`;
-        }
-        return `Auftakt: ${who} wuerfelt ${total}`;
-      }
+  if (after.phase.kind === 'setup') {
+    const first = after.players[0]?.id;
+    return `Auftakt: ${who} wuerfelt ${total} - ${first === undefined ? 'niemand' : nameOf(first)} beginnt`;
+  }
+  if (after.phase.kind === 'opening' && after.phase.round > before.phase.round) {
+    return `Auftakt: ${who} wuerfelt ${total} - Gleichstand, es wird gestochen`;
+  }
+  return `Auftakt: ${who} wuerfelt ${total}`;
+}
 ```
 
 Der Zweig gehört in `describeAction` (`log.ts:45`), wo `who` und `nameOf` schon bereitstehen; `before` und `after` sind dort ebenfalls Parameter. `yieldTotal` ist in der Datei bereits importiert.
@@ -809,10 +868,12 @@ git commit -m "Der Verlauf erzaehlt den Auftakt"
 ### Task 7: Die Sicht des Clients
 
 **Files:**
+
 - Modify: `apps/client/src/game/view.ts` (`actingPlayers` ab :139, `phaseTextOf` ab :167)
 - Test: `apps/client/src/game/view.test.ts`
 
 **Interfaces:**
+
 - Consumes: `PlayerView.phase` mit der Variante `opening`
 - Produces: `actingPlayers(view)` nennt im Auftakt den Vordersten; `phaseTextOf` liefert den Statussatz
 
@@ -841,21 +902,21 @@ describe('der Auftakt in der Sicht', () => {
 Dazu im vorhandenen `phaseTextOf`-Testblock (oder analog dazu, wie die Datei es hält):
 
 ```ts
-  it('sagt im Auftakt, wer wuerfelt', () => {
-    const view = viewFixture({
-      phase: { kind: 'opening', rolls: {}, pending: ['p2', 'p3'], round: 0 },
-    });
-
-    expect(phaseTextOf(view)).toBe('Auftakt: Spieler 2 würfelt');
+it('sagt im Auftakt, wer wuerfelt', () => {
+  const view = viewFixture({
+    phase: { kind: 'opening', rolls: {}, pending: ['p2', 'p3'], round: 0 },
   });
 
-  it('nennt das Stechen beim Namen', () => {
-    const view = viewFixture({
-      phase: { kind: 'opening', rolls: {}, pending: ['p1', 'p3'], round: 1 },
-    });
+  expect(phaseTextOf(view)).toBe('Auftakt: Spieler 2 würfelt');
+});
 
-    expect(phaseTextOf(view)).toBe('Stechen: Spieler 1 würfelt');
+it('nennt das Stechen beim Namen', () => {
+  const view = viewFixture({
+    phase: { kind: 'opening', rolls: {}, pending: ['p1', 'p3'], round: 1 },
   });
+
+  expect(phaseTextOf(view)).toBe('Stechen: Spieler 1 würfelt');
+});
 ```
 
 `viewFixture` ist der Helfer, den die Datei für `PlayerView` schon benutzt — den vorhandenen nehmen, keinen zweiten bauen. Heißt er anders, den vorhandenen Namen verwenden.
@@ -903,12 +964,14 @@ git commit -m "Der Statussatz kennt den Auftakt"
 ### Task 8: Die Auftakttafel
 
 **Files:**
+
 - Create: `apps/client/src/panels/OpeningPanel.tsx`
 - Create: `apps/client/src/panels/OpeningPanel.test.tsx`
 - Modify: `apps/client/src/screens/GameScreen.tsx` (Einbau neben `.board-area`, um :315)
 - Modify: `apps/client/src/index.css` (Abschnitt „Spielbildschirm")
 
 **Interfaces:**
+
 - Consumes: `PlayerView` (`view.phase` mit `kind: 'opening'`), `Seat`-Nachschlag wie in `TablePanel`
 - Produces: `<OpeningPanel view={view} seats={seats} />` — rendert nichts, wenn die Phase nicht `opening` ist
 
@@ -927,17 +990,29 @@ const seats = [
   { id: 'p2', name: 'Spieler 2', color: 'blau' },
 ];
 
-const view = (pending: string[], rolls: Record<string, { die: string; value: number }[]>, round = 0) =>
+const view = (
+  pending: string[],
+  rolls: Record<string, { die: string; value: number }[]>,
+  round = 0,
+) =>
   ({
     phase: { kind: 'opening' as const, rolls, pending, round },
-    players: [{ id: 'p1', name: 'Spieler 1' }, { id: 'p2', name: 'Spieler 2' }],
+    players: [
+      { id: 'p1', name: 'Spieler 1' },
+      { id: 'p2', name: 'Spieler 2' },
+    ],
   }) as never;
 
 describe('OpeningPanel', () => {
   it('zeigt die Summe dessen, der schon geworfen hat', () => {
     render(
       <OpeningPanel
-        view={view(['p2'], { p1: [{ die: 'w6a', value: 5 }, { die: 'w6b', value: 4 }] })}
+        view={view(['p2'], {
+          p1: [
+            { die: 'w6a', value: 5 },
+            { die: 'w6b', value: 4 },
+          ],
+        })}
         seats={seats}
       />,
     );
@@ -1038,7 +1113,7 @@ export function OpeningPanel({
 In `GameScreen.tsx`, direkt nach `</div>` von `.board-area` (um :333):
 
 ```tsx
-      <OpeningPanel view={display} seats={seats} />
+<OpeningPanel view={display} seats={seats} />
 ```
 
 In `index.css` im Abschnitt „Spielbildschirm" die Tafel als Ding auf dem Tisch anlegen: mittig über dem Brett, heller Körper mit Kontaktschatten (das Muster steht bei `.tray`), `pointer-events: none` für die Tafel selbst — sie ist Auskunft, der Würfelknopf liegt woanders.
@@ -1060,6 +1135,7 @@ git commit -m "Die Auftakttafel liegt auf dem Tisch"
 ### Task 9: Abnahme
 
 **Files:**
+
 - Modify: `PROGRESS.md`
 
 - [ ] **Step 1: Die ganze Abnahme fahren**

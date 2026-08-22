@@ -52,12 +52,12 @@ Deshalb ist „mehr Fläche" allein keine Lösung. Es braucht beides.
 
 ## Die Entscheidungen
 
-| Frage                    | Antwort                                                          |
-| ------------------------ | ---------------------------------------------------------------- |
-| Orientierung             | **Querformat.** Im Hochformat ein wegtippbarer Hinweis, kein Riegel |
-| Layout                   | Brett füllt alles, Ablage **an den Rändern darüber**              |
-| Setzen                   | **Tippen, dann bestätigen** — ein Weg für Maus und Finger         |
-| Zoom                     | **Nein** (siehe Offenes)                                          |
+| Frage        | Antwort                                                             |
+| ------------ | ------------------------------------------------------------------- |
+| Orientierung | **Querformat.** Im Hochformat ein wegtippbarer Hinweis, kein Riegel |
+| Layout       | Brett füllt alles, Ablage **an den Rändern darüber**                |
+| Setzen       | **Tippen, dann bestätigen** — ein Weg für Maus und Finger           |
+| Zoom         | **Nein** (siehe Offenes)                                            |
 
 „Ein Weg für Maus und Finger" ist die tragende Entscheidung: ein Touch-Sonderweg
 wäre ein zweiter Satz Interaktionen, den kein Test am Schreibtisch je erwischt.
@@ -144,13 +144,13 @@ Fangfläche ohne Ziele keine Aktion auslöst.
 
 ## Was daran neu ist und was nicht
 
-| Bauteil                      | Gibt es schon als                       |
-| ---------------------------- | --------------------------------------- |
-| Umschaltpunkt im Blatt       | `62rem` auf dem Startbildschirm         |
-| Ablage über dem Brett        | `.panel`, `.topline` (`pointer-events`) |
-| Zielmarken auf dem Brett     | `vertex__target`, Kanten- und Feldziele |
-| Zwischenzustand im Bildschirm | `buildMode` im `GameScreen`            |
-| Reine Geometrie mit Tests    | `board/layout.ts`                       |
+| Bauteil                       | Gibt es schon als                       |
+| ----------------------------- | --------------------------------------- |
+| Umschaltpunkt im Blatt        | `62rem` auf dem Startbildschirm         |
+| Ablage über dem Brett         | `.panel`, `.topline` (`pointer-events`) |
+| Zielmarken auf dem Brett      | `vertex__target`, Kanten- und Feldziele |
+| Zwischenzustand im Bildschirm | `buildMode` im `GameScreen`             |
+| Reine Geometrie mit Tests     | `board/layout.ts`                       |
 
 **Wirklich neu sind zwei Dinge:** eine Fangfläche, die aus einem Punkt ein Ziel
 macht, und ein Zug, der zwischen Absicht und Ausführung stehenbleibt.

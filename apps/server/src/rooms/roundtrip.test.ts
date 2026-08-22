@@ -1,3 +1,4 @@
+import { rollOpening } from './openingFixture.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -49,7 +50,7 @@ describe('Ein Neustart kostet keine Partie', () => {
 
     const started = startGame(room, ids[0]!);
     if (!started.ok) throw new Error(started.error);
-    room = started.room;
+    room = rollOpening(started.room);
     first.update(code, room);
 
     for (let step = 0; step < 6; step += 1) {

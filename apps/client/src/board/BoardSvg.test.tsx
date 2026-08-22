@@ -13,14 +13,17 @@ import { defaultSeats } from '../seats';
 import { EMPTY_TARGETS, actionTargets } from '../game/targets';
 import { BoardSvg } from './BoardSvg';
 import { NUMERAL_CAP, numeralWidth } from '../type/Numerals';
+import { afterOpening } from '../test/opening';
 
 const scenario = generateScenario(CLASSIC_34, 'board-probe');
 const seats = defaultSeats(3);
-const start = createGame(
-  scenario,
-  CLASSIC_RULES,
-  seats.map((seat) => seat.id),
-  'board-probe',
+const start = afterOpening(
+  createGame(
+    scenario,
+    CLASSIC_RULES,
+    seats.map((seat) => seat.id),
+    'board-probe',
+  ),
 );
 
 describe('BoardSvg', () => {

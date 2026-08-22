@@ -40,12 +40,12 @@ Sperre der frisch gekauften (`isPlayable`, `development.ts:77`:
 
 ## Die Entscheidungen
 
-| Frage                       | Antwort                                                     |
-| --------------------------- | ----------------------------------------------------------- |
-| Welche Karten               | **Alle vier** — Ritter, Straßenbau, Erfindung, Monopol       |
-| Kaufen vor dem Wurf         | **Nein.** Erst würfeln, gekauft wird danach                  |
-| Eine Karte je Zug           | **Bleibt**                                                  |
-| Frisch gekaufte Karte       | **Bleibt gesperrt**                                         |
+| Frage                 | Antwort                                                |
+| --------------------- | ------------------------------------------------------ |
+| Welche Karten         | **Alle vier** — Ritter, Straßenbau, Erfindung, Monopol |
+| Kaufen vor dem Wurf   | **Nein.** Erst würfeln, gekauft wird danach            |
+| Eine Karte je Zug     | **Bleibt**                                             |
+| Frisch gekaufte Karte | **Bleibt gesperrt**                                    |
 
 Alle vier und nicht nur der Ritter: das ist die echte Catan-Regel, und eine
 Hausregel „nur der Ritter darf vorher" müßte man an jedem Tisch erklären.
@@ -96,7 +96,7 @@ verlorenging.
 Also trägt die Phase, was nach ihr kommt:
 
 ```ts
-z.object({ kind: z.literal('robberPending'), resume: z.enum(['main', 'rollPending']) })
+z.object({ kind: z.literal('robberPending'), resume: z.enum(['main', 'rollPending']) });
 ```
 
 - Nach einer Sieben: `resume: 'main'` — gewürfelt ist schon.
@@ -118,13 +118,13 @@ stellt.
 
 ## Was daran neu ist und was nicht
 
-| Bauteil                        | Gibt es schon als                       |
-| ------------------------------ | --------------------------------------- |
-| Aktion in mehreren Phasen      | `timeout`, `dropFromTrade` in `tradePending` |
-| Phase mit Nutzlast             | `discardPending.pending`, `tradePending.offer` |
-| Eine Karte je Zug              | `developmentPlayed`                     |
-| Kartensperre nach Kauf         | `isPlayable`                            |
-| Räuber ohne Sieben             | `playKnight` (`developmentRules.ts:182`) |
+| Bauteil                   | Gibt es schon als                              |
+| ------------------------- | ---------------------------------------------- |
+| Aktion in mehreren Phasen | `timeout`, `dropFromTrade` in `tradePending`   |
+| Phase mit Nutzlast        | `discardPending.pending`, `tradePending.offer` |
+| Eine Karte je Zug         | `developmentPlayed`                            |
+| Kartensperre nach Kauf    | `isPlayable`                                   |
+| Räuber ohne Sieben        | `playKnight` (`developmentRules.ts:182`)       |
 
 **Wirklich neu ist ein Ding:** ein Umweg, der weiß, woher er kam.
 
@@ -149,7 +149,7 @@ und `legalActions` nennt in `rollPending` genau die spielbaren Karten.
 ## Was dieser Entwurf offenläßt
 
 - **Die Reihenfolge Ritter/Wurf als Statussatz.** Daß man vor dem Wurf noch etwas
-  tun *darf*, ist eine Möglichkeit, keine Aufforderung. Ob der Statussatz sie
+  tun _darf_, ist eine Möglichkeit, keine Aufforderung. Ob der Statussatz sie
   nennt, ist eine Frage der Oberfläche und nicht dieser Regel.
 - **`isPlayable` und `turn`.** Die Sperre der frisch gekauften Karte vergleicht
   `boughtOnTurn < turn`, und `turn` zählt volle Runden, nicht einzelne Züge. Das

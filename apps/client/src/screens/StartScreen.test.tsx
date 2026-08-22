@@ -60,7 +60,9 @@ describe('Startbildschirm', () => {
     const [game, seats] = onStart.mock.calls[0]!;
     expect(seats[0].name).toBe('Anna');
     expect(game.players).toHaveLength(3);
-    expect(game.phase.kind).toBe('setup');
+    // Eine Partie beginnt seit dem Auftakt nicht mehr in der Gruendung: erst
+    // wird ausgewuerfelt, wer anfaengt.
+    expect(game.phase.kind).toBe('opening');
   });
 
   it('baut aus demselben Seed dasselbe Brett', async () => {
