@@ -4661,3 +4661,104 @@ Blatt entscheidet, _was_ daraus wird.
 
 Der Layout-Befund von gestern steht unverändert: unter rund 900 px Fensterbreite
 ist das Brett zu klein zum Spielen. Er gehört weiter vor Etappe 10.
+
+## Der Auftakt: ausgewürfelt, wer beginnt (2026-08-22, `auftakt-karten-schmale-geraete`)
+
+Stand: nach `496843d`. Eine Partie fing bis hierher damit an, daß Spieler 1
+setzt — und Spieler 1 war, wer im Wartebereich zuerst geklickt hatte. Der beste
+Startplatz auf dem Brett gehörte damit der schnellsten Hand. Jetzt wird
+ausgewürfelt.
+
+Drei Entwürfe sind an diesem Tag entstanden (`docs/superpowers/specs/2026-08-22-*`),
+umgesetzt ist bislang der erste. Die anderen zwei — Entwicklungskarten vor dem
+Wurf, schmale Geräte — haben ihre Pläne und warten.
+
+### Eine Phase, aber keine Aktion
+
+Der Auftakt ist eine Phase vor der Gründung: `rolls` für die laufende Runde,
+`pending` als Warteschlange, `round` für das Stechen. Als Phase und nicht als
+Feld daneben, aus demselben Grund, den `phase.ts:56` schon für `tradePending`
+nennt — während ausgewürfelt wird, ist jede andere Aktion verboten, und als
+Phase ist ein zu früh gesetztes Haus derselbe gewöhnliche Regelverstoß wie
+jeder andere.
+
+**Eine neue Aktion gibt es dagegen nicht.** `rollDice` bedeutet, was die Phase
+sagt, und verzweigt an genau einer Stelle in `applyAction`. Das ist der Grund,
+warum Protokoll, Envelope, Serverräume, `legalActions` und die Wurfbahn im
+Client unverändert bleiben konnten: `rollDice` steht dort schon überall. Eine
+zweite Aktion `rollForOrder` hätte in acht Dateien einen Zwilling gebraucht,
+der dasselbe tut.
+
+Wer am höchsten wirft, rückt in `players` auf Index 0. Bei Gleichstand stechen
+nur die Gleichen, so oft wie nötig.
+
+### Der Verdacht, der keiner war — und der, der einer war
+
+**Die Rotation färbt niemanden um.** Farbe und Name hängen am `Seat` und werden
+per Id nachgeschlagen (`seats.ts`), nicht über den Index in `players`. Im
+Browser nachgemessen, nachdem Spieler 2 mit einer 8 gewonnen hatte: Spieler 2
+`rgb(44,111,187)`, Spieler 3 `rgb(224,138,46)`, Spieler 1 `rgb(192,57,43)` —
+jeder behielt seine Farbe, obwohl die Liste sich gedreht hat.
+
+**Der Entwurf hatte dafür an anderer Stelle unrecht.** Er behauptete, die
+Würfel flögen „ohne eine neue Zeile", weil der Auftakt `lastRoll` setzt. Das
+stimmte nicht: `cameFromRoll` erkannte einen Wurf allein daran, daß er
+`rollPending` verläßt — und im Auftakt bleibt die Phase dieselbe. Ohne den
+neuen Zweig hätte der Auftakt lautlos gewürfelt, die Würfel lägen einfach da.
+Woran man ihn jetzt erkennt: die Warteschlange wird kürzer, oder der Auftakt
+ist vorbei.
+
+### Was der Umbau gekostet hat
+
+`createGame` startet in der neuen Phase, und das brach **37 Tests** in allen
+drei Paketen — erwartet: bis hierher ging jeder Test davon aus, daß Spieler 1
+zuerst setzt. Repariert wurde nach einer Regel: `afterOpening(…)` um den Aufbau
+legen und alles, was am Index hing, an die Id binden. Die Startphase
+zurückzubiegen wäre die zweite Wahrheit gewesen, die dieser Zug gerade
+abschafft.
+
+Drei Tests spielen den Auftakt seither **wirklich mit** statt ihn zu
+überspringen: die ganze Partie in `shared`, die ganze Partie über die
+Klickkarten im Client, und der Raum im Server — letzterer über `applyAction`,
+also über den Weg, den ein echter Zug nimmt.
+
+Zwei kleine Helfer sind dabei entstanden, und bewußt zwei: `afterOpening` in
+`shared/game/fixtures.ts` und noch einmal in `apps/client/src/test/opening.ts`.
+Der `shared`-Helfer steht **nicht im Barrel** — Testmaterial gehört nicht zur
+öffentlichen Oberfläche des Pakets —, und diese Grenze aufzuweichen wäre teurer
+gewesen als zwölf Zeilen doppelt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                      |
+| ------------------- | ----------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                                |
+| `pnpm test`         | grün — shared 610 / 36 Dateien, server 163 / 20, client 351 / 36              |
+| `pnpm build`        | grün                                                                          |
+| `pnpm format:check` | grün                                                                          |
+| Browser             | Lokale Partie zu dritt: Auftakt durchgewürfelt, Sieger setzt, Farben gemessen |
+
+Im Browser der Reihe nach gesehen: die Auftakttafel liegt da, bevor irgend
+etwas gesetzt werden kann; der Würfelknopf wirkt reihum und die Würfel fliegen
+wie im Spiel (Spieler 1 eine 3, Spieler 2 eine 8, Spieler 3 eine 6); danach
+steht Spieler 2 vorn und setzt; die Bauleiste meldet „Siedlung: 54 Stellen",
+und die Setzung wird angenommen.
+
+**54 Stellen** ist nebenbei der Beleg für den zweiten offenen Entwurf: bei der
+ersten Setzung ist wirklich jeder Knoten des Bretts erlaubt, und genau deshalb
+ist ein Fingertipp dort mehrdeutig.
+
+33 neue Tests. Sie halten die Reihenfolge (jeder wirft genau einmal, nur der
+Vorderste darf), das Stechen (nur die Gleichen, und es endet — über einen
+Streifen fester Saaten erzwungen, weil ein Zweig, den die Prüfung nur manchmal
+betritt, ungeprüft ist), die Rotation, die Sperre (kein Haus im Auftakt), die
+Bestimmtheit, den Verlaufssatz und die Auftakttafel.
+
+### Was offen bleibt
+
+- **Keine Frist im Auftakt.** Wer nicht wirft, hält die Partie an — genau wie
+  heute schon in der Gründung. `deadlineOf` kennt weiter nur `tradePending`.
+- **Der Layout-Befund** steht unverändert: unter rund 900 px Fensterbreite ist
+  das Brett zu klein zum Spielen. Der Entwurf dazu liegt jetzt vor
+  (`2026-08-22-schmale-geraete-design.md`), umgesetzt ist er nicht.
+- **Entwicklungskarten vor dem Wurf** sind entworfen und geplant, nicht gebaut.
