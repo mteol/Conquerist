@@ -16,6 +16,7 @@ import { render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { GameScreen } from './GameScreen';
 import { useLocalGame } from '../game/useLocalGame';
+import { placeEdge, placeHex } from '../test/board';
 import { afterOpening } from '../test/opening';
 
 const seats = defaultSeats(3);
@@ -205,7 +206,7 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
       ),
     });
 
-    render(screenFor(state, ids[0]!, onAct));
+    const { container } = render(screenFor(state, ids[0]!, onAct));
     await userEvent.click(screen.getByTestId('devcard-roadBuilding'));
 
     // Kein Fenster: wo eine Strasse hinkann, sieht man auf dem Brett.
@@ -216,7 +217,7 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
       .filter((node) => node.dataset['target'] === 'true');
     expect(leuchtend.length).toBeGreaterThan(0);
 
-    await userEvent.click(leuchtend[0]!);
+    placeEdge(container, leuchtend[0]!.dataset['testid']!.replace('edge-', ''));
     expect(screen.getByText(/zweite Straße auf dem Brett/)).toBeDefined();
     expect(onAct).not.toHaveBeenCalled();
   });
@@ -237,7 +238,7 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
       ),
     });
 
-    render(screenFor(state, ids[0]!, onAct));
+    const { container } = render(screenFor(state, ids[0]!, onAct));
     await userEvent.click(screen.getByTestId('devcard-roadBuilding'));
 
     const leuchtend = screen
@@ -250,7 +251,7 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
      * mehr, und die Karte liess sich nur abbrechen - obwohl der Reducer eine
      * einzelne Strasse ausdruecklich annimmt.
      */
-    await userEvent.click(leuchtend[0]!);
+    placeEdge(container, leuchtend[0]!.dataset['testid']!.replace('edge-', ''));
 
     expect(onAct).toHaveBeenCalledTimes(1);
     expect(onAct.mock.calls[0]![0]).toMatchObject({
@@ -532,14 +533,14 @@ describe('Der Ritter vor dem Wurf, durch die Oberflaeche', () => {
       ),
     });
 
-    render(<LocalFrom state={start} />);
+    const { container } = render(<LocalFrom state={start} />);
 
     await userEvent.click(screen.getByTestId('devcard-knight'));
 
     // Jetzt steht der Raeuber an: ein Feld anklicken, das nicht seines ist.
-    const ziel = document.querySelector<SVGElement>('[data-testid^="hex-"][data-target="true"]');
+    const ziel = container.querySelector<SVGElement>('[data-testid^="hex-"][data-target="true"]');
     if (ziel === null) throw new Error('Kein Raeuberziel auf dem Brett');
-    await userEvent.click(ziel);
+    placeHex(container, ziel.dataset['testid']!.replace('hex-', ''));
 
     // Traegt das Feld mehrere moegliche Opfer, fragt der Dialog nach - dann
     // eines waehlen, sonst ist der Zug hier schon durch.

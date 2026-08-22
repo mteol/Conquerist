@@ -19,6 +19,7 @@ import {
   viewBoxOf,
   type Point,
 } from './layout';
+import { nearestTarget, targetPoints } from './pick';
 import { CITY_PATH, SETTLEMENT_PATH } from './shapes';
 import { LAYERS, TerrainPatterns, terrainFill } from './terrain';
 import { Numeral } from '../type/Numerals';
@@ -55,6 +56,8 @@ export interface BoardSvgProps {
   readonly targets: ActionTargets;
   readonly seats: readonly Seat[];
   readonly onPick: (place: Place) => void;
+  /** Was angetippt, aber noch nicht ausgefuehrt ist - `null`, wenn nichts. */
+  readonly pending?: Place | null;
 }
 
 /**
@@ -131,7 +134,34 @@ function isHot(chip: number): boolean {
   return (PIPS[chip] ?? 0) === HOTTEST;
 }
 
-export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.Element {
+/**
+ * Die Klickstelle in viewBox-Koordinaten.
+ *
+ * Als eigene Funktion, weil jsdom `getScreenCTM` nicht kennt: so laesst sich die
+ * Umrechnung im Test durch eine Einheitsmatrix ersetzen, ohne die Komponente
+ * dafuer zu verbiegen. Von Hand gerechnet statt ueber `createSVGPoint`, aus
+ * demselben Grund - die Matrixmultiplikation ist drei Zeilen und braucht kein
+ * DOM.
+ */
+function viewBoxPointOf(svg: SVGSVGElement, clientX: number, clientY: number): Point | null {
+  const ctm = svg.getScreenCTM();
+  if (ctm === null || ctm === undefined) return null;
+
+  const inverse = ctm.inverse();
+
+  return {
+    x: inverse.a * clientX + inverse.c * clientY + inverse.e,
+    y: inverse.b * clientX + inverse.d * clientY + inverse.f,
+  };
+}
+
+export function BoardSvg({
+  state,
+  targets,
+  seats,
+  onPick,
+  pending = null,
+}: BoardSvgProps): JSX.Element {
   const board = boardOf(state.scenario);
   const colors = seatsById(seats);
   const colorOf = (player: PlayerId): string => colors.get(player)?.color ?? '#8b93a3';
@@ -139,10 +169,14 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
   /** Welche Felder auf dem Brett liegen - die Hafenmarken brauchen die Seeseite. */
   const onBoard = new Set(board.topology.hexes);
 
+  const viewBox = viewBoxOf(board.topology.hexes, PADDING + HARBOR_REACH);
+  const [boxX = 0, boxY = 0, boxWidth = 0, boxHeight = 0] = viewBox.split(' ').map(Number);
+  const picks = targetPoints(targets);
+
   return (
     <svg
       className="board"
-      viewBox={viewBoxOf(board.topology.hexes, PADDING + HARBOR_REACH)}
+      viewBox={viewBox}
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label="Spielbrett"
@@ -235,7 +269,6 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
                 className={isTarget ? 'hex hex--target' : 'hex'}
                 points={points}
                 fill={TERRAIN_COLORS[placement.terrain]}
-                onClick={isTarget ? () => onPick({ kind: 'hex', id: placement.hex }) : undefined}
               />
 
               {/*
@@ -492,7 +525,6 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
              * festhaelt.
              */
             style={owner === undefined ? undefined : { stroke: colorOf(owner) }}
-            onClick={isTarget ? () => onPick({ kind: 'edge', id: edge }) : undefined}
           />
         );
       })}
@@ -504,9 +536,44 @@ export function BoardSvg({ state, targets, seats, onPick }: BoardSvgProps): JSX.
           state={state}
           isTarget={targets.vertices.has(vertex)}
           colorOf={colorOf}
-          onPick={onPick}
         />
       ))}
+
+      {/*
+       * Die Fangflaeche: **ein** Ort, an dem aus einem Klick ein Ziel wird.
+       *
+       * Bis hierher trug jedes Ziel seinen eigenen Trefferkreis. Auf einem
+       * Handy im Querformat liegen benachbarte Knoten aber rund 34 px
+       * auseinander und eine Fingerkuppe misst 44 px - Trefferkreise in
+       * Fingergroesse ueberlappen dort, und dann entschiede die
+       * Zeichenreihenfolge, welches Ziel gemeint war. Statt dessen liegt hier
+       * eine durchsichtige Flaeche ueber allem, und `nearestTarget` beantwortet
+       * die Frage genau einmal und nachrechenbar.
+       *
+       * Sie liegt als letztes Kind im SVG, also ueber allem anderen - und weil
+       * sie durchsichtig ist, sieht man davon nichts.
+       */}
+      {pending !== null && <PendingMark place={pending} targets={targets} />}
+
+      <rect
+        data-testid="board-catcher"
+        className="board__catcher"
+        x={boxX}
+        y={boxY}
+        width={boxWidth}
+        height={boxHeight}
+        fill="transparent"
+        onClick={(event) => {
+          const svg = event.currentTarget.ownerSVGElement;
+          if (svg === null) return;
+
+          const point = viewBoxPointOf(svg, event.clientX, event.clientY);
+          if (point === null) return;
+
+          const place = nearestTarget(point, picks);
+          if (place !== null) onPick(place);
+        }}
+      />
     </svg>
   );
 }
@@ -589,13 +656,11 @@ function VertexMark({
   state,
   isTarget,
   colorOf,
-  onPick,
 }: {
   readonly vertex: VertexId;
   readonly state: BoardSource;
   readonly isTarget: boolean;
   readonly colorOf: (player: PlayerId) => string;
-  readonly onPick: (place: Place) => void;
 }): JSX.Element {
   const point = vertexPoint(vertex);
   const building = state.buildings[vertex];
@@ -605,11 +670,7 @@ function VertexMark({
       data-testid={`vertex-${vertex}`}
       data-target={isTarget ? 'true' : 'false'}
       className={building === undefined ? 'vertex' : `vertex vertex--${building.kind}`}
-      onClick={isTarget ? () => onPick({ kind: 'vertex', id: vertex }) : undefined}
     >
-      {/* Unsichtbare Trefferflaeche: der Browser trifft, nicht eine eigene
-          Abstandsrechnung. */}
-      <circle className="vertex__hit" cx={point.x} cy={point.y} r={0.22} />
       {building === undefined ? (
         isTarget ? (
           <circle className="vertex__target" cx={point.x} cy={point.y} r={0.13} />
@@ -711,6 +772,56 @@ function VertexMark({
           </g>
         </>
       )}
+    </g>
+  );
+}
+
+/**
+ * Der Geist: was gesetzt wuerde, halbdurchsichtig an seiner Stelle.
+ *
+ * Welches Bauteil es ist, sagt die Klickkarte und nicht die Komponente - dort
+ * steht der Zug, der ausgeloest wuerde. Ein zweites Mal aus der Phase zu raten
+ * waere eine zweite Auslegung derselben Regel.
+ *
+ * Ohne Fuellung fuer den Raeuber: dort verschiebt sich ein Stein, der schon da
+ * ist, und ein zweiter Stein daneben laese sich als zwei Raeuber.
+ */
+function PendingMark({
+  place,
+  targets,
+}: {
+  readonly place: Place;
+  readonly targets: ActionTargets;
+}): JSX.Element | null {
+  if (place.kind === 'vertex') {
+    const action = targets.vertices.get(place.id);
+    if (action === undefined) return null;
+
+    const point = vertexPoint(place.id);
+    const path = action.type === 'buildCity' ? CITY_PATH : SETTLEMENT_PATH;
+
+    return (
+      <g className="pending" data-testid={`pending-${place.id}`}>
+        <path d={path} transform={`translate(${point.x} ${point.y}) scale(0.42)`} />
+      </g>
+    );
+  }
+
+  if (place.kind === 'edge') {
+    const [from, to] = edgeSegment(place.id);
+
+    return (
+      <g className="pending" data-testid={`pending-${place.id}`}>
+        <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} />
+      </g>
+    );
+  }
+
+  const center = hexCenter(hexFromId(place.id));
+
+  return (
+    <g className="pending pending--hex" data-testid={`pending-${place.id}`}>
+      <circle cx={center.x} cy={center.y} r={0.5} />
     </g>
   );
 }

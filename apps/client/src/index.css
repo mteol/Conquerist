@@ -2104,6 +2104,42 @@ body {
 }
 
 /*
+ * Der Geist und sein Knopf: zwischen Absicht und Ausfuehrung.
+ *
+ * Halbdurchsichtig und ohne eigene Farbe - er ist kein Bauwerk, sondern ein
+ * Vorschlag. Der Knopf steht darunter am Fuss des Bretts, wo er unter keinem
+ * Finger liegt, der gerade gezielt hat.
+ */
+.pending {
+  fill: var(--parchment);
+  stroke: rgb(0 0 0 / 45%);
+  stroke-width: 0.035;
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.pending line {
+  stroke: var(--parchment);
+  stroke-width: 0.16;
+  stroke-linecap: round;
+}
+
+.pending--hex circle {
+  fill: rgb(0 0 0 / 35%);
+  stroke: var(--parchment);
+}
+
+.confirm {
+  position: absolute;
+  bottom: 5.5rem;
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  gap: 0.5rem;
+  transform: translateX(-50%);
+}
+
+/*
  * Die Auftakttafel: sie liegt mittig auf dem Brett, solange ausgewuerfelt wird.
  *
  * Ein Ding auf dem Tisch (heller Koerper, Kontaktschatten) und trotzdem

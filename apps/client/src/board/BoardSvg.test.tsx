@@ -8,10 +8,11 @@ import {
   generateScenario,
   setupPlayer,
 } from '@conquerist/shared';
-import { render, screen, userEvent } from '../test/dom';
+import { fireEvent, render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { EMPTY_TARGETS, actionTargets } from '../game/targets';
 import { BoardSvg } from './BoardSvg';
+import { vertexPoint } from './layout';
 import { NUMERAL_CAP, numeralWidth } from '../type/Numerals';
 import { afterOpening } from '../test/opening';
 
@@ -25,6 +26,27 @@ const start = afterOpening(
     'board-probe',
   ),
 );
+
+/**
+ * Tippt auf die Fangflaeche, an einem Punkt in viewBox-Koordinaten.
+ *
+ * Zwei Kunstgriffe, beide unvermeidlich: jsdom kennt `getScreenCTM` nicht, also
+ * steht dort eine Einheitsmatrix - damit sind Klick- und viewBox-Koordinaten
+ * dasselbe. Und geklickt wird ueber `fireEvent` statt `userEvent`, weil
+ * letzteres die Koordinaten aus dem Zielrechteck nimmt und dabei rundet; auf
+ * einem Brett, das keine zehn Einheiten breit ist, waere danach jede Genauigkeit
+ * weg.
+ */
+function tapBoard(container: HTMLElement, x: number, y: number): void {
+  const svg = container.querySelector('svg')!;
+  svg.getScreenCTM = () =>
+    ({ inverse: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) }) as unknown as DOMMatrix;
+
+  fireEvent.click(container.querySelector('[data-testid="board-catcher"]')!, {
+    clientX: x,
+    clientY: y,
+  });
+}
 
 describe('BoardSvg', () => {
   it('zeichnet jedes Feld des Szenarios', () => {
@@ -237,15 +259,45 @@ describe('BoardSvg', () => {
     expect(marked).toHaveLength(targets.vertices.size);
   });
 
-  it('meldet den angeklickten Knoten', async () => {
+  it('meldet den Knoten, der dem Tipp am naechsten liegt', async () => {
     const targets = actionTargets(start, setupPlayer(start)!);
     const vertex = [...targets.vertices.keys()][0]!;
+    const punkt = vertexPoint(vertex);
     const onPick = vi.fn();
 
-    render(<BoardSvg state={start} targets={targets} seats={seats} onPick={onPick} />);
-    await userEvent.click(screen.getByTestId(`vertex-${vertex}`));
+    const { container } = render(
+      <BoardSvg state={start} targets={targets} seats={seats} onPick={onPick} />,
+    );
+
+    // Getippt wird knapp neben den Knoten - genau der Fall, den die
+    // Fangflaeche loesen soll.
+    tapBoard(container, punkt.x + 0.15, punkt.y);
 
     expect(onPick).toHaveBeenCalledWith({ kind: 'vertex', id: vertex });
+  });
+
+  it('meldet nichts, wenn der Tipp weit neben jedem Ziel liegt', async () => {
+    const targets = actionTargets(start, setupPlayer(start)!);
+    const onPick = vi.fn();
+
+    const { container } = render(
+      <BoardSvg state={start} targets={targets} seats={seats} onPick={onPick} />,
+    );
+    tapBoard(container, 999, 999);
+
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  it('meldet nichts, wenn es gar keine Ziele gibt', async () => {
+    // Das Vorschau-Brett auf dem Startbildschirm: es faengt, aber trifft nie.
+    const onPick = vi.fn();
+
+    const { container } = render(
+      <BoardSvg state={start} targets={EMPTY_TARGETS} seats={seats} onPick={onPick} />,
+    );
+    tapBoard(container, 0, 0);
+
+    expect(onPick).not.toHaveBeenCalled();
   });
 
   it('meldet nichts, wenn der Knoten nicht in der Klickkarte steht', async () => {

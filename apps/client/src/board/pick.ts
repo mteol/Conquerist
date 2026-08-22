@@ -1,8 +1,8 @@
-import { hexFromId, type Point } from '@conquerist/shared';
+import { hexFromId } from '@conquerist/shared';
 
 import type { ActionTargets } from '../game/targets';
 import type { Place } from './BoardSvg';
-import { edgeMidpoint, hexCenter, vertexPoint } from './layout';
+import { edgeMidpoint, hexCenter, vertexPoint, type Point } from './layout';
 
 /**
  * Aus einem Punkt auf dem Brett wird genau ein Ziel.
