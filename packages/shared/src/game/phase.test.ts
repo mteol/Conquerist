@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PhaseSchema, setupPlacementCount, setupPlayerIndex } from './phase.js';
+import { openingRoller, PhaseSchema, setupPlacementCount, setupPlayerIndex } from './phase.js';
 
 describe('setupPlayerIndex', () => {
   it('laeuft die erste Runde vorwaerts und die zweite rueckwaerts', () => {
@@ -70,5 +70,42 @@ describe('PhaseSchema', () => {
       false,
     );
     expect(PhaseSchema.safeParse({ kind: 'setup', placement: 0 }).success).toBe(false);
+  });
+});
+
+describe('die Auftaktphase', () => {
+  it('nimmt Wuerfe, Warteschlange und Runde auf', () => {
+    const phase = {
+      kind: 'opening',
+      rolls: {
+        p1: [
+          { die: 'w6a', value: 5 },
+          { die: 'w6b', value: 4 },
+        ],
+      },
+      pending: ['p2', 'p3'],
+      round: 0,
+    };
+
+    expect(PhaseSchema.safeParse(phase).success).toBe(true);
+  });
+
+  it('lehnt eine negative Stechrunde ab', () => {
+    expect(
+      PhaseSchema.safeParse({ kind: 'opening', rolls: {}, pending: [], round: -1 }).success,
+    ).toBe(false);
+  });
+});
+
+describe('openingRoller', () => {
+  it('nennt den Vordersten der Warteschlange', () => {
+    expect(openingRoller({ kind: 'opening', rolls: {}, pending: ['p2', 'p3'], round: 0 })).toBe(
+      'p2',
+    );
+  });
+
+  it('gibt null zurueck, wenn die Runde vollstaendig ist', () => {
+    // Der Fall, in dem ausgewertet wird - nicht der Fall, in dem jemand wartet.
+    expect(openingRoller({ kind: 'opening', rolls: {}, pending: [], round: 0 })).toBeNull();
   });
 });
