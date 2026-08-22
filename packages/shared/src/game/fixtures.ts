@@ -1,6 +1,7 @@
 import { createRng } from '../random/index.js';
 import { CLASSIC_RULES, type ResourceAmounts } from '../rules/index.js';
 import { ScenarioDefinitionSchema, type ScenarioDefinition } from '../scenario/index.js';
+import { reduce } from './reducer.js';
 import { EMPTY_RESOURCES } from './resources.js';
 import { GameStateSchema, type GameState } from './state.js';
 
@@ -124,4 +125,30 @@ export function giving(
       player.id === id ? { ...player, resources: hand(resources) } : player,
     ),
   };
+}
+
+/**
+ * Wuerfelt den Auftakt zu Ende.
+ *
+ * Fuer alle Tests, die die Gruendung oder das Spiel pruefen und den Auftakt nur
+ * hinter sich bringen wollen. Wer den Auftakt selbst prueft, wuerfelt einzeln.
+ */
+export function afterOpening(state: GameState): GameState {
+  let current = state;
+
+  // Ein Stechen endet mit Wahrscheinlichkeit eins, aber nicht nach einer festen
+  // Zahl von Runden. Der Riegel faengt eine kaputte Auswertung ab, statt den
+  // Testlauf haengen zu lassen.
+  for (let guard = 0; guard < 200 && current.phase.kind === 'opening'; guard += 1) {
+    const roller = current.phase.pending[0];
+    if (roller === undefined) throw new Error('afterOpening: Warteschlange leer im Auftakt');
+
+    const result = reduce(current, { type: 'rollDice', player: roller });
+    if (!result.ok) throw new Error(`afterOpening: ${result.error.message}`);
+    current = result.state;
+  }
+
+  if (current.phase.kind === 'opening') throw new Error('afterOpening: Der Auftakt endet nicht');
+
+  return current;
 }

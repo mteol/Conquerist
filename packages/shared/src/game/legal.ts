@@ -9,6 +9,7 @@ import {
   canPlaceRoadAt,
   canPlaceSettlementAt,
 } from './build.js';
+import { openingRoller } from './phase.js';
 import type { PlayerId } from './player.js';
 import { canAcceptTrade, canRejectCounter, canRespondTrade } from './playerTrade.js';
 import { canMoveRobber, victimsAt } from './robber.js';
@@ -45,6 +46,10 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
     case 'finished':
       return [];
 
+    case 'opening':
+      // Im Auftakt gibt es genau eine Sache zu tun, und nur fuer einen.
+      return openingRoller(state.phase) === player ? [{ type: 'rollDice', player }] : [];
+
     case 'setup': {
       if (setupPlayer(state) !== player) return [];
 
@@ -66,10 +71,25 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
       return actions;
     }
 
-    case 'rollPending':
-      return state.players[state.currentPlayerIndex]?.id === player
-        ? [{ type: 'rollDice', player }]
-        : [];
+    case 'rollPending': {
+      if (state.players[state.currentPlayerIndex]?.id !== player) return [];
+
+      /*
+       * Vor dem Wurf steht nicht nur der Wurf. Eine Entwicklungskarte darf im
+       * eigenen Zug auch davor gespielt werden - der Ritter ist der Fall, um
+       * den es dabei geht: den Raeuber vom eigenen Feld holen, ehe die Ertraege
+       * fallen. Gekauft wird weiterhin erst danach.
+       *
+       * Die drei Karten mit Auswahl stehen hier so wenig wie in `main`; sie
+       * kommen ueber `playableDevelopmentCards`, und das erlaubt sie seit der
+       * Trennung von Kauf und Ausspielen von selbst.
+       */
+      actions.push({ type: 'rollDice', player });
+      if (canPlayDevelopmentCard(state, player, 'knight') === null) {
+        actions.push({ type: 'playKnight', player });
+      }
+      return actions;
+    }
 
     case 'discardPending':
       // Siehe Kopfkommentar: die Auswahl trifft der Spieler selbst.

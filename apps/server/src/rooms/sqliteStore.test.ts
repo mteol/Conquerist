@@ -1,3 +1,4 @@
+import { rollOpening } from './openingFixture.js';
 import { describe, expect, it } from 'vitest';
 import { legalActions, setupPlayer } from '@conquerist/shared';
 import { openDatabase } from '../db/database.js';
@@ -57,7 +58,7 @@ describe('SqliteRoomStore', () => {
     const started = startGame(waitingRoom(ids), ids[0]!);
     if (!started.ok) throw new Error(started.error);
 
-    let room = started.room;
+    let room = rollOpening(started.room);
     store.save(room);
 
     for (let step = 0; step < 6; step += 1) {

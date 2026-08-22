@@ -1,20 +1,21 @@
 import { z } from 'zod';
 
-import { PlayerIdSchema } from './player.js';
+import { RollSchema } from './dice.js';
+import { PlayerIdSchema, type PlayerId } from './player.js';
 import { TradeOfferSchema, TradeResponseSchema } from './tradeOffer.js';
 
 /**
  * Der Zugablauf als expliziter Zustandsautomat.
  *
  * ```
- * setup ──► rollPending ──► main ──► (naechster Spieler) rollPending
- *              │              ▲│       │
- *              │ Wurf = 7     ││       └──► finished
- *              ▼              │▼
- *         discardPending   tradePending
- *              │              (Angebot liegt, Zug steht still)
- *              ▼
- *         robberPending ──► main
+ * opening ──► setup ──► rollPending ──► main ──► (naechster Spieler) rollPending
+ * (Auftakt)                    │          ▲│       │
+ *                              │ Wurf = 7 ││       └──► finished
+ *                              ▼          │▼
+ *                       discardPending  tradePending
+ *                              │          (Angebot liegt, Zug steht still)
+ *                              ▼
+ *                       robberPending ──► main
  * ```
  *
  * Ohne diese Phasen muesste der Reducer bei jeder eingehenden Aktion neu
@@ -24,6 +25,28 @@ import { TradeOfferSchema, TradeResponseSchema } from './tradeOffer.js';
  */
 
 export const PhaseSchema = z.discriminatedUnion('kind', [
+  /**
+   * Der Auftakt: reihum wuerfelt jeder einmal, der Hoechste beginnt.
+   *
+   * `rolls` haelt **nur die laufende Runde**. Ein Stechen ersetzt sie, statt sie
+   * zu ergaenzen - was vorher fiel, hat fuer die Entscheidung keine Bedeutung
+   * mehr, und wer es nachlesen will, findet es im Verlauf. Zwei Runden
+   * gleichzeitig im Zustand zu halten hiesse, an jeder Auswertung mitzudenken,
+   * welche gilt.
+   *
+   * `pending` ist Warteschlange und zugleich die Antwort auf "wer ist dran" -
+   * dieselbe Bauform wie bei `discardPending`, nur der Reihe nach statt
+   * gleichzeitig.
+   */
+  z.object({
+    kind: z.literal('opening'),
+    /** Was in dieser Wurfrunde schon gefallen ist. */
+    rolls: z.record(z.string(), RollSchema),
+    /** Wer in dieser Wurfrunde noch werfen muss, in Sitzreihenfolge. */
+    pending: z.array(PlayerIdSchema),
+    /** 0 ist die erste Runde, ab 1 ist es ein Stechen. */
+    round: z.number().int().min(0),
+  }),
   /**
    * Gruendungsphase. `placement` zaehlt die Setzungen durch (siehe
    * `setupPlayerIndex`); `settlement` haelt die gerade gesetzte Siedlung fest,
@@ -46,8 +69,19 @@ export const PhaseSchema = z.discriminatedUnion('kind', [
    * mehrere Spieler gleichzeitig.
    */
   z.object({ kind: z.literal('discardPending'), pending: z.array(PlayerIdSchema) }),
-  /** Der Spieler am Zug muss den Raeuber versetzen. */
-  z.object({ kind: z.literal('robberPending') }),
+  /**
+   * Der Spieler am Zug muss den Raeuber versetzen.
+   *
+   * `resume` ist der Rueckweg. Er steht hier und nicht als Feld daneben, weil
+   * der Umweg mit der Phase beginnt und mit ihr verschwindet: nach einer Sieben
+   * ist gewuerfelt und es geht in die Hauptphase, nach einem Ritter **vor** dem
+   * Wurf schuldet der Spieler den Wurf noch. Ohne diesen Vermerk sprang
+   * `applyMoveRobber` fest nach `main` - der Wurf fiel dann lautlos aus.
+   */
+  z.object({
+    kind: z.literal('robberPending'),
+    resume: z.enum(['main', 'rollPending']),
+  }),
   /** Bauen, handeln, Zug beenden. */
   z.object({ kind: z.literal('main') }),
   /**
@@ -92,4 +126,9 @@ export function setupPlayerIndex(placement: number, playerCount: number): number
   }
 
   return placement < playerCount ? placement : total - 1 - placement;
+}
+
+/** Wer im Auftakt als Naechstes wirft - `null`, wenn die Runde vollstaendig ist. */
+export function openingRoller(phase: Extract<Phase, { kind: 'opening' }>): PlayerId | null {
+  return phase.pending[0] ?? null;
 }

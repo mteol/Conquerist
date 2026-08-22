@@ -14,6 +14,7 @@ import { render, screen } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { EMPTY_TARGETS } from '../game/targets';
 import { BoardSvg } from './BoardSvg';
+import { afterOpening } from '../test/opening';
 
 /**
  * Regression: gebaute Strassen waren unsichtbar.
@@ -33,12 +34,18 @@ const scenario = generateScenario(CLASSIC_34, 'road-probe');
 const seats = defaultSeats(3);
 
 /** Setzt die erste Gruendungssiedlung samt zugehoeriger Strasse. */
-function withOneRoad(): { readonly state: GameState; readonly edge: string } {
-  let state = createGame(
-    scenario,
-    CLASSIC_RULES,
-    seats.map((seat) => seat.id),
-    'road-probe',
+function withOneRoad(): {
+  readonly state: GameState;
+  readonly edge: string;
+  readonly builder: string;
+} {
+  let state = afterOpening(
+    createGame(
+      scenario,
+      CLASSIC_RULES,
+      seats.map((seat) => seat.id),
+      'road-probe',
+    ),
   );
 
   const settlement = legalActions(state, setupPlayer(state)!)[0]!;
@@ -53,20 +60,38 @@ function withOneRoad(): { readonly state: GameState; readonly edge: string } {
   const built = reduce(state, road);
   if (!built.ok) throw new Error(built.error.message);
 
-  return { state: built.state, edge: road.edge };
+  return { state: built.state, edge: road.edge, builder: road.player };
+}
+
+/**
+ * Was der Browser aus einer Farbangabe macht.
+ *
+ * Die Sitzfarbe steht als `#2c6fbb` im Blatt, `style.stroke` liefert
+ * `rgb(44, 111, 187)`. Statt die zweite Schreibweise abzuschreiben - und damit
+ * eine zweite Wahrheit ueber dieselbe Farbe zu fuehren - laeuft der Vergleich
+ * durch dieselbe Normalisierung.
+ */
+function alsRgb(farbe: string): string {
+  const probe = document.createElement('span');
+  probe.style.color = farbe;
+  return probe.style.color.replace(/\s/g, '');
 }
 
 describe('Gebaute Strassen', () => {
   it('tragen die Spielerfarbe uebersteuerungssicher am Element', () => {
-    const { state, edge } = withOneRoad();
+    const { state, edge, builder } = withOneRoad();
 
     render(<BoardSvg state={state} targets={EMPTY_TARGETS} seats={seats} onPick={vi.fn()} />);
 
     const line = screen.getByTestId(`edge-${edge}`);
 
+    // Wer zuerst setzt, entscheidet der Auftakt - die erwartete Farbe kommt
+    // deshalb vom Sitz des tatsaechlichen Erbauers und steht nicht fest.
+    const farbe = seats.find((seat) => seat.id === builder)!.color;
+
     // `style` gewinnt gegen jede Stylesheet-Regel; ein blosses Attribut nicht.
     expect(line.style.stroke).not.toBe('');
-    expect(line.style.stroke.replace(/\s/g, '')).toBe('rgb(192,57,43)');
+    expect(line.style.stroke.replace(/\s/g, '')).toBe(alsRgb(farbe));
   });
 
   it('laesst freie Kanten ohne eigene Farbe', () => {

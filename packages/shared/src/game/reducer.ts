@@ -6,6 +6,8 @@ import type { PlayerId } from './player.js';
 import { applyDiscard, applyMoveRobber, playersMustDiscard } from './robber.js';
 import { recomputeLongestRoad } from './roads.js';
 import { hasWon } from './scoring.js';
+import { applyOpeningRoll } from './opening.js';
+import { openingRoller } from './phase.js';
 import { applySetupRoad, applySetupSettlement, setupPlayer } from './setup.js';
 import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './state.js';
 import {
@@ -45,8 +47,9 @@ import { distributeYield } from './yield.js';
 
 /** Welche Aktionsarten in welcher Phase erlaubt sind. */
 const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
+  opening: ['rollDice'],
   setup: ['placeSetupSettlement', 'placeSetupRoad'],
-  rollPending: ['rollDice'],
+  rollPending: ['rollDice', 'playKnight', 'playRoadBuilding', 'playYearOfPlenty', 'playMonopoly'],
   discardPending: ['discard'],
   robberPending: ['moveRobber'],
   main: [
@@ -77,6 +80,7 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
 
 /** Wer in dieser Phase handeln darf. `null` heisst: mehrere, siehe `discardPending`. */
 function actorFor(state: GameState): PlayerId | null {
+  if (state.phase.kind === 'opening') return openingRoller(state.phase);
   if (state.phase.kind === 'setup') return setupPlayer(state);
   if (state.phase.kind === 'discardPending') return null;
   // Wie beim Abwerfen handeln mehrere: der Anbieter und seine Mitspieler. Wer
@@ -105,7 +109,10 @@ function rollDice(state: GameState): ReduceResult {
   const pending = playersMustDiscard(rolled);
   return ok({
     ...rolled,
-    phase: pending.length > 0 ? { kind: 'discardPending', pending } : { kind: 'robberPending' },
+    phase:
+      pending.length > 0
+        ? { kind: 'discardPending', pending }
+        : { kind: 'robberPending', resume: 'main' },
   });
 }
 
@@ -131,7 +138,13 @@ function finalize(state: GameState, actor: PlayerId): GameState {
   // In der Gruendungsphase gibt es nichts zu gewinnen, und wer nicht am Zug
   // ist, gewinnt auch nicht: die Laengste Handelsstrasse kann im fremden Zug
   // den Besitzer wechseln, aber gewonnen wird nur im eigenen.
-  if (scored.phase.kind === 'setup' || scored.phase.kind === 'finished') return scored;
+  if (
+    scored.phase.kind === 'opening' ||
+    scored.phase.kind === 'setup' ||
+    scored.phase.kind === 'finished'
+  ) {
+    return scored;
+  }
   if (scored.players[scored.currentPlayerIndex]?.id !== actor) return scored;
 
   return hasWon(scored, actor) ? { ...scored, phase: { kind: 'finished', winner: actor } } : scored;
@@ -185,7 +198,10 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
     case 'placeSetupRoad':
       return applySetupRoad(state, action.player, action.edge);
     case 'rollDice':
-      return rollDice(state);
+      // Die Aktion heisst "ich werfe die Wuerfel". Was ein Wurf bedeutet,
+      // entscheidet die Phase - deshalb hier ein Zweig und keine zweite Aktion,
+      // die durch Protokoll, Server und Oberflaeche mitgeschleppt werden muss.
+      return state.phase.kind === 'opening' ? applyOpeningRoll(state) : rollDice(state);
     case 'discard':
       return applyDiscard(state, action.player, action.resources);
     case 'moveRobber':

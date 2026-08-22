@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { CLASSIC_RULES } from '../rules/index.js';
 import {
   CENTER_EDGE,
+  afterOpening,
   CENTER_VERTEX,
   NEXT_EDGE,
   TEST_PLAYERS,
@@ -11,7 +12,8 @@ import {
   hand,
   testGame,
 } from './fixtures.js';
-import { legalActions } from './legal.js';
+import { legalActions, playableDevelopmentCards } from './legal.js';
+import { setupPlayer } from './setup.js';
 import { applyOfferTrade, applyRespondTrade } from './playerTrade.js';
 import { reduce } from './reducer.js';
 import { createGame } from './setup.js';
@@ -39,12 +41,14 @@ function expectAllAccepted(state: GameState, player: string): number {
 
 describe('legalActions', () => {
   it('nennt in der Gruendungsphase lauter setzbare Knoten', () => {
-    const state = createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'legal');
-    const actions = legalActions(state, 'p1');
+    const state = afterOpening(createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'legal'));
+    // Wer zuerst setzt, hat der Auftakt entschieden.
+    const actor = setupPlayer(state)!;
+    const actions = legalActions(state, actor);
 
     expect(actions.length).toBeGreaterThan(0);
     expect(actions.every((action) => action.type === 'placeSetupSettlement')).toBe(true);
-    expectAllAccepted(state, 'p1');
+    expectAllAccepted(state, actor);
   });
 
   it('nennt nach der Siedlung nur die Kanten an ihr', () => {
@@ -70,7 +74,7 @@ describe('legalActions', () => {
     for (const phase of [
       { kind: 'rollPending' as const },
       { kind: 'main' as const },
-      { kind: 'robberPending' as const },
+      { kind: 'robberPending' as const, resume: 'main' as const },
     ]) {
       expect(legalActions(testGame({ phase }), 'p2')).toEqual([]);
     }
@@ -91,7 +95,7 @@ describe('legalActions', () => {
   });
 
   it('nennt beim Raeuber jedes Feld ausser dem aktuellen', () => {
-    const state = testGame({ phase: { kind: 'robberPending' } });
+    const state = testGame({ phase: { kind: 'robberPending', resume: 'main' } });
     const actions = legalActions(state, 'p1');
 
     expect(actions).toHaveLength(TEST_SCENARIO.hexes.length - 1);
@@ -102,7 +106,7 @@ describe('legalActions', () => {
   it('nennt beim Raeuber jedes moegliche Opfer einzeln', () => {
     const state = giving(
       testGame({
-        phase: { kind: 'robberPending' },
+        phase: { kind: 'robberPending', resume: 'main' },
         buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement' } },
       }),
       'p2',
@@ -209,5 +213,57 @@ describe('legalActions in tradePending', () => {
   it('nennt jedem nur, was reduce von ihm auch annimmt', () => {
     expectAllAccepted(offered(), 'p2');
     expectAllAccepted(offered(), 'p1');
+  });
+});
+
+describe('legalActions im Auftakt', () => {
+  const inOpening = () =>
+    testGame({
+      phase: { kind: 'opening', rolls: {}, pending: ['p2', 'p3'], round: 0 },
+      turn: 0,
+    });
+
+  it('bietet dem Vordersten das Wuerfeln an', () => {
+    expect(legalActions(inOpening(), 'p2')).toEqual([{ type: 'rollDice', player: 'p2' }]);
+  });
+
+  it('bietet den Wartenden nichts an', () => {
+    expect(legalActions(inOpening(), 'p3')).toEqual([]);
+    expect(legalActions(inOpening(), 'p1')).toEqual([]);
+  });
+});
+
+describe('Karten vor dem Wurf', () => {
+  const withKnight = () => {
+    const base = testGame({ phase: { kind: 'rollPending' }, turn: 2 });
+    return {
+      ...base,
+      players: base.players.map((player) =>
+        player.id === 'p1'
+          ? { ...player, developmentCards: [{ id: 'knight' as const, boughtOnTurn: 1 }] }
+          : player,
+      ),
+    };
+  };
+
+  it('bietet vor dem Wurf den Ritter an', () => {
+    const actions = legalActions(withKnight(), 'p1').map((action) => action.type);
+
+    expect(actions).toContain('rollDice');
+    expect(actions).toContain('playKnight');
+  });
+
+  it('bietet vor dem Wurf keinen Kauf an', () => {
+    expect(legalActions(withKnight(), 'p1').map((action) => action.type)).not.toContain(
+      'buyDevelopmentCard',
+    );
+  });
+
+  it('nennt die spielbaren Karten auch vor dem Wurf', () => {
+    expect(playableDevelopmentCards(withKnight(), 'p1')).toContain('knight');
+  });
+
+  it('bietet dem Mitspieler vor dem Wurf nichts an', () => {
+    expect(legalActions(withKnight(), 'p2')).toEqual([]);
   });
 });

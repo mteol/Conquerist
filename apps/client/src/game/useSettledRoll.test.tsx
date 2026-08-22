@@ -16,6 +16,7 @@ import {
 import { act, render, screen } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { THROW_MS, useSettledRoll, type Rollable } from './useSettledRoll';
+import { afterOpening } from '../test/opening';
 
 /**
  * Der Tisch wartet, solange die Wuerfel fliegen.
@@ -32,7 +33,7 @@ const scenario = generateScenario(CLASSIC_34, 'wurf-probe');
 
 /** Nach der Gruendung: der erste Spieler muss wuerfeln. */
 function beforeRoll(): GameState {
-  let state = createGame(scenario, CLASSIC_RULES, ids, 'wurf-probe');
+  let state = afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'wurf-probe'));
   while (state.phase.kind === 'setup') {
     const result = reduce(state, legalActions(state, setupPlayer(state)!)[0]!);
     if (!result.ok) throw new Error(result.error.message);

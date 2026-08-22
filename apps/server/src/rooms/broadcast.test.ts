@@ -1,3 +1,4 @@
+import { rollOpening } from './openingFixture.js';
 import { describe, expect, it, vi } from 'vitest';
 import { GAME_EVENT, ROOM_EVENT, setupPlayer } from '@conquerist/shared';
 import { broadcastGame, broadcastRoom } from './broadcast.js';
@@ -77,11 +78,14 @@ describe('Zustellung', () => {
 
   it('gibt die Zuege eines Getrennten an niemand anderen weiter', () => {
     const running = runningRoom();
-    const game = running.game!;
+    // Erst den Auftakt zu Ende wuerfeln: im Auftakt darf ebenfalls genau einer
+    // handeln, aber `setupPlayer` gilt dort nicht.
+    const gruendung = rollOpening(running);
+    const game = gruendung.game!;
     const acting = setupPlayer(game)!;
 
     // Der, der dran ist, faellt aus der Verbindung.
-    const room = setConnected(running, acting, false);
+    const room = setConnected(gruendung, acting, false);
     const targets = sinks(['u1', 'u2', 'u3']);
 
     broadcastGame(room, targets);

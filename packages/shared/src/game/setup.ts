@@ -53,7 +53,9 @@ export function createGame(
       playedKnights: 0,
     })),
     currentPlayerIndex: 0,
-    phase: { kind: 'setup', placement: 0, settlement: null },
+    // Vor der Gruendung wird ausgewuerfelt, wer beginnt. Erst danach steht fest,
+    // wer auf Index 0 sitzt - siehe `opening.ts`.
+    phase: { kind: 'opening', rolls: {}, pending: [...playerIds], round: 0 },
     buildings: {},
     roads: {},
     robber: scenario.robberStart,

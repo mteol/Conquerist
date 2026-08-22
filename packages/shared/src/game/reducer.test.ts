@@ -148,7 +148,7 @@ describe('reduce - wuerfeln', () => {
     const result = reduce(rolling(SEVEN), { type: 'rollDice', player: 'p1' });
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.state.phase).toEqual({ kind: 'robberPending' });
+    if (result.ok) expect(result.state.phase).toEqual({ kind: 'robberPending', resume: 'main' });
   });
 
   it('verteilt bei einer Sieben keinen Ertrag', () => {
@@ -286,5 +286,117 @@ describe('reduce - vollstaendige Abdeckung', () => {
 
       expect(result.ok || typeof result.error.code === 'string').toBe(true);
     }
+  });
+});
+
+describe('der Auftakt im Reducer', () => {
+  const inOpening = (): GameState =>
+    testGame({
+      phase: { kind: 'opening', rolls: {}, pending: ['p1', 'p2', 'p3'], round: 0 },
+      turn: 0,
+    });
+
+  it('laesst nur den Vordersten der Warteschlange wuerfeln', () => {
+    const result = reduce(inOpening(), { type: 'rollDice', player: 'p2' });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe(RuleViolationCode.NOT_YOUR_TURN);
+  });
+
+  it('nimmt im Auftakt keine Siedlung an', () => {
+    // Der ganze Sinn einer Phase: ein zu frueh gesetztes Haus ist ein
+    // gewoehnlicher Regelverstoss und kein Sonderfall im Code.
+    const result = reduce(inOpening(), {
+      type: 'placeSetupSettlement',
+      player: 'p1',
+      vertex: CENTER_VERTEX,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe(RuleViolationCode.WRONG_PHASE);
+  });
+
+  it('wuerfelt im Auftakt keinen Ertrag aus', () => {
+    const result = reduce(inOpening(), { type: 'rollDice', player: 'p1' });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players.map((player) => player.resources)).toEqual(
+      inOpening().players.map((player) => player.resources),
+    );
+  });
+
+  it('geht nach dem letzten Wurf aus dem Auftakt heraus', () => {
+    let state = inOpening();
+    for (const player of ['p1', 'p2', 'p3']) {
+      const result = reduce(state, { type: 'rollDice', player });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      state = result.state;
+    }
+
+    // Entweder entschieden oder Stechen - beides ist ein Fortschritt.
+    expect(state.phase.kind === 'setup' || state.phase.kind === 'opening').toBe(true);
+  });
+});
+
+describe('der Ritter vor dem Wurf', () => {
+  const withKnight = (): GameState => {
+    const base = testGame({ phase: { kind: 'rollPending' }, turn: 2 });
+    return {
+      ...base,
+      players: base.players.map((player) =>
+        player.id === 'p1'
+          ? { ...player, developmentCards: [{ id: 'knight' as const, boughtOnTurn: 1 }] }
+          : player,
+      ),
+    };
+  };
+
+  it('fuehrt ueber den Raeuber zurueck zum Wurf', () => {
+    const played = reduce(withKnight(), { type: 'playKnight', player: 'p1' });
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
+    expect(played.state.phase).toEqual({ kind: 'robberPending', resume: 'rollPending' });
+
+    const moved = reduce(played.state, {
+      type: 'moveRobber',
+      player: 'p1',
+      hex: '1,0',
+      victim: null,
+    });
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+
+    // Der Kern der Sache: der Wurf steht noch aus und faellt nicht aus.
+    expect(moved.state.phase).toEqual({ kind: 'rollPending' });
+  });
+
+  it('verbraucht damit die eine Karte des Zuges', () => {
+    // Eine Karte je Zug gilt ueber den Wurf hinweg - der Wurf setzt sie nicht
+    // zurueck, das tut nur `endTurn`.
+    const played = reduce(withKnight(), { type: 'playKnight', player: 'p1' });
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
+    expect(played.state.developmentPlayed).toBe(true);
+  });
+
+  it('nimmt vor dem Wurf keinen Kauf an', () => {
+    const result = reduce(withKnight(), { type: 'buyDevelopmentCard', player: 'p1' });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe(RuleViolationCode.WRONG_PHASE);
+  });
+
+  it('laesst nach einer Sieben weiterhin in die Hauptphase', () => {
+    const state = testGame({ phase: { kind: 'robberPending', resume: 'main' } });
+    const moved = reduce(state, { type: 'moveRobber', player: 'p1', hex: '1,0', victim: null });
+
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+    expect(moved.state.phase).toEqual({ kind: 'main' });
   });
 });

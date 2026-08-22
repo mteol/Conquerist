@@ -9,6 +9,7 @@ import {
   canBuyDevelopmentCard,
   canPlayDevelopmentCard,
 } from './developmentRules.js';
+import { RuleViolationCode } from './errors.js';
 import { testGame } from './fixtures.js';
 import { legalActions, playableDevelopmentCards } from './legal.js';
 import { reduce } from './reducer.js';
@@ -282,5 +283,53 @@ describe('Der Stapel', () => {
     const routed = reduce(before, { type: 'buyDevelopmentCard', player: 'p1' });
 
     expect(routed).toEqual(direct);
+  });
+});
+
+describe('wann gekauft und wann gespielt werden darf', () => {
+  /** Ein Spieler mit einer Ritterkarte, die nicht aus diesem Zug stammt. */
+  const withKnight = (phase: GameState['phase']): GameState => {
+    const base = testGame({ phase, turn: 2 });
+    return {
+      ...base,
+      players: base.players.map((player) =>
+        player.id === 'p1'
+          ? { ...player, developmentCards: [{ id: 'knight' as const, boughtOnTurn: 1 }] }
+          : player,
+      ),
+    };
+  };
+
+  it('laesst vor dem Wurf nicht kaufen', () => {
+    const state = withKnight({ kind: 'rollPending' });
+
+    expect(canBuyDevelopmentCard(state, 'p1')?.code).toBe(RuleViolationCode.WRONG_PHASE);
+  });
+
+  it('laesst vor dem Wurf spielen', () => {
+    const state = withKnight({ kind: 'rollPending' });
+
+    expect(canPlayDevelopmentCard(state, 'p1', 'knight')).toBeNull();
+  });
+
+  it('laesst in der Hauptphase weiterhin beides', () => {
+    const state = withKnight({ kind: 'main' });
+
+    expect(canPlayDevelopmentCard(state, 'p1', 'knight')).toBeNull();
+  });
+
+  it('laesst in der Gruendung keines von beiden', () => {
+    const state = withKnight({ kind: 'setup', placement: 0, settlement: null });
+
+    expect(canBuyDevelopmentCard(state, 'p1')?.code).toBe(RuleViolationCode.WRONG_PHASE);
+    expect(canPlayDevelopmentCard(state, 'p1', 'knight')?.code).toBe(RuleViolationCode.WRONG_PHASE);
+  });
+
+  it('laesst den, der nicht am Zug ist, auch vor dem Wurf nicht spielen', () => {
+    const state = withKnight({ kind: 'rollPending' });
+
+    expect(canPlayDevelopmentCard(state, 'p2', 'knight')?.code).toBe(
+      RuleViolationCode.NOT_YOUR_TURN,
+    );
   });
 });

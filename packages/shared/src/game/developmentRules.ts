@@ -41,11 +41,8 @@ function priceOf(state: GameState): ResourceAmounts {
   return state.rules.buildCosts.developmentCard ?? EMPTY_RESOURCES;
 }
 
-/** Die drei Bedingungen, die fuer Kauf und Ausspielen gleich sind. */
-function canActNow(state: GameState, player: PlayerId): RuleViolation | null {
-  if (state.phase.kind !== 'main') {
-    return violation(RuleViolationCode.WRONG_PHASE, 'Das geht erst nach dem Würfeln');
-  }
+/** Die zwei Bedingungen, die fuer Kauf und Ausspielen gleich sind. */
+function canActAtAll(state: GameState, player: PlayerId): RuleViolation | null {
   if (state.players[state.currentPlayerIndex]?.id !== player) {
     return violation(RuleViolationCode.NOT_YOUR_TURN, `${player} ist nicht am Zug`);
   }
@@ -55,9 +52,32 @@ function canActNow(state: GameState, player: PlayerId): RuleViolation | null {
   return null;
 }
 
+/** Gekauft wird nach dem Wurf. */
+function canBuyNow(state: GameState, player: PlayerId): RuleViolation | null {
+  if (state.phase.kind !== 'main') {
+    return violation(RuleViolationCode.WRONG_PHASE, 'Das geht erst nach dem Würfeln');
+  }
+  return canActAtAll(state, player);
+}
+
+/**
+ * Gespielt wird im eigenen Zug - **auch vor dem Wurf**.
+ *
+ * Zwei Funktionen und nicht eine mit Schalter, weil die Frage eine andere ist:
+ * der Ritter vor dem Wurf ist der Zug, um den es bei der Karte ueberhaupt geht
+ * (den Raeuber vom eigenen Feld holen, ehe die Ertraege fallen). Kaufen hat
+ * dieses Motiv nicht und bleibt, wo es war.
+ */
+function canPlayNow(state: GameState, player: PlayerId): RuleViolation | null {
+  if (state.phase.kind !== 'main' && state.phase.kind !== 'rollPending') {
+    return violation(RuleViolationCode.WRONG_PHASE, 'Das geht nur im eigenen Zug');
+  }
+  return canActAtAll(state, player);
+}
+
 /** Ob der Spieler eine Karte kaufen kann: Phase, Zug, Stapel, Preis. */
 export function canBuyDevelopmentCard(state: GameState, player: PlayerId): RuleViolation | null {
-  const timing = canActNow(state, player);
+  const timing = canBuyNow(state, player);
   if (timing !== null) return timing;
 
   if (state.deck.length === 0) {
@@ -112,7 +132,7 @@ export function canPlayDevelopmentCard(
   player: PlayerId,
   card: DevelopmentCardId,
 ): RuleViolation | null {
-  const timing = canActNow(state, player);
+  const timing = canPlayNow(state, player);
   if (timing !== null) return timing;
 
   if (state.developmentPlayed) {
@@ -179,7 +199,12 @@ export function applyPlayKnight(state: GameState, player: PlayerId): ReduceResul
     ...spent,
     players,
     largestArmy: nextLargestArmy(state, player, knights),
-    phase: { kind: 'robberPending' },
+    // Der Ritter darf vor **und** nach dem Wurf. Wohin es nach dem Raeuber
+    // zurueckgeht, entscheidet deshalb die Phase, aus der er gespielt wurde.
+    phase: {
+      kind: 'robberPending',
+      resume: state.phase.kind === 'rollPending' ? 'rollPending' : 'main',
+    },
   });
 }
 

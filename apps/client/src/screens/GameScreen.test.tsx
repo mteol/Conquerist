@@ -11,18 +11,22 @@ import {
   setupPlayer,
   type GameState,
 } from '@conquerist/shared';
-import { render, screen, userEvent } from '../test/dom';
+import { fireEvent, render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { useLocalGame } from '../game/useLocalGame';
 import { GameScreen } from './GameScreen';
+import { confirmPlacement, placeEdge, placeVertex, tapVertex } from '../test/board';
+import { afterOpening } from '../test/opening';
 
 const scenario = generateScenario(CLASSIC_34, 'screen-probe');
 const seats = defaultSeats(3);
-const start = createGame(
-  scenario,
-  CLASSIC_RULES,
-  seats.map((seat) => seat.id),
-  'screen-probe',
+const start = afterOpening(
+  createGame(
+    scenario,
+    CLASSIC_RULES,
+    seats.map((seat) => seat.id),
+    'screen-probe',
+  ),
 );
 
 /**
@@ -107,7 +111,7 @@ function firstSetupVertex(): string {
  * Zwei-Schritt-Weg folgt wie jeder andere Bau, tut das jeder Test, der sie
  * durchklickt - und diese Funktion ist der Ort, an dem das einmal steht.
  */
-async function setupStep(): Promise<boolean> {
+async function setupStep(container: HTMLElement): Promise<boolean> {
   const piece = ['build-settlement', 'build-road']
     .map((id) => screen.getByTestId(id) as HTMLButtonElement)
     .find((button) => !button.disabled);
@@ -120,7 +124,12 @@ async function setupStep(): Promise<boolean> {
     .find((node) => node.dataset['target'] === 'true');
   if (target === undefined) return false;
 
-  await userEvent.click(target);
+  // Seit dem Umbau auf schmale Geraete: tippen, dann bestaetigen. Derselbe Weg
+  // fuer Maus und Finger, also auch hier.
+  const id = target.dataset['testid']!;
+  if (id.startsWith('vertex-')) placeVertex(container, id.replace('vertex-', ''));
+  else placeEdge(container, id.replace('edge-', ''));
+
   return true;
 }
 
@@ -133,10 +142,10 @@ describe('GameScreen', () => {
   });
 
   it('setzt auf Klick eine Siedlung und schaltet auf die Strasse weiter', async () => {
-    render(<LocalGame />);
+    const { container } = render(<LocalGame />);
 
     await userEvent.click(screen.getByTestId('build-settlement'));
-    await userEvent.click(screen.getByTestId(`vertex-${firstSetupVertex()}`));
+    placeVertex(container, firstSetupVertex());
 
     // Nach der Siedlung ist die Strasse an der Reihe - und wie ueberall sonst
     // bleibt das Brett ruhig, bis sie gewaehlt ist.
@@ -153,10 +162,10 @@ describe('GameScreen', () => {
   });
 
   it('schreibt jeden Zug in den Verlauf', async () => {
-    render(<LocalGame />);
+    const { container } = render(<LocalGame />);
 
     await userEvent.click(screen.getByTestId('build-settlement'));
-    await userEvent.click(screen.getByTestId(`vertex-${firstSetupVertex()}`));
+    placeVertex(container, firstSetupVertex());
 
     // Der Verlauf liegt seit dem neuen Layout hinter seinem Symbol - er wird
     // trotzdem geschrieben, waehrend er zu ist. Genau das steht hier.
@@ -214,11 +223,11 @@ describe('GameScreen', () => {
   });
 
   it('sperrt das Bauen, solange nicht gewuerfelt ist', async () => {
-    render(<LocalGame />);
+    const { container } = render(<LocalGame />);
 
     // Gruendungsphase durchklicken: je Zug erst das Bauteil, dann die Stelle.
     for (let step = 0; step < 12; step += 1) {
-      if (!(await setupStep())) break;
+      if (!(await setupStep(container))) break;
     }
 
     // Gewuerfelt wird an den Wuerfeln - einen eigenen Knopf dafuer gibt es nicht.
@@ -334,11 +343,11 @@ describe('Bauen in zwei Schritten', () => {
   });
 
   it('baut auf den zweiten Klick und raeumt die Auswahl danach weg', async () => {
-    render(<LocalGameFrom state={richMainPhase()} />);
+    const { container } = render(<LocalGameFrom state={richMainPhase()} />);
 
     await userEvent.click(screen.getByTestId('build-road'));
     const edge = screen.getAllByTestId(/^edge-/).find((node) => node.dataset['target'] === 'true')!;
-    await userEvent.click(edge);
+    placeEdge(container, edge.dataset['testid']!.replace('edge-', ''));
 
     await userEvent.click(screen.getByTestId('log-toggle'));
     expect(screen.getByText(/baut eine Straße/)).toBeDefined();
@@ -447,5 +456,134 @@ describe('Abwerfen nach einer Sieben', () => {
     // Spieler 3 hat kein Lehm - der Knopf darf nichts bewirken.
     await userEvent.click(screen.getByLabelText('Lehm mehr'));
     expect(screen.getByTestId('chosen-brick').textContent).toBe('0');
+  });
+});
+
+describe('Der Auftakt auf dem Spielbildschirm', () => {
+  // `start` ist oben schon durch den Auftakt gewuerfelt - hier braucht es die
+  // Partie davor.
+  const imAuftakt = createGame(
+    scenario,
+    CLASSIC_RULES,
+    seats.map((seat) => seat.id),
+    'screen-probe',
+  );
+
+  function GameFrom({ state }: { readonly state: typeof imAuftakt }): JSX.Element {
+    const game = useLocalGame(state, seats);
+
+    return (
+      <GameScreen
+        view={game.view}
+        actions={game.actions}
+        log={game.log}
+        error={game.error}
+        onAct={game.act}
+        onDismissError={game.dismissError}
+        onLeave={vi.fn()}
+      />
+    );
+  }
+
+  it('legt die Auftakttafel auf den Tisch, solange gewuerfelt wird', () => {
+    render(<GameFrom state={imAuftakt} />);
+
+    expect(screen.getByText(/Wer beginnt/)).toBeDefined();
+  });
+
+  it('bietet dort den Wuerfelknopf an', () => {
+    render(<GameFrom state={imAuftakt} />);
+
+    expect(screen.getByRole('button', { name: /Würfeln/ })).toBeDefined();
+  });
+
+  it('raeumt sie weg, sobald die Gruendung laeuft', () => {
+    render(<GameFrom state={afterOpening(imAuftakt)} />);
+
+    expect(screen.queryByText(/Wer beginnt/)).toBeNull();
+  });
+});
+
+describe('Tippen, dann bestaetigen', () => {
+  it('handelt beim ersten Tipp noch nicht', async () => {
+    const { container } = render(<LocalGame />);
+
+    await userEvent.click(screen.getByTestId('build-settlement'));
+    tapVertex(container, firstSetupVertex());
+
+    // Nichts gebaut - aber der Geist steht und der Knopf fragt.
+    expect(screen.queryByTestId(`pending-${firstSetupVertex()}`)).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Hier setzen' })).toBeDefined();
+    expect(screen.queryByTestId('log-toggle')).toBeDefined();
+  });
+
+  it('handelt erst auf den Knopf', async () => {
+    const { container } = render(<LocalGame />);
+
+    await userEvent.click(screen.getByTestId('build-settlement'));
+    tapVertex(container, firstSetupVertex());
+    confirmPlacement(container);
+
+    await userEvent.click(screen.getByTestId('log-toggle'));
+    expect(screen.getByText(/setzt die Gründungssiedlung/)).toBeDefined();
+  });
+
+  it('verschiebt die Auswahl beim zweiten Tipp, statt zu setzen', async () => {
+    const { container } = render(<LocalGame />);
+
+    await userEvent.click(screen.getByTestId('build-settlement'));
+
+    const ziele = screen
+      .getAllByTestId(/^vertex-/)
+      .filter((node) => node.dataset['target'] === 'true')
+      .map((node) => node.dataset['testid']!.replace('vertex-', ''));
+
+    tapVertex(container, ziele[0]!);
+    tapVertex(container, ziele[5]!);
+
+    // Ein Fehlgriff kostet nichts: der Geist wandert, gesetzt ist noch nichts.
+    expect(screen.queryByTestId(`pending-${ziele[0]!}`)).toBeNull();
+    expect(screen.queryByTestId(`pending-${ziele[5]!}`)).not.toBeNull();
+
+    await userEvent.click(screen.getByTestId('log-toggle'));
+    expect(screen.queryByText(/setzt die Gründungssiedlung/)).toBeNull();
+  });
+
+  it('raeumt die Auswahl mit Escape', async () => {
+    const { container } = render(<LocalGame />);
+
+    await userEvent.click(screen.getByTestId('build-settlement'));
+    tapVertex(container, firstSetupVertex());
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(screen.queryByRole('button', { name: 'Hier setzen' })).toBeNull();
+  });
+
+  it('raeumt die Auswahl auch ueber den zweiten Knopf', async () => {
+    const { container } = render(<LocalGame />);
+
+    await userEvent.click(screen.getByTestId('build-settlement'));
+    tapVertex(container, firstSetupVertex());
+    // „Doch nicht" und nicht „Abbrechen": den Namen traegt schon der Knopf,
+    // der den Bau-Modus verlaesst, und zwei gleich benannte Knoepfe auf einem
+    // Bildschirm sind auch fuer einen Screenreader mehrdeutig.
+    await userEvent.click(screen.getByRole('button', { name: 'Doch nicht' }));
+
+    expect(screen.queryByRole('button', { name: 'Hier setzen' })).toBeNull();
+    expect(screen.queryByTestId(`pending-${firstSetupVertex()}`)).toBeNull();
+  });
+});
+
+describe('Der Hinweis fuers Hochformat', () => {
+  it('steht im Bildschirm und laesst sich wegtippen', async () => {
+    render(<LocalGame />);
+
+    // Ob er zu sehen ist, entscheidet das Blatt - jsdom rechnet kein Layout.
+    // Was hier geprueft wird, ist der Zustand: er ist da und geht wieder weg.
+    expect(screen.getByText(/Quer halten/)).toBeDefined();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Verstanden' }));
+
+    expect(screen.queryByText(/Quer halten/)).toBeNull();
   });
 });

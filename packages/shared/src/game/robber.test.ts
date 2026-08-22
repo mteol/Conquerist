@@ -10,6 +10,7 @@ import {
   playersMustDiscard,
   victimsAt,
 } from './robber.js';
+import { PhaseSchema } from './phase.js';
 import { countResources } from './resources.js';
 import type { GameState } from './state.js';
 
@@ -110,7 +111,7 @@ describe('applyDiscard', () => {
 
     const result = applyDiscard(state, 'p1', hand({ brick: 4 }));
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.state.phase).toEqual({ kind: 'robberPending' });
+    if (result.ok) expect(result.state.phase).toEqual({ kind: 'robberPending', resume: 'main' });
   });
 });
 
@@ -161,7 +162,7 @@ describe('victimsAt', () => {
 
 describe('applyMoveRobber', () => {
   function robbing(overrides: Partial<GameState> = {}): GameState {
-    return testGame({ phase: { kind: 'robberPending' }, ...overrides });
+    return testGame({ phase: { kind: 'robberPending', resume: 'main' }, ...overrides });
   }
 
   it('versetzt den Raeuber und geht in die Hauptphase', () => {
@@ -252,5 +253,31 @@ describe('applyMoveRobber', () => {
 
   it('laesst das Versetzen ohne Opfer zu, wenn niemand dort wohnt', () => {
     expect(applyMoveRobber(robbing(), 'p1', '-1,1', null).ok).toBe(true);
+  });
+});
+
+describe('der Rueckweg des Raeubers', () => {
+  it('geht nach einer Sieben in die Hauptphase', () => {
+    const state = testGame({ phase: { kind: 'robberPending', resume: 'main' } });
+    const result = applyMoveRobber(state, 'p1', '1,0', null);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.phase).toEqual({ kind: 'main' });
+  });
+
+  it('geht nach einem Ritter vor dem Wurf zurueck zum Wurf', () => {
+    // Der eigentliche Befund: ohne `resume` landete der Spieler in `main`, und
+    // der Wurf dieser Runde fiel ersatzlos aus.
+    const state = testGame({ phase: { kind: 'robberPending', resume: 'rollPending' } });
+    const result = applyMoveRobber(state, 'p1', '1,0', null);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.phase).toEqual({ kind: 'rollPending' });
+  });
+
+  it('kennt keine Raeuberphase ohne Rueckweg', () => {
+    expect(PhaseSchema.safeParse({ kind: 'robberPending' }).success).toBe(false);
   });
 });

@@ -22,6 +22,7 @@ import { DevelopmentCards } from '../panels/DevelopmentCards';
 import { ResourcePickDialog } from '../dialogs/ResourcePickDialog';
 import { LogPanel } from '../panels/LogPanel';
 import { StatusPanel } from '../panels/StatusPanel';
+import { OpeningPanel } from '../panels/OpeningPanel';
 import { TablePanel } from '../panels/TablePanel';
 import { DiscardDialog } from '../dialogs/DiscardDialog';
 import { TradeDialog } from '../dialogs/TradeDialog';
@@ -222,7 +223,7 @@ export function GameScreen({
     };
   }, [targets, buildMode, buildingRoads, view.roadBuildingTargets, view.you]);
 
-  const pick = useCallback(
+  const commit = useCallback(
     (place: Place) => {
       if (place.kind === 'vertex') {
         const action = targets.vertices.get(place.id);
@@ -265,6 +266,52 @@ export function GameScreen({
     },
     [targets, onAct, buildingRoads, view.you, view.roadBuildingTargets],
   );
+
+  /*
+   * Zwischen Absicht und Ausfuehrung steht ein Knopf.
+   *
+   * Der Zwischenschritt ist keine Bequemlichkeit, sondern die Bedingung dafuer,
+   * dass es **einen** Weg fuer Maus und Finger gibt: auf einem Handy im
+   * Querformat liegen benachbarte Knoten rund 34 px auseinander, eine
+   * Fingerkuppe misst 44 px, und bei der ersten Setzung ist jeder Knoten des
+   * Bretts erlaubt (im Browser nachgezaehlt: 54 Stellen). Ein Tipp ist dort
+   * mehrdeutig - und ein Fehlgriff war bis hierher sofort und unwiderruflich.
+   *
+   * Derselbe Weg auf jedem Geraet: ein Touch-Sonderweg waere ein zweiter Satz
+   * Interaktionen, den kein Test am Schreibtisch je erwischt.
+   */
+  const [pending, setPending] = useState<Place | null>(null);
+
+  /*
+   * Der Hinweis, das Geraet zu drehen. Ob er ueberhaupt zu sehen ist,
+   * entscheidet das Blatt (`orientation: portrait` und schmal) - hier steht nur,
+   * ob er weggetippt wurde. Ein Riegel ist er nicht: wer hochkant nur zusehen
+   * will, soll das duerfen.
+   */
+  const [rotateHint, setRotateHint] = useState(true);
+
+  const pick = useCallback((place: Place) => setPending(place), []);
+
+  const confirm = useCallback(() => {
+    if (pending === null) return;
+    commit(pending);
+    setPending(null);
+  }, [pending, commit]);
+
+  // Wechselt die Phase oder der Handelnde, faellt die Auswahl: sonst stuende
+  // ein Geist auf einem Ziel, das es nicht mehr gibt.
+  useEffect(() => setPending(null), [view.phase.kind, view.you]);
+
+  useEffect(() => {
+    if (pending === null) return;
+
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setPending(null);
+    };
+
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pending]);
 
   const playerOf = (id: PlayerId): PlayerRow | undefined =>
     display.players.find((player) => player.id === id);
@@ -322,6 +369,7 @@ export function GameScreen({
             color: player.color,
           }))}
           onPick={pick}
+          pending={pending}
         />
 
         {offline ? (
@@ -330,6 +378,32 @@ export function GameScreen({
           </div>
         ) : null}
       </div>
+
+      {rotateHint && (
+        <div className="rotate-hint" role="status">
+          <span>Quer halten — dann liegt das Brett richtig.</span>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => setRotateHint(false)}
+          >
+            Verstanden
+          </button>
+        </div>
+      )}
+
+      {pending !== null && (
+        <div className="confirm" role="group" aria-label="Auswahl bestätigen">
+          <button type="button" className="button button--go" onClick={confirm}>
+            Hier setzen
+          </button>
+          <button type="button" className="button button--ghost" onClick={() => setPending(null)}>
+            Doch nicht
+          </button>
+        </div>
+      )}
+
+      <OpeningPanel view={display} />
 
       <TablePanel view={display} />
 

@@ -10,17 +10,19 @@ import {
   reduce,
   setupPlayer,
   victoryPointsOf,
+  yieldTotal,
   type GameState,
 } from '@conquerist/shared';
 import { defaultSeats } from '../seats';
-import { actingPlayers, discardCountForView, gameViewOf } from './view';
+import { afterOpening } from '../test/opening';
+import { actingPlayers, cameFromRoll, discardCountForView, gameViewOf } from './view';
 
 const scenario = generateScenario(CLASSIC_34, 'view-probe');
 const seats = defaultSeats(3);
 const ids = seats.map((seat) => seat.id);
 
 function afterSetup(): GameState {
-  let state = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
+  let state = afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'view-probe'));
 
   while (state.phase.kind === 'setup') {
     const player = setupPlayer(state)!;
@@ -33,8 +35,25 @@ function afterSetup(): GameState {
 }
 
 describe('Anzeigemodell', () => {
-  it('nennt in der Gruendung den Spieler aus der Schlange, nicht den Index', () => {
+  it('nennt im Auftakt den Vordersten der Warteschlange', () => {
     const state = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
+    if (state.phase.kind !== 'opening') throw new Error('Die Partie beginnt im Auftakt');
+
+    expect(actingPlayers(state)).toEqual([state.phase.pending[0]]);
+  });
+
+  it('laesst im Auftakt niemanden handeln, wenn die Runde vollstaendig ist', () => {
+    const state = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
+    const leer = {
+      ...state,
+      phase: { kind: 'opening' as const, rolls: {}, pending: [], round: 0 },
+    };
+
+    expect(actingPlayers(leer)).toEqual([]);
+  });
+
+  it('nennt in der Gruendung den Spieler aus der Schlange, nicht den Index', () => {
+    const state = afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'view-probe'));
     expect(actingPlayers(state)).toEqual([setupPlayer(state)]);
   });
 
@@ -83,7 +102,16 @@ describe('Anzeigemodell', () => {
   });
 
   it('sagt in jeder Phase, was zu tun ist', () => {
-    const setup = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
+    const auftakt = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
+    expect(gameViewOf(playerViewOf(auftakt, ids[0]!, seats, 0)).phaseText).toContain('Auftakt');
+
+    const stechen = {
+      ...auftakt,
+      phase: { kind: 'opening' as const, rolls: {}, pending: [ids[0]!], round: 1 },
+    };
+    expect(gameViewOf(playerViewOf(stechen, ids[0]!, seats, 0)).phaseText).toContain('Stechen');
+
+    const setup = afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'view-probe'));
     expect(gameViewOf(playerViewOf(setup, ids[0]!, seats, 0)).phaseText).toContain('Gründung');
 
     const rolling = afterSetup();
@@ -115,5 +143,44 @@ describe('actingPlayers in tradePending', () => {
     const responses = { [ids[1]!]: { kind: 'accepted' } };
 
     expect(actingPlayers(offerPhase(responses) as never)).toEqual([ids[2], ids[0]]);
+  });
+});
+
+describe('der Auftakt im Anzeigemodell', () => {
+  const start = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
+  const viewOf = (state: GameState) => playerViewOf(state, ids[0]!, seats, 1);
+
+  it('laesst die Wuerfel auch im Auftakt fliegen', () => {
+    // Ohne diesen Fall haette der Auftakt lautlos gewuerfelt: `cameFromRoll`
+    // kannte nur den Weg aus `rollPending` heraus, und im Auftakt bleibt die
+    // Phase dieselbe.
+    if (start.phase.kind !== 'opening') throw new Error('Die Partie beginnt im Auftakt');
+    const result = reduce(start, { type: 'rollDice', player: start.phase.pending[0]! });
+    if (!result.ok) throw new Error(result.error.message);
+
+    expect(cameFromRoll(viewOf(start), viewOf(result.state))).toBe(true);
+  });
+
+  it('laesst sie nicht fliegen, wenn sich am Auftakt nichts geaendert hat', () => {
+    expect(cameFromRoll(viewOf(start), viewOf(start))).toBe(false);
+  });
+
+  it('zeigt die Summen der schon Gefallenen', () => {
+    if (start.phase.kind !== 'opening') throw new Error('Die Partie beginnt im Auftakt');
+    const werfer = start.phase.pending[0]!;
+    const result = reduce(start, { type: 'rollDice', player: werfer });
+    if (!result.ok) throw new Error(result.error.message);
+
+    const view = gameViewOf(viewOf(result.state));
+
+    expect(view.opening).not.toBeNull();
+    expect(view.opening!.round).toBe(0);
+    expect(view.opening!.totals.get(werfer)).toBe(
+      yieldTotal(result.state.rules.dice, result.state.lastRoll!),
+    );
+  });
+
+  it('meldet ausserhalb des Auftakts keinen Auftakt', () => {
+    expect(gameViewOf(viewOf(afterSetup())).opening).toBeNull();
   });
 });

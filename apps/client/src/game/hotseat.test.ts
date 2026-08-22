@@ -11,14 +11,17 @@ import {
 } from '@conquerist/shared';
 import { defaultSeats } from '../seats';
 import { hotseatReducer, startHotseat, type HotseatState } from './hotseat';
+import { afterOpening } from '../test/opening';
 
 const scenario = generateScenario(CLASSIC_34, 'hotseat-probe');
 const seats = defaultSeats(3);
-const start = createGame(
-  scenario,
-  CLASSIC_RULES,
-  seats.map((seat) => seat.id),
-  'hotseat-probe',
+const start = afterOpening(
+  createGame(
+    scenario,
+    CLASSIC_RULES,
+    seats.map((seat) => seat.id),
+    'hotseat-probe',
+  ),
 );
 
 const apply = (state: HotseatState, action: GameAction): HotseatState =>
@@ -58,11 +61,16 @@ describe('Hotseat-Zustand', () => {
   });
 
   it('haengt jede angenommene Aktion an Folge und Verlauf', () => {
-    const state = apply(startHotseat(start), legalActions(start, setupPlayer(start)!)[0]!);
+    const actor = setupPlayer(start)!;
+    const state = apply(startHotseat(start), legalActions(start, actor)[0]!);
+
+    // Wer zuerst setzt, hat der Auftakt entschieden - der Name kommt deshalb
+    // aus dem Sitz und steht nicht fest im Test.
+    const name = seats.find((seat) => seat.id === actor)!.name;
 
     expect(state.actions).toHaveLength(1);
     expect(state.log).toHaveLength(1);
-    expect(state.log[0]!.text).toContain('Spieler 1');
+    expect(state.log[0]!.text).toContain(name);
     expect(state.game).not.toBe(start);
   });
 

@@ -1,3 +1,4 @@
+import { rollOpening } from './openingFixture.js';
 import { describe, expect, it } from 'vitest';
 import {
   MAX_VICTORY_POINT_GOAL,
@@ -86,7 +87,8 @@ describe('Raum', () => {
   it('nimmt einen Zug nur vom richtigen Spieler an', () => {
     const started = startGame(withThree(), 'u1');
     if (!started.ok) throw new Error(started.error);
-    const running = started.room;
+    // Erst den Auftakt zu Ende wuerfeln - vorher gibt es keine Gruendungszuege.
+    const running = rollOpening(started.room);
     const game = running.game!;
 
     const first = legalActions(game, setupPlayer(game)!)[0]!;

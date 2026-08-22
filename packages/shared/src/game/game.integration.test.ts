@@ -84,6 +84,9 @@ function chooseAction(state: GameState, player: string): GameAction | null {
 
 /** Wer als naechstes handeln muss. */
 function nextActor(state: GameState): string | null {
+  // Der Auftakt wird mitgespielt und nicht uebersprungen: dieser Test ist der
+  // einzige, der eine ganze Partie von vorn durchlaeuft.
+  if (state.phase.kind === 'opening') return state.phase.pending[0] ?? null;
   if (state.phase.kind === 'discardPending') return state.phase.pending[0] ?? null;
   if (state.phase.kind === 'finished') return null;
   if (state.phase.kind === 'setup') {
@@ -155,7 +158,14 @@ describe('Eine ganze Partie', () => {
     );
 
     expect(setupActions).toHaveLength(PLAYERS.length * 4);
-    expect(log.slice(0, PLAYERS.length * 4)).toEqual(setupActions);
+
+    // Vor der Gruendung steht der Auftakt: lauter `rollDice`, mindestens eines
+    // je Spieler, bei einem Stechen mehr. Danach kommen die Gruendungszuege am
+    // Stueck - und genau das haelt diese Zeile fest.
+    const auftakt = log.findIndex((action) => action.type === 'placeSetupSettlement');
+    expect(auftakt).toBeGreaterThanOrEqual(PLAYERS.length);
+    expect(log.slice(0, auftakt).every((action) => action.type === 'rollDice')).toBe(true);
+    expect(log.slice(auftakt, auftakt + PLAYERS.length * 4)).toEqual(setupActions);
   });
 
   it('haelt die Bauteilvorraete ein', () => {

@@ -5,6 +5,7 @@ import { CLASSIC_34, generateScenario } from '../scenario/index.js';
 import { RuleViolationCode } from './errors.js';
 import {
   ADJACENT_VERTEX,
+  afterOpening,
   CENTER_EDGE,
   CENTER_VERTEX,
   FAR_VERTEX,
@@ -16,8 +17,23 @@ import {
 import { applySetupRoad, applySetupSettlement, createGame } from './setup.js';
 import type { GameState } from './state.js';
 
+/**
+ * Eine Partie am Beginn der Gruendung.
+ *
+ * Der Auftakt dreht die Sitzreihenfolge auf den hoechsten Wurf. Diese Tests
+ * pruefen die Gruendung und nicht den Auftakt - deshalb wird die Saat so
+ * gewaehlt, dass der erste Spieler auch der erste bleibt. Sonst stuende in jedem
+ * Test eine Rotation, die mit seiner Aussage nichts zu tun hat.
+ */
 function newGame(players: readonly string[] = TEST_PLAYERS): GameState {
-  return createGame(TEST_SCENARIO, CLASSIC_RULES, players, 'setup-test');
+  for (let versuch = 0; versuch < 500; versuch += 1) {
+    const game = afterOpening(
+      createGame(TEST_SCENARIO, CLASSIC_RULES, players, `setup-test-${versuch}`),
+    );
+    if (game.players[0]?.id === players[0]) return game;
+  }
+
+  throw new Error('newGame: keine Saat gefunden, bei der der erste Spieler beginnt');
 }
 
 /** Setzt Siedlung und Strasse und gibt den Folgezustand zurueck. */
@@ -34,7 +50,7 @@ function place(state: GameState, player: string, vertex: string, edge: string): 
 }
 
 describe('createGame', () => {
-  it('beginnt in der Gruendungsphase beim ersten Spieler', () => {
+  it('beginnt nach dem Auftakt in der Gruendungsphase beim ersten Spieler', () => {
     const state = newGame();
 
     expect(state.phase).toEqual({ kind: 'setup', placement: 0, settlement: null });
@@ -56,7 +72,11 @@ describe('createGame', () => {
     expect(state.bank).toEqual(CLASSIC_RULES.resourceBank);
     expect(state.buildings).toEqual({});
     expect(state.roads).toEqual({});
-    expect(state.lastRoll).toBeNull();
+
+    // `lastRoll` ist hier **nicht** mehr null: der Auftakt hat gewuerfelt, und
+    // sein letzter Wurf liegt auf dem Tisch. Dass er vor dem Auftakt null ist,
+    // haelt der Test in "createGame und der Auftakt" fest.
+    expect(state.lastRoll).not.toBeNull();
   });
 
   it('erzeugt aus demselben Seed denselben Startzustand', () => {
@@ -212,5 +232,33 @@ describe('Ende der Gruendungsphase', () => {
     expect(state.turn).toBe(1);
     expect(Object.keys(state.buildings)).toHaveLength(6);
     expect(Object.keys(state.roads)).toHaveLength(6);
+  });
+});
+
+describe('createGame und der Auftakt', () => {
+  it('startet im Auftakt und nicht in der Gruendung', () => {
+    const game = createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'saat');
+
+    expect(game.phase).toEqual({
+      kind: 'opening',
+      rolls: {},
+      pending: [...TEST_PLAYERS],
+      round: 0,
+    });
+    expect(game.lastRoll).toBeNull();
+  });
+
+  it('kommt ueber den Auftakt in die Gruendung, mit allen Spielern', () => {
+    const game = afterOpening(createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'saat'));
+
+    expect(game.phase).toEqual({ kind: 'setup', placement: 0, settlement: null });
+    expect([...game.players].map((player) => player.id).sort()).toEqual([...TEST_PLAYERS].sort());
+  });
+
+  it('ist bei gleicher Saat derselbe Auftakt', () => {
+    const a = afterOpening(createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'saat'));
+    const b = afterOpening(createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'saat'));
+
+    expect(a.players.map((player) => player.id)).toEqual(b.players.map((player) => player.id));
   });
 });

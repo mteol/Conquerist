@@ -15,6 +15,9 @@ import {
 import { render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { GameScreen } from './GameScreen';
+import { useLocalGame } from '../game/useLocalGame';
+import { placeEdge, placeHex } from '../test/board';
+import { afterOpening } from '../test/opening';
 
 const seats = defaultSeats(3);
 const ids = seats.map((seat) => seat.id);
@@ -22,7 +25,7 @@ const scenario = generateScenario(CLASSIC_34, 'karten-probe');
 
 /** Eine Partie bis nach der Gruendung, damit die Hauptphase laeuft. */
 function afterSetup(): GameState {
-  let state = createGame(scenario, CLASSIC_RULES, ids, 'karten-probe');
+  let state = afterOpening(createGame(scenario, CLASSIC_RULES, ids, 'karten-probe'));
   while (state.phase.kind === 'setup') {
     const result = reduce(state, legalActions(state, setupPlayer(state)!)[0]!);
     if (!result.ok) throw new Error(result.error.message);
@@ -31,14 +34,24 @@ function afterSetup(): GameState {
   return state;
 }
 
-/** Hauptphase, reicher erster Spieler - so ist der Kauf ueberhaupt moeglich. */
+/**
+ * Hauptphase, reicher Zuschauer - so ist der Kauf ueberhaupt moeglich.
+ *
+ * Gebunden an die **Id** und nicht an den Index: seit dem Auftakt dreht sich
+ * die Sitzreihenfolge auf den hoechsten Wurf, und `screenFor` zeigt die Sicht
+ * von `ids[0]`. Waere hier weiter Index 0 gemeint, saehe der Test einem anderen
+ * beim Spielen zu als dem, den er reich gemacht hat.
+ */
 function playable(overrides: Partial<GameState> = {}): GameState {
   const base = afterSetup();
+  const viewer = ids[0]!;
+
   return {
     ...base,
     phase: { kind: 'main' },
-    players: base.players.map((entry, index) =>
-      index === 0
+    currentPlayerIndex: base.players.findIndex((entry) => entry.id === viewer),
+    players: base.players.map((entry) =>
+      entry.id === viewer
         ? { ...entry, resources: { brick: 4, lumber: 4, wool: 4, grain: 4, ore: 4 } }
         : entry,
     ),
@@ -90,8 +103,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('zeigt die eigenen Karten und laesst nur die spielbaren anklicken', () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? {
               ...entry,
               developmentCards: [
@@ -114,8 +127,10 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     const onAct = vi.fn();
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0 ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] } : entry,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
+          ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] }
+          : entry,
       ),
     });
 
@@ -130,8 +145,10 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     const onAct = vi.fn();
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0 ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 1 }] } : entry,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
+          ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 1 }] }
+          : entry,
       ),
     });
 
@@ -154,8 +171,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     const onAct = vi.fn();
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? { ...entry, developmentCards: [{ id: 'yearOfPlenty', boughtOnTurn: 1 }] }
           : entry,
       ),
@@ -182,14 +199,14 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     const onAct = vi.fn();
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? { ...entry, developmentCards: [{ id: 'roadBuilding', boughtOnTurn: 1 }] }
           : entry,
       ),
     });
 
-    render(screenFor(state, ids[0]!, onAct));
+    const { container } = render(screenFor(state, ids[0]!, onAct));
     await userEvent.click(screen.getByTestId('devcard-roadBuilding'));
 
     // Kein Fenster: wo eine Strasse hinkann, sieht man auf dem Brett.
@@ -200,7 +217,7 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
       .filter((node) => node.dataset['target'] === 'true');
     expect(leuchtend.length).toBeGreaterThan(0);
 
-    await userEvent.click(leuchtend[0]!);
+    placeEdge(container, leuchtend[0]!.dataset['testid']!.replace('edge-', ''));
     expect(screen.getByText(/zweite Straße auf dem Brett/)).toBeDefined();
     expect(onAct).not.toHaveBeenCalled();
   });
@@ -209,8 +226,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     const onAct = vi.fn();
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? {
               ...entry,
               developmentCards: [{ id: 'roadBuilding', boughtOnTurn: 1 }],
@@ -221,7 +238,7 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
       ),
     });
 
-    render(screenFor(state, ids[0]!, onAct));
+    const { container } = render(screenFor(state, ids[0]!, onAct));
     await userEvent.click(screen.getByTestId('devcard-roadBuilding'));
 
     const leuchtend = screen
@@ -234,7 +251,7 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
      * mehr, und die Karte liess sich nur abbrechen - obwohl der Reducer eine
      * einzelne Strasse ausdruecklich annimmt.
      */
-    await userEvent.click(leuchtend[0]!);
+    placeEdge(container, leuchtend[0]!.dataset['testid']!.replace('edge-', ''));
 
     expect(onAct).toHaveBeenCalledTimes(1);
     expect(onAct.mock.calls[0]![0]).toMatchObject({
@@ -253,8 +270,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('gibt jeder Karte ein Motiv und laesst den Namen daneben stehen', () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? {
               ...entry,
               developmentCards: [
@@ -286,8 +303,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('macht aus dem Siegpunkt keinen dauerhaft gesperrten Knopf', () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? { ...entry, developmentCards: [{ id: 'victoryPoint', boughtOnTurn: 1 }] }
           : entry,
       ),
@@ -304,8 +321,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('zaehlt mehrere Karten derselben Sorte auf einer Plakette', () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? {
               ...entry,
               developmentCards: [
@@ -340,8 +357,10 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('erklaert beim Darueberfahren, was eine Karte tut', async () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0 ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] } : entry,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
+          ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] }
+          : entry,
       ),
     });
 
@@ -363,8 +382,10 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('erklaert auch die Karte, die man gerade nicht spielen darf', async () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0 ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 4 }] } : entry,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
+          ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 4 }] }
+          : entry,
       ),
     });
 
@@ -393,8 +414,8 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('haengt den Satz auch ohne Maus an jede Karte', () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 0
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
           ? {
               ...entry,
               developmentCards: [
@@ -423,8 +444,10 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
   it('zeigt fremde Entwicklungskarten nirgends', () => {
     const state = playable({
       turn: 4,
-      players: afterSetup().players.map((entry, index) =>
-        index === 1 ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 1 }] } : entry,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[1]
+          ? { ...entry, developmentCards: [{ id: 'monopoly', boughtOnTurn: 1 }] }
+          : entry,
       ),
     });
 
@@ -432,5 +455,101 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
 
     // p1 sieht seine eigene (leere) Reihe - von p2 nichts.
     expect(screen.queryByTestId('devcard-monopoly')).toBeNull();
+  });
+});
+
+describe('Karten vor dem Wurf', () => {
+  /** Hauptphase-Aufbau, aber die Partie steht noch vor dem Wurf. */
+  const beforeRoll = (): GameState =>
+    playable({
+      phase: { kind: 'rollPending' },
+      turn: 4,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
+          ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] }
+          : entry,
+      ),
+    });
+
+  it('laesst den Ritter vor dem Wurf anklicken', () => {
+    // Der Client kennt keine Regel: was die Sicht als spielbar nennt, ist
+    // bedienbar. Dieser Test haelt fest, dass die Sperre wirklich von dort
+    // kommt und nicht aus einer eigenen Phasenabfrage im Panel.
+    render(screenFor(beforeRoll()));
+
+    expect(screen.getByTestId('devcard-knight')).toHaveProperty('disabled', false);
+  });
+
+  it('sperrt den Kauf vor dem Wurf', () => {
+    render(screenFor(beforeRoll()));
+
+    expect(screen.getByTestId('deck-buy')).toHaveProperty('disabled', true);
+  });
+
+  it('schickt den Ritter auch vor dem Wurf hinaus', async () => {
+    const onAct = vi.fn();
+
+    render(screenFor(beforeRoll(), ids[0]!, onAct));
+    await userEvent.click(screen.getByTestId('devcard-knight'));
+
+    expect(onAct).toHaveBeenCalledWith({ type: 'playKnight', player: ids[0] });
+  });
+});
+
+describe('Der Ritter vor dem Wurf, durch die Oberflaeche', () => {
+  /**
+   * Der Befund, um den es bei dieser Regel geht, in einem Durchgang: Ritter
+   * spielen, Raeuber versetzen, und der Wuerfelknopf muss **wieder da sein**.
+   * Faellt er weg, ist der Wurf dieser Runde ersatzlos verloren - und genau das
+   * tat `applyMoveRobber`, bevor `robberPending` seinen Rueckweg trug.
+   *
+   * Ueber `useLocalGame` und nicht ueber einen gestellten Zustand: nur so geht
+   * der Zug wirklich durch Reducer, Sicht und Bildschirm.
+   */
+  function LocalFrom({ state }: { readonly state: GameState }): JSX.Element {
+    const game = useLocalGame(state, seats);
+
+    return (
+      <GameScreen
+        view={game.view}
+        actions={game.actions}
+        log={game.log}
+        error={game.error}
+        onAct={game.act}
+        onDismissError={game.dismissError}
+        onLeave={vi.fn()}
+      />
+    );
+  }
+
+  it('bringt den Wuerfelknopf nach dem Raeuber zurueck', async () => {
+    const start = playable({
+      phase: { kind: 'rollPending' },
+      turn: 4,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
+          ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] }
+          : entry,
+      ),
+    });
+
+    const { container } = render(<LocalFrom state={start} />);
+
+    await userEvent.click(screen.getByTestId('devcard-knight'));
+
+    // Jetzt steht der Raeuber an: ein Feld anklicken, das nicht seines ist.
+    const ziel = container.querySelector<SVGElement>('[data-testid^="hex-"][data-target="true"]');
+    if (ziel === null) throw new Error('Kein Raeuberziel auf dem Brett');
+    placeHex(container, ziel.dataset['testid']!.replace('hex-', ''));
+
+    // Traegt das Feld mehrere moegliche Opfer, fragt der Dialog nach - dann
+    // eines waehlen, sonst ist der Zug hier schon durch.
+    const opfer = screen.queryAllByRole('button', { name: /\(\d+ Karten?\)/ });
+    if (opfer.length > 0) await userEvent.click(opfer[0]!);
+
+    // Der Kern: die Partie steht wieder vor dem Wurf und nicht in der
+    // Hauptphase. Am Statussatz abgelesen, weil der Wuerfelknopf seine
+    // Beschriftung vom letzten Wurf hat und nicht von der Phase.
+    expect(screen.getByText(/muss würfeln/)).toBeDefined();
   });
 });
