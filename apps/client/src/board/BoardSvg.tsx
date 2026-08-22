@@ -106,6 +106,27 @@ const DOCK_START = HARBOR_MARK - 0.03;
  */
 const DOCK_BEND = 0.055;
 
+/**
+ * Wie stark ein Bauwerkspfad aufs Brett schrumpft - je Bauteil.
+ *
+ * **Diese Zahl steht hier, weil sie zweimal gebraucht wird.** Die Pfade in
+ * `board/shapes.ts` liegen in ihrem eigenen Raum, rund 20 Einheiten breit; ein
+ * Feld auf dem Brett misst 1. Wer sie hinstellt, muss also durch rund vierzig
+ * teilen - und wer das aus dem Kopf schaetzt, schaetzt um eine Zehnerpotenz
+ * daneben. Genau das ist dem Geist passiert: er stand mit `scale(0.42)` da und
+ * war damit 5 von 9.76 viewBox-Einheiten breit - ein halbes Brett als Vorschau
+ * auf ein Haus, das 0.32 misst.
+ *
+ * Die Stadt bleibt der kleinere Faktor, weil ihr Pfad breiter ist (18 Einheiten
+ * gegen 12): gleiche Faktoren haetten sie auf dem Brett um die Haelfte groesser
+ * gemacht als die Siedlung, und der Unterschied soll die Form tragen (Haus mit
+ * Anbau), nicht die Groesse - siehe `board/shapes.ts`.
+ */
+const BUILDING_SCALE: Readonly<Record<'settlement' | 'city', number>> = {
+  settlement: 0.027,
+  city: 0.0245,
+};
+
 /** Augenwahrscheinlichkeit eines Chips - fuer die Punktreihe unter der Zahl. */
 const PIPS: Readonly<Record<number, number>> = {
   2: 1,
@@ -749,17 +770,13 @@ function VertexMark({
            * also groesser als der Chip und immer noch mit Luft zum Nachbarn -
            * zwei Bauwerke stehen nie naeher als eine Kantenlaenge beieinander.
            *
-           * Die Stadt bleibt dabei der kleinere Faktor, weil ihr Pfad breiter
-           * ist (18 Einheiten gegen 12): gleiche Faktoren haetten sie auf dem
-           * Brett um die Haelfte groesser gemacht als die Siedlung, und der
-           * Unterschied soll die Form tragen (Haus mit Anbau), nicht die
-           * Groesse - siehe `board/shapes.ts`.
+           * Die beiden Faktoren stehen als `BUILDING_SCALE` oben, weil der
+           * Geist dieselben braucht - und ohne sie um eine Zehnerpotenz
+           * danebengriff.
            */}
           <g
             key={building.kind}
-            transform={`translate(${point.x} ${point.y}) scale(${
-              building.kind === 'city' ? 0.0245 : 0.027
-            })`}
+            transform={`translate(${point.x} ${point.y}) scale(${BUILDING_SCALE[building.kind]})`}
           >
             <path
               className={`vertex__building building building--${building.kind}`}
@@ -798,11 +815,14 @@ function PendingMark({
     if (action === undefined) return null;
 
     const point = vertexPoint(place.id);
-    const path = action.type === 'buildCity' ? CITY_PATH : SETTLEMENT_PATH;
+    const kind = action.type === 'buildCity' ? 'city' : 'settlement';
 
     return (
       <g className="pending" data-testid={`pending-${place.id}`}>
-        <path d={path} transform={`translate(${point.x} ${point.y}) scale(0.42)`} />
+        <path
+          d={kind === 'city' ? CITY_PATH : SETTLEMENT_PATH}
+          transform={`translate(${point.x} ${point.y}) scale(${BUILDING_SCALE[kind]})`}
+        />
       </g>
     );
   }

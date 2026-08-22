@@ -248,6 +248,67 @@ describe('BoardSvg', () => {
     expect(city?.getAttribute('class')).toContain('building--city');
   });
 
+  /*
+   * **Der Geist war ein halbes Brett gross.**
+   *
+   * Er stand mit `scale(0.42)` da, das gebaute Haus mit 0.027 - beide zeichnen
+   * denselben Pfad aus `board/shapes.ts`, der rund 12 Einheiten misst, wo ein
+   * Feld eine misst. Im Browser gemessen: 355 x 414 px Vorschau auf einem Brett
+   * von 688 x 647 px, also mehr als die halbe Flaeche, und darunter war nichts
+   * mehr zu erkennen - genau die Stelle, an der man gerade gezielt hat.
+   *
+   * Geprueft wird deshalb nicht eine Zahl gegen sich selbst, sondern der Geist
+   * gegen das Bauwerk, das er meint: dieselbe Form an derselben Stelle in
+   * derselben Groesse. Beide Bauteile, weil sie verschiedene Faktoren tragen.
+   */
+  it('zeichnet den Geist in der Groesse des Bauwerks, das er meint', () => {
+    const vertices = boardOf(scenario).topology.vertices;
+
+    /** Der `scale`-Faktor aus einem `transform`, wie ihn das Brett schreibt. */
+    const scaleOf = (element: Element | null): number =>
+      Number(/scale\(([\d.]+)\)/.exec(element!.getAttribute('transform')!)![1]);
+
+    for (const kind of ['settlement', 'city'] as const) {
+      // Ein gebautes Bauwerk und daneben ein Geist auf dieselbe Art: die Stadt
+      // braucht eine eigene Siedlung unter sich, damit `buildCity` erlaubt ist.
+      const built = { ...start.buildings, [vertices[0]!]: { owner: 'p1' as const, kind } };
+      const ghost = vertices[8]!;
+      const targets = {
+        ...EMPTY_TARGETS,
+        vertices: new Map([
+          [
+            ghost,
+            (kind === 'city'
+              ? { type: 'buildCity', player: 'p1', vertex: ghost }
+              : { type: 'buildSettlement', player: 'p1', vertex: ghost }) as never,
+          ],
+        ]),
+      };
+
+      const { container, unmount } = render(
+        <BoardSvg
+          state={{ ...start, buildings: built }}
+          targets={targets}
+          seats={seats}
+          onPick={vi.fn()}
+          pending={{ kind: 'vertex', id: ghost }}
+        />,
+      );
+
+      const real = scaleOf(
+        container.querySelector(`[data-testid="vertex-${vertices[0]}"] .vertex__building`)!
+          .parentElement,
+      );
+      const pending = scaleOf(container.querySelector(`[data-testid="pending-${ghost}"] path`));
+
+      expect(pending).toBe(real);
+      // Und die Probe aufs Ganze: ein Bauwerk ist kleiner als ein Feld.
+      expect(pending * 12).toBeLessThan(1);
+
+      unmount();
+    }
+  });
+
   it('hebt genau die Knoten hervor, die in der Klickkarte stehen', () => {
     const targets = actionTargets(start, setupPlayer(start)!);
     render(<BoardSvg state={start} targets={targets} seats={seats} onPick={vi.fn()} />);

@@ -2118,9 +2118,11 @@ body {
   pointer-events: none;
 }
 
+/* Genau die Staerke einer gebauten Strasse (`.road--built`) - ein Geist zeigt
+   das Bauteil und nicht eine dickere Fassung davon. */
 .pending line {
   stroke: var(--parchment);
-  stroke-width: 0.16;
+  stroke-width: 0.115;
   stroke-linecap: round;
 }
 
