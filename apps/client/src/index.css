@@ -2131,6 +2131,19 @@ body {
   stroke: var(--parchment);
 }
 
+/*
+ * Die Leiste bekommt einen eigenen dunklen Grund - und das ist eine Korrektur.
+ *
+ * Sie stand nackt auf dem Brett, und „Doch nicht" ist ein `.button--ghost`:
+ * durchsichtiger Koerper, Rand und Schrift in `--on-sea`. Diese Farben sind
+ * fuer die **See** gemacht, also fuer den dunklen Grund um das Brett herum. Auf
+ * einem gelben Feld oder einer Wiese stand der Knopf hell auf hell und war
+ * schlicht nicht zu lesen - und er liegt dort mitten im Brett, weil er ueber
+ * dem Fuss schwebt.
+ *
+ * Ein Stueck See unter der Leiste stellt die Voraussetzung wieder her, unter
+ * der beide Knoepfe entworfen sind, statt einen davon umzufaerben.
+ */
 .confirm {
   position: absolute;
   bottom: 5.5rem;
@@ -2138,7 +2151,11 @@ body {
   z-index: 4;
   display: flex;
   gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
   transform: translateX(-50%);
+  border-radius: 12px;
+  background: rgb(11 31 42 / 88%);
+  box-shadow: var(--lift-raised);
 }
 
 /*
