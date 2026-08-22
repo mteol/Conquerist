@@ -60,6 +60,23 @@ function describeAction(
     case 'rollDice': {
       const roll = after.lastRoll;
       if (roll === null) return `${who} würfelt`;
+
+      // Im Auftakt bringt ein Wurf keinen Ertrag, sondern eine Reihenfolge.
+      if (before.phase.kind === 'opening') {
+        const augen = yieldTotal(before.rules.dice, roll);
+
+        if (after.phase.kind === 'setup') {
+          const erster = after.players[0]?.id;
+          const beginner = erster === undefined ? 'niemand' : nameOf(erster);
+          return `Auftakt: ${who} würfelt ${augen} - ${beginner} beginnt`;
+        }
+        if (after.phase.kind === 'opening' && after.phase.round > before.phase.round) {
+          return `Auftakt: ${who} würfelt ${augen} - Gleichstand, es wird gestochen`;
+        }
+
+        return `Auftakt: ${who} würfelt ${augen}`;
+      }
+
       const gains = describeGains(before, after, nameOf);
       const total = yieldTotal(after.rules.dice, roll);
       return `${who} würfelt ${total}${gains === '' ? '' : ` - ${gains}`}`;

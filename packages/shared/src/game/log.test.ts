@@ -151,3 +151,38 @@ describe('Verlaufssaetze zum Spielerhandel', () => {
     expect(back.entry).toContain('zurück');
   });
 });
+
+describe('der Verlaufssatz im Auftakt', () => {
+  const auftakt = (pending: string[], rolls = {}) =>
+    testGame({
+      phase: { kind: 'opening', rolls, pending, round: 0 },
+      turn: 0,
+    });
+
+  it('nennt den Wurf und nicht den Ertrag', () => {
+    const before = auftakt(['p1', 'p2', 'p3']);
+    const action: GameAction = { type: 'rollDice', player: 'p1' };
+    const after = apply(before, action);
+
+    const text = describeTransition(before, action, after, seats);
+
+    expect(text).toContain('Auftakt');
+    expect(text).toContain(String(yieldTotal(after.rules.dice, after.lastRoll!)));
+  });
+
+  it('sagt, wer beginnt, sobald es entschieden ist', () => {
+    let state = auftakt(['p1', 'p2', 'p3']);
+    let text = '';
+
+    for (const player of ['p1', 'p2', 'p3']) {
+      const action: GameAction = { type: 'rollDice', player };
+      const after = apply(state, action);
+      text = describeTransition(state, action, after, seats);
+      state = after;
+    }
+
+    // Entweder ist entschieden oder es wird gestochen - der Satz muss beides
+    // sagen koennen, sonst steht am Ende einer Runde nur eine nackte Zahl.
+    expect(text).toMatch(/beginnt|Stechen/);
+  });
+});
