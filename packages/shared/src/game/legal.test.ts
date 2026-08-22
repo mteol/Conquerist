@@ -12,7 +12,7 @@ import {
   hand,
   testGame,
 } from './fixtures.js';
-import { legalActions } from './legal.js';
+import { legalActions, playableDevelopmentCards } from './legal.js';
 import { setupPlayer } from './setup.js';
 import { applyOfferTrade, applyRespondTrade } from './playerTrade.js';
 import { reduce } from './reducer.js';
@@ -230,5 +230,40 @@ describe('legalActions im Auftakt', () => {
   it('bietet den Wartenden nichts an', () => {
     expect(legalActions(inOpening(), 'p3')).toEqual([]);
     expect(legalActions(inOpening(), 'p1')).toEqual([]);
+  });
+});
+
+describe('Karten vor dem Wurf', () => {
+  const withKnight = () => {
+    const base = testGame({ phase: { kind: 'rollPending' }, turn: 2 });
+    return {
+      ...base,
+      players: base.players.map((player) =>
+        player.id === 'p1'
+          ? { ...player, developmentCards: [{ id: 'knight' as const, boughtOnTurn: 1 }] }
+          : player,
+      ),
+    };
+  };
+
+  it('bietet vor dem Wurf den Ritter an', () => {
+    const actions = legalActions(withKnight(), 'p1').map((action) => action.type);
+
+    expect(actions).toContain('rollDice');
+    expect(actions).toContain('playKnight');
+  });
+
+  it('bietet vor dem Wurf keinen Kauf an', () => {
+    expect(legalActions(withKnight(), 'p1').map((action) => action.type)).not.toContain(
+      'buyDevelopmentCard',
+    );
+  });
+
+  it('nennt die spielbaren Karten auch vor dem Wurf', () => {
+    expect(playableDevelopmentCards(withKnight(), 'p1')).toContain('knight');
+  });
+
+  it('bietet dem Mitspieler vor dem Wurf nichts an', () => {
+    expect(legalActions(withKnight(), 'p2')).toEqual([]);
   });
 });

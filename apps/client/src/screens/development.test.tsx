@@ -455,3 +455,41 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     expect(screen.queryByTestId('devcard-monopoly')).toBeNull();
   });
 });
+
+describe('Karten vor dem Wurf', () => {
+  /** Hauptphase-Aufbau, aber die Partie steht noch vor dem Wurf. */
+  const beforeRoll = (): GameState =>
+    playable({
+      phase: { kind: 'rollPending' },
+      turn: 4,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
+          ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] }
+          : entry,
+      ),
+    });
+
+  it('laesst den Ritter vor dem Wurf anklicken', () => {
+    // Der Client kennt keine Regel: was die Sicht als spielbar nennt, ist
+    // bedienbar. Dieser Test haelt fest, dass die Sperre wirklich von dort
+    // kommt und nicht aus einer eigenen Phasenabfrage im Panel.
+    render(screenFor(beforeRoll()));
+
+    expect(screen.getByTestId('devcard-knight')).toHaveProperty('disabled', false);
+  });
+
+  it('sperrt den Kauf vor dem Wurf', () => {
+    render(screenFor(beforeRoll()));
+
+    expect(screen.getByTestId('deck-buy')).toHaveProperty('disabled', true);
+  });
+
+  it('schickt den Ritter auch vor dem Wurf hinaus', async () => {
+    const onAct = vi.fn();
+
+    render(screenFor(beforeRoll(), ids[0]!, onAct));
+    await userEvent.click(screen.getByTestId('devcard-knight'));
+
+    expect(onAct).toHaveBeenCalledWith({ type: 'playKnight', player: ids[0] });
+  });
+});

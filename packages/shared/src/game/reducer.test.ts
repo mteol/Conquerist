@@ -341,3 +341,62 @@ describe('der Auftakt im Reducer', () => {
     expect(state.phase.kind === 'setup' || state.phase.kind === 'opening').toBe(true);
   });
 });
+
+describe('der Ritter vor dem Wurf', () => {
+  const withKnight = (): GameState => {
+    const base = testGame({ phase: { kind: 'rollPending' }, turn: 2 });
+    return {
+      ...base,
+      players: base.players.map((player) =>
+        player.id === 'p1'
+          ? { ...player, developmentCards: [{ id: 'knight' as const, boughtOnTurn: 1 }] }
+          : player,
+      ),
+    };
+  };
+
+  it('fuehrt ueber den Raeuber zurueck zum Wurf', () => {
+    const played = reduce(withKnight(), { type: 'playKnight', player: 'p1' });
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
+    expect(played.state.phase).toEqual({ kind: 'robberPending', resume: 'rollPending' });
+
+    const moved = reduce(played.state, {
+      type: 'moveRobber',
+      player: 'p1',
+      hex: '1,0',
+      victim: null,
+    });
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+
+    // Der Kern der Sache: der Wurf steht noch aus und faellt nicht aus.
+    expect(moved.state.phase).toEqual({ kind: 'rollPending' });
+  });
+
+  it('verbraucht damit die eine Karte des Zuges', () => {
+    // Eine Karte je Zug gilt ueber den Wurf hinweg - der Wurf setzt sie nicht
+    // zurueck, das tut nur `endTurn`.
+    const played = reduce(withKnight(), { type: 'playKnight', player: 'p1' });
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
+    expect(played.state.developmentPlayed).toBe(true);
+  });
+
+  it('nimmt vor dem Wurf keinen Kauf an', () => {
+    const result = reduce(withKnight(), { type: 'buyDevelopmentCard', player: 'p1' });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe(RuleViolationCode.WRONG_PHASE);
+  });
+
+  it('laesst nach einer Sieben weiterhin in die Hauptphase', () => {
+    const state = testGame({ phase: { kind: 'robberPending', resume: 'main' } });
+    const moved = reduce(state, { type: 'moveRobber', player: 'p1', hex: '1,0', victim: null });
+
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+    expect(moved.state.phase).toEqual({ kind: 'main' });
+  });
+});

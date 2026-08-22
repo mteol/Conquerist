@@ -49,7 +49,7 @@ import { distributeYield } from './yield.js';
 const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
   opening: ['rollDice'],
   setup: ['placeSetupSettlement', 'placeSetupRoad'],
-  rollPending: ['rollDice'],
+  rollPending: ['rollDice', 'playKnight', 'playRoadBuilding', 'playYearOfPlenty', 'playMonopoly'],
   discardPending: ['discard'],
   robberPending: ['moveRobber'],
   main: [
