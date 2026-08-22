@@ -179,7 +179,12 @@ export function applyPlayKnight(state: GameState, player: PlayerId): ReduceResul
     ...spent,
     players,
     largestArmy: nextLargestArmy(state, player, knights),
-    phase: { kind: 'robberPending' },
+    // Der Ritter darf vor **und** nach dem Wurf. Wohin es nach dem Raeuber
+    // zurueckgeht, entscheidet deshalb die Phase, aus der er gespielt wurde.
+    phase: {
+      kind: 'robberPending',
+      resume: state.phase.kind === 'rollPending' ? 'rollPending' : 'main',
+    },
   });
 }
 

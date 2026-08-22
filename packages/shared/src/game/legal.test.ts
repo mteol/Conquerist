@@ -74,7 +74,7 @@ describe('legalActions', () => {
     for (const phase of [
       { kind: 'rollPending' as const },
       { kind: 'main' as const },
-      { kind: 'robberPending' as const },
+      { kind: 'robberPending' as const, resume: 'main' as const },
     ]) {
       expect(legalActions(testGame({ phase }), 'p2')).toEqual([]);
     }
@@ -95,7 +95,7 @@ describe('legalActions', () => {
   });
 
   it('nennt beim Raeuber jedes Feld ausser dem aktuellen', () => {
-    const state = testGame({ phase: { kind: 'robberPending' } });
+    const state = testGame({ phase: { kind: 'robberPending', resume: 'main' } });
     const actions = legalActions(state, 'p1');
 
     expect(actions).toHaveLength(TEST_SCENARIO.hexes.length - 1);
@@ -106,7 +106,7 @@ describe('legalActions', () => {
   it('nennt beim Raeuber jedes moegliche Opfer einzeln', () => {
     const state = giving(
       testGame({
-        phase: { kind: 'robberPending' },
+        phase: { kind: 'robberPending', resume: 'main' },
         buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement' } },
       }),
       'p2',

@@ -92,7 +92,10 @@ export function applyDiscard(
         : entry,
     ),
     bank: addResources(state.bank, resources),
-    phase: pending.length === 0 ? { kind: 'robberPending' } : { kind: 'discardPending', pending },
+    phase:
+      pending.length === 0
+        ? { kind: 'robberPending', resume: 'main' }
+        : { kind: 'discardPending', pending },
   });
 }
 
@@ -165,7 +168,9 @@ export function applyMoveRobber(
   const problem = canMoveRobber(state, player, hex, victim);
   if (problem !== null) return rejected(problem);
 
-  const moved: GameState = { ...state, robber: hex, phase: { kind: 'main' } };
+  // Wohin es zurueckgeht, weiss die Phase - siehe `resume` in `phase.ts`.
+  const resume = state.phase.kind === 'robberPending' ? state.phase.resume : 'main';
+  const moved: GameState = { ...state, robber: hex, phase: { kind: resume } };
   if (victim === null) return ok(moved);
 
   const robbed = findPlayer(state, victim);

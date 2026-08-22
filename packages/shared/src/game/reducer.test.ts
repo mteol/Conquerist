@@ -148,7 +148,7 @@ describe('reduce - wuerfeln', () => {
     const result = reduce(rolling(SEVEN), { type: 'rollDice', player: 'p1' });
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.state.phase).toEqual({ kind: 'robberPending' });
+    if (result.ok) expect(result.state.phase).toEqual({ kind: 'robberPending', resume: 'main' });
   });
 
   it('verteilt bei einer Sieben keinen Ertrag', () => {

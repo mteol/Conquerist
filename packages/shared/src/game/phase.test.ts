@@ -49,7 +49,7 @@ describe('PhaseSchema', () => {
       { kind: 'setup', placement: 0, settlement: null },
       { kind: 'rollPending' },
       { kind: 'discardPending', pending: ['p1', 'p2'] },
-      { kind: 'robberPending' },
+      { kind: 'robberPending', resume: 'main' },
       { kind: 'main' },
       { kind: 'finished', winner: 'p1' },
     ];

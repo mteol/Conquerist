@@ -109,7 +109,10 @@ function rollDice(state: GameState): ReduceResult {
   const pending = playersMustDiscard(rolled);
   return ok({
     ...rolled,
-    phase: pending.length > 0 ? { kind: 'discardPending', pending } : { kind: 'robberPending' },
+    phase:
+      pending.length > 0
+        ? { kind: 'discardPending', pending }
+        : { kind: 'robberPending', resume: 'main' },
   });
 }
 

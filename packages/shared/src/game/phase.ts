@@ -69,8 +69,19 @@ export const PhaseSchema = z.discriminatedUnion('kind', [
    * mehrere Spieler gleichzeitig.
    */
   z.object({ kind: z.literal('discardPending'), pending: z.array(PlayerIdSchema) }),
-  /** Der Spieler am Zug muss den Raeuber versetzen. */
-  z.object({ kind: z.literal('robberPending') }),
+  /**
+   * Der Spieler am Zug muss den Raeuber versetzen.
+   *
+   * `resume` ist der Rueckweg. Er steht hier und nicht als Feld daneben, weil
+   * der Umweg mit der Phase beginnt und mit ihr verschwindet: nach einer Sieben
+   * ist gewuerfelt und es geht in die Hauptphase, nach einem Ritter **vor** dem
+   * Wurf schuldet der Spieler den Wurf noch. Ohne diesen Vermerk sprang
+   * `applyMoveRobber` fest nach `main` - der Wurf fiel dann lautlos aus.
+   */
+  z.object({
+    kind: z.literal('robberPending'),
+    resume: z.enum(['main', 'rollPending']),
+  }),
   /** Bauen, handeln, Zug beenden. */
   z.object({ kind: z.literal('main') }),
   /**
