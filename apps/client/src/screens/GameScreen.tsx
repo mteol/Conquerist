@@ -282,6 +282,14 @@ export function GameScreen({
    */
   const [pending, setPending] = useState<Place | null>(null);
 
+  /*
+   * Der Hinweis, das Geraet zu drehen. Ob er ueberhaupt zu sehen ist,
+   * entscheidet das Blatt (`orientation: portrait` und schmal) - hier steht nur,
+   * ob er weggetippt wurde. Ein Riegel ist er nicht: wer hochkant nur zusehen
+   * will, soll das duerfen.
+   */
+  const [rotateHint, setRotateHint] = useState(true);
+
   const pick = useCallback((place: Place) => setPending(place), []);
 
   const confirm = useCallback(() => {
@@ -370,6 +378,19 @@ export function GameScreen({
           </div>
         ) : null}
       </div>
+
+      {rotateHint && (
+        <div className="rotate-hint" role="status">
+          <span>Quer halten — dann liegt das Brett richtig.</span>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => setRotateHint(false)}
+          >
+            Verstanden
+          </button>
+        </div>
+      )}
 
       {pending !== null && (
         <div className="confirm" role="group" aria-label="Auswahl bestätigen">

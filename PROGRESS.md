@@ -4835,3 +4835,107 @@ Das war beim Schreiben ein Fehlschlag und ist jetzt ein Kommentar im Test.
 - **Der Layout-Befund.** Unverändert; der Entwurf und der Plan liegen vor.
 - **Ein Sieg durch eine Karte vor dem Wurf** ist möglich und richtig — `finalize`
   läuft in `rollPending` genauso. Ein eigener Test dafür steht aus.
+
+## Schmale Geräte: das Brett bekommt seine Fläche zurück (2026-08-22, `auftakt-karten-schmale-geraete`)
+
+Stand: nach `cef82bd`. Der Befund vom 20. August ist abgeräumt — der, der seit
+zwei Durchgängen als „gehört vor Etappe 10" dastand: unter rund 900 px
+Fensterbreite war das Brett zu klein zum Spielen, unter 480 px **null Pixel
+breit**.
+
+### Zwei Hälften, und die zweite war die härtere
+
+**Die Fläche** war eine Medienabfrage. `--tray-strip` zieht je Seite mindestens
+236 px ab; das war für breite Bildschirme richtig (dort steht die Ablage in der
+leeren See, die das Brett ohnehin nicht braucht) und auf einem Handy verheerend.
+Unter `60rem` greift der Einzug nicht mehr, die Hand wird ein flacher Streifen
+am unteren Rand, Kaufstapel und Bauteile eine Knopfreihe am rechten. Dieselbe
+Regel wie bei den Panels, eine Bildschirmgröße weiter gedacht: **was einen
+Körper hat, legt sich auf die See, statt neben dem Brett Platz zu verlangen.**
+
+Der Umschaltpunkt hängt an der Breite und nicht an `orientation`: ein Tablet
+hochkant mit 800 px ist derselbe Fall wie ein Handy quer — und ein schmales
+Fenster am Schreibtisch auch.
+
+**Das Setzen** war das eigentliche Problem. Bei 330 px Brettbreite und 9,76
+viewBox-Einheiten sind das ~34 px je Umkreisradius; benachbarte Knoten liegen
+genau einen Radius auseinander, eine Fingerkuppe misst 44 px. Und bei der ersten
+Setzung ist **jeder** Knoten erlaubt — im Browser nachgezählt: die Bauleiste
+meldet „Siedlung: 54 Stellen". Trefferkreise in Fingergröße überlappen dort, und
+dann entschiede die Zeichenreihenfolge, welches Ziel gemeint war.
+
+Deshalb zwei Änderungen, die zusammengehören: **eine** durchsichtige Fangfläche
+über dem Brett, die `nearestTarget` fragt (rein, ohne DOM, zehn Tests) — und ein
+Zug, der zwischen Absicht und Ausführung stehenbleibt. Ein Tipp stellt den Geist
+hin, ein weiterer verschiebt ihn, „Hier setzen" führt aus.
+
+**Auf jedem Gerät derselbe Weg.** Ein Touch-Sonderweg wäre ein zweiter Satz
+Interaktionen, den kein Test am Schreibtisch je erwischt. Der Preis ist ein
+zweiter Klick mit der Maus; er nimmt dort mit, dass ein Fehlklick bis hierher
+sofort und unwiderruflich war.
+
+### Gemessen
+
+Im Iframe, weil `resize_window` in dieser Umgebung nicht wirkt (steht seit dem 20. August so da). Gemessen wird die **gezeichnete** Brettbreite — die Spanne
+über alle Felder —, nicht der SVG-Kasten: das Brett paßt sich mit
+`xMidYMid meet` ein und füllt seinen Kasten nur in einer Richtung.
+
+Bei 800 px Rahmenhöhe, gegen die alte Reihe:
+
+| Fenster | vorher | jetzt |
+| ------- | ------ | ----- |
+| 480     | 0      | 415   |
+| 560     | 60     | 486   |
+| 700     | 200    | 610   |
+| 900     | 400    | 749   |
+
+Im Handy-Querformat (360 px hoch) begrenzt die **Höhe** und nicht mehr die
+Breite: dort sind es bei 480, 560, 700, 740 und 900 px Fensterbreite jeweils
+**330 px** — vorher 0, 60, 200, 268 und 400. Die Zahl ist überall dieselbe, weil
+das Brett jetzt so groß wird, wie die Höhe es zuläßt. Genau das war der Sinn.
+
+### Ein Befund aus dem Bild, der ohne Browser nicht aufgefallen wäre
+
+Der erste Wurf klammerte die **ganze** untere Spalte auf 3,2 rem — und damit
+steckten „Handel" und „Zug beenden" mit im zugeklappten Teil. Gemessen: der Knopf
+endete bei 436 px in einem 356 px hohen Fenster, also unerreichbar. Die zwei sind
+die einzige Bedienung, die in jedem Zug angefaßt wird; sie dürfen nie weggeklappt
+sein. Geklammert wird jetzt die Kartenreihe, nicht die Spalte — danach endet
+„Zug beenden" bei 350 px und ist da.
+
+Ein Unit-Test hätte das nicht gefunden: jsdom rechnet kein Layout. Genau deshalb
+stand die Messung im Plan als Abnahme und nicht als Nettigkeit.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                |
+| ------------------- | ----------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                          |
+| `pnpm test`         | grün — shared 626 / 36 Dateien, server 163 / 20, client 373 / 37        |
+| `pnpm build`        | grün                                                                    |
+| `pnpm format:check` | grün                                                                    |
+| Browser             | Meßreihe oben; im 740×360-Rahmen Auftakt gewürfelt und Siedlung gesetzt |
+
+Im schmalen Rahmen der ganze Weg: Auftakt durchgewürfelt, „Siedlung" gedrückt,
+**sechs Pixel neben** einen Knoten getippt — der Geist erscheint —, „Hier
+setzen" gedrückt, und die Phase steht auf der zugehörigen Straße.
+
+Sieben bestehende Tests klickten Brettelemente direkt an; sie gehen jetzt
+denselben Weg wie ein Finger. Der Helfer dazu steht einmal in `test/board.ts`,
+samt der zwei Kunstgriffe, die jsdom nötig macht (Einheitsmatrix statt
+`getScreenCTM`, `fireEvent` statt `userEvent`, weil letzteres die Koordinaten
+rundet — auf einem Brett von keinen zehn Einheiten Breite wäre danach jede
+Genauigkeit weg).
+
+16 neue Tests.
+
+### Was offen bleibt
+
+- **Zoom und Verschieben.** Bewußt draußen: es verlagert die Arbeit auf den
+  Spieler und hilft an der Maus nichts. Sollte sich zeigen, daß 330 px auf einem
+  480-px-Gerät trotzdem zu klein sind, ist Zoom die nächste Antwort.
+- **Die Auftakttafel verdeckt im Querformat einen guten Teil des Bretts.** Sie
+  verschwindet nach dem Auftakt und kommt nie wieder — hingenommen, nicht
+  übersehen.
+- **Die Wurfbahn auf schmalen Geräten** ist nicht eigens vermessen: die Würfel
+  fliegen in die Ecke, in der jetzt Knöpfe stehen.

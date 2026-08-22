@@ -4767,3 +4767,133 @@ body {
     gap: 0.5rem;
   }
 }
+
+/* --- Schmale Geraete: Querformat --------------------------------------- */
+
+/*
+ * Unter 60rem gibt es keine leere See mehr neben dem Brett.
+ *
+ * `--tray-strip` zieht je Seite mindestens 236px ab. Fuer breite Bildschirme war
+ * das richtig - dort steht die Ablage in der See, die das Brett ohnehin nicht
+ * braucht, und das Brett gewinnt die ganze Hoehe der frueheren unteren Zeile.
+ * Auf einem schmalen Geraet gibt es diese See nicht: gemessen war das Brett bei
+ * 900px Fenster noch 400px breit, bei 480px null Pixel.
+ *
+ * Unterhalb dieser Grenze wandert die Ablage deshalb **ueber** die See statt
+ * neben das Brett. Das ist dieselbe Regel wie oben bei `.panel`, eine
+ * Bildschirmgroesse weiter gedacht: was einen Koerper hat, legt sich auf die
+ * See, statt neben dem Brett Platz zu verlangen.
+ *
+ * Die Grenze haengt an der **Breite** und nicht an `orientation`: ein Tablet
+ * hochkant mit 800px ist derselbe Fall wie ein Handy quer - und ein schmales
+ * Fenster am Schreibtisch auch, was beim Bauen staendig vorkommt.
+ */
+@media (max-width: 60rem) {
+  .game {
+    padding: 0.4rem;
+  }
+
+  /* Der ganze Befund in einer Zeile: kein Einzug mehr, das Brett bekommt alles. */
+  .board-area {
+    margin: 0;
+  }
+
+  /*
+   * Die Hand wird ein flacher Streifen am unteren Rand und faehrt auf Tipp
+   * hoch. Zugeklappt zeigt sie die Kartenkanten - genug, um zu wissen, was man
+   * hat, ohne dem Brett Hoehe zu nehmen.
+   */
+  .tray {
+    right: 0.4rem;
+    bottom: 0.4rem;
+    left: 0.4rem;
+    gap: 0.35rem;
+    align-items: flex-end;
+  }
+
+  .tray__hand,
+  .tray__controls {
+    max-width: none;
+  }
+
+  /*
+   * Geklammert wird die **Kartenreihe** und nicht die ganze Spalte.
+   *
+   * Im Browser gemessen, nachdem es andersherum stand: „Zug beenden" endete bei
+   * 436px in einem 356px hohen Fenster - der Knopf steckte mit in der
+   * zugeklappten Spalte und war damit unerreichbar. Die zwei Knoepfe sind die
+   * einzige Bedienung, die in jedem Zug angefasst wird; sie duerfen nie
+   * weggeklappt sein.
+   */
+  .tray__hand .hand {
+    max-height: 3.2rem;
+    overflow: hidden;
+    transition: max-height 180ms ease;
+  }
+
+  /*
+   * Aufgezogen wird ueber die Tastatur oder den Finger - `:focus-within` und
+   * `:hover` zusammen, weil ein Tipp auf einem Handy beides ausloest und eine
+   * Maus nur das zweite. Ein eigener Schalter waere ein Zustand mehr im
+   * Bildschirm fuer etwas, das das Blatt allein kann.
+   */
+  .tray__hand .hand:hover,
+  .tray__hand .hand:focus-within {
+    max-height: 45vh;
+  }
+
+  /* Kaufstapel und Bauteile werden eine Reihe am rechten Rand. */
+  .tray__controls {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.35rem;
+  }
+
+  /*
+   * Die Spielerliste schrumpft auf eine Zeile: sie ist Auskunft, und auf einem
+   * Handy ist der Platz oben links das Wertvollste, was das Brett hat.
+   */
+  .panel--table {
+    top: 0.4rem;
+    left: 0.4rem;
+    font-size: 0.72rem;
+  }
+
+  .panel--table .panel__title {
+    display: none;
+  }
+
+  /* Der Bestaetigungsknopf darf nicht unter dem Handstreifen liegen. */
+  .confirm {
+    bottom: 4rem;
+  }
+}
+
+/*
+ * Hochkant auf einem Handy liegt das Brett falsch herum - aber ein Riegel waere
+ * zu viel: wer nur zusehen will, soll das duerfen. Also ein Satz, der sich
+ * wegtippen laesst.
+ */
+.rotate-hint {
+  position: fixed;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  left: 0.6rem;
+  z-index: 6;
+  display: none;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: var(--parchment);
+  box-shadow: var(--lift-raised);
+  color: var(--ink-base);
+  font-size: 0.85rem;
+}
+
+@media (orientation: portrait) and (max-width: 30rem) {
+  .rotate-hint {
+    display: flex;
+  }
+}

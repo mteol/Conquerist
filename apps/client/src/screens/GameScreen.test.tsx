@@ -573,3 +573,17 @@ describe('Tippen, dann bestaetigen', () => {
     expect(screen.queryByTestId(`pending-${firstSetupVertex()}`)).toBeNull();
   });
 });
+
+describe('Der Hinweis fuers Hochformat', () => {
+  it('steht im Bildschirm und laesst sich wegtippen', async () => {
+    render(<LocalGame />);
+
+    // Ob er zu sehen ist, entscheidet das Blatt - jsdom rechnet kein Layout.
+    // Was hier geprueft wird, ist der Zustand: er ist da und geht wieder weg.
+    expect(screen.getByText(/Quer halten/)).toBeDefined();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Verstanden' }));
+
+    expect(screen.queryByText(/Quer halten/)).toBeNull();
+  });
+});
