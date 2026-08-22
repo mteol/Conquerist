@@ -15,6 +15,7 @@ import {
 import { render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { GameScreen } from './GameScreen';
+import { useLocalGame } from '../game/useLocalGame';
 import { afterOpening } from '../test/opening';
 
 const seats = defaultSeats(3);
@@ -491,5 +492,63 @@ describe('Karten vor dem Wurf', () => {
     await userEvent.click(screen.getByTestId('devcard-knight'));
 
     expect(onAct).toHaveBeenCalledWith({ type: 'playKnight', player: ids[0] });
+  });
+});
+
+describe('Der Ritter vor dem Wurf, durch die Oberflaeche', () => {
+  /**
+   * Der Befund, um den es bei dieser Regel geht, in einem Durchgang: Ritter
+   * spielen, Raeuber versetzen, und der Wuerfelknopf muss **wieder da sein**.
+   * Faellt er weg, ist der Wurf dieser Runde ersatzlos verloren - und genau das
+   * tat `applyMoveRobber`, bevor `robberPending` seinen Rueckweg trug.
+   *
+   * Ueber `useLocalGame` und nicht ueber einen gestellten Zustand: nur so geht
+   * der Zug wirklich durch Reducer, Sicht und Bildschirm.
+   */
+  function LocalFrom({ state }: { readonly state: GameState }): JSX.Element {
+    const game = useLocalGame(state, seats);
+
+    return (
+      <GameScreen
+        view={game.view}
+        actions={game.actions}
+        log={game.log}
+        error={game.error}
+        onAct={game.act}
+        onDismissError={game.dismissError}
+        onLeave={vi.fn()}
+      />
+    );
+  }
+
+  it('bringt den Wuerfelknopf nach dem Raeuber zurueck', async () => {
+    const start = playable({
+      phase: { kind: 'rollPending' },
+      turn: 4,
+      players: afterSetup().players.map((entry) =>
+        entry.id === ids[0]
+          ? { ...entry, developmentCards: [{ id: 'knight', boughtOnTurn: 1 }] }
+          : entry,
+      ),
+    });
+
+    render(<LocalFrom state={start} />);
+
+    await userEvent.click(screen.getByTestId('devcard-knight'));
+
+    // Jetzt steht der Raeuber an: ein Feld anklicken, das nicht seines ist.
+    const ziel = document.querySelector<SVGElement>('[data-testid^="hex-"][data-target="true"]');
+    if (ziel === null) throw new Error('Kein Raeuberziel auf dem Brett');
+    await userEvent.click(ziel);
+
+    // Traegt das Feld mehrere moegliche Opfer, fragt der Dialog nach - dann
+    // eines waehlen, sonst ist der Zug hier schon durch.
+    const opfer = screen.queryAllByRole('button', { name: /\(\d+ Karten?\)/ });
+    if (opfer.length > 0) await userEvent.click(opfer[0]!);
+
+    // Der Kern: die Partie steht wieder vor dem Wurf und nicht in der
+    // Hauptphase. Am Statussatz abgelesen, weil der Wuerfelknopf seine
+    // Beschriftung vom letzten Wurf hat und nicht von der Phase.
+    expect(screen.getByText(/muss würfeln/)).toBeDefined();
   });
 });

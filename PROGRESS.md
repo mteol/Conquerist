@@ -4762,3 +4762,76 @@ Bestimmtheit, den Verlaufssatz und die Auftakttafel.
   das Brett zu klein zum Spielen. Der Entwurf dazu liegt jetzt vor
   (`2026-08-22-schmale-geraete-design.md`), umgesetzt ist er nicht.
 - **Entwicklungskarten vor dem Wurf** sind entworfen und geplant, nicht gebaut.
+
+## Entwicklungskarten vor dem Wurf (2026-08-22, `auftakt-karten-schmale-geraete`)
+
+Stand: nach `8278685`. Eine Entwicklungskarte durfte bis hierher erst nach dem
+Würfeln gespielt werden. Damit fehlte der Zug, um den es bei der Ritterkarte
+eigentlich geht: den Räuber vom eigenen Feld holen, **bevor** die Erträge
+fallen.
+
+### Die Freigabe war das Kleinste daran
+
+Drei Eingriffe, und der dritte trägt die anderen.
+
+`canActNow` prüfte für Kauf **und** Ausspielen dieselbe Bedingung („Das geht
+erst nach dem Würfeln"). Sie zerfällt jetzt in `canBuyNow` (nur `main`) und
+`canPlayNow` (`main` oder `rollPending`). Der Verstoßtext beim Ausspielen sagt
+dabei „nur im eigenen Zug" — der alte Satz war ab sofort schlicht nicht mehr
+wahr.
+
+**Der eigentliche Eingriff ist `resume` in `robberPending`.** `applyMoveRobber`
+setzte hart `phase: { kind: 'main' }`. Solange der Räuber nur nach einer Sieben
+oder nach einem Ritter _in_ der Hauptphase wanderte, war das richtig. Ein Ritter
+vor dem Wurf wäre über denselben Weg in die Hauptphase gekommen — und der Wurf
+dieser Runde wäre **ersatzlos ausgefallen**: Räuber versetzt, geerntet nie,
+und niemand hätte gesehen, wo es verlorenging. Die Phase trägt jetzt, was nach
+ihr kommt: nach einer Sieben `main`, nach einem Ritter die Phase, aus der er
+gespielt wurde.
+
+Kein Feld `rollOwed` daneben, aus dem Grund, den `phase.ts` überall angibt: der
+Automat sagte „Hauptphase", das Feld sagte „es fehlt noch ein Wurf", und jede
+Regel müßte beide lesen. `resume` beginnt mit dem Umweg und verschwindet mit
+ihm.
+
+### Was von selbst kam
+
+Die drei Karten mit Auswahl — Straßenbau, Erfindung, Monopol — brauchten
+**keine Zeile**. Sie stehen nicht als fertige Züge in `legalActions` (es wären
+dutzende Kombinationen), sondern kommen über `playableDevelopmentCards`, und
+das fragt `canPlayDevelopmentCard`. Mit der Trennung von Kauf und Ausspielen
+erlaubt es sie von selbst.
+
+**Der Client ebenso.** `view.playableCards` in der `PlayerView` kommt direkt
+aus derselben Funktion, und die Hand hat keine eigene Phasenabfrage. Der Plan
+hatte für diesen Fall zwei erlaubte Ausgänge vorgesehen; eingetreten ist der
+gute. Drei Wächtertests halten fest, daß es so bleibt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                   |
+| `pnpm test`         | grün — shared 626 / 36 Dateien, server 163 / 20, client 355 / 36 |
+| `pnpm build`        | grün                                                             |
+| `pnpm format:check` | grün                                                             |
+| Browser             | **nicht** — statt dessen ein Test durch die ganze Oberfläche     |
+
+Die letzte Zeile ist eine Entscheidung und kein Versäumnis. Um im Browser an
+eine spielbare Ritterkarte zu kommen, müßte eine Partie bis dorthin gespielt
+werden — viele Klicks für einen Blick, der nichts festhält. Statt dessen geht
+ein Test den Weg wirklich: über `useLocalGame` den Ritter anklicken, den Räuber
+versetzen, gegebenenfalls das Opfer wählen — und dann steht am Statussatz
+wieder „muß würfeln". Fiele der Wurf aus, stünde dort „ist am Zug".
+
+Abgelesen wird am **Statussatz** und nicht am Würfelknopf: dessen Beschriftung
+kommt vom letzten Wurf („Wurf: 2 und 6, zusammen 8") und nicht von der Phase.
+Das war beim Schreiben ein Fehlschlag und ist jetzt ein Kommentar im Test.
+
+13 neue Tests.
+
+### Was offen bleibt
+
+- **Der Layout-Befund.** Unverändert; der Entwurf und der Plan liegen vor.
+- **Ein Sieg durch eine Karte vor dem Wurf** ist möglich und richtig — `finalize`
+  läuft in `rollPending` genauso. Ein eigener Test dafür steht aus.
