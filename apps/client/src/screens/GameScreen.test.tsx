@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { JSX } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   CLASSIC_34,
   CLASSIC_RULES,
@@ -15,7 +15,7 @@ import { fireEvent, render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { useLocalGame } from '../game/useLocalGame';
 import { GameScreen } from './GameScreen';
-import { confirmPlacement, placeEdge, placeVertex, tapVertex } from '../test/board';
+import { asTouchDevice, confirmPlacement, placeEdge, placeVertex, tapVertex } from '../test/board';
 import { afterOpening } from '../test/opening';
 
 const scenario = generateScenario(CLASSIC_34, 'screen-probe');
@@ -124,8 +124,9 @@ async function setupStep(container: HTMLElement): Promise<boolean> {
     .find((node) => node.dataset['target'] === 'true');
   if (target === undefined) return false;
 
-  // Seit dem Umbau auf schmale Geraete: tippen, dann bestaetigen. Derselbe Weg
-  // fuer Maus und Finger, also auch hier.
+  // Seit dem Umbau auf schmale Geraete geht auch ein Test ueber die
+  // Fangflaeche, statt ein Brettelement anzuklicken - und `placeX` erledigt die
+  // Bestaetigung, falls das gestellte Geraet danach fragt.
   const id = target.dataset['testid']!;
   if (id.startsWith('vertex-')) placeVertex(container, id.replace('vertex-', ''));
   else placeEdge(container, id.replace('edge-', ''));
@@ -505,6 +506,28 @@ describe('Der Auftakt auf dem Spielbildschirm', () => {
 });
 
 describe('Tippen, dann bestaetigen', () => {
+  /*
+   * Der Zwischenschritt gehoert dem Finger. Am Schreibtisch trifft ein
+   * Mauszeiger von einem Pixel einen Knoten von 34, und dort waere er nur ein
+   * Pflichtklick auf jede Setzung - deshalb stellt dieser Block ausdruecklich
+   * ein Handy hin, statt sich auf die Voreinstellung zu verlassen.
+   */
+  beforeEach(() => asTouchDevice());
+
+  it('fragt am Schreibtisch gar nicht erst - dort setzt der erste Klick', async () => {
+    asTouchDevice(false);
+    const { container } = render(<LocalGame />);
+
+    await userEvent.click(screen.getByTestId('build-settlement'));
+    tapVertex(container, firstSetupVertex());
+
+    expect(screen.queryByRole('button', { name: 'Hier setzen' })).toBeNull();
+    expect(screen.queryByTestId(`pending-${firstSetupVertex()}`)).toBeNull();
+
+    await userEvent.click(screen.getByTestId('log-toggle'));
+    expect(screen.getByText(/setzt die Gründungssiedlung/)).toBeDefined();
+  });
+
   it('handelt beim ersten Tipp noch nicht', async () => {
     const { container } = render(<LocalGame />);
 

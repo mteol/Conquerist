@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { fireEvent } from './dom';
 import { edgeMidpoint, hexCenter, vertexPoint, type Point } from '../board/layout';
 import { hexFromId } from '@conquerist/shared';
@@ -45,32 +46,74 @@ export function tapHex(container: HTMLElement, hex: string): void {
 }
 
 /**
+ * Stellt fuer diesen Test ein Handy oder Tablet hin.
+ *
+ * jsdom kennt `matchMedia` gar nicht, und `useCoarsePointer` antwortet dann
+ * `false` - jeder Test laeuft also am Schreibtisch, was die ehrliche
+ * Voreinstellung ist. Wer den Weg mit dem Finger pruefen will, sagt das hier.
+ *
+ * `vi.stubGlobal` und keine Zuweisung von Hand: nur so raeumt Vitest den
+ * Stellvertreter am Ende der Datei wieder weg. Sonst bliebe das Handy stehen
+ * und faerbte jeden Block, der danach in derselben Datei laeuft - ein Geraet,
+ * das ein Test gestellt hat und ein anderer erbt, ist die stillste Art, sich
+ * eine gruene Zeile zu erschleichen.
+ */
+export function asTouchDevice(coarse = true): void {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: coarse && /pointer:\s*coarse/.test(query),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  }));
+}
+
+/**
  * Bestaetigt die stehende Auswahl.
  *
  * Wirft, wenn keine steht: ein Test, der bestaetigen will und nichts gewaehlt
  * hat, hat sein Ziel verfehlt und soll das sagen, statt still weiterzulaufen.
  */
 export function confirmPlacement(container: HTMLElement): void {
-  const button = [...container.querySelectorAll('button')].find(
-    (candidate) => candidate.textContent === 'Hier setzen',
-  );
+  const button = confirmButton(container);
   if (button === undefined) throw new Error('confirmPlacement: nichts steht zur Bestaetigung an');
 
   fireEvent.click(button);
 }
 
-/** Tippen und bestaetigen in einem - der gewoehnliche Fall. */
+function confirmButton(container: HTMLElement): HTMLButtonElement | undefined {
+  return [...container.querySelectorAll('button')].find(
+    (candidate) => candidate.textContent === 'Hier setzen',
+  );
+}
+
+/**
+ * Setzen - der gewoehnliche Fall, auf dem Geraet, das der Test gerade stellt.
+ *
+ * Ein Tipp, und **falls** das Geraet nachfragt, die Bestaetigung: am
+ * Schreibtisch ist das ein Schritt, am Finger sind es zwei. Die Helfer bilden
+ * damit ab, was „setzen" heisst, und nicht einen der beiden Wege - sonst
+ * muesste jeder Aufrufer wissen, welches Geraet gerade eingestellt ist.
+ */
 export function placeVertex(container: HTMLElement, vertex: string): void {
   tapVertex(container, vertex);
-  confirmPlacement(container);
+  confirmIfAsked(container);
 }
 
 export function placeEdge(container: HTMLElement, edge: string): void {
   tapEdge(container, edge);
-  confirmPlacement(container);
+  confirmIfAsked(container);
 }
 
 export function placeHex(container: HTMLElement, hex: string): void {
   tapHex(container, hex);
-  confirmPlacement(container);
+  confirmIfAsked(container);
+}
+
+function confirmIfAsked(container: HTMLElement): void {
+  const button = confirmButton(container);
+  if (button !== undefined) fireEvent.click(button);
 }

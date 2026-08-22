@@ -29,6 +29,7 @@ import { TradeDialog } from '../dialogs/TradeDialog';
 import { TradeOfferDialog } from '../dialogs/TradeOfferDialog';
 import { VictimDialog } from '../dialogs/VictimDialog';
 import type { LogEntry } from '../game/hotseat';
+import { useCoarsePointer } from '../useCoarsePointer';
 
 /**
  * Setzt Brett, Panels und Dialoge zusammen.
@@ -268,18 +269,28 @@ export function GameScreen({
   );
 
   /*
-   * Zwischen Absicht und Ausfuehrung steht ein Knopf.
+   * Zwischen Absicht und Ausfuehrung steht ein Knopf - **am Finger**.
    *
-   * Der Zwischenschritt ist keine Bequemlichkeit, sondern die Bedingung dafuer,
-   * dass es **einen** Weg fuer Maus und Finger gibt: auf einem Handy im
+   * Der Grund fuer den Zwischenschritt ist eine Zahl: auf einem Handy im
    * Querformat liegen benachbarte Knoten rund 34 px auseinander, eine
    * Fingerkuppe misst 44 px, und bei der ersten Setzung ist jeder Knoten des
    * Bretts erlaubt (im Browser nachgezaehlt: 54 Stellen). Ein Tipp ist dort
-   * mehrdeutig - und ein Fehlgriff war bis hierher sofort und unwiderruflich.
+   * mehrdeutig, und ein Fehlgriff war bis dahin sofort und unwiderruflich.
    *
-   * Derselbe Weg auf jedem Geraet: ein Touch-Sonderweg waere ein zweiter Satz
-   * Interaktionen, den kein Test am Schreibtisch je erwischt.
+   * **Er stand einmal auf jedem Geraet, und das war zu viel.** Die Begruendung
+   * dafuer lautete: ein Touch-Sonderweg sei ein zweiter Satz Interaktionen, den
+   * kein Test am Schreibtisch je erwischt. Das Argument gilt - nur wiegt es
+   * nichts gegen den Preis. Ein Mauszeiger ist einen Pixel breit und trifft
+   * einen Knoten von 34, das Problem gibt es dort schlicht nicht; uebrig blieb
+   * ein Pflichtklick auf jede einzelne Setzung. Und der zweite Satz
+   * Interaktionen bleibt geprueft: die Tests stellen das Geraet
+   * (`asTouchDevice`) und gehen denselben Weg wie ein Finger.
+   *
+   * `useCoarsePointer` fragt dabei nach dem Zeiger, mit dem gearbeitet wird,
+   * und nicht nach vorhandener Touch-Hardware - ein Laptop mit Touchscreen
+   * bleibt ein Schreibtisch.
    */
+  const confirmBeforePlacing = useCoarsePointer();
   const [pending, setPending] = useState<Place | null>(null);
 
   /*
@@ -290,13 +301,25 @@ export function GameScreen({
    */
   const [rotateHint, setRotateHint] = useState(true);
 
-  const pick = useCallback((place: Place) => setPending(place), []);
+  const pick = useCallback(
+    (place: Place) => {
+      if (confirmBeforePlacing) setPending(place);
+      else commit(place);
+    },
+    [confirmBeforePlacing, commit],
+  );
 
   const confirm = useCallback(() => {
     if (pending === null) return;
     commit(pending);
     setPending(null);
   }, [pending, commit]);
+
+  // Kommt mitten in der Partie eine Maus ans Tablet, faellt der Geist mit dem
+  // Knopf, der ihn ausfuehren wuerde - sonst stuende er ohne Ausgang da.
+  useEffect(() => {
+    if (!confirmBeforePlacing) setPending(null);
+  }, [confirmBeforePlacing]);
 
   // Wechselt die Phase oder der Handelnde, faellt die Auswahl: sonst stuende
   // ein Geist auf einem Ziel, das es nicht mehr gibt.

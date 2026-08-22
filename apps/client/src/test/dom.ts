@@ -1,4 +1,4 @@
-import { afterEach } from 'vitest';
+import { afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
 /**
@@ -13,6 +13,15 @@ import { cleanup } from '@testing-library/react';
  * Zeile seiner Testdatei - die Voreinstellung im Repo ist `node`.
  */
 afterEach(cleanup);
+
+/*
+ * Und gestellte Globale wieder abraeumen - `unstubGlobals` steht in der
+ * Vitest-Voreinstellung auf `false`, also passiert es nur, wenn es jemand tut.
+ * Betroffen ist bisher genau eines: das Geraet aus `test/board.ts`
+ * (`asTouchDevice`). Bliebe es stehen, erbte jeder folgende Block derselben
+ * Datei ein Handy, das er nie bestellt hat.
+ */
+afterEach(() => vi.unstubAllGlobals());
 
 export { render, screen, within, fireEvent, act, waitFor } from '@testing-library/react';
 export { default as userEvent } from '@testing-library/user-event';
