@@ -22,6 +22,7 @@ import { DevelopmentCards } from '../panels/DevelopmentCards';
 import { ResourcePickDialog } from '../dialogs/ResourcePickDialog';
 import { LogPanel } from '../panels/LogPanel';
 import { StatusPanel } from '../panels/StatusPanel';
+import { OpeningPanel } from '../panels/OpeningPanel';
 import { TablePanel } from '../panels/TablePanel';
 import { DiscardDialog } from '../dialogs/DiscardDialog';
 import { TradeDialog } from '../dialogs/TradeDialog';
@@ -330,6 +331,8 @@ export function GameScreen({
           </div>
         ) : null}
       </div>
+
+      <OpeningPanel view={display} />
 
       <TablePanel view={display} />
 

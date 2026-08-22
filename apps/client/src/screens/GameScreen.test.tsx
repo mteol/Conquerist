@@ -452,3 +452,48 @@ describe('Abwerfen nach einer Sieben', () => {
     expect(screen.getByTestId('chosen-brick').textContent).toBe('0');
   });
 });
+
+describe('Der Auftakt auf dem Spielbildschirm', () => {
+  // `start` ist oben schon durch den Auftakt gewuerfelt - hier braucht es die
+  // Partie davor.
+  const imAuftakt = createGame(
+    scenario,
+    CLASSIC_RULES,
+    seats.map((seat) => seat.id),
+    'screen-probe',
+  );
+
+  function GameFrom({ state }: { readonly state: typeof imAuftakt }): JSX.Element {
+    const game = useLocalGame(state, seats);
+
+    return (
+      <GameScreen
+        view={game.view}
+        actions={game.actions}
+        log={game.log}
+        error={game.error}
+        onAct={game.act}
+        onDismissError={game.dismissError}
+        onLeave={vi.fn()}
+      />
+    );
+  }
+
+  it('legt die Auftakttafel auf den Tisch, solange gewuerfelt wird', () => {
+    render(<GameFrom state={imAuftakt} />);
+
+    expect(screen.getByText(/Wer beginnt/)).toBeDefined();
+  });
+
+  it('bietet dort den Wuerfelknopf an', () => {
+    render(<GameFrom state={imAuftakt} />);
+
+    expect(screen.getByRole('button', { name: /Würfeln/ })).toBeDefined();
+  });
+
+  it('raeumt sie weg, sobald die Gruendung laeuft', () => {
+    render(<GameFrom state={afterOpening(imAuftakt)} />);
+
+    expect(screen.queryByText(/Wer beginnt/)).toBeNull();
+  });
+});

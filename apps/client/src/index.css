@@ -2103,6 +2103,83 @@ body {
   pointer-events: none;
 }
 
+/*
+ * Die Auftakttafel: sie liegt mittig auf dem Brett, solange ausgewuerfelt wird.
+ *
+ * Ein Ding auf dem Tisch (heller Koerper, Kontaktschatten) und trotzdem
+ * `pointer-events: none`: sie ist Auskunft und keine Bedienung. Der
+ * Wuerfelknopf liegt in der Ecke, wo er in jeder anderen Phase auch liegt -
+ * eine zweite Stelle zum Wuerfeln waere ein zweiter Weg fuer denselben Zug.
+ *
+ * Mittig und nicht am Rand, weil sie in diesen Sekunden das Einzige ist, worum
+ * es geht. Danach verschwindet sie und kommt nie wieder.
+ */
+.opening {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 13rem;
+  padding: 0.9rem 1.1rem;
+  transform: translate(-50%, -50%);
+  border-radius: 10px;
+  background: var(--parchment);
+  box-shadow: var(--lift-raised);
+  pointer-events: none;
+}
+
+.opening__title {
+  margin: 0;
+  color: var(--ink-base);
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+
+.opening__seats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.opening__seat {
+  display: grid;
+  grid-template-columns: 0.6rem 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.15rem 0.35rem;
+  border-radius: 5px;
+  color: var(--ink-base);
+  font-size: 0.85rem;
+}
+
+/*
+ * Der Werfer wird hinterlegt und nicht eingefaerbt: die Farbe daneben gehoert
+ * schon dem Sitz, und zwei Farben an derselben Zeile sagen weniger als eine.
+ */
+.opening__seat[data-active='true'] {
+  background: var(--parchment-2);
+  font-weight: 650;
+}
+
+.opening__dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+}
+
+.opening__total {
+  min-width: 1.2rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .tray > * {
   pointer-events: auto;
 }

@@ -67,6 +67,16 @@ export interface GameView {
    * die Alternative gewesen - er waere eine zweite Wahrheit neben der Phase.
    */
   readonly rolled: boolean;
+  /**
+   * Der laufende Auftakt - `null`, sobald er vorbei ist.
+   *
+   * Die Summen und nicht die Wuerfel: die gefallenen Wuerfel liegen in
+   * `lastRoll` und fliegen ueber die Wurfbahn, hier steht, was am Ende zaehlt.
+   */
+  readonly opening: {
+    readonly totals: ReadonlyMap<PlayerId, number>;
+    readonly round: number;
+  } | null;
   readonly turn: number;
   readonly longestRoad: GameState['longestRoad'];
   readonly largestArmy: PlayerView['largestArmy'];
@@ -255,6 +265,7 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     lastRoll: view.lastRoll,
     rollTotal: view.lastRoll === null ? null : yieldTotal(view.rules.dice, view.lastRoll),
     rolled: cameFromRoll(previous ?? null, view),
+    opening: openingOf(view),
     turn: view.turn,
     longestRoad: view.longestRoad,
     largestArmy: view.largestArmy,
@@ -280,7 +291,32 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
  * Tisch gewartet, ohne dass etwas fliegt, oder umgekehrt.
  */
 export function cameFromRoll(before: PlayerView | null, after: PlayerView): boolean {
-  return (
-    before !== null && before.phase.kind === 'rollPending' && after.phase.kind !== 'rollPending'
-  );
+  if (before === null) return false;
+
+  /*
+   * Der Auftakt braucht einen eigenen Zweig, und das ist kein Sonderfall,
+   * sondern dieselbe Frage in einer Phase, die sich nicht aendert: dort fuehrt
+   * ein Wurf von `opening` nach `opening`. Woran man ihn trotzdem erkennt: die
+   * Warteschlange wird kuerzer, oder der Auftakt ist vorbei. Ohne diesen Zweig
+   * wuerfelte der Auftakt lautlos - die Wuerfel laegen einfach da.
+   */
+  if (before.phase.kind === 'opening') {
+    return (
+      after.phase.kind !== 'opening' || after.phase.pending.length !== before.phase.pending.length
+    );
+  }
+
+  return before.phase.kind === 'rollPending' && after.phase.kind !== 'rollPending';
+}
+
+/** Die Summen des laufenden Auftakts - `null`, wenn keiner laeuft. */
+function openingOf(view: PlayerView): GameView['opening'] {
+  if (view.phase.kind !== 'opening') return null;
+
+  const totals = new Map<PlayerId, number>();
+  for (const [player, roll] of Object.entries(view.phase.rolls)) {
+    totals.set(player, yieldTotal(view.rules.dice, roll));
+  }
+
+  return { totals, round: view.phase.round };
 }

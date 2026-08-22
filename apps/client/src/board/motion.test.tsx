@@ -51,6 +51,7 @@ function tableView(gains: ReadonlyMap<string, number>): GameView {
     ],
     rollTotal: 8,
     rolled: false,
+    opening: null,
     turn: 1,
     longestRoad: { holder: null, length: 0 },
     largestArmy: { holder: null, size: 0 },
