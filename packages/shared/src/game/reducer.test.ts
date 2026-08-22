@@ -288,3 +288,56 @@ describe('reduce - vollstaendige Abdeckung', () => {
     }
   });
 });
+
+describe('der Auftakt im Reducer', () => {
+  const inOpening = (): GameState =>
+    testGame({
+      phase: { kind: 'opening', rolls: {}, pending: ['p1', 'p2', 'p3'], round: 0 },
+      turn: 0,
+    });
+
+  it('laesst nur den Vordersten der Warteschlange wuerfeln', () => {
+    const result = reduce(inOpening(), { type: 'rollDice', player: 'p2' });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe(RuleViolationCode.NOT_YOUR_TURN);
+  });
+
+  it('nimmt im Auftakt keine Siedlung an', () => {
+    // Der ganze Sinn einer Phase: ein zu frueh gesetztes Haus ist ein
+    // gewoehnlicher Regelverstoss und kein Sonderfall im Code.
+    const result = reduce(inOpening(), {
+      type: 'placeSetupSettlement',
+      player: 'p1',
+      vertex: CENTER_VERTEX,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe(RuleViolationCode.WRONG_PHASE);
+  });
+
+  it('wuerfelt im Auftakt keinen Ertrag aus', () => {
+    const result = reduce(inOpening(), { type: 'rollDice', player: 'p1' });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.players.map((player) => player.resources)).toEqual(
+      inOpening().players.map((player) => player.resources),
+    );
+  });
+
+  it('geht nach dem letzten Wurf aus dem Auftakt heraus', () => {
+    let state = inOpening();
+    for (const player of ['p1', 'p2', 'p3']) {
+      const result = reduce(state, { type: 'rollDice', player });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      state = result.state;
+    }
+
+    // Entweder entschieden oder Stechen - beides ist ein Fortschritt.
+    expect(state.phase.kind === 'setup' || state.phase.kind === 'opening').toBe(true);
+  });
+});
