@@ -51,6 +51,8 @@ const MIGRATIONS: readonly ((database: AppDatabase) => void)[] = [
   stepSessionsAndAccounts,
   stepSessionExpiry,
   stepSeatColorAndGoal,
+  stepAbandonedRooms,
+  stepSeatAway,
 ];
 
 export function migrate(database: AppDatabase): void {
@@ -265,5 +267,51 @@ function stepSeatColorAndGoal(database: AppDatabase): void {
       WHEN 4 THEN '#8e5bb5'
       WHEN 5 THEN '#d8d3c7'
     END;
+  `);
+}
+
+/**
+ * Eine Partie kann abgebrochen werden.
+ *
+ * Neben `finished_at` und aus demselben Grund eine eigene Spalte: die beiden
+ * sind nicht dasselbe Ende. Eine beendete Partie hat einen Sieger, eine
+ * abgebrochene keinen - wer sie spaeter zaehlt, will das auseinanderhalten
+ * koennen, und ein gemeinsames `ended_at` mit einem Flag daneben waere
+ * dieselbe Auskunft in zwei Spalten statt in einer.
+ *
+ * `NULL` heisst „laeuft noch" und ist damit der Stand jeder bestehenden Zeile -
+ * genau das, was vor diesem Schritt galt. Keine Nachbesserung noetig.
+ *
+ * Die Zeile bleibt nach dem Abbruch stehen, samt Startzustand und Log. Sie
+ * wird nur nicht mehr geladen (`loadAll`): abgebrochen heisst, dass dort
+ * niemand mehr weiterspielt - nicht, dass es die Partie nie gab.
+ */
+function stepAbandonedRooms(database: AppDatabase): void {
+  database.exec(`
+    ALTER TABLE rooms ADD COLUMN abandoned_at INTEGER;
+
+    /* Fuer loadAll: der Filter laeuft ueber jede Zeile beim Serverstart. */
+    CREATE INDEX rooms_abandoned ON rooms(abandoned_at);
+  `);
+}
+
+/**
+ * Ein Sitz weiss, ob sein Spieler gegangen ist.
+ *
+ * `connected` steht nicht in der Datenbank, weil es zu einem Serverlauf gehoert
+ * und mit ihm endet - nach einem Neustart ist niemand verbunden, bis er sich
+ * meldet. `away` ist das Gegenteil: es ist eine Entscheidung, und eine
+ * Entscheidung ueberlebt den Prozess, in dem sie gefallen ist. Stuende sie
+ * nicht hier, saesse nach jedem Serverneustart jeder wieder an dem Tisch, den
+ * er verlassen hat.
+ *
+ * `DEFAULT 0` ist genau das, was vorher galt: bis zu diesem Schritt konnte
+ * niemand einen Tisch verlassen, ohne den Platz aufzugeben - es gab die Tuer
+ * schlicht nicht. Der Bestand bekommt also keinen Fantasiewert, sondern seinen
+ * eigenen.
+ */
+function stepSeatAway(database: AppDatabase): void {
+  database.exec(`
+    ALTER TABLE room_seats ADD COLUMN away INTEGER NOT NULL DEFAULT 0;
   `);
 }

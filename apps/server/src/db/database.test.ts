@@ -370,3 +370,56 @@ describe('Migration auf gewaehlte Farbe und eingestelltes Ziel', () => {
     expect(row.victory_point_goal).toBe(DEFAULT_VICTORY_POINT_GOAL);
   });
 });
+
+/**
+ * Der Schritt, der den Abbruch moeglich macht.
+ *
+ * Ein Wert, der frueher keiner war: bis hierher endete eine Partie nur durch
+ * Sieg (`finished_at`). Alles, was schon in der Datenbank steht, laeuft noch -
+ * und genau das muss der Schritt hinterlassen.
+ */
+describe('Abgebrochene Partien', () => {
+  it('legt die Spalte an und laesst jede bestehende Partie laufen', () => {
+    const database = openDatabase(':memory:');
+    database.prepare('INSERT INTO users (id, name, created_at) VALUES (?,?,?)').run('u1', 'A', 0);
+    database
+      .prepare(
+        `INSERT INTO rooms (code, host_id, seat_count, seed, victory_point_goal, version, created_at)
+         VALUES (?,?,?,?,?,?,?)`,
+      )
+      .run('K7X2', 'u1', 3, 'abc', 10, 1, 0);
+
+    const columns = (database.pragma('table_info(rooms)') as { name: string }[]).map(
+      (column) => column.name,
+    );
+    expect(columns).toContain('abandoned_at');
+
+    const row = database.prepare('SELECT abandoned_at FROM rooms WHERE code = ?').get('K7X2') as {
+      abandoned_at: number | null;
+    };
+    expect(row.abandoned_at).toBeNull();
+  });
+
+  it('setzt jeden bestehenden Sitz auf „sitzt noch da‘', () => {
+    const database = openDatabase(':memory:');
+    database.prepare('INSERT INTO users (id, name, created_at) VALUES (?,?,?)').run('u1', 'A', 0);
+    database
+      .prepare(
+        `INSERT INTO rooms (code, host_id, seat_count, seed, victory_point_goal, version, created_at)
+         VALUES (?,?,?,?,?,?,?)`,
+      )
+      .run('K7X2', 'u1', 3, 'abc', 10, 1, 0);
+    database
+      .prepare('INSERT INTO room_seats (code, position, user_id, color) VALUES (?,?,?,?)')
+      .run('K7X2', 0, 'u1', SEAT_COLORS[0]);
+
+    const row = database.prepare('SELECT away FROM room_seats WHERE code = ?').get('K7X2') as {
+      away: number;
+    };
+
+    // Vor diesem Schritt konnte niemand einen Tisch verlassen, ohne den Platz
+    // aufzugeben - es gab die Tuer nicht. 0 ist also kein Vorgabewert, sondern
+    // genau das, was fuer jede bestehende Zeile galt.
+    expect(row.away).toBe(0);
+  });
+});

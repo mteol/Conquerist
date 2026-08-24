@@ -4939,3 +4939,146 @@ Genauigkeit weg).
   übersehen.
 - **Die Wurfbahn auf schmalen Geräten** ist nicht eigens vermessen: die Würfel
   fliegen in die Ecke, in der jetzt Knöpfe stehen.
+
+## Die Tür aus der Partie — verlassen, aussteigen, abbrechen (2026-08-24, `main`)
+
+Aus dem Playtest, und es war eine Sackgasse: wer mitten in einer Online-Partie
+den Tab zumachte, kam beim nächsten Besuch in genau diese Partie zurück — der
+Server öffnet beim `hello` den einzigen Raum, an dem jemand sitzt — und von dort
+führte **kein Weg** zum Startbildschirm. Eine neue Partie war damit unerreichbar,
+obwohl nichts sie verhinderte.
+
+Zwei Dinge fehlten, und sie sind nicht dasselbe.
+
+### „Ich mache später weiter" und „ich komme nicht wieder"
+
+Der Unterschied ist zu groß für einen Knopf, deshalb sind es zwei Orte.
+
+**Verlassen** ist die Tür oben im Spielbildschirm, links vom Status und in der
+Größe des Verlaufssymbols daneben: zurück zum Start, der Platz bleibt stehen,
+die Karte „Deine Partien" führt wieder herein. Das ist `room.leave`, das es
+schon gab — es hatte nur nie eine Bedienung an dieser Stelle.
+
+**Aussteigen** ist neu und steht auf der Karte, nicht im Spiel: `room.abandon`.
+Es trägt einen Raumcode, und genau darin liegt der Grund für eine zweite
+Nachricht — `room.leave` heißt „ich gehe von _diesem_ Tisch weg", und welcher
+das ist, weiß die Sitzung. Ausgestiegen wird aber von einer Liste aus, an der
+man an keinem Tisch sitzt und eine von vier Karten meint.
+
+Was daraus folgt, hängt am Zustand des Raums und steht an einer Stelle
+(`abandonRoom`):
+
+- **Im Wartebereich** wird ein Platz frei. Der Tisch gehört den anderen weiter;
+  `leaveRoom` weiß längst, wie das geht.
+- **In einer laufenden Partie** ist sie vorbei — für alle. Einen Spieler aus dem
+  Zustand zu nehmen ginge nicht, ohne die Partie zu zerstören (dieselbe
+  Überlegung, aus der `leaveRoom` es nicht tut), und eine Partie, in der ein Sitz
+  nie wieder zieht, ist ohnehin keine mehr. Ein halber Abbruch, bei dem die
+  anderen weiter auf einen Zug warten, wäre die Sackgasse für sie.
+
+Der Client entscheidet das nicht mit. Er fragt nach — auf der Karte, um die es
+geht, und mit der Folge über den Knöpfen statt darunter — und bekommt in
+`ended` gesagt, was geschehen ist.
+
+### Abgebrochen ist nicht gelöscht
+
+`rooms.abandoned_at` als eigene Spalte neben `finished_at`, und aus demselben
+Grund, aus dem es beide gibt: das sind nicht dieselben Enden. Eine beendete
+Partie hat einen Sieger, eine abgebrochene keinen. Ein gemeinsames `ended_at`
+mit einem Flag daneben wäre dieselbe Auskunft in zwei Spalten statt in einer.
+
+Die Zeile bleibt stehen, samt Startzustand und Log. Nur `loadAll` übergeht sie
+ab jetzt — abgebrochen heißt, daß dort niemand mehr weiterspielt, nicht, daß es
+die Partie nie gab. `registry.abandon` ist deshalb nicht `registry.remove`:
+`remove` ist für Räume, die es nicht hätte geben müssen (ein leerer Tisch, den
+`sweep` einsammelt), und da ist nichts aufzuheben.
+
+`UPDATE … WHERE abandoned_at IS NULL` hält den **ersten** Abbruch fest. Käme ein
+zweiter hinterher — zweiter Tab, doppelter Klick —, verschöbe er sonst den
+Zeitpunkt auf den späteren; abgebrochen wurde die Partie aber, als der erste
+ausgestiegen ist.
+
+### `room.over` bekommt seinen ersten Absender
+
+Das Ereignis stand seit Etappe 6 im Protokoll und im Client, und niemand hat es
+je geschickt. Jetzt tut es der Abbruch — **bevor** der Raum aus dem Verzeichnis
+fällt: `broadcastOver` verteilt an die Sitzenden, und danach gibt es keine mehr,
+an die zu verteilen wäre.
+
+Der Client filtert dabei auf den Tisch, an dem dieser Bildschirm gerade sitzt.
+Wer in mehreren Räumen sitzt, bekommt jedes Ende gemeldet; ohne diese Zeile
+legte der Abbruch einer nebenher laufenden Partie eine Meldung über die, die man
+gerade spielt.
+
+Wer eine Absage nicht bekommt: ein Fremder. `abandonRoom` gibt für einen, der
+nicht am Tisch sitzt, `none` zurück, und die Antwort sieht aus wie die auf einen
+Raum, den es nicht mehr gibt — aus einer Ablehnung soll sich nicht ablesen
+lassen, ob ein Raumcode vergeben ist.
+
+### `away`: verlassen hält jetzt auch einen Neuladen aus
+
+Die halbe Tür war keine. Der Server öffnet beim `hello` den einzigen Raum, an
+dem jemand sitzt — wer die Partie verließ und dann F5 drückte, stand wieder
+darin, und die Tür wäre eine Geste geblieben statt einer Entscheidung.
+
+Der Sitz weiß es jetzt selbst: `RoomSeat.away`. Der Unterschied zu `connected`
+ist der zwischen **Widerfahrnis und Entscheidung** — `connected` fällt weg, wenn
+das WLAN ausgeht, und kommt von allein wieder; `away` setzt jemand selbst, indem
+er aufsteht, und nur er nimmt es zurück, indem er zurückkommt. Daran hängen drei
+Zeilen und sonst nichts:
+
+- `leaveRoom` setzt es in einer laufenden Partie (im Wartebereich fällt der Sitz
+  ganz weg, da gibt es nichts zu merken).
+- `joinRoom` nimmt es zurück — und zwar an derselben Stelle, an der seit
+  Etappe 4 der bekannte Sitz wiedererkannt wird. Ein eigener Weg für die
+  Rückkehr wäre ein zweiter Weg für dieselbe Sache.
+- `hello` filtert damit, welche Räume für das automatische Öffnen überhaupt
+  zählen (`isAway`).
+
+**In der Datenbank**, anders als `connected`: `room_seats.away` mit `DEFAULT 0`
+(Migrationsschritt 6). `connected` steht dort nicht, weil es zu einem Serverlauf
+gehört und mit ihm endet. Eine Entscheidung überlebt den Prozeß, in dem sie
+gefallen ist — sonst säße nach jedem Neustart jeder wieder an dem Tisch, den er
+verlassen hat. Die 0 ist dabei kein Vorgabewert, sondern genau das, was für
+jeden Bestandssitz galt: bis hierher gab es die Tür nicht.
+
+Belegt und nicht behauptet: mit entferntem Filter fällt genau ein Test um
+(`Neuladen > setzt niemanden an einen Tisch zurueck, den er verlassen hat`), der
+Rest der Datei bleibt grün.
+
+### Ein Fall, den die Tür erst erreichbar gemacht hat
+
+`room.leave` traf eine laufende Partie vorher nie — es gab keinen Weg aus ihr
+heraus. Jetzt schon, und damit war ein Loch offen: wer während eines offenen
+Handelsangebots aufsteht, ließ den Tisch auf jemanden warten, der auf dem
+Startbildschirm sitzt. Der Austritt trägt deshalb dieselbe vorläufige Ablehnung
+ein wie ein Verbindungsverlust (`dropFromTrade`, über den `system`-Helfer, den
+es dafür schon gibt). Vorläufig heißt: die Rückkehr nimmt sie wieder weg.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                   |
+| `pnpm test`         | grün — shared 626 / 36 Dateien, server 182 / 20, client 388 / 37 |
+| `pnpm build`        | grün                                                             |
+| `pnpm format:check` | grün (bis auf `public/mess.html`, unversioniert und älter)       |
+
+25 neue Tests: der Übergang selbst, beide Stores, zwei Migrationsschritte, der
+Handler samt `room.over` und Fremdenabwehr, die drei Neulade-Fälle
+(verlassen / zurückgekommen / abgerissen), das Angebot beim Aufstehen, die
+Rückfrage auf der Karte, die Tür im Spielbildschirm und die Filterung des Endes
+im Client.
+
+### Was offen bleibt
+
+- **Am Tisch sieht man den Unterschied nicht.** Wer gegangen ist, steht bei den
+  anderen als „nicht verbunden" da wie einer, dem die Leitung abgerissen ist —
+  `away` geht nicht auf die Leitung. Für „wartet ihr noch auf jemanden?" wäre
+  das die nützlichere Auskunft; es ist aber eine Anzeige und kein Fehler.
+- **Zwei Tabs derselben Person hängen aneinander.** Verläßt einer die Partie,
+  gilt der Sitz als `away`, obwohl der andere Tab weiterspielen kann. Dieselbe
+  Lockerheit hat das Mehrtab-Verhalten schon vorher gehabt.
+- **Niemand kann einen Abbruch aufhalten.** Wer am Tisch sitzt, darf ihn
+  beenden, ohne die anderen zu fragen. Bei drei Freunden am selben Abend ist das
+  richtig; in einer Runde Fremder wäre eine Mehrheit die bessere Regel.

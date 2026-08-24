@@ -1,4 +1,4 @@
-import { useMemo, useState, type JSX } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type JSX } from 'react';
 import {
   CLASSIC_34,
   CLASSIC_56,
@@ -16,6 +16,8 @@ import { EMPTY_TARGETS } from '../game/targets';
 import { ConnectionPanel } from '../diagnostics/ConnectionPanel';
 import type { Identity } from '../game/useOnlineGame';
 import { AccountCorner } from './AccountCorner';
+import { HexField } from './HexField';
+import { Wordmark } from './Wordmark';
 import { SeatPiece } from './LobbyScreen';
 
 /** Tut nichts - Vorgabewert fuer die drei Konto-Aktionen ohne Identitaet. */
@@ -36,6 +38,16 @@ export interface LocalOptions {
   readonly concealBetweenTurns: boolean;
 }
 
+/**
+ * Die Wege in eine Partie - jeder ein Reiter.
+ *
+ * `resume` ist keiner der drei Wege, sondern die Rueckkehr in etwas
+ * Angefangenes. Er steht trotzdem in derselben Reihe, weil er dieselbe Frage
+ * beantwortet (wo geht es jetzt hin) und ein eigener Bereich darueber den
+ * Bildschirm nur laenger machen wuerde.
+ */
+export type Way = 'online' | 'local' | 'join' | 'resume';
+
 export interface StartScreenProps {
   /** An einem Geraet: die Partie beginnt sofort. */
   readonly onStartLocal: (game: GameState, seats: readonly Seat[], options: LocalOptions) => void;
@@ -48,26 +60,18 @@ export interface StartScreenProps {
   readonly problem?: string | null;
   /** Zuletzt benutzter Anzeigename. */
   readonly initialName?: string;
-  /** Partien, an denen dieser Spieler sitzt. Leer heisst: der Bereich fehlt. */
+  /** Partien, an denen dieser Spieler sitzt. Leer heisst: der Reiter fehlt. */
   readonly myRooms?: readonly RoomSummary[];
   readonly onResume?: (code: string) => void;
   /**
-   * Welcher Weg gemeint ist - kommt aus dem Hauptmenue.
+   * Endgueltig aussteigen - die Karte verschwindet.
    *
-   * Ohne Angabe stehen wie bisher alle nebeneinander. Mit Angabe zeigt der
-   * Bildschirm nur den gewaehlten: wer im Menue „Lokal spielen" gedrueckt hat,
-   * hat die Entscheidung schon getroffen und soll sie hier nicht noch einmal
-   * vorgelegt bekommen.
+   * Der Bildschirm fragt vorher nach, macht aber nichts selbst: was ein
+   * Austritt bedeutet, entscheidet der Server (Platz frei oder Partie
+   * abgebrochen), und der Client soll es nicht ein zweites Mal wissen.
    */
-  readonly mode?: 'online' | 'local' | 'join' | 'all';
-  /** Zurueck ins Hauptmenue. Fehlt, wenn es keines gibt. */
-  readonly onBack?: () => void;
-  /**
-   * Wer angemeldet ist - fuer die Konto-Ecke oben rechts, wie im Hauptmenue.
-   *
-   * Ohne Eingangsanimation: dieser Bildschirm hatte nie eine Choreografie,
-   * und ein `order` gaebe es nur fuer eine, die es hier nicht gibt.
-   */
+  readonly onAbandon?: (code: string) => void;
+  /** Wer angemeldet ist - fuer die Konto-Ecke oben rechts. */
   readonly identity?: Identity | null;
   readonly onRegister?: () => void;
   readonly onLogin?: () => void;
@@ -102,7 +106,18 @@ const SEAT_COUNTS = Array.from(
 );
 
 /**
- * Wo eine Partie anfaengt.
+ * Der Platz in der Eingangsreihe, als Zahl statt als eigene Klasse.
+ *
+ * Das CSS rechnet daraus die Verzoegerung (`calc(var(--i) * 65ms)`). Eine
+ * Klasse je Verzoegerung waere dieselbe Auskunft, nur haendisch gepflegt - und
+ * beim naechsten Element vergessen.
+ */
+function order(index: number): CSSProperties {
+  return { '--i': index } as CSSProperties;
+}
+
+/**
+ * Wo eine Partie anfaengt - und seit dem Wegfall des Hauptmenues der Eingang.
  *
  * Der Bildschirm zeigt **das Brett, das gleich gespielt wird** - erzeugt aus
  * dem Seed im Formular, neu bei jedem Tastendruck. Das ist keine Zierde: der
@@ -114,11 +129,30 @@ const SEAT_COUNTS = Array.from(
  * einzige Stelle im Projekt, an der das erlaubt ist. Regel 2 gilt fuer die
  * Logik; die Grenze zwischen Welt und Logik ist genau dieses Eingabefeld.
  *
- * **Seit Etappe 4 zwei Wege, und die Verben sagen den Unterschied:** online
- * wird eine Partie *erstellt* - danach wartet man im Wartebereich auf die
- * anderen. An einem Geraet wird sie *gestartet* und laeuft sofort. Tischgroesse
- * und Seed gelten fuer beide Wege, deshalb stehen sie oben und nicht in einem
- * der beiden Kaesten.
+ * **Zwei Wege, und die Verben sagen den Unterschied:** online wird eine Partie
+ * *erstellt* - danach wartet man im Wartebereich auf die anderen. An einem
+ * Geraet wird sie *gestartet* und laeuft sofort. Tischgroesse und Seed gelten
+ * fuer beide, deshalb stehen sie ueber dem, was nur einen von beiden betrifft.
+ *
+ * **Warum die Wege Reiter sind und kein zweiter Bildschirm davor.** Bis hierher
+ * stand ein Hauptmenue davor, das genau eine Frage stellte - welcher Weg - und
+ * sie danach auf diesem Bildschirm noch einmal als Ueberschrift wiederholte.
+ * Zwei Flaechen fuer eine Entscheidung, und die zweite trug die Antwort der
+ * ersten nur vor. Als Reiter ist die Entscheidung an einer Stelle sichtbar,
+ * bleibt umkehrbar, ohne dass jemand zurueckgeht - und der Bildschirm zeigt
+ * immer nur einen Weg, was ihn kurz genug haelt, um ohne Scrollen zu passen.
+ *
+ * **Als Radiogruppe und nicht als ARIA-Reiter**, weil dasselbe Muster eine
+ * Ebene tiefer schon einmal steht (die Tischgroesse) und weil es Tastatur und
+ * Vorlesegeraet ohne Zutun richtig bedient. Ein zweites Bedienmuster fuer
+ * dieselbe Sache waere Regel 8 auf der Bedienebene.
+ *
+ * Wortmarke, Hexfeld und die Eingangschoreografie kommen aus dem Hauptmenue
+ * mit: sie gehoerten nie zu jenem Bildschirm, sondern zum **Eingang**, und der
+ * ist jetzt hier. Die Marke ist aus demselben Winkel geschnitten wie das Brett
+ * (`Wordmark.tsx`), das Feld dahinter mit den Funktionen des Bretts gezeichnet
+ * (`HexField.tsx`) - kein Bild, das so aehnlich aussieht, sondern dasselbe
+ * Material.
  */
 export function StartScreen({
   onStartLocal,
@@ -129,8 +163,7 @@ export function StartScreen({
   initialName = '',
   myRooms = [],
   onResume,
-  mode = 'all',
-  onBack,
+  onAbandon,
   identity = null,
   onRegister = noop,
   onLogin = noop,
@@ -143,6 +176,45 @@ export function StartScreen({
   const [name, setName] = useState(initialName);
   const [code, setCode] = useState(initialCode ?? '');
   const [conceal, setConceal] = useState(true);
+  /*
+   * Welche Karte gerade nachfragt, ob es ernst gemeint ist.
+   *
+   * Als Zustand auf diesem Bildschirm und nicht als `window.confirm`: der
+   * Systemdialog haelt den ganzen Browser an, sieht auf jedem Rechner anders
+   * aus und laesst sich nicht auf Deutsch beschriften. Die Frage gehoert
+   * ausserdem auf die Karte, um die es geht - „Wirklich?" ohne sichtbaren
+   * Bezug ist die Frage, bei der man auf gut Glueck klickt.
+   */
+  const [abandoning, setAbandoning] = useState<string | null>(null);
+
+  /*
+   * Welcher Reiter offen ist.
+   *
+   * Ein Einladungslink ist bereits eine Entscheidung: wer ihm gefolgt ist, will
+   * beitreten und nichts anderes. Sonst faengt der Bildschirm beim Erstellen an.
+   */
+  const [way, setWay] = useState<Way>(initialCode === null ? 'online' : 'join');
+
+  /*
+   * Ob der Reiter von Hand gewaehlt wurde.
+   *
+   * `myRooms` kommt vom Server und ist beim ersten Rendern noch leer. Trifft
+   * die Liste ein und es steht eine Partie offen, gehoert der Bildschirm
+   * dorthin - wer schon irgendwo sitzt, will meistens zurueck. Aber nur,
+   * solange niemand selbst gewaehlt hat: einen Reiter unter der Hand
+   * wegzuziehen, waehrend jemand seinen Namen eintippt, waere schlimmer als die
+   * falsche Voreinstellung.
+   */
+  const chosen = useRef(initialCode !== null);
+
+  useEffect(() => {
+    if (!chosen.current && myRooms.length > 0) setWay('resume');
+  }, [myRooms.length]);
+
+  const choose = (next: Way): void => {
+    chosen.current = true;
+    setWay(next);
+  };
 
   /*
    * Bei drei bis vier Spielern passt nur `classic34`, bei fuenf bis sechs nur
@@ -202,272 +274,344 @@ export function StartScreen({
 
   const shown = problem ?? localProblem;
 
-  const showsOnline = mode === 'all' || mode === 'online';
-  const showsLocal = mode === 'all' || mode === 'local';
-  const showsJoin = mode === 'all' || mode === 'join';
-  /* Wer nur beitritt, waehlt weder Tischgroesse noch Brett - beides bestimmt
-     der, der die Partie erstellt hat. */
-  const showsBoard = showsOnline || showsLocal;
+  /* Wer beitritt oder zurueckkehrt, waehlt weder Tischgroesse noch Brett -
+     beides bestimmt der, der die Partie erstellt hat. */
+  const showsBoard = way === 'online' || way === 'local';
+  const showsName = way === 'online' || way === 'join';
 
   /*
-   * Wortgleich mit dem Menueeintrag, ueber den man hergekommen ist: wer
-   * „Partie beitreten" gedrueckt hat, liest hier dasselbe und nicht ein zweites
-   * Wort fuer dieselbe Sache (Regel 8).
+   * Die Reiter. Wortlaut wie im ganzen Ablauf: Partie, nicht Spiel (Regel 8).
+   * Die Beschriftung ist kurz, weil vier davon nebeneinander stehen; der ganze
+   * Satz steht als zugaenglicher Name daneben, damit ein Vorlesegeraet nicht
+   * bloss "online" vorliest.
    */
-  const heading =
-    mode === 'local'
-      ? 'Partie starten — lokal'
-      : mode === 'join'
-        ? 'Partie beitreten'
-        : 'Partie starten — online';
+  const ways: readonly { readonly id: Way; readonly label: string; readonly title: string }[] = [
+    { id: 'online', label: 'Online', title: 'Partie starten — online' },
+    { id: 'local', label: 'Lokal', title: 'Partie starten — lokal' },
+    { id: 'join', label: 'Beitreten', title: 'Partie beitreten' },
+    ...(myRooms.length === 0
+      ? []
+      : [
+          {
+            id: 'resume' as const,
+            label: `Weiterspielen (${myRooms.length})`,
+            title: `Weiterspielen (${myRooms.length})`,
+          },
+        ]),
+  ];
 
   return (
     <main className="start">
-      {/* Dieselbe Ecke wie im Hauptmenue, ohne `order`: dieser Bildschirm
-          hat keinen Eingang, den sie nachzeichnen muesste. */}
+      <HexField />
+
+      {/* Die Ecke faellt zuletzt ein - ihr `--i` liegt deshalb hinter dem der
+          Reiter und des Formulars. */}
       <AccountCorner
         identity={identity}
         onRegister={onRegister}
         onLogin={onLogin}
         onLogout={onLogout}
+        order={2}
       />
 
       <section className="start__panel">
         <header className="start__brand">
-          {onBack === undefined ? null : (
-            <button type="button" className="start__back" onClick={onBack}>
-              ← Hauptmenü
-            </button>
-          )}
-          <h1>{mode === 'all' ? 'Conquerist' : heading}</h1>
-          <p className="start__lead">Drei bis sechs Spieler — an sechs Geräten oder an einem.</p>
+          <h1 className="start__title">
+            <Wordmark animated />
+            {/*
+             * Der Titel als Text, nur unsichtbar: die Ueberschrift braucht
+             * einen zugaenglichen Namen, und der darf nicht aus Pfaddaten
+             * erraten werden muessen.
+             */}
+            <span className="visually-hidden">Conquerist</span>
+          </h1>
+          <p className="start__lead">Drei bis sechs Spieler. Sechs Geräte oder eins.</p>
         </header>
 
-        {showsBoard ? (
-          <fieldset className="field-group">
-            <legend>Spieler</legend>
-            <div className="seatcount">
-              {SEAT_COUNTS.map((count) => (
-                <span key={count}>
-                  <input
-                    id={`seatcount-${count}`}
-                    type="radio"
-                    name="seatcount"
-                    aria-label={`${count} Spieler`}
-                    checked={seats.length === count}
-                    onChange={() => resize(count)}
-                  />
-                  <label htmlFor={`seatcount-${count}`}>{count}</label>
-                </span>
-              ))}
-            </div>
-          </fieldset>
-        ) : null}
-
-        {showsBoard ? (
-          <fieldset className="field-group">
-            <legend>Seed</legend>
-            <div className="seedrow">
-              <input
-                aria-label="Seed"
-                value={seed}
-                maxLength={24}
-                onChange={(event) => setSeed(event.currentTarget.value)}
-              />
-              <button
-                type="button"
-                className="button button--ghost"
-                onClick={() => setSeed(randomSeed())}
-              >
-                Neu würfeln
-              </button>
-            </div>
-            <p className="start__note">
-              Gleicher Seed, gleiches Brett — bei euch und bei allen anderen.
-            </p>
-          </fieldset>
-        ) : null}
-
-        {showsBoard ? (
-          <div className="boardfact">
-            <span className="boardfact__name">{blueprint?.name ?? 'Kein passendes Brett'}</span>
-            <span className="boardfact__detail">
-              {blueprint === undefined
-                ? `${seats.length} Spieler`
-                : `${blueprint.rows.reduce((sum, row) => sum + row, 0)} Felder`}
-            </span>
+        <fieldset className="field-group start__ways" style={order(0)}>
+          <legend className="visually-hidden">Weg in eine Partie</legend>
+          <div className="ways">
+            {ways.map((entry) => (
+              <span key={entry.id}>
+                <input
+                  id={`way-${entry.id}`}
+                  type="radio"
+                  name="way"
+                  aria-label={entry.title}
+                  checked={way === entry.id}
+                  onChange={() => choose(entry.id)}
+                />
+                <label htmlFor={`way-${entry.id}`}>{entry.label}</label>
+              </span>
+            ))}
           </div>
-        ) : null}
-
-        {shown === null ? null : <p className="error">{shown}</p>}
+        </fieldset>
 
         {/*
-         * Weitermachen steht ueber Neuanfangen: wer schon irgendwo sitzt, will
-         * meistens dorthin zurueck. Gibt es keine Partie, faellt der Bereich
-         * ganz weg - eine leere Ueberschrift ist eine Auskunft ueber nichts.
+         * Ein Traeger fuer alles unter den Reitern, und zwar einer, der beim
+         * Umschalten stehen bleibt. Nur so laeuft die Eingangsanimation genau
+         * einmal: liefe sie an den ausgetauschten Teilen, spielte sie bei jedem
+         * Reiterwechsel neu - Bewegung, die keinen Zustandswechsel erklaert,
+         * sondern ihn bloss begleitet (Regel 5).
          */}
-        {myRooms.length === 0 ? null : (
-          <section className="way">
-            <span className="eyebrow">Deine Partien</span>
-            <ol className="resume">
-              {myRooms.map((entry) => (
-                <li key={entry.code} className="resume__card">
-                  <div className="resume__head">
-                    <span className="resume__code">{entry.code}</span>
-                    <span className="resume__state">
-                      {!entry.started
-                        ? `wartet · ${entry.seats.length} von ${entry.seatCount}`
-                        : entry.yourTurn === true
-                          ? `Runde ${entry.turn ?? 0} · du bist dran`
-                          : `Runde ${entry.turn ?? 0}`}
-                    </span>
-                  </div>
+        <div className="start__form" style={order(1)}>
+          {showsBoard ? (
+            <fieldset className="field-group">
+              <legend>Spieler</legend>
+              <div className="seatcount">
+                {SEAT_COUNTS.map((count) => (
+                  <span key={count}>
+                    <input
+                      id={`seatcount-${count}`}
+                      type="radio"
+                      name="seatcount"
+                      aria-label={`${count} Spieler`}
+                      checked={seats.length === count}
+                      onChange={() => resize(count)}
+                    />
+                    <label htmlFor={`seatcount-${count}`}>{count}</label>
+                  </span>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
 
-                  <div className="resume__seats">
-                    {entry.seats.map((seat) => (
-                      <span key={seat.name} className="resume__seat">
-                        <SeatPiece color={seat.color} open={!seat.connected} />
-                        {seat.name}
-                      </span>
-                    ))}
-                  </div>
+          {showsBoard ? (
+            <fieldset className="field-group">
+              <legend>Seed</legend>
+              <div className="seedrow">
+                <input
+                  aria-label="Seed"
+                  value={seed}
+                  maxLength={24}
+                  onChange={(event) => setSeed(event.currentTarget.value)}
+                />
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  onClick={() => setSeed(randomSeed())}
+                >
+                  Neu würfeln
+                </button>
+              </div>
+              {/*
+               * Brettname und Seed-Zusage stehen in einer Zeile statt in zwei
+               * Bloecken. Es ist dieselbe Auskunft - welches Brett ihr bekommt -
+               * und zwei Zeilen dafuer waren zwei Zeilen zu viel fuer ein
+               * Querformat mit 360 px Hoehe.
+               */}
+              <p className="start__note">
+                {blueprint?.name ?? 'Kein passendes Brett'} — gleicher Seed, gleiches Brett.
+              </p>
+            </fieldset>
+          ) : null}
 
-                  <button type="button" className="button" onClick={() => onResume?.(entry.code)}>
-                    Zurück in die Partie
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </section>
-        )}
+          {shown === null ? null : <p className="error">{shown}</p>}
 
-        {/*
-         * Der Name steht bei beiden Online-Wegen, deshalb einmal davor. Wer
-         * erstellt und wer beitritt, braucht ihn gleichermassen - zweimal
-         * dasselbe Feld waeren zwei Orte fuer eine Angabe.
-         */}
-        {showsOnline || showsJoin ? (
-          <fieldset className="field-group">
-            <legend>Dein Name</legend>
-            <input
-              id="displayname"
-              aria-label="Dein Name"
-              value={name}
-              maxLength={16}
-              placeholder="Anna"
-              onChange={(event) => setName(event.currentTarget.value)}
-            />
-          </fieldset>
-        ) : null}
-
-        {showsOnline ? (
-          <section className="way">
-            <span className="eyebrow">Online spielen</span>
-            <p className="way__lead">Jeder an seinem Gerät. Beitritt über Code oder Link.</p>
-
-            <button
-              type="button"
-              className="button button--go"
-              disabled={name.trim() === ''}
-              onClick={() => onCreateRoom(seats.length, seed, name.trim())}
-            >
-              Partie erstellen
-            </button>
-          </section>
-        ) : null}
-
-        {showsJoin ? (
-          <section className="way">
-            <span className="eyebrow">Partie beitreten</span>
-            <p className="way__lead">Vier Zeichen, vorgelesen oder aus dem Einladungslink.</p>
-
-            <div className="seedrow">
+          {/*
+           * Der Name steht bei beiden Online-Wegen, deshalb einmal davor. Wer
+           * erstellt und wer beitritt, braucht ihn gleichermassen - zweimal
+           * dasselbe Feld waeren zwei Orte fuer eine Angabe.
+           */}
+          {showsName ? (
+            <fieldset className="field-group">
+              <legend>Dein Name</legend>
               <input
-                aria-label="Raumcode"
-                value={code}
-                maxLength={4}
-                placeholder="K7X2"
-                onChange={(event) => setCode(event.currentTarget.value.toUpperCase())}
+                id="displayname"
+                aria-label="Dein Name"
+                value={name}
+                maxLength={16}
+                placeholder="Anna"
+                onChange={(event) => setName(event.currentTarget.value)}
               />
+            </fieldset>
+          ) : null}
+
+          {way === 'online' ? (
+            <section className="way">
+              <p className="way__lead">Jeder an seinem Gerät. Beitritt über Code oder Link.</p>
+
               <button
                 type="button"
-                className="button"
-                // Aus dem Einladungslink gekommen: der Code steht schon da, es
-                // fehlt nur noch der Griff zur Maus.
-                autoFocus={initialCode !== null}
-                disabled={code.trim().length !== 4 || name.trim() === ''}
-                onClick={() => onJoinRoom(code.trim(), name.trim())}
+                className="button button--go"
+                disabled={name.trim() === ''}
+                onClick={() => onCreateRoom(seats.length, seed, name.trim())}
               >
-                Beitreten
+                Partie erstellen
               </button>
-            </div>
-          </section>
-        ) : null}
+            </section>
+          ) : null}
 
-        {showsLocal ? (
-          <section className="way">
-            <span className="eyebrow">An einem Gerät</span>
-            <p className="way__lead">Alle am selben Bildschirm, reihum.</p>
+          {way === 'join' ? (
+            <section className="way">
+              <p className="way__lead">Vier Zeichen, vorgelesen oder aus dem Einladungslink.</p>
 
-            <ol className="seats">
-              {seats.map((seat, index) => (
-                <li key={seat.id}>
-                  <PieceMark color={SEAT_COLORS[index] ?? seat.color} />
+              <div className="seedrow">
+                <input
+                  aria-label="Raumcode"
+                  value={code}
+                  maxLength={4}
+                  placeholder="K7X2"
+                  onChange={(event) => setCode(event.currentTarget.value.toUpperCase())}
+                />
+                <button
+                  type="button"
+                  className="button"
+                  // Aus dem Einladungslink gekommen: der Code steht schon da, es
+                  // fehlt nur noch der Griff zur Maus.
+                  autoFocus={initialCode !== null}
+                  disabled={code.trim().length !== 4 || name.trim() === ''}
+                  onClick={() => onJoinRoom(code.trim(), name.trim())}
+                >
+                  Beitreten
+                </button>
+              </div>
+            </section>
+          ) : null}
+
+          {way === 'local' ? (
+            <section className="way">
+              <p className="way__lead">Alle am selben Bildschirm, reihum.</p>
+
+              <ol className="seats">
+                {seats.map((seat, index) => (
+                  <li key={seat.id}>
+                    <PieceMark color={SEAT_COLORS[index] ?? seat.color} />
+                    <input
+                      aria-label={`Name von Spieler ${index + 1}`}
+                      value={seat.name}
+                      maxLength={16}
+                      onChange={(event) => rename(index, event.currentTarget.value)}
+                    />
+                  </li>
+                ))}
+              </ol>
+
+              <fieldset className="field-group way__hand">
+                <legend>Handkarten</legend>
+                <label htmlFor="hand-conceal">
                   <input
-                    aria-label={`Name von Spieler ${index + 1}`}
-                    value={seat.name}
-                    maxLength={16}
-                    onChange={(event) => rename(index, event.currentTarget.value)}
+                    id="hand-conceal"
+                    type="radio"
+                    name="hand"
+                    checked={conceal}
+                    onChange={() => setConceal(true)}
                   />
-                </li>
-              ))}
-            </ol>
+                  Beim Zugwechsel zudecken
+                </label>
+                <label htmlFor="hand-open">
+                  <input
+                    id="hand-open"
+                    type="radio"
+                    name="hand"
+                    checked={!conceal}
+                    onChange={() => setConceal(false)}
+                  />
+                  Offen liegen lassen
+                </label>
+              </fieldset>
 
-            <fieldset className="field-group way__hand">
-              <legend>Handkarten</legend>
-              <label htmlFor="hand-conceal">
-                <input
-                  id="hand-conceal"
-                  type="radio"
-                  name="hand"
-                  checked={conceal}
-                  onChange={() => setConceal(true)}
-                />
-                Beim Zugwechsel zudecken
-              </label>
-              <label htmlFor="hand-open">
-                <input
-                  id="hand-open"
-                  type="radio"
-                  name="hand"
-                  checked={!conceal}
-                  onChange={() => setConceal(false)}
-                />
-                Offen liegen lassen
-              </label>
-            </fieldset>
+              <button type="button" className="button" onClick={startLocal}>
+                Lokale Partie starten
+              </button>
+            </section>
+          ) : null}
 
-            <button type="button" className="button" onClick={startLocal}>
-              Lokale Partie starten
-            </button>
-          </section>
-        ) : null}
+          {way === 'resume' ? (
+            <section className="way">
+              <span className="eyebrow">Deine Partien</span>
+              <ol className="resume">
+                {myRooms.map((entry) => (
+                  <li key={entry.code} className="resume__card">
+                    <div className="resume__head">
+                      <span className="resume__code">{entry.code}</span>
+                      <span className="resume__state">
+                        {!entry.started
+                          ? `wartet · ${entry.seats.length} von ${entry.seatCount}`
+                          : entry.yourTurn === true
+                            ? `Runde ${entry.turn ?? 0} · du bist dran`
+                            : `Runde ${entry.turn ?? 0}`}
+                      </span>
+                    </div>
 
-        {/*
-         * Der Inhalt wird erst erzeugt, wenn das Feld offen ist - und nicht
-         * bloss ausgeblendet. `details` versteckt seine Kinder nur optisch; sie
-         * waeren gerendert, `useConnection` liefe, und eine Hotseat-Partie
-         * haette eine WebSocket-Verbindung, die sie nicht braucht. Ein Test
-         * haelt das fest.
-         */}
-        <details
-          className="start__diagnostics"
-          open={diagnosticsOpen}
-          onToggle={(event) => setDiagnosticsOpen(event.currentTarget.open)}
-        >
-          <summary>Verbindung und Diagnose (Etappe 0)</summary>
-          {diagnosticsOpen ? <ConnectionPanel /> : null}
-        </details>
+                    <div className="resume__seats">
+                      {entry.seats.map((seat) => (
+                        <span key={seat.name} className="resume__seat">
+                          <SeatPiece color={seat.color} open={!seat.connected} />
+                          {seat.name}
+                        </span>
+                      ))}
+                    </div>
+
+                    {abandoning === entry.code ? (
+                      <div className="resume__confirm" role="group">
+                        <p className="resume__warning">
+                          {entry.started
+                            ? 'Die Partie ist danach für alle am Tisch vorbei und zählt als abgebrochen.'
+                            : 'Dein Platz an diesem Tisch wird wieder frei.'}
+                        </p>
+                        <div className="resume__actions">
+                          <button
+                            type="button"
+                            className="button button--no"
+                            onClick={() => {
+                              setAbandoning(null);
+                              onAbandon?.(entry.code);
+                            }}
+                          >
+                            {entry.started ? 'Ja, abbrechen' : 'Ja, verlassen'}
+                          </button>
+                          <button
+                            type="button"
+                            className="button button--ghost"
+                            onClick={() => setAbandoning(null)}
+                          >
+                            Doch nicht
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="resume__actions">
+                        <button
+                          type="button"
+                          className="button"
+                          onClick={() => onResume?.(entry.code)}
+                        >
+                          {entry.started ? 'Zurück in die Partie' : 'Zurück an den Tisch'}
+                        </button>
+                        {onAbandon === undefined ? null : (
+                          <button
+                            type="button"
+                            className="button button--ghost"
+                            onClick={() => setAbandoning(entry.code)}
+                          >
+                            {entry.started ? 'Partie abbrechen' : 'Tisch verlassen'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ) : null}
+
+          {/*
+           * Der Inhalt wird erst erzeugt, wenn das Feld offen ist - und nicht
+           * bloss ausgeblendet. `details` versteckt seine Kinder nur optisch;
+           * sie waeren gerendert, `useConnection` liefe, und eine
+           * Hotseat-Partie haette eine WebSocket-Verbindung, die sie nicht
+           * braucht. Ein Test haelt das fest.
+           */}
+          <details
+            className="start__diagnostics"
+            open={diagnosticsOpen}
+            onToggle={(event) => setDiagnosticsOpen(event.currentTarget.open)}
+          >
+            <summary>Verbindung und Diagnose (Etappe 0)</summary>
+            {diagnosticsOpen ? <ConnectionPanel /> : null}
+          </details>
+        </div>
       </section>
 
       <div className="start__preview">

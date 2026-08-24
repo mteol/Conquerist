@@ -124,7 +124,7 @@ body {
  *
  * **Die Dauer allein genuegt nicht.** Eine Verzoegerung, die stehen bleibt,
  * haelt das Element mit `backwards` in seiner Anfangsstellung fest - und die
- * heisst bei einem Eingang „unsichtbar". Gemessen am Hauptmenue, bevor
+ * heisst bei einem Eingang „unsichtbar". Gemessen am Eingang, bevor
  * `animation-delay` hier stand: die drei Eintraege sprangen bei 333, 396 und
  * 459 ms nacheinander ins Bild. Also keine Animation mehr, aber immer noch
  * eine Choreografie - genau das, was hier abbestellt wurde.
@@ -301,7 +301,7 @@ body {
  * gestanzte Bedienung.
  */
 .button,
-.menu__entry,
+.ways label,
 .mode,
 .way,
 .way > input,
@@ -321,9 +321,13 @@ body {
   corner-shape: bevel;
 }
 
-/* --- Hauptmenue ----------------------------------------------------------- *
+/* --- Der Eingang ---------------------------------------------------------- *
  *
- * Die erste Flaeche. Sie traegt einen Titel, drei Wege und sonst nichts.
+ * Was hier steht, gehoerte bis zum Wegfall des Hauptmenues jenem Bildschirm.
+ * Es gehoerte ihm nie: Hexfeld, Wortmarke und Ankunft beschreiben nicht *ein*
+ * Menue, sondern **den Eingang** in die Anwendung. Der ist seither der
+ * Startbildschirm, und diese Regeln sind mit umgezogen, ohne dass eine von
+ * ihnen sich geaendert haette.
  *
  * Der Hintergrund ist das Hexfeld aus `HexField.tsx` - gezeichnet mit den
  * Funktionen des Bretts, nicht als Muster. Darueber liegt derselbe
@@ -343,8 +347,15 @@ body {
  *   200-480  der Aufprall laeuft als Welle durchs Hexfeld, von innen nach
  *            aussen (`IMPACT_MS` und `TRAVEL_MS` in `HexField.tsx`)
  *   260      der Untertitel blendet auf
- *   320+     die Wege fallen von oben nach, 65 ms auseinander
+ *   320+     die Reiter und darunter das Formular fallen von oben nach, 65 ms
+ *            auseinander, zuletzt die Konto-Ecke
  *   danach   Ruhe. Nur Hover und Klick antworten noch.
+ *
+ * **Das Formular faellt als ein Stueck**, nicht Feld fuer Feld. Es haengt an
+ * `.start__form`, und das ist genau der Traeger, der beim Reiterwechsel stehen
+ * bleibt: liefe die Animation an den ausgetauschten Teilen, spielte sie bei
+ * jedem Wechsel neu. Ein Reiterwechsel ist ein Zustandswechsel, aber einer, den
+ * der Reiter selbst schon zeigt - Bewegung dazu erklaerte nichts mehr.
  *
  * **Alle vier Animationen sind Eingaenge und laufen mit `backwards`, nicht mit
  * `both`.** Zwei Gruende, beide schon einmal teuer gewesen:
@@ -358,16 +369,6 @@ body {
  *    genau die Falle aus `CLAUDE.md`: eine abgeschaltete Animation steht
  *    sofort an ihrem Ende, und ein Ende darf deshalb nie „unsichtbar" heissen.
  */
-
-.menu {
-  position: relative;
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
-  overflow: hidden;
-  background:
-    radial-gradient(90% 70% at 50% 45%, var(--sea-700) 0%, transparent 65%), var(--sea-900);
-}
 
 .hexfield {
   position: absolute;
@@ -420,32 +421,28 @@ body {
   }
 }
 
-.menu__inner {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(2rem, 6vh, 3.5rem);
-  align-items: center;
-  padding: 2rem 1.25rem;
-  /* Oben so viel Luft, wie die Konto-Ecke hoch ist - sonst laeuft die
-     Wortmarke im schmalen Fenster darunter hindurch. */
-  padding-top: 4rem;
-  text-align: center;
-}
-
 /*
- * Die Ueberschrift traegt keinen Text mehr, sondern die gezeichnete Wortmarke
+ * Die Ueberschrift traegt keinen Text, sondern die gezeichnete Wortmarke
  * (`Wordmark.tsx`) und daneben denselben Namen unsichtbar fuer Vorlesegeraete.
  * Deshalb hier keine Schriftsetzung - es gibt nichts zu setzen.
  */
-.menu__title {
+.start__title {
   margin: 0;
   line-height: 0;
 }
 
+/*
+ * Die Marke fuellt ihre Spalte, statt sich am Fenster zu bemessen.
+ *
+ * Hier stand `min(78vw, 42rem)`, und das war richtig, solange sie mittig auf
+ * einem leeren Bildschirm sass. In der Panel-Spalte (hoechstens 27rem) haette
+ * `78vw` sie auf einem breiten Fenster ueber den Rand geschoben - `.start` mit
+ * seinem `overflow: hidden` haette sie schlicht abgeschnitten.
+ */
 .wordmark {
   display: block;
-  width: min(78vw, 42rem);
+  width: 100%;
+  max-width: 26rem;
   height: auto;
   fill: var(--parchment);
 }
@@ -514,15 +511,7 @@ body {
   }
 }
 
-.menu__lead {
-  margin: 1.1rem 0 0;
-  color: var(--on-sea-muted);
-  font-size: 0.9rem;
-  letter-spacing: 0.02em;
-  animation: menu-rise 320ms ease-out 260ms backwards;
-}
-
-@keyframes menu-rise {
+@keyframes enter-rise {
   from {
     transform: translateY(6px);
     opacity: 0;
@@ -534,89 +523,74 @@ body {
   }
 }
 
-.menu__entries {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  width: min(100%, 22rem);
+/*
+ * Die Reiterreihe.
+ *
+ * Vier gleichwertige Flaechen nebeneinander, keine hervorgehoben - welcher Weg
+ * der richtige ist, weiss der Spieler und nicht der Bildschirm. Was sie
+ * unterscheidet, steht in den Verben dahinter (erstellen gegen starten) und
+ * nicht in einer Farbe.
+ *
+ * Gebaut wie `.seatcount`, weil es dasselbe ist: eine Wahl aus wenigen, immer
+ * genau eine. Das Radio traegt die Bedeutung und liegt unsichtbar darunter, das
+ * Label traegt die Flaeche. Ein eigenes Muster fuer denselben Vorgang waere
+ * zweimal dieselbe Sache verschieden bedient (Regel 8).
+ *
+ * Umbruch statt Rollen: bei vier Reitern und schmalem Fenster rutscht
+ * `Weiterspielen (2)` in die zweite Zeile. Eine waagerecht scrollende Leiste
+ * versteckt genau das, was sie anbieten soll.
+ */
+.start__ways {
+  border: 0;
+  padding: 0;
 }
 
-/*
- * Drei gleichwertige Zeilen. Keine wird hervorgehoben - welcher Weg der
- * richtige ist, weiss der Spieler und nicht der Bildschirm.
- *
- * Sie fallen von oben nach, in ihrer Lesereihenfolge. Der Platz in der Reihe
- * kommt als `--i` aus `MenuScreen.tsx`; eine Klasse je Verzoegerung waere
- * dieselbe Auskunft, nur haendisch gepflegt.
- */
-.menu__entry {
-  position: relative;
-  overflow: hidden;
-  padding: 0.85rem 1.2rem;
+.ways {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ways input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ways label {
+  display: block;
+  padding: 0.5rem 0.85rem;
   border: 1px solid rgb(233 225 207 / 22%);
   border-radius: var(--radius);
   background: rgb(233 225 207 / 7%);
   color: var(--on-sea);
-  font: inherit;
-  font-size: 1.05rem;
+  font-size: 0.92rem;
   font-weight: 650;
   cursor: pointer;
   transition:
     background 140ms ease,
-    border-color 140ms ease,
-    transform 140ms ease;
-  animation: menu-drop 300ms cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
-  animation-delay: calc(320ms + var(--i, 0) * 65ms);
+    border-color 140ms ease;
 }
 
-@keyframes menu-drop {
-  from {
-    transform: translateY(-14px);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+.ways label:hover {
+  border-color: rgb(233 225 207 / 45%);
+  background: rgb(233 225 207 / 14%);
 }
 
 /*
- * Die Antwort auf den Zeiger ist ein Balken, der aus der Kante waechst, und
- * ein Ruck von zwei Pixeln - kein Leuchten. Boldness wird an einer Stelle
- * ausgegeben (Regel 4), und diese Flaeche ist nicht die Stelle.
+ * Der offene Reiter steht auf Pergament - dieselbe Umkehr wie bei der
+ * Tischgroesse. Sie traegt hier mehr als dort: der offene Reiter sagt, was
+ * unter ihm steht, und muss deshalb auch aus dem Augenwinkel zu finden sein.
  */
-.menu__entry::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--accent);
-  transform: scaleY(0);
-  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.25, 1);
+.ways input:checked + label {
+  border-color: var(--parchment);
+  background: var(--parchment);
+  color: var(--ink);
 }
 
-.menu__entry:hover,
-.menu__entry:focus-visible {
-  border-color: rgb(233 225 207 / 45%);
-  background: rgb(233 225 207 / 14%);
-  transform: translateX(2px);
-}
-
-.menu__entry:hover::before,
-.menu__entry:focus-visible::before {
-  transform: scaleY(1);
-}
-
-.menu__entry:active {
-  transform: translateX(2px) scale(0.985);
-}
-
-/* Weiterspielen steht oben und traegt als einziges den Akzent - es ist kein
-   vierter Weg, sondern die Rueckkehr in etwas Angefangenes. */
-.menu__entry--resume {
-  border-color: var(--accent);
-  background: rgb(224 179 74 / 14%);
+.ways input:focus-visible + label {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 /*
@@ -627,7 +601,7 @@ body {
  * Setzung, gedaempfte Farbe, keine Flaeche.
  *
  * Sie faellt als letztes in die bestehende Choreografie ein, mit derselben
- * `menu-drop`-Animation und derselben Rechnung wie `.menu__entry` - sonst
+ * `enter-drop`-Animation und derselben Rechnung wie die Reiter - sonst
  * liefe hier eine zweite Taktung neben der ersten.
  */
 .corner {
@@ -637,7 +611,7 @@ body {
   z-index: 1;
   display: flex;
   /* Ohne das bricht der Inhalt im schmalen Fenster nicht um, er wird von
-     `.menu`s `overflow: hidden` abgeschnitten - „Anmelden" waere dann nicht
+     `.start`s `overflow: hidden` abgeschnitten - „Anmelden" waere dann nicht
      nur unsichtbar, sondern unklickbar (Regel 7). `flex-end`, damit
      umgebrochene Zeilen weiter an der Kante haengen, an der die Ecke sitzt. */
   flex-wrap: wrap;
@@ -651,7 +625,7 @@ body {
   font-size: 0.78rem;
   letter-spacing: 0.08em;
   text-transform: lowercase;
-  animation: menu-drop 300ms cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
+  animation: enter-drop 300ms cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
   animation-delay: calc(320ms + var(--i, 4) * 65ms);
 }
 
@@ -675,10 +649,98 @@ body {
   border-bottom-color: var(--on-sea);
 }
 
+/* --- Startbildschirm ------------------------------------------------------ */
+
+/*
+ * Zweispaltig: links die Bedienung auf Pergament, rechts das Brett, das
+ * gleich gespielt wird. Das Brett ist keine Dekoration - es entsteht aus dem
+ * Seed im Formular und aendert sich beim Tippen. Deshalb steht es gross und
+ * nicht als Vorschaubildchen.
+ */
+.start {
+  /*
+   * Traeger fuer die Seekarte und fuer das Hexfeld darin - ohne das richteten
+   * sich beide am Fenster aus und nicht an dieser Flaeche.
+   */
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(20rem, 27rem) 1fr;
+  min-height: 100vh;
+  /* Das Hexfeld reicht ueber den Rand hinaus, damit es sich verliert statt an
+     einer Kante aufzuhoeren. Was darueber hinausragt, wird hier beschnitten. */
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 85% 15%, var(--sea-700) 0%, transparent 60%), var(--sea-900);
+}
+
+/*
+ * Beide Spalten liegen ueber dem Hexfeld.
+ *
+ * `position: relative` allein reicht dafuer: das Feld ist absolut gesetzt und
+ * steht ohne `z-index` in der Reihenfolge des Markups, also davor. Ein
+ * `z-index` hier waere eine Zahl, die nichts entscheidet.
+ */
+.start__panel,
+.start__preview {
+  position: relative;
+}
+
+.start__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  /* Oben so viel Luft, wie die Konto-Ecke hoch ist - sonst laeuft die
+     Wortmarke im schmalen Fenster darunter hindurch. */
+  padding-top: 4rem;
+  /*
+   * Ein Netz, kein Entwurf. Der Bildschirm soll ohne Scrollen passen, und die
+   * Reiter sind der Grund, warum er das tut - aber wer die Schriftgroesse
+   * hochstellt, sprengt jede Rechnung. Abgeschnitten waere schlimmer als
+   * scrollbar (Regel 7).
+   */
+  overflow-y: auto;
+}
+
+.start__brand {
+  /* Die Wortmarke traegt ihre eigene Groesse; der Kopf haelt nur den Abstand
+     zur Reiterreihe. */
+  display: block;
+}
+
+.start__lead {
+  margin: 0.7rem 0 0;
+  max-width: 30ch;
+  color: var(--on-sea-muted);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  animation: enter-rise 320ms ease-out 260ms backwards;
+}
+
+/*
+ * Reiterreihe und Formular fallen von oben nach, in ihrer Lesereihenfolge -
+ * dieselbe Rechnung wie die Konto-Ecke, damit hier nicht zwei Taktungen
+ * nebeneinander laufen. Der Platz in der Reihe kommt als `--i` aus
+ * `StartScreen.tsx`.
+ */
+.start__ways,
+.start__form {
+  animation: enter-drop 300ms cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
+  animation-delay: calc(320ms + var(--i, 0) * 65ms);
+}
+
+/* Der Traeger unter den Reitern. Er haelt den Abstand, den `.start__panel`
+   sonst zwischen seinen Kindern haelt - und bleibt beim Reiterwechsel stehen. */
+.start__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
 /*
  * Unter 26rem (~416px) wird aus dem Umbruch der Regelfall, nicht die
  * Ausnahme: „Gast" plus zwei Aktionen passen dort nicht mehr in eine Zeile.
- * Engere Masse halten die Ecke trotzdem klein, und `.menu__inner` bekommt
+ * Engere Masse halten die Ecke trotzdem klein, und `.start__panel` bekommt
  * mehr Luft nach oben - sonst liefe die Wortmarke unter die jetzt hoehere,
  * zweizeilige Ecke. Beides gehoert zusammen, weil eine hoehere Ecke ohne
  * mehr Abstand denselben Fehler nur verschiebt statt ihn zu beheben.
@@ -693,70 +755,9 @@ body {
     font-size: 0.72rem;
   }
 
-  .menu__inner {
+  .start__panel {
     padding-top: 6rem;
   }
-}
-
-/* --- Startbildschirm ------------------------------------------------------ */
-
-/*
- * Zweispaltig: links die Bedienung auf Pergament, rechts das Brett, das
- * gleich gespielt wird. Das Brett ist keine Dekoration - es entsteht aus dem
- * Seed im Formular und aendert sich beim Tippen. Deshalb steht es gross und
- * nicht als Vorschaubildchen.
- */
-.start {
-  /*
-   * Traeger fuer die Seekarte darin - ohne das richtete sie sich am Fenster
-   * aus und nicht an dieser Flaeche.
-   */
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(20rem, 27rem) 1fr;
-  min-height: 100vh;
-  background:
-    radial-gradient(120% 90% at 85% 15%, var(--sea-700) 0%, transparent 60%), var(--sea-900);
-}
-
-.start__panel {
-  display: flex;
-  flex-direction: column;
-  gap: 1.15rem;
-  padding: clamp(1.5rem, 4vw, 3rem);
-  overflow-y: auto;
-}
-
-/* Zurueck ins Menue: leise, aber immer an derselben Stelle. */
-.start__back {
-  display: block;
-  margin-bottom: 0.6rem;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--on-sea-muted);
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.start__back:hover {
-  color: var(--on-sea);
-}
-
-.start__brand h1 {
-  margin: 0.15rem 0 0;
-  font-size: clamp(2.6rem, 5.5vw, 3.9rem);
-  font-weight: 800;
-  letter-spacing: -0.045em;
-  line-height: 0.95;
-  text-transform: uppercase;
-}
-
-.start__lead {
-  margin: 0.5rem 0 0;
-  max-width: 26ch;
-  color: var(--on-sea-muted);
 }
 
 .field-group {
@@ -857,25 +858,6 @@ body {
 }
 
 /* Das Brett ist keine Wahl mehr, sondern eine Folge der Tischgroesse. */
-.boardfact {
-  display: flex;
-  gap: 0.55rem;
-  align-items: baseline;
-  padding: 0.6rem 0.75rem;
-  border-left: 3px solid var(--accent);
-  border-radius: 0 7px 7px 0;
-  background: rgb(233 225 207 / 7%);
-}
-
-.boardfact__name {
-  font-weight: 650;
-}
-
-.boardfact__detail {
-  color: var(--on-sea-muted);
-  font-size: 0.85rem;
-}
-
 .seedrow {
   display: flex;
   gap: 0.5rem;
@@ -892,12 +874,6 @@ body {
   font: inherit;
   font-family: ui-monospace, 'Cascadia Mono', monospace;
   letter-spacing: 0.04em;
-}
-
-.start__start {
-  margin-top: 0.4rem;
-  padding: 0.8rem 1.2rem;
-  font-size: 1.05rem;
 }
 
 .start__note {
@@ -1352,6 +1328,43 @@ body {
   display: flex;
   gap: 0.3rem;
   align-items: center;
+}
+
+/*
+ * Zwei Wege aus einer Karte heraus: zurueck hinein oder endgueltig hinaus.
+ *
+ * Der zweite steht als Geisterknopf daneben und nicht als zweiter voller
+ * Knopf: aussteigen ist das seltenere und das unwiderrufliche von beiden, und
+ * zwei gleich laute Knoepfe nebeneinander laden dazu ein, den falschen zu
+ * treffen. `flex-wrap`, weil beide Beschriftungen lang sind und die Spalte auf
+ * einem Telefon schmal ist.
+ */
+.resume__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.resume__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+/*
+ * Was der Klick anrichtet, in einem Satz - und in der Farbe der Absage.
+ *
+ * Er steht ueber den Knoepfen und nicht darunter: gelesen wird von oben nach
+ * unten, und die Folge soll vor der Entscheidung stehen, nicht hinter ihr.
+ */
+.resume__warning {
+  margin: 0;
+  /* Derselbe Ton wie `.error` und nicht `--bad-ink`: das tiefe Rot ist eine
+     Flaechenfarbe und liest sich auf dunkler See kaum. */
+  color: #f0a094;
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 /*
@@ -2785,6 +2798,34 @@ body {
   color: var(--on-sea);
 }
 
+/*
+ * Die Tuer nach draussen - dieselbe Groesse und dieselbe Zurueckhaltung wie
+ * das Verlaufssymbol daneben.
+ *
+ * Ohne `margin-right`: der Abstand zum Zahnrad haelt die Verlaufsecke, und die
+ * steht rechts von dieser hier. Zwischen beiden liegt das `gap` der `.topline`.
+ */
+.exit-toggle {
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--on-sea-muted);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: color 120ms ease;
+}
+
+.exit-toggle:hover,
+.exit-toggle:focus-visible {
+  color: var(--on-sea);
+}
+
+.exit-toggle__mark,
 .log-toggle__mark {
   width: 1.25rem;
   height: 1.25rem;

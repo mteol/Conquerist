@@ -610,3 +610,55 @@ describe('Der Hinweis fuers Hochformat', () => {
     expect(screen.queryByText(/Quer halten/)).toBeNull();
   });
 });
+
+/**
+ * Die Tuer nach draussen.
+ *
+ * Sie fehlte, und daraus wurde die Sackgasse aus dem Playtest: der Server
+ * oeffnet beim Verbindungsaufbau den einzigen Raum, an dem jemand sitzt - wer
+ * einmal in einer Partie war, kam bei jedem Besuch dorthin zurueck und von
+ * dort zu keinem Startbildschirm mehr.
+ */
+function LeavableGame({
+  onLeave,
+  over = null,
+}: {
+  readonly onLeave: () => void;
+  readonly over?: string | null;
+}): JSX.Element {
+  const game = useLocalGame(start, seats);
+
+  return (
+    <GameScreen
+      view={game.view}
+      actions={game.actions}
+      log={game.log}
+      error={game.error}
+      over={over}
+      onAct={game.act}
+      onDismissError={game.dismissError}
+      onLeave={onLeave}
+    />
+  );
+}
+
+describe('Der Weg zurueck zum Start', () => {
+  it('steht waehrend der Partie bereit und nicht erst am Ende', async () => {
+    const onLeave = vi.fn();
+    render(<LeavableGame onLeave={onLeave} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Zum Startbildschirm' }));
+    expect(onLeave).toHaveBeenCalled();
+  });
+
+  it('meldet einen Abbruch mit seinem Grund und fuehrt hinaus', async () => {
+    const onLeave = vi.fn();
+    render(<LeavableGame onLeave={onLeave} over="Anna hat die Partie abgebrochen" />);
+
+    const dialog = screen.getByRole('dialog', { name: 'Partie abgebrochen' });
+    expect(dialog.textContent).toContain('Anna hat die Partie abgebrochen');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Zurück zum Start' }));
+    expect(onLeave).toHaveBeenCalled();
+  });
+});

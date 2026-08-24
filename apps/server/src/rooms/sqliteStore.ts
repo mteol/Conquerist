@@ -42,6 +42,8 @@ interface SeatRow {
   readonly name: string;
   /** `null` nur bei Zeilen, die der vierte Migrationsschritt nicht erreicht hat. */
   readonly color: string | null;
+  /** SQLite kennt kein Boolean - 0 oder 1. */
+  readonly away: number;
 }
 
 export class SqliteRoomStore implements RoomStore {
@@ -81,10 +83,10 @@ export class SqliteRoomStore implements RoomStore {
 
       this.database.prepare('DELETE FROM room_seats WHERE code = ?').run(room.code);
       const seat = this.database.prepare(
-        'INSERT INTO room_seats (code, position, user_id, color) VALUES (?, ?, ?, ?)',
+        'INSERT INTO room_seats (code, position, user_id, color, away) VALUES (?, ?, ?, ?, ?)',
       );
       room.seats.forEach((entry, position) => {
-        seat.run(room.code, position, entry.userId, entry.color);
+        seat.run(room.code, position, entry.userId, entry.color, entry.away ? 1 : 0);
       });
     });
 
@@ -104,9 +106,23 @@ export class SqliteRoomStore implements RoomStore {
     this.database.prepare('DELETE FROM rooms WHERE code = ?').run(code);
   }
 
+  /**
+   * Abgebrochen - die Zeile bleibt, der Raum verschwindet aus dem Betrieb.
+   *
+   * `WHERE abandoned_at IS NULL` haelt den ersten Abbruch fest: kaeme ein
+   * zweiter hinterher (zweiter Tab, doppelter Klick), verschoebe er sonst den
+   * Zeitpunkt auf den spaeteren. Abgebrochen wurde die Partie aber, als der
+   * erste ausgestiegen ist.
+   */
+  abandon(code: string, at: number): void {
+    this.database
+      .prepare('UPDATE rooms SET abandoned_at = ? WHERE code = ? AND abandoned_at IS NULL')
+      .run(at, code);
+  }
+
   loadAll(): Room[] {
     const rows = this.database
-      .prepare('SELECT * FROM rooms ORDER BY created_at')
+      .prepare('SELECT * FROM rooms WHERE abandoned_at IS NULL ORDER BY created_at')
       .all() as RoomRow[];
 
     const rooms: Room[] = [];
@@ -121,7 +137,7 @@ export class SqliteRoomStore implements RoomStore {
   private rebuild(row: RoomRow): Room | null {
     const seatRows = this.database
       .prepare(
-        `SELECT s.position, s.user_id, s.color, u.name
+        `SELECT s.position, s.user_id, s.color, s.away, u.name
          FROM room_seats s JOIN users u ON u.id = s.user_id
          WHERE s.code = ? ORDER BY s.position`,
       )
@@ -137,6 +153,10 @@ export class SqliteRoomStore implements RoomStore {
       // Verbunden ist eine Eigenschaft dieses Serverlaufs. Nach einem Neustart
       // ist niemand verbunden, bis er sich meldet.
       connected: false,
+      // Weggegangen ist dagegen eine Entscheidung, und die ueberlebt den
+      // Neustart - sonst saesse nach jedem wieder jeder an dem Tisch, den er
+      // verlassen hat.
+      away: entry.away === 1,
     }));
 
     let game: GameState | null = null;

@@ -1,18 +1,26 @@
 import { rollOpening } from './openingFixture.js';
 import { describe, expect, it } from 'vitest';
 import { legalActions, setupPlayer } from '@conquerist/shared';
-import { openDatabase } from '../db/database.js';
+import { openDatabase, type AppDatabase } from '../db/database.js';
 import { Users } from '../identity/users.js';
 import { Sessions } from '../identity/sessions.js';
 import { SqliteRoomStore } from './sqliteStore.js';
-import { applyAction, createRoom, joinRoom, startGame, type Room } from './room.js';
+import {
+  applyAction,
+  createRoom,
+  isAway,
+  joinRoom,
+  leaveRoom,
+  startGame,
+  type Room,
+} from './room.js';
 
 /** Drei Gaeste anlegen und ihre Ids zurueckgeben - rooms verweist auf users. */
-function withUsers(): { store: SqliteRoomStore; ids: string[] } {
+function withUsers(): { store: SqliteRoomStore; ids: string[]; database: AppDatabase } {
   const database = openDatabase(':memory:');
   const users = new Users(database, new Sessions(database));
   const ids = ['Anna', 'Ben', 'Cem'].map((name) => users.hello(undefined, name).user.id);
-  return { store: new SqliteRoomStore(database), ids };
+  return { store: new SqliteRoomStore(database), ids, database };
 }
 
 function waitingRoom(ids: readonly string[]): Room {
@@ -103,5 +111,60 @@ describe('SqliteRoomStore', () => {
     store.remove('K7X2');
 
     expect(store.loadAll()).toEqual([]);
+  });
+});
+
+describe('Abgebrochene Partien', () => {
+  it('laedt sie nicht mehr, laesst die Zeile aber stehen', () => {
+    const { store, ids, database } = withUsers();
+    const started = startGame(waitingRoom(ids), ids[0]!);
+    if (!started.ok) throw new Error(started.error);
+    store.save(started.room);
+    store.appendAction('K7X2', { type: 'rollDice', player: ids[0]! });
+
+    store.abandon('K7X2', 1_700_000_000_000);
+
+    expect(store.loadAll()).toEqual([]);
+
+    const row = database.prepare('SELECT abandoned_at FROM rooms WHERE code = ?').get('K7X2') as
+      { abandoned_at: number | null } | undefined;
+    expect(row?.abandoned_at).toBe(1_700_000_000_000);
+
+    // Der Startzustand und das Log bleiben liegen: abgebrochen heisst, dass
+    // dort niemand weiterspielt - nicht, dass es die Partie nie gab.
+    const log = database
+      .prepare('SELECT COUNT(*) AS count FROM room_actions WHERE code = ?')
+      .get('K7X2') as { count: number };
+    expect(log.count).toBe(1);
+  });
+
+  it('haelt den ersten Abbruch fest und nicht den letzten', () => {
+    const { store, ids, database } = withUsers();
+    store.save(waitingRoom(ids));
+
+    store.abandon('K7X2', 1_000);
+    store.abandon('K7X2', 9_000);
+
+    const row = database.prepare('SELECT abandoned_at FROM rooms WHERE code = ?').get('K7X2') as {
+      abandoned_at: number | null;
+    };
+    expect(row.abandoned_at).toBe(1_000);
+  });
+});
+
+describe('Wer den Tisch verlassen hat', () => {
+  it('sitzt nach einem Neustart immer noch nicht daran', () => {
+    const { store, ids } = withUsers();
+    const started = startGame(waitingRoom(ids), ids[0]!);
+    if (!started.ok) throw new Error(started.error);
+
+    store.save(leaveRoom(started.room, ids[1]!));
+
+    const loaded = store.loadAll()[0]!;
+    // `connected` faellt beim Laden fuer alle weg - das gehoert dem Serverlauf.
+    // `away` ist eine Entscheidung und muss den Neustart ueberstehen, sonst
+    // steht der Ausgestiegene beim naechsten `hello` wieder in der Partie.
+    expect(isAway(loaded, ids[1]!)).toBe(true);
+    expect(isAway(loaded, ids[0]!)).toBe(false);
   });
 });

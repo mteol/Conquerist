@@ -7,7 +7,6 @@ import { GameScreen } from './screens/GameScreen';
 import { SettingsButton } from './screens/SettingsButton';
 import { LobbyScreen } from './screens/LobbyScreen';
 import { StartScreen, type LocalOptions } from './screens/StartScreen';
-import { MenuScreen, type MenuChoice } from './screens/MenuScreen';
 import { useLocalGame } from './game/useLocalGame';
 import { useOnlineGame } from './game/useOnlineGame';
 import { useSettledRoll } from './game/useSettledRoll';
@@ -24,6 +23,12 @@ import { loadName, roomFromLocation } from './net/session';
  *
  * Kein Router. Die einzige Adresse, die jemand teilt, ist der Einladungslink,
  * und der traegt seinen Raum in `?raum=`. Dafuer ist eine Bibliothek zu viel.
+ *
+ * **Drei Zustaende, nicht vier.** Bis hierher stand ein Hauptmenue vor dem
+ * Startbildschirm und mit ihm ein vierter Zustand hier oben - welcher Weg
+ * gewaehlt wurde. Der Weg ist keine Auskunft ueber die Anwendung, sondern eine
+ * Einstellung auf einem einzigen Bildschirm; seit sie dort als Reiter steht,
+ * gibt es sie hier nicht mehr.
  */
 interface LocalSession {
   readonly game: GameState;
@@ -109,23 +114,12 @@ function Online({
   useCueSound(shown.sound);
 
   /*
-   * Welcher Weg gewaehlt wurde. `null` heisst: das Hauptmenue steht.
-   *
-   * Ein Einladungslink ueberspringt es - wer ihm gefolgt ist, hat seine
-   * Entscheidung schon getroffen, und ein Menue davor waere eine Huerde
-   * zwischen Klick und Tisch.
-   */
-  const [choice, setChoice] = useState<Exclude<MenuChoice, 'resume'> | null>(
-    roomFromLocation() === null ? null : 'join',
-  );
-
-  /*
    * Der Konto-Dialog: welcher Modus (oder keiner) und die Absage des Servers,
    * falls es eine gab.
    *
-   * Beide leben hier und nicht in `MenuScreen`/`StartScreen`, weil beide
-   * Bildschirme dieselbe Konto-Ecke tragen und derselbe Dialog fuer beide
-   * gilt - ein Zustand, zwei Aufrufer.
+   * Beide leben hier und nicht im `StartScreen`, weil der Dialog ueber dem
+   * Bildschirm liegt und nicht in ihm: er wird auch dann noch angezeigt, wenn
+   * darunter laengst der Wartebereich steht.
    */
   const [account, setAccount] = useState<'register' | 'login' | null>(null);
   const [accountProblem, setAccountProblem] = useState<string | null>(null);
@@ -174,28 +168,9 @@ function Online({
 
   let screen: JSX.Element;
 
-  if (room === null && choice === null) {
-    screen = (
-      <MenuScreen
-        openGames={online.myRooms.length}
-        onChoose={(next) => {
-          // „Weiterspielen" ist kein eigener Bildschirm: die Liste steht auf
-          // dem Startbildschirm, und dorthin fuehrt sie.
-          setChoice(next === 'resume' ? 'online' : next);
-        }}
-        identity={online.identity}
-        onRegister={() => openAccount('register')}
-        onLogin={() => openAccount('login')}
-        onLogout={() => {
-          void online.logout();
-        }}
-      />
-    );
-  } else if (room === null) {
+  if (room === null) {
     screen = (
       <StartScreen
-        mode={choice ?? 'all'}
-        onBack={() => setChoice(null)}
         onStartLocal={onStartLocal}
         onCreateRoom={(seatCount, seed, name) => {
           void online.createRoom(seatCount, seed, name);
@@ -212,6 +187,9 @@ function Online({
           // seit Etappe 4 wieder. Ein zweiter waere ein zweiter Weg fuer
           // dieselbe Sache.
           void online.joinRoom(code, loadName() ?? '');
+        }}
+        onAbandon={(code) => {
+          void online.abandonRoom(code);
         }}
         identity={online.identity}
         onRegister={() => openAccount('register')}
@@ -251,6 +229,7 @@ function Online({
         log={shown.log}
         error={online.state.lastError}
         landing={shown.landing}
+        over={online.state.over?.reason ?? null}
         onAct={(action) => {
           void online.act(action);
         }}

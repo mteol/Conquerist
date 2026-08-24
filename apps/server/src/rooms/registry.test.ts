@@ -115,6 +115,7 @@ describe('Raumverzeichnis', () => {
       },
       appendAction: store.appendAction.bind(store),
       remove: store.remove.bind(store),
+      abandon: store.abandon.bind(store),
       loadAll: store.loadAll.bind(store),
     };
     const seen: string[] = [];

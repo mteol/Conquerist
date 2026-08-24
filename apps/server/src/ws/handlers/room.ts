@@ -1,4 +1,5 @@
 import {
+  ABANDON_ROOM,
   ACT,
   CHOOSE_COLOR,
   CONFIGURE_ROOM,
@@ -15,12 +16,14 @@ import {
   stampAction,
   type GameAction,
 } from '@conquerist/shared';
-import { broadcastGame, broadcastRoom } from '../../rooms/broadcast.js';
+import { broadcastGame, broadcastOver, broadcastRoom } from '../../rooms/broadcast.js';
 import { summaryOf } from '../../rooms/summary.js';
 import {
+  abandonRoom,
   applyAction,
   applySystemAction,
   chooseColor,
+  isAway,
   configureRoom,
   joinRoom,
   leaveRoom,
@@ -115,8 +118,15 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
      * haeufige Fall und der Reconnect aus Etappe 5. Sitzt er seit Etappe 6 in
      * mehreren, oeffnet der Server KEINEN: welcher gemeint ist, weiss nur er
      * selbst, und die Liste auf dem Startbildschirm fragt ihn.
+     *
+     * Wer den Tisch verlassen hat, zaehlt hier nicht mit. Das ist der
+     * Unterschied, den `away` traegt: eine abgerissene Verbindung ist ein
+     * Unfall, und dorthin gehoert man zurueck; ein Austritt ist eine
+     * Entscheidung, und sie beim naechsten Neuladen zu ueberstimmen hiesse, die
+     * Tuer wieder zuzumauern, die es seit heute gibt. Zurueck geht es ueber die
+     * Karte - `room.join` nimmt `away` dann wieder weg.
      */
-    const mine = registry.roomsOf(result.user.id);
+    const mine = registry.roomsOf(result.user.id).filter((room) => !isAway(room, result.user.id));
     const existing = mine.length === 1 ? mine[0] : undefined;
     if (existing !== undefined) {
       context.session.roomCode = existing.code;
@@ -197,10 +207,64 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
       const next = leaveRoom(room, user.id);
       registry.update(next.code, next);
       broadcastRoom(next, sinks.map);
+
+      /*
+       * Wer waehrend eines offenen Angebots aufsteht, lehnt vorlaeufig ab -
+       * dieselbe Ueberlegung wie bei einer abgerissenen Verbindung
+       * (`handleDisconnect`), und aus demselben Grund: sonst wartet der Tisch
+       * auf jemanden, der nicht mehr da ist.
+       *
+       * Erreichbar wurde dieser Fall erst mit der Tuer im Spielbildschirm: bis
+       * dahin fuehrte aus einer laufenden Partie kein Weg heraus, und
+       * `leaveRoom` traf sie nie.
+       */
+      if (next.game !== null && awaitsResponse(next.game, user.id)) {
+        system(next, { type: 'dropFromTrade', player: user.id });
+      }
     }
 
     context.session.roomCode = null;
     return {};
+  });
+
+  /**
+   * Aussteigen - aus einem Raum, in dem man gerade nicht sitzt.
+   *
+   * Der Weg dorthin ist die Liste auf dem Startbildschirm, und deshalb kommt
+   * der Code in der Nachricht statt aus der Sitzung. Wer nicht an diesem Tisch
+   * sitzt, erreicht nichts: `abandonRoom` gibt dann `none` zurueck, und die
+   * Antwort sieht aus wie die auf einen Raum, den es nicht mehr gibt. Das ist
+   * Absicht - ein Fremder soll aus der Absage nicht ablesen koennen, ob ein
+   * Raumcode vergeben ist.
+   *
+   * Die laufende Partie wird abgebrochen, und zwar bevor der Raum aus dem
+   * Verzeichnis faellt: `broadcastOver` verteilt an die Sitzenden, und nach
+   * dem Abbruch gibt es keine Sitzenden mehr, an die zu verteilen waere.
+   */
+  router.register(ABANDON_ROOM, (payload, context) => {
+    const user = requireUser(context, users);
+    const room = registry.get(payload.code);
+
+    // Der eigene Bildschirm gehoert nicht mehr an diesen Tisch - unabhaengig
+    // davon, was mit dem Raum passiert. Sonst schickte die naechste Nachricht
+    // dieser Sitzung ihre Absicht an einen Raum, den es nicht mehr gibt.
+    if (context.session.roomCode === payload.code) context.session.roomCode = null;
+
+    const result = room === undefined ? { kind: 'none' as const } : abandonRoom(room, user.id);
+
+    if (result.kind === 'none') return { ended: false };
+
+    if (result.kind === 'left') {
+      registry.update(result.room.code, result.room);
+      broadcastRoom(result.room, sinks.map);
+      return { ended: false };
+    }
+
+    deps.clock?.disarm(result.room.code);
+    broadcastOver(result.room, sinks.map, `${user.name} hat die Partie abgebrochen`);
+    registry.abandon(result.room.code);
+
+    return { ended: true };
   });
 
   router.register(MY_ROOMS, (_payload, context) => {

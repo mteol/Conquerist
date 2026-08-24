@@ -100,6 +100,22 @@ export class RoomRegistry {
     this.write(code, () => this.store?.remove(code));
   }
 
+  /**
+   * Abgebrochen: raus aus dem Betrieb, aber nicht aus der Datenbank.
+   *
+   * Der Unterschied zu `remove` ist der Grund, aus dem es beide gibt. `remove`
+   * ist fuer Raeume, die es nicht haette geben muessen - ein leerer Tisch, den
+   * `sweep` einsammelt; da ist nichts aufzuheben. Eine abgebrochene Partie ist
+   * dagegen gespielt worden: sie hat einen Startzustand und ein Log, und beides
+   * bleibt liegen. Nur weitergespielt wird dort nicht mehr, und deshalb kommt
+   * sie nach einem Neustart auch nicht wieder hoch (`loadAll`).
+   */
+  abandon(code: string): void {
+    this.rooms.delete(code);
+    const at = this.now();
+    this.write(code, () => this.store?.abandon(code, at));
+  }
+
   /** Alle Raeume, in denen dieser Spieler sitzt. */
   roomsOf(userId: string): readonly Room[] {
     return [...this.rooms.values()].filter((room) =>

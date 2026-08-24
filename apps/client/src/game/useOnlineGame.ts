@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
+  ABANDON_ROOM,
   ACT,
   AUTH_LOGIN,
   AUTH_LOGOUT,
@@ -74,7 +75,13 @@ export interface OnlineGame {
   readonly refreshMyRooms: () => Promise<void>;
   readonly createRoom: (seatCount: number, seed: string, name: string) => Promise<string>;
   readonly joinRoom: (code: string, name: string) => Promise<void>;
+  /** Zurueck ins Menue - der Tisch bleibt stehen, man kann wiederkommen. */
   readonly leaveRoom: () => Promise<void>;
+  /**
+   * Endgueltig aussteigen. Eine laufende Partie ist danach abgebrochen -
+   * `true` sagt genau das.
+   */
+  readonly abandonRoom: (code: string) => Promise<boolean>;
   readonly configureRoom: (
     seatCount: number,
     seed: string,
@@ -147,6 +154,15 @@ export function useOnlineGame(
         case OVER_EVENT: {
           const parsed = eventSchema(OVER_EVENT).safeParse(payload);
           if (!parsed.success) return rejected();
+          /*
+           * Nur, wenn es der Tisch ist, an dem dieser Bildschirm gerade sitzt.
+           *
+           * Wer in mehreren Raeumen sitzt, bekommt das Ende jedes einzelnen
+           * gemeldet - `broadcastOver` geht an alle Sitze, nicht an den offenen
+           * Bildschirm. Ohne diese Zeile legte der Abbruch einer nebenher
+           * laufenden Partie eine Meldung ueber die, die man gerade spielt.
+           */
+          if (parsed.data.code !== codeRef.current) return;
           dispatch({ type: 'over', payload: parsed.data });
           return;
         }
@@ -331,7 +347,37 @@ export function useOnlineGame(
     // Erst nach der Bestaetigung, und selbst: ein Raumstand kommt hier nicht
     // mehr an, weil zugestellt wird, wer am Tisch sitzt.
     dispatch({ type: 'left' });
-  }, [send]);
+    // Der Startbildschirm zeigt gleich „Deine Partien" - und die Partie, aus
+    // der man eben gekommen ist, gehoert dort hin. Ohne dieses Nachladen
+    // stuende dort der Stand von vor dem Beitritt.
+    await refreshMyRooms();
+  }, [send, refreshMyRooms]);
+
+  /**
+   * Aussteigen, von der Liste aus.
+   *
+   * Der Code kommt als Argument und nicht aus `codeRef`: gemeint ist eine
+   * Karte auf dem Startbildschirm, und dort sitzt man an keinem Tisch. Ist es
+   * zufaellig doch der offene, faellt er hier gleich mit weg - der Server hat
+   * ihn dann ohnehin verlassen.
+   */
+  const abandonRoom = useCallback(
+    async (code: string): Promise<boolean> => {
+      try {
+        const { ended } = await send(ABANDON_ROOM, { code });
+        if (codeRef.current === code) {
+          codeRef.current = null;
+          dispatch({ type: 'left' });
+        }
+        await refreshMyRooms();
+        return ended;
+      } catch (error) {
+        dispatch({ type: 'error', message: messageOf(error) });
+        return false;
+      }
+    },
+    [send, refreshMyRooms],
+  );
 
   const configureRoom = useCallback(
     async (seatCount: number, seed: string, victoryPointGoal: number): Promise<void> => {
@@ -410,6 +456,7 @@ export function useOnlineGame(
       createRoom,
       joinRoom,
       leaveRoom,
+      abandonRoom,
       configureRoom,
       chooseColor,
       rename,
@@ -430,6 +477,7 @@ export function useOnlineGame(
       createRoom,
       joinRoom,
       leaveRoom,
+      abandonRoom,
       configureRoom,
       chooseColor,
       rename,

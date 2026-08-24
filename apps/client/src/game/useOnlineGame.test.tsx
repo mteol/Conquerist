@@ -102,6 +102,7 @@ function Probe(): JSX.Element {
         {online.identity === null ? 'unbekannt' : String(online.identity.isGuest)}
       </p>
       <p data-testid="login">{online.identity?.login ?? 'kein Login'}</p>
+      <p data-testid="ende">{online.state.over?.reason ?? 'kein Ende'}</p>
       <button
         type="button"
         onClick={() => {
@@ -109,6 +110,14 @@ function Probe(): JSX.Element {
         }}
       >
         Tisch verlassen
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void online.abandonRoom('K7X2');
+        }}
+      >
+        Partie abbrechen
       </button>
       <button
         type="button"
@@ -425,5 +434,49 @@ describe('Identitaet beim Anlegen und Beitreten', () => {
     });
 
     expect(loadSecret()).toBe('neu');
+  });
+});
+
+/**
+ * Aussteigen und das Ende, das der Server meldet.
+ *
+ * Beides gehoert zusammen: wer aussteigt, bekommt kein `room.state` mehr (er
+ * sitzt nicht mehr am Tisch), und wer sitzen bleibt, erfaehrt es nur ueber
+ * `room.over`. Faellt eins von beidem aus, klebt ein toter Tisch auf dem
+ * Bildschirm.
+ */
+describe('Abbruch', () => {
+  it('schickt den Code mit und raeumt den offenen Tisch weg', async () => {
+    await connectedInRoom();
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Partie abbrechen' }).click();
+    });
+
+    expect(socket.sent.find((entry) => entry.type === 'room.abandon')?.payload).toEqual({
+      code: 'K7X2',
+    });
+
+    await act(async () => {
+      socket.reply('room.abandon', { ended: true });
+    });
+
+    expect(screen.getByTestId('raum').textContent).toBe('kein Raum');
+  });
+
+  it('meldet nur das Ende des Tisches, an dem man gerade sitzt', async () => {
+    await connectedInRoom();
+
+    // Wer in mehreren Raeumen sitzt, bekommt jedes Ende gemeldet. Das einer
+    // nebenher laufenden Partie darf nicht ueber der liegen, die man spielt.
+    await act(async () => {
+      socket.event('room.over', { code: 'M8Y3', reason: 'Dana hat die Partie abgebrochen' });
+    });
+    expect(screen.getByTestId('ende').textContent).toBe('kein Ende');
+
+    await act(async () => {
+      socket.event('room.over', { code: 'K7X2', reason: 'Anna hat die Partie abgebrochen' });
+    });
+    expect(screen.getByTestId('ende').textContent).toBe('Anna hat die Partie abgebrochen');
   });
 });

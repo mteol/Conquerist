@@ -12,8 +12,11 @@ import {
 } from './auth.js';
 import { PING, PONG, PingRequestSchema, PongResponseSchema } from './ping.js';
 import {
+  ABANDON_ROOM,
   ACT,
   ACT_OK,
+  AbandonRoomRequestSchema,
+  AbandonRoomResponseSchema,
   ActRequestSchema,
   CHOOSE_COLOR,
   COLOR_CHOSEN,
@@ -39,6 +42,7 @@ import {
   MY_ROOMS,
   MY_ROOMS_OK,
   MyRoomsResponseSchema,
+  ROOM_ABANDONED,
   ROOM_CREATED,
   ROOM_JOINED,
   ROOM_LEFT,
@@ -90,6 +94,11 @@ export const protocol = {
     responseType: ROOM_LEFT,
     request: EmptyRequestSchema,
     response: EmptyResponseSchema,
+  },
+  [ABANDON_ROOM]: {
+    responseType: ROOM_ABANDONED,
+    request: AbandonRoomRequestSchema,
+    response: AbandonRoomResponseSchema,
   },
   [MY_ROOMS]: {
     responseType: MY_ROOMS_OK,

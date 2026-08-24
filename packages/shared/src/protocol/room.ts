@@ -25,6 +25,8 @@ export const JOIN_ROOM = 'room.join';
 export const ROOM_JOINED = 'room.joined';
 export const LEAVE_ROOM = 'room.leave';
 export const ROOM_LEFT = 'room.left';
+export const ABANDON_ROOM = 'room.abandon';
+export const ROOM_ABANDONED = 'room.abandoned';
 export const MY_ROOMS = 'room.mine';
 export const MY_ROOMS_OK = 'room.mine.ok';
 export const CONFIGURE_ROOM = 'room.configure';
@@ -163,6 +165,27 @@ export const RoomCodeResponseSchema = z.object({ code: RoomCodeSchema });
 
 export const JoinRoomRequestSchema = z.object({ code: RoomCodeSchema });
 
+/**
+ * Endgueltig aussteigen - und zwar aus einem Raum, in dem man gerade nicht ist.
+ *
+ * Deshalb traegt diese Nachricht einen Code, `room.leave` dagegen nicht:
+ * `room.leave` heisst „ich gehe von diesem Tisch weg, an dem ich sitze", und
+ * welcher das ist, weiss die Sitzung. Ausgestiegen wird aber von der Liste auf
+ * dem Startbildschirm aus, und dort sitzt man an keinem - man sieht vier
+ * Karten und meint eine davon.
+ *
+ * Was daraus folgt, haengt am Zustand des Raums und steht in `abandonRoom`:
+ * im Wartebereich wird ein Platz frei, in einer laufenden Partie ist sie
+ * danach abgebrochen. Der Client entscheidet das nicht mit; er bekommt in
+ * `ended` gesagt, was geschehen ist.
+ */
+export const AbandonRoomRequestSchema = z.object({ code: RoomCodeSchema });
+
+export const AbandonRoomResponseSchema = z.object({
+  /** `true`, wenn damit eine laufende Partie abgebrochen wurde. */
+  ended: z.boolean(),
+});
+
 export const EmptyRequestSchema = z.object({});
 export const EmptyResponseSchema = z.object({});
 
@@ -175,6 +198,8 @@ export type ConfigureRoomRequest = z.infer<typeof ConfigureRoomRequestSchema>;
 export type ChooseColorRequest = z.infer<typeof ChooseColorRequestSchema>;
 export type RenameRequest = z.infer<typeof RenameRequestSchema>;
 export type JoinRoomRequest = z.infer<typeof JoinRoomRequestSchema>;
+export type AbandonRoomRequest = z.infer<typeof AbandonRoomRequestSchema>;
+export type AbandonRoomResponse = z.infer<typeof AbandonRoomResponseSchema>;
 export type ActRequest = z.infer<typeof ActRequestSchema>;
 export type RoomCode = z.infer<typeof RoomCodeSchema>;
 export type RoomSummary = z.infer<typeof RoomSummarySchema>;

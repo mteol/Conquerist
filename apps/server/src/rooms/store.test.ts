@@ -41,6 +41,19 @@ describe('MemoryRoomStore', () => {
     expect(store.actionsOf('K7X2').map((action) => action.type)).toEqual(['rollDice', 'endTurn']);
   });
 
+  it('haelt einen Abbruch fest, ohne das Log wegzunehmen', () => {
+    const store = new MemoryRoomStore();
+    store.save(room());
+    store.appendAction('K7X2', roll);
+
+    store.abandon('K7X2', 4_711);
+
+    // Aus dem Bestand heraus - aber nachlesbar geblieben.
+    expect(store.loadAll()).toEqual([]);
+    expect(store.abandonedAt('K7X2')).toBe(4_711);
+    expect(store.actionsOf('K7X2')).toHaveLength(1);
+  });
+
   it('nimmt mit dem Raum auch sein Log weg', () => {
     const store = new MemoryRoomStore();
     store.save(room());

@@ -11,11 +11,13 @@ import {
   type GameState,
 } from '@conquerist/shared';
 import {
+  abandonRoom,
   applyAction,
   applySystemAction,
   chooseColor,
   configureRoom,
   createRoom,
+  isAway,
   joinRoom,
   leaveRoom,
   renameSeat,
@@ -141,6 +143,34 @@ describe('Raum', () => {
     const gone = setConnected(withThree(), 'u2', false);
     expect(gone.seats).toHaveLength(3);
     expect(gone.seats.find((seat) => seat.userId === 'u2')?.connected).toBe(false);
+    // Ein Abriss ist keine Entscheidung: wer herausfaellt, ist nicht gegangen.
+    expect(isAway(gone, 'u2')).toBe(false);
+  });
+
+  /**
+   * Weggegangen und weggebrochen sind zweierlei.
+   *
+   * Daran haengt, ob der Server beim naechsten `hello` diesen Tisch von sich
+   * aus wieder oeffnet - und damit, ob ein Neuladen einen zurueck in eine
+   * Partie setzt, die man gerade verlassen hat.
+   */
+  it('merkt sich einen Austritt aus der laufenden Partie und nimmt ihn beim Beitritt zurueck', () => {
+    const started = startGame(withThree(), 'u1');
+    if (!started.ok) throw new Error(started.error);
+
+    const left = leaveRoom(started.room, 'u2');
+    expect(isAway(left, 'u2')).toBe(true);
+    // Die anderen bleiben unberuehrt - es geht um einen und nicht um den Tisch.
+    expect(isAway(left, 'u1')).toBe(false);
+
+    const back = joinRoom(left, 'u2', 'Ben');
+    if (!back.ok) throw new Error(back.error);
+    expect(isAway(back.room, 'u2')).toBe(false);
+    expect(back.room.seats.find((seat) => seat.userId === 'u2')?.connected).toBe(true);
+  });
+
+  it('nennt niemanden weggegangen, der nie am Tisch sass', () => {
+    expect(isAway(withThree(), 'u9')).toBe(false);
   });
 
   it('gibt einen Platz im Wartebereich frei, aber nicht in der laufenden Partie', () => {
@@ -152,6 +182,37 @@ describe('Raum', () => {
     const afterLeave = leaveRoom(started.room, 'u2');
     expect(afterLeave.seats).toHaveLength(3);
     expect(afterLeave.seats.find((seat) => seat.userId === 'u2')?.connected).toBe(false);
+    expect(isAway(afterLeave, 'u2')).toBe(true);
+  });
+});
+
+describe('Aussteigen', () => {
+  it('gibt im Wartebereich nur den Platz frei', () => {
+    const result = abandonRoom(withThree(), 'u2');
+
+    expect(result.kind).toBe('left');
+    if (result.kind !== 'left') throw new Error('kein Austritt');
+    expect(result.room.seats.map((seat) => seat.userId)).toEqual(['u1', 'u3']);
+  });
+
+  it('beendet eine laufende Partie, statt den Spieler herauszunehmen', () => {
+    const started = startGame(withThree(), 'u1');
+    if (!started.ok) throw new Error(started.error);
+
+    const result = abandonRoom(started.room, 'u2');
+
+    expect(result.kind).toBe('ended');
+    if (result.kind !== 'ended') throw new Error('nicht beendet');
+    // Der Raum kommt unveraendert zurueck: die Sitzenden sollen noch erfahren,
+    // was mit ihrer Partie passiert ist.
+    expect(result.room.seats).toHaveLength(3);
+  });
+
+  it('laesst einen Fremden den Tisch nicht abraeumen', () => {
+    const started = startGame(withThree(), 'u1');
+    if (!started.ok) throw new Error(started.error);
+
+    expect(abandonRoom(started.room, 'u9').kind).toBe('none');
   });
 });
 

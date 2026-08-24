@@ -32,6 +32,21 @@ export interface RoomSeat {
   readonly name: string;
   readonly color: string;
   readonly connected: boolean;
+  /**
+   * Weggegangen, aber der Platz steht noch.
+   *
+   * Der Unterschied zu `connected` ist der zwischen Widerfahrnis und
+   * Entscheidung: `connected` faellt weg, wenn das WLAN ausgeht, und kommt von
+   * selbst wieder. `away` setzt jemand selbst, indem er die Partie verlaesst -
+   * und nur er selbst nimmt es zurueck, indem er zurueckkommt.
+   *
+   * Woran das haengt: der Server oeffnet beim `hello` den einzigen Raum, an dem
+   * jemand sitzt (der Reconnect aus Etappe 5). Ohne dieses Feld kann er dabei
+   * nicht unterscheiden, ob jemand aus der Partie gefallen oder aus ihr
+   * gegangen ist - und wer gegangen ist, stuende nach einem Neuladen wieder
+   * darin. Genau das war der zweite Teil der Sackgasse.
+   */
+  readonly away: boolean;
 }
 
 export interface Room {
@@ -108,7 +123,9 @@ export function createRoom(
     seatCount,
     seed,
     victoryPointGoal,
-    seats: [{ userId: hostId, name: hostName, color: seatColorAt(0), connected: true }],
+    seats: [
+      { userId: hostId, name: hostName, color: seatColorAt(0), connected: true, away: false },
+    ],
     game: null,
     version: 1,
     createdAt: now,
@@ -118,8 +135,18 @@ export function createRoom(
 export function joinRoom(room: Room, userId: string, name: string): RoomResult {
   const known = room.seats.findIndex((seat) => seat.userId === userId);
   if (known >= 0) {
-    // Wiedererkannt statt doppelt gesetzt: das ist der Reconnect-Fall.
-    return ok(withSeats(room, replaceAt(room.seats, known, { connected: true, name })));
+    /*
+     * Wiedererkannt statt doppelt gesetzt: das ist der Reconnect-Fall.
+     *
+     * `away` faellt hier weg, und nur hier: wer beitritt, ist zurueck am Tisch
+     * - egal, ob er ihn vorhin verlassen hat oder ob ihm bloss die Verbindung
+     * abgerissen ist. Ein eigener Weg fuer die Rueckkehr waere ein zweiter Weg
+     * fuer dieselbe Sache; genau deshalb kennt `room.join` seit Etappe 4 den
+     * bekannten Sitz wieder.
+     */
+    return ok(
+      withSeats(room, replaceAt(room.seats, known, { connected: true, name, away: false })),
+    );
   }
 
   if (room.game !== null) {
@@ -132,7 +159,7 @@ export function joinRoom(room: Room, userId: string, name: string): RoomResult {
   return ok(
     withSeats(room, [
       ...room.seats,
-      { userId, name, color: firstFreeColor(room.seats), connected: true },
+      { userId, name, color: firstFreeColor(room.seats), connected: true, away: false },
     ]),
   );
 }
@@ -189,7 +216,17 @@ export function renameSeat(room: Room, userId: string, name: string): Room {
  * zu zerstoeren. Er gilt dann nur als getrennt.
  */
 export function leaveRoom(room: Room, userId: string): Room {
-  if (room.game !== null) return setConnected(room, userId, false);
+  /*
+   * In der Partie bleibt der Platz stehen - aber er steht ab jetzt sichtbar
+   * leer. `away` ist der Unterschied zwischen „ihm ist die Leitung
+   * weggebrochen" und „er ist aufgestanden", und nur das zweite darf ihn beim
+   * naechsten `hello` nicht wieder an diesen Tisch setzen.
+   */
+  if (room.game !== null) {
+    const index = room.seats.findIndex((seat) => seat.userId === userId);
+    if (index < 0) return room;
+    return withSeats(room, replaceAt(room.seats, index, { connected: false, away: true }));
+  }
 
   const remaining = room.seats.filter((seat) => seat.userId !== userId);
   if (remaining.length === room.seats.length) return room;
@@ -210,6 +247,66 @@ export function leaveRoom(room: Room, userId: string): Room {
     hostId: remaining[0]?.userId ?? room.hostId,
     version: room.version + 1,
   };
+}
+
+/**
+ * Was aus einem Austritt fuer den Raum folgt.
+ *
+ * Drei Ausgaenge und keine zwei, weil „nichts passiert" hier ein eigener ist:
+ * wer gar nicht an diesem Tisch sitzt, soll ihn nicht abraeumen koennen. Der
+ * Handler unterscheidet daran, ob er verteilt, abbricht oder still bleibt.
+ */
+export type AbandonResult =
+  | { readonly kind: 'ended'; readonly room: Room }
+  | { readonly kind: 'left'; readonly room: Room }
+  | { readonly kind: 'none' };
+
+/**
+ * Endgueltig aussteigen - der Gegenpart zu `leaveRoom`.
+ *
+ * `leaveRoom` heisst „ich gehe jetzt woanders hin": in einer laufenden Partie
+ * bleibt der Platz stehen, weil man wiederkommen kann und der Spielzustand
+ * diesen Spieler kennt. Genau daraus wurde im Playtest die Sackgasse - wer den
+ * Tab schloss, sass danach fuer immer an einem Tisch, an dem niemand mehr
+ * zieht, und kam bei jedem Verbindungsaufbau dorthin zurueck.
+ *
+ * Aussteigen ist die Antwort darauf und sagt „ich komme nicht wieder". Was das
+ * fuer die anderen bedeutet, haengt daran, ob schon gespielt wird:
+ *
+ *   - **Im Wartebereich** wird nur ein Platz frei. Der Tisch gehoert den
+ *     anderen weiter, und `leaveRoom` weiss bereits, wie das geht.
+ *   - **In einer laufenden Partie** ist sie damit vorbei. Einen Spieler aus
+ *     dem Zustand zu nehmen ginge nicht, ohne die Partie zu zerstoeren
+ *     (dieselbe Ueberlegung wie in `leaveRoom`) - und eine Partie, in der einer
+ *     der Sitze nie wieder zieht, ist ohnehin keine mehr. Sie wird abgebrochen,
+ *     und zwar fuer alle: ein halber Abbruch, bei dem die anderen weiter auf
+ *     einen Zug warten, waere die Sackgasse fuer sie.
+ *
+ * Der Raum wird hier nicht weggeworfen - er kommt unveraendert zurueck, damit
+ * der Handler den Sitzenden noch sagen kann, was passiert ist. Ihn aus dem
+ * Betrieb zu nehmen ist Sache der Registry.
+ */
+export function abandonRoom(room: Room, userId: string): AbandonResult {
+  if (!room.seats.some((seat) => seat.userId === userId)) return { kind: 'none' };
+  if (room.game !== null) return { kind: 'ended', room };
+
+  return { kind: 'left', room: leaveRoom(room, userId) };
+}
+
+/**
+ * Ob dieser Spieler den Tisch verlassen hat, ohne seinen Platz aufzugeben.
+ *
+ * Eine Frage und keine Rechnung: sie wird an genau einer Stelle gestellt (beim
+ * `hello`, wenn der Server entscheidet, ob er einen Raum von sich aus oeffnet),
+ * und sie soll dort nicht als `seats.find(...)?.away === true` stehen - das
+ * liest sich wie ein Detail und ist eine Regel.
+ *
+ * Wer gar nicht am Tisch sitzt, ist nicht „weggegangen", sondern nicht da.
+ * Beides fuehrt an der einen Aufrufstelle zum selben Ergebnis, aber `false` ist
+ * die ehrlichere Antwort: gegangen ist nur, wer vorher gesessen hat.
+ */
+export function isAway(room: Room, userId: string): boolean {
+  return room.seats.find((seat) => seat.userId === userId)?.away === true;
 }
 
 export function setConnected(room: Room, userId: string, connected: boolean): Room {

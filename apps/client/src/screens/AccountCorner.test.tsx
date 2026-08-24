@@ -48,7 +48,7 @@ describe('Konto-Ecke', () => {
  * schmale Fenster bedienbar halten, tatsaechlich im CSS stehen.
  *
  * Ohne `flex-wrap` bricht `.corner` im schmalen Fenster nicht um, sondern
- * wird von `.menu`s `overflow: hidden` abgeschnitten - „Anmelden" waere dann
+ * wird von `.start`s `overflow: hidden` abgeschnitten - „Anmelden" waere dann
  * unklickbar. Und eine hoehere, umgebrochene Ecke braucht mehr Abstand vor
  * der Wortmarke, sonst verschiebt sich derselbe Fehler nur.
  */
@@ -97,12 +97,12 @@ describe('Konto-Ecke im schmalen Fenster (index.css)', () => {
     // keine weitere Verschachtelung, `[^}]*` reicht deshalb, um die
     // verschachtelten Regeln einzeln zu fassen.
     const narrowCornerMatch = /\.corner\s*\{([^}]*)\}/.exec(media);
-    const narrowMenuInnerMatch = /\.menu__inner\s*\{([^}]*)\}/.exec(media);
+    const narrowPanelMatch = /\.start__panel\s*\{([^}]*)\}/.exec(media);
     if (narrowCornerMatch === null) throw new Error('`.corner` fehlt in der Media Query');
-    if (narrowMenuInnerMatch === null) throw new Error('`.menu__inner` fehlt in der Media Query');
+    if (narrowPanelMatch === null) throw new Error('`.start__panel` fehlt in der Media Query');
 
     const narrowCorner = requiredGroup(narrowCornerMatch, 1);
-    const narrowMenuInner = requiredGroup(narrowMenuInnerMatch, 1);
+    const narrowPanel = requiredGroup(narrowPanelMatch, 1);
 
     // Die Ecke wird enger, nicht nur schmaler gefuehlt.
     expect(narrowCorner).toMatch(/gap:/);
@@ -111,8 +111,8 @@ describe('Konto-Ecke im schmalen Fenster (index.css)', () => {
 
     // Der Abstand vor der Wortmarke waechst gegenueber der Grundregel -
     // eine umgebrochene, hoehere Ecke braucht mehr Luft, nicht dieselbe.
-    const basePaddingTop = remValue(/padding-top:\s*([\d.]+)rem/, ruleBody('.menu__inner'));
-    const narrowPaddingTop = remValue(/padding-top:\s*([\d.]+)rem/, narrowMenuInner);
+    const basePaddingTop = remValue(/padding-top:\s*([\d.]+)rem/, ruleBody('.start__panel'));
+    const narrowPaddingTop = remValue(/padding-top:\s*([\d.]+)rem/, narrowPanel);
     expect(narrowPaddingTop).toBeGreaterThan(basePaddingTop);
   });
 });

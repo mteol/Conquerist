@@ -73,7 +73,23 @@ export interface GameScreenProps {
   readonly landing?: Roll | null;
   readonly onAct: (action: GameAction) => void;
   readonly onDismissError: () => void;
+  /**
+   * Zurueck zum Startbildschirm.
+   *
+   * Online heisst das **nicht**, dass die Partie vorbei ist: der Platz bleibt
+   * stehen, und die Karte „Deine Partien" fuehrt wieder herein. Endgueltig
+   * ausgestiegen wird von dort und nicht von hier - der Unterschied ist genau
+   * der zwischen „ich mache spaeter weiter" und „ich komme nicht wieder", und
+   * er ist zu gross fuer einen Knopf.
+   */
   readonly onLeave: () => void;
+  /**
+   * Der Grund, aus dem der Server diese Partie beendet hat - sonst `null`.
+   *
+   * Lokal gibt es das nicht: dort gibt es niemanden, der abbrechen koennte,
+   * ausser dem, der davor sitzt.
+   */
+  readonly over?: string | null;
   /** Verbindung weg. Die lokale Partie laesst das aus - sie hat keine. */
   readonly offline?: boolean;
   /**
@@ -94,6 +110,22 @@ export interface GameScreenProps {
   readonly clockOffset?: number;
 }
 
+/**
+ * Eine Tuer mit einem Pfeil hinaus.
+ *
+ * Kein Kreuz und kein Pfeil allein: ein Kreuz heisst „schliessen" (und dann
+ * fragt sich, was), ein Pfeil nach links heisst auf jedem Bildschirm
+ * „zurueck". Hier geht es hinaus aus einem Raum, in dem man bleiben koennte -
+ * und genau das zeigt eine Tuer.
+ */
+function DoorMark(): JSX.Element {
+  return (
+    <svg className="exit-toggle__mark" viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M11 3 H16 V17 H11 M11 10 H4 M7 7 L4 10 L7 13" />
+    </svg>
+  );
+}
+
 /** Der Satz zum zweiten Schritt - benannt wird, was der Spieler tut (Regel 8). */
 const BUILD_HINTS: Readonly<Record<BuildableKind, string>> = {
   road: 'Straße bauen: Kante auf dem Brett wählen',
@@ -110,6 +142,7 @@ export function GameScreen({
   onAct,
   onDismissError,
   onLeave,
+  over = null,
   offline = false,
   concealBetweenTurns = false,
   clockOffset = 0,
@@ -446,6 +479,23 @@ export function GameScreen({
        * gerade", einer fuer „was liegt jetzt auf dem Tisch".
        */}
       <div className="topline">
+        {/*
+         * Die Tuer nach draussen, links vom Status.
+         *
+         * Sie fehlte, und das war die Sackgasse aus dem Playtest: wer den Tab
+         * schloss, kam beim naechsten Verbindungsaufbau in genau diese Partie
+         * zurueck (der Server oeffnet den einzigen Raum, an dem jemand sitzt) -
+         * und von dort fuehrte kein Weg zum Startbildschirm. Eine neue Partie
+         * war damit unerreichbar, obwohl nichts sie verhinderte.
+         *
+         * Als Symbol und in der Groesse des Verlaufs daneben: sie ist Bedienung
+         * am Rand und soll nicht so laut sein wie das, was auf dem Tisch
+         * passiert. Der Satz dazu steht als zugaenglicher Name darin.
+         */}
+        <button type="button" className="exit-toggle" data-testid="leave-game" onClick={onLeave}>
+          <DoorMark />
+          <span className="visually-hidden">Zum Startbildschirm</span>
+        </button>
         <StatusPanel view={display} />
         <LogPanel entries={log} />
       </div>
@@ -691,7 +741,17 @@ export function GameScreen({
         </div>
       )}
 
-      {view.phase.kind === 'finished' ? (
+      {over !== null ? (
+        <div className="modal" role="dialog" aria-label="Partie abgebrochen">
+          <div className="modal__box">
+            <h2>Partie abgebrochen</h2>
+            <p>{over}</p>
+            <button type="button" className="button button--go" onClick={onLeave}>
+              Zurück zum Start
+            </button>
+          </div>
+        </div>
+      ) : view.phase.kind === 'finished' ? (
         <div className="modal" role="dialog" aria-label="Partie beendet">
           <div className="modal__box">
             <h2>{display.phaseText}</h2>
