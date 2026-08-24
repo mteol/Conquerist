@@ -126,6 +126,17 @@ function DoorMark(): JSX.Element {
   );
 }
 
+/**
+ * Der Rueckfall, wenn ein Regelwerk keinen Preis fuer den Kaufstapel nennt.
+ *
+ * `buildCosts` ist ein `Record` ueber die Bauteile, und ein `Record` mit
+ * optionalen Schluesseln kann eines vermissen lassen - im Basisspiel tut es das
+ * nicht, aber das Schema laesst es zu. Nichts zu kosten ist die ehrlichere
+ * Anzeige als gar keine: „umsonst" ist eine Auskunft, ein leerer Fleck sieht
+ * aus wie ein Fehler.
+ */
+const EMPTY_COST = { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 } as const;
+
 /** Der Satz zum zweiten Schritt - benannt wird, was der Spieler tut (Regel 8). */
 const BUILD_HINTS: Readonly<Record<BuildableKind, string>> = {
   road: 'Straße bauen: Kante auf dem Brett wählen',
@@ -571,6 +582,7 @@ export function GameScreen({
           <DeckPanel
             left={display.deckLeft}
             canBuy={targets.buyCard !== null}
+            cost={view.rules.buildCosts.developmentCard ?? EMPTY_COST}
             onBuy={() => {
               if (targets.buyCard !== null) onAct(targets.buyCard);
             }}
@@ -580,6 +592,7 @@ export function GameScreen({
             targets={targets}
             error={error}
             stock={you === undefined ? null : { piecesLeft: you.piecesLeft, color: you.color }}
+            costs={view.rules.buildCosts}
             buildMode={buildMode}
             onBuildMode={setBuildMode}
             onDismissError={onDismissError}

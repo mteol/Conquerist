@@ -94,6 +94,26 @@ describe('TradeOfferDialog aus Sicht eines Mitspielers', () => {
     expect(screen.getByRole('dialog').textContent).toContain('Erz');
   });
 
+  /*
+   * p1 bietet 2 Holz und will 1 Erz. Fuer p2 heisst das: Erz geben, Holz
+   * bekommen - und genau so muss es dastehen.
+   *
+   * Vorher standen die zwei Reihen mit einem „für" dazwischen, in der Richtung
+   * dessen, der anbietet; wer angeboten bekam, las sie zwangslaeufig falsch
+   * herum. Derselbe Befund hatte den Kasten fuer Gegenangebote schon geformt.
+   */
+  it('nennt die Richtung aus Sicht dessen, der sie liest', () => {
+    show(play(afterSetup(), OFFER), ids[1]!);
+
+    const terms = screen.getByTestId('offer-terms');
+    const rows = terms.querySelectorAll('dd');
+
+    expect(terms.textContent).toContain('Du gibst');
+    expect(rows[0]?.textContent).toContain('Erz');
+    expect(terms.textContent).toContain('Du bekommst');
+    expect(rows[1]?.textContent).toContain('Holz');
+  });
+
   it('laesst annehmen, wer zahlen kann', async () => {
     const onAct = show(play(afterSetup(), OFFER), ids[1]!);
 
@@ -227,6 +247,16 @@ describe('das Gegenangebot haengt an seinem Angebot', () => {
 });
 
 describe('TradeOfferDialog aus Sicht des Anbieters', () => {
+  it('dreht die Zuordnung fuer den Anbieter um, ohne die Woerter zu wechseln', () => {
+    show(play(afterSetup(), OFFER), ids[0]!);
+
+    const rows = screen.getByTestId('offer-terms').querySelectorAll('dd');
+
+    // Derselbe Handel, andere Seite: p1 gibt Holz und bekommt Erz.
+    expect(rows[0]?.textContent).toContain('Holz');
+    expect(rows[1]?.textContent).toContain('Erz');
+  });
+
   it('zeigt je Mitspieler eine Zeile mit seiner Antwort', () => {
     const state = play(afterSetup(), OFFER, {
       type: 'respondTrade',

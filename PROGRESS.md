@@ -5170,3 +5170,100 @@ als nächstes davorsitzt, schaut bitte hin.
   offline: `away` geht nach wie vor nicht auf die Leitung. Seit der Zustellung
   ist das sogar spürbarer geworden, denn ein Weggegangener aktualisiert für die
   anderen nichts mehr.
+
+## Preise, Richtung, Verlauf (2026-08-24, `main`)
+
+Vier Befunde aus derselben Sitzung, alle von der Sorte „stand nirgends".
+
+### Was ein Haus kostet, stand nirgends
+
+Man weiß es nach der dritten Partie auswendig. Davor rät man, und der Knopf
+sagte bloß „geht nicht", ohne je zu verraten, woran es fehlt. Beim Darüberfahren
+liegt jetzt der Preis über dem Bauteil und neben dem Kaufstapel.
+
+**Eine Marke je Karte, keine Zahl daneben.** „2× Korn" ist eine Rechnung, zwei
+Kornmarken sind ein Blick — am Tisch aus Pappe legt man die Karten hin und zählt
+sie nicht vor. Die Marken tragen Geländefarbe und Motiv, dieselben zwei Träger
+wie jede Karte im Spiel (Designregel 7). Die teuerste Sache kostet fünf Karten;
+nebeneinander wäre die Reihe breiter als die Ecke, also bricht sie nach drei um
+und ist dann das, was sie ohnehin wäre: ein kleiner Stapel.
+
+**Der Preis erscheint auch am gesperrten Bauteil**, und das ist der Punkt — dort
+ist er am meisten wert. Dafür mußte `opacity: 0.32` vom Knopf herunter: es traf
+alles darin, seit heute also auch den Preis, und der wäre ausgerechnet dort das
+Blasseste am Bildschirm gewesen. Jetzt blassen die zwei Dinge, die den Zustand
+meinen — das Stück und seine Zahl.
+
+**Der Kaufstapel ist kleiner geworden, und das nimmt eine frühere Entscheidung
+zurück.** In `DeckPanel.tsx` stand: dieselbe Größe wie die Handkarten, denn
+„3.1rem neben 4.6rem hat aus der Bank ein Beiwerk gemacht". Der Satz stimmt — er
+galt für einen Stapel, der allein dastand. Jetzt sind es zwei Dinge in einer
+Ecke von `--tray-strip` Breite: die Karte gibt genau ab, was die Preisspalte
+braucht (3.7 + 0.25 + 0.85 ≈ 4.8rem gegen vorher 4.6rem allein), und das Paar
+nimmt zusammen den Platz ein, den die Karte vorher für sich hatte.
+
+Die Marken kommen gestaffelt an, `--i` mal 40 ms — dieselbe Staffelung wie am
+Eingang. Bei abbestellter Bewegung bleibt das Ein- und Ausblenden (ein Wechsel
+der Deckkraft ist keine Bewegung), weg fallen Anheben, Skalierung und vor allem
+die Staffelung: fünf Marken, die nacheinander eintrudeln, sind genau das, was
+dort abbestellt wurde.
+
+### „X für Y" liest jeder aus seiner eigenen Richtung
+
+Im Angebotsdialog standen die zwei Kartenreihen mit einem „für" dazwischen — in
+der Richtung dessen, der anbietet. Wer angeboten _bekommt_, liest sie damit
+zwangsläufig falsch herum: links stand, was man bekommt, rechts, was man
+hergibt. Unter einer ablaufenden Frist ist das die denkbar schlechteste Stelle
+zum Umdrehen im Kopf.
+
+Genau dieser Befund hat vor einer Weile schon den Kasten für Gegenangebote
+geformt (dort steht seither „Du gibst" / „Du bekommst"). Er gilt für das Angebot
+selbst genauso, und deshalb ist es jetzt dieselbe Form — eine gemeinsame
+`.terms`-Regel statt zweier fast gleicher. Die Beschriftung ist beide Male
+dieselbe, nur die Zuordnung dreht sich: wer anbietet, gibt sein `give`, wer
+angeboten bekommt, gibt das `want` des anderen.
+
+### Der Verlauf endete nach zwanzig Zeilen
+
+„Mehr als zwanzig braucht niemand im Blick" — das galt für ein Panel, das
+dauerhaft in der Ecke stand und nebenbei mitlief. Als Blatt, das man aufzieht,
+gilt das Gegenteil: aufgezogen wird es, weil eine Frage im Raum steht (wer hatte
+den Räuber, wann ist das Erz weggekommen), und die Antwort liegt fast nie in den
+letzten zwanzig Zeilen. Abgeschnitten hat er dabei nicht einmal gesagt, daß er
+abschneidet.
+
+Jetzt reicht er bis zum Anfang der Partie. Die Höhe bemißt sich am Bildschirm
+statt an einer Zeilenzahl, über dem Rollbereich steht die Zahl der Einträge, und
+**je Runde steht eine Wegmarke** vor deren erstem Eintrag: zwanzig Zeilen liest
+man am Stück, zweihundert sind eine Landschaft und brauchen Anhaltspunkte. Die
+Rundennummer stand ohnehin an jedem Eintrag, sie wurde bloß nie gezeigt.
+
+Die Marke klebt bewußt _nicht_ oben am Rollbereich. `position: sticky` wäre eine
+Zusage, die die Verschachtelung nicht halten kann — sie sitzt im `li` ihres
+ersten Eintrags und käme nie über diesen Kasten hinaus, klebte also genau eine
+Zeile lang. Dafür müßte jede Runde eine eigene Liste bekommen, und das ist mehr
+Verschachtelung, als eine Wegmarke wert ist.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                   |
+| `pnpm test`         | grün — shared 626 / 36 Dateien, server 197 / 20, client 400 / 37 |
+| `pnpm build`        | grün                                                             |
+| `pnpm format:check` | grün (bis auf `public/mess.html`, unversioniert und älter)       |
+
+12 neue Tests. **Wieder nicht im Browser nachgemessen** — die Chrome-Erweiterung
+ist weiterhin nicht verbunden. Geprüft ist damit, _was_ dasteht (die richtigen
+Karten in der richtigen Zahl, die Richtung der Bedingungen, alle Einträge, die
+Wegmarken); _wann_ es erscheint, ist eine Hover-Regel im Blatt, und jsdom rechnet
+kein Layout.
+
+### Was offen bleibt
+
+- **Der Preis sagt nicht, ob man ihn zahlen kann.** Die Marken zeigen die
+  Kosten, nicht den eigenen Bestand — daß es gerade nicht geht, sagt weiterhin
+  nur der gesperrte Knopf. Die fehlende Karte blaß zu zeichnen wäre die nächste
+  Antwort, ist aber eine zweite Bedeutung im selben Zeichen.
+- **Der Verlauf hat keine Suche.** Bei zweihundert Zeilen ist die Wegmarke die
+  Krücke; wer nach „Räuber" sucht, scrollt.

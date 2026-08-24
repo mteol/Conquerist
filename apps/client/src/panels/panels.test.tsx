@@ -16,6 +16,7 @@ import { defaultSeats } from '../seats';
 import { gameViewOf } from '../game/view';
 import { actionTargets } from '../game/targets';
 import { ActionPanel } from './ActionPanel';
+import { DeckPanel } from './DeckPanel';
 import { TurnPanel } from './TurnPanel';
 import { TablePanel } from './TablePanel';
 import { StatusPanel } from './StatusPanel';
@@ -72,6 +73,7 @@ describe('ActionPanel', () => {
         targets={targets}
         error={null}
         stock={null}
+        costs={CLASSIC_RULES.buildCosts}
         buildMode={null}
         onBuildMode={vi.fn()}
         onDismissError={vi.fn()}
@@ -102,6 +104,7 @@ describe('ActionPanel', () => {
         targets={actionTargets(state, view.currentPlayerId)}
         error="Vor dem Bauen fehlt der Wurf"
         stock={null}
+        costs={CLASSIC_RULES.buildCosts}
         buildMode={null}
         onBuildMode={vi.fn()}
         onDismissError={onDismissError}
@@ -129,6 +132,7 @@ describe('ActionPanel', () => {
         targets={actionTargets(state, view.currentPlayerId)}
         error={null}
         stock={{ piecesLeft: { road: 13, settlement: 3, city: 4 }, color: '#c0392b' }}
+        costs={CLASSIC_RULES.buildCosts}
         buildMode={null}
         onBuildMode={vi.fn()}
         onDismissError={vi.fn()}
@@ -149,6 +153,7 @@ describe('ActionPanel', () => {
         targets={actionTargets(state, view.currentPlayerId)}
         error={null}
         stock={{ piecesLeft: { road: 0, settlement: 3, city: 4 }, color: '#c0392b' }}
+        costs={CLASSIC_RULES.buildCosts}
         buildMode={null}
         onBuildMode={vi.fn()}
         onDismissError={vi.fn()}
@@ -176,6 +181,7 @@ describe('ActionPanel', () => {
         targets={actionTargets(state, view.currentPlayerId)}
         error={null}
         stock={{ piecesLeft: { road: 13, settlement: 3, city: 4 }, color: '#c0392b' }}
+        costs={CLASSIC_RULES.buildCosts}
         buildMode={null}
         onBuildMode={vi.fn()}
         onDismissError={vi.fn()}
@@ -296,13 +302,61 @@ describe('LogPanel', () => {
     expect(screen.queryByText('Ben baut eine Straße')).toBeNull();
   });
 
-  it('zeigt sie, sobald man ihn oeffnet - juengster Eintrag oben', () => {
+  it('zeigt sie, sobald man ihn oeffnet - juengster Eintrag oben', async () => {
     render(<LogPanel entries={entries} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Verlauf' }));
 
-    return userEvent.click(screen.getByRole('button', { name: 'Verlauf' })).then(() => {
-      const shown = screen.getAllByRole('listitem').map((item) => item.textContent);
-      expect(shown).toEqual(['Ben baut eine Straße', 'Anna setzt die Gründungssiedlung']);
-    });
+    const shown = screen.getAllByRole('listitem').map((item) => item.textContent);
+    // Der oberste traegt die Wegmarke seiner Runde mit.
+    expect(shown).toEqual(['Runde 1Ben baut eine Straße', 'Anna setzt die Gründungssiedlung']);
+  });
+
+  /**
+   * Er reicht bis zum Anfang der Partie.
+   *
+   * Hier standen die letzten zwanzig Eintraege - ein Mass aus der Zeit, als der
+   * Verlauf dauerhaft in der Ecke stand. Aufgezogen wird das Blatt aber, weil
+   * eine Frage im Raum steht, und die Antwort liegt fast nie in den letzten
+   * zwanzig Zeilen. Abgeschnitten hat er dabei nicht einmal gesagt, dass er
+   * abschneidet.
+   */
+  it('schneidet nichts mehr ab und sagt, wie viel dahintersteckt', async () => {
+    const many = Array.from({ length: 60 }, (_unused, index) => ({
+      turn: Math.floor(index / 10),
+      text: `Ereignis ${index}`,
+    }));
+    render(<LogPanel entries={many} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Verlauf' }));
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(60);
+    expect(screen.getByText('Ereignis 0')).toBeDefined();
+    expect(screen.getByText('60')).toBeDefined();
+  });
+
+  /**
+   * Zwanzig Zeilen liest man am Stueck, zweihundert brauchen Wegmarken. Die
+   * Rundennummer stand ohnehin an jedem Eintrag und wurde bloss nie gezeigt.
+   */
+  it('setzt je Runde eine Wegmarke, und zwar vor deren ersten Eintrag', async () => {
+    render(
+      <LogPanel
+        entries={[
+          { turn: 1, text: 'Anna würfelt 8' },
+          { turn: 2, text: 'Ben würfelt 5' },
+          { turn: 2, text: 'Ben baut eine Straße' },
+        ]}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Verlauf' }));
+
+    const marks = [...document.querySelectorAll('.log__round')].map((mark) => mark.textContent);
+    // Nach unten gelesen geht es rueckwaerts durch die Partie.
+    expect(marks).toEqual(['Runde 2', 'Runde 1']);
+
+    // Und die Marke steht am ersten Eintrag ihres Blocks, nicht am letzten.
+    const items = screen.getAllByRole('listitem');
+    expect(items[0]?.textContent).toBe('Runde 2Ben baut eine Straße');
+    expect(items[1]?.textContent).toBe('Ben würfelt 5');
   });
 
   it('macht ihn mit demselben Knopf wieder zu', async () => {
@@ -314,5 +368,121 @@ describe('LogPanel', () => {
 
     await userEvent.click(toggle);
     expect(screen.queryByText('Ben baut eine Straße')).toBeNull();
+  });
+});
+
+/**
+ * Was etwas kostet, beim Darueberfahren.
+ *
+ * Geprueft wird, **was** dasteht, nicht wann es erscheint: das Erscheinen ist
+ * eine Hover-Regel im Blatt, und jsdom rechnet kein Layout. Das Wesentliche
+ * laesst sich trotzdem festhalten - die richtigen Karten in der richtigen Zahl,
+ * und ein Satz dazu fuer die, die kein Bild lesen.
+ */
+describe('Der Preis am Bauteil', () => {
+  function costMarks(container: HTMLElement, piece: string): string[] {
+    const hint = container.querySelector(`[data-testid="build-${piece}"] .cost`);
+    return [...(hint?.querySelectorAll('.cost__mark') ?? [])].map(
+      (mark) => mark.getAttribute('data-resource') ?? '',
+    );
+  }
+
+  function panel() {
+    const state = afterSetup();
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
+
+    return render(
+      <ActionPanel
+        targets={actionTargets(state, view.currentPlayerId)}
+        error={null}
+        stock={null}
+        costs={CLASSIC_RULES.buildCosts}
+        buildMode={null}
+        onBuildMode={vi.fn()}
+        onDismissError={vi.fn()}
+      />,
+    );
+  }
+
+  it('legt eine Marke je Karte hin, nicht eine Zahl', () => {
+    const { container } = panel();
+
+    // Eine Stadt kostet 2 Korn und 3 Erz - fuenf Karten, nicht zwei Zeilen.
+    expect(costMarks(container, 'city')).toEqual(['grain', 'grain', 'ore', 'ore', 'ore']);
+    expect(costMarks(container, 'road')).toEqual(['brick', 'lumber']);
+  });
+
+  it('nimmt die Preise aus dem Regelwerk der Partie', () => {
+    const { container } = render(
+      <ActionPanel
+        targets={actionTargets(afterSetup(), ids[0]!)}
+        error={null}
+        stock={null}
+        costs={{
+          ...CLASSIC_RULES.buildCosts,
+          road: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 2 },
+        }}
+        buildMode={null}
+        onBuildMode={vi.fn()}
+        onDismissError={vi.fn()}
+      />,
+    );
+
+    // Keine zweite Preisliste in der Oberflaeche: was das RuleSet sagt, steht da.
+    expect(costMarks(container, 'road')).toEqual(['ore', 'ore']);
+  });
+
+  it('sagt den Preis auch in Worten', () => {
+    panel();
+
+    expect(screen.getByRole('button', { name: /^Siedlung, kostet/ })).toBeDefined();
+  });
+
+  it('bleibt fuer die Maus durchlaessig - der Knopf darunter ist gemeint', () => {
+    const { container } = panel();
+    const hint = container.querySelector('[data-testid="build-city"] .cost');
+
+    // `aria-hidden`, weil derselbe Inhalt schon im Namen des Knopfes steht.
+    expect(hint?.getAttribute('aria-hidden')).toBe('true');
+  });
+});
+
+describe('Der Preis am Kaufstapel', () => {
+  it('steht neben der Karte und nicht darauf', () => {
+    const { container } = render(
+      <DeckPanel
+        left={22}
+        canBuy
+        cost={CLASSIC_RULES.buildCosts.developmentCard!}
+        onBuy={vi.fn()}
+      />,
+    );
+
+    const marks = [...container.querySelectorAll('.deck__cost .cost__mark')].map(
+      (mark) => mark.getAttribute('data-resource') ?? '',
+    );
+    expect(marks).toEqual(['wool', 'grain', 'ore']);
+
+    /*
+     * Nebeneinander und nicht uebereinander: ueber der Karte liegt der Faecher,
+     * der sich beim Darueberfahren aufspreizt, und zwei Dinge an derselben
+     * Stelle koennen nicht beide zeigen, was sie meinen.
+     */
+    const stage = container.querySelector('.deck__stage');
+    expect(stage?.querySelector('.deck__cost')).not.toBeNull();
+    expect(stage?.querySelector('.deck__body')).not.toBeNull();
+  });
+
+  it('sagt den Preis auch in Worten', () => {
+    render(
+      <DeckPanel
+        left={22}
+        canBuy
+        cost={CLASSIC_RULES.buildCosts.developmentCard!}
+        onBuy={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('deck-buy').textContent).toMatch(/kostet .*Wolle/);
   });
 });

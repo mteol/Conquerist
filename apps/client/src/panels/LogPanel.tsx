@@ -15,6 +15,19 @@ import type { LogEntry } from '../game/hotseat';
  * die man nicht verpassen darf, stehen anderswo laut genug - der Wurf in den
  * Wuerfeln, der Raeuber auf seinem Feld, die Bauwerke am Knoten.
  *
+ * **Er reicht bis zum Anfang der Partie.** Hier standen die letzten zwanzig
+ * Eintraege („mehr als zwanzig braucht niemand im Blick"). Das galt fuer ein
+ * Panel, das dauerhaft in der Ecke stand und nebenbei mitlief. Als Blatt, das
+ * man aufzieht, gilt das Gegenteil: aufgezogen wird es, weil eine Frage im Raum
+ * steht - wer hatte den Raeuber, wann ist das Erz weggekommen -, und die
+ * Antwort liegt fast nie in den letzten zwanzig Zeilen. Abgeschnitten hat der
+ * Verlauf dabei nicht einmal gesagt, dass er abschneidet.
+ *
+ * **Und deshalb steht die Runde dabei.** Zwanzig Zeilen liest man am Stueck;
+ * zweihundert sind eine Landschaft und brauchen Wegmarken. Die Nummer steht
+ * ohnehin an jedem Eintrag, sie wurde bloss nie gezeigt - hier trennt sie die
+ * Bloecke, und man scrollt zu einer Runde statt durch eine Liste.
+ *
  * **Der Zustand bleibt hier.** Ob der Verlauf offen ist, geht keine andere
  * Komponente etwas an und schon gar nicht den Spielzustand - es ist reine
  * Ansicht. Ihn nach oben zu reichen hiesse, den GameScreen um ein `useState` zu
@@ -23,8 +36,14 @@ import type { LogEntry } from '../game/hotseat';
 export function LogPanel({ entries }: { readonly entries: readonly LogEntry[] }): JSX.Element {
   const [open, setOpen] = useState(false);
 
-  /** Juengster Eintrag oben. Mehr als zwanzig braucht niemand im Blick. */
-  const recent = entries.slice(-20).reverse();
+  /*
+   * Juengster Eintrag oben, und zwar alle.
+   *
+   * Eine Kopie, weil `reverse` an Ort und Stelle dreht - `entries` gehoert dem
+   * Aufrufer, und eine Liste, die sich vom Anzeigen umsortieren laesst, ist der
+   * Fehler, den man erst drei Bildschirme spaeter sieht.
+   */
+  const newestFirst = [...entries].reverse();
 
   return (
     <div className="log-corner">
@@ -41,12 +60,35 @@ export function LogPanel({ entries }: { readonly entries: readonly LogEntry[] })
 
       {open ? (
         <section className="panel panel--log" aria-label="Verlauf">
+          {/*
+           * Die Ueberschrift steht ueber dem Rollbereich und nicht darin: sie
+           * soll stehenbleiben, waehrend man durch zweihundert Zeilen faehrt.
+           * Die Zahl daneben ist die Auskunft, die vorher das Abschneiden
+           * verschwiegen hat - jetzt sagt sie schlicht, wie viel da ist.
+           */}
+          <p className="panel__title log__head">
+            Verlauf
+            <span className="log__total">{entries.length}</span>
+          </p>
+
           <ol className="log">
-            {recent.map((entry, index) => (
-              <li key={entries.length - index} className="log__entry">
-                {entry.text}
-              </li>
-            ))}
+            {newestFirst.map((entry, index) => {
+              /*
+               * Die Wegmarke gehoert **vor** den ersten Eintrag ihrer Runde.
+               * Nach unten gelesen geht es rueckwaerts durch die Partie, der
+               * Block unter der Marke ist also ihrer. Beim obersten Eintrag
+               * gibt es keinen Vorgaenger - dort steht die laufende Runde.
+               */
+              const previous = newestFirst[index - 1];
+              const opensRound = previous === undefined || previous.turn !== entry.turn;
+
+              return (
+                <li key={entries.length - index} className="log__entry">
+                  {opensRound ? <b className="log__round">Runde {entry.turn}</b> : null}
+                  {entry.text}
+                </li>
+              );
+            })}
           </ol>
         </section>
       ) : null}

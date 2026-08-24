@@ -1,4 +1,7 @@
 import type { CSSProperties, JSX } from 'react';
+import type { ResourceAmounts } from '@conquerist/shared';
+import { resourceList } from '../game/labels';
+import { CostHint } from './CostHint';
 
 /**
  * Der Entwicklungsstapel - als Stapel, nicht als Knopf mit Beschriftung.
@@ -8,11 +11,18 @@ import type { CSSProperties, JSX } from 'react';
  * zwischen zwei anderen Knoepfen - dieselbe Form wie „Handel" und „Zug
  * beenden", obwohl es das einzige Spielmaterial unter ihnen ist.
  *
- * **Aufbau:** versetzte Kartenruecken in Handkartengroesse, darunter die Zahl,
- * die noch im Stapel liegt, und darunter, was ein Klick tut. Dieselbe Groesse
- * wie die Karten in der Hand daneben, weil es dieselbe Sorte Ding ist: eine
- * Karte ist eine Karte, und 3.1rem neben 4.6rem hat aus der Bank ein Beiwerk
- * gemacht.
+ * **Aufbau:** versetzte Kartenruecken, daneben der Preis, darunter die Zahl,
+ * die noch im Stapel liegt, und darunter, was ein Klick tut.
+ *
+ * **Die Karte ist kleiner geworden, und das nimmt eine fruehere Entscheidung
+ * zurueck.** Hier stand: dieselbe Groesse wie die Karten in der Hand daneben,
+ * weil es dieselbe Sorte Ding ist - „3.1rem neben 4.6rem hat aus der Bank ein
+ * Beiwerk gemacht". Der Satz stimmt, nur galt er fuer einen Stapel, der allein
+ * dastand. Seit der Preis daneben liegt, sind es zwei Dinge in einer Ecke, die
+ * `--tray-strip` breit ist und sonst nichts hergibt: die Karte gibt genau so
+ * viel ab, wie die Preisspalte braucht, und das Paar nimmt zusammen den Platz
+ * ein, den die Karte vorher allein hatte. Ein Beiwerk wird sie davon nicht -
+ * sie ist immer noch das groesste Stueck in dieser Ecke.
  *
  * **Woran man sich erinnert:** dass der Stapel duenner wird. Die Zahl steht
  * darunter, weil man sie vergleicht - auf derselben Hoehe wie die Zahlen unter
@@ -28,10 +38,12 @@ export interface DeckPanelProps {
    * eigenen Rechnung ueber Karten und Kosten.
    */
   readonly canBuy: boolean;
+  /** Was eine Karte kostet - aus dem Regelwerk der Partie (siehe `ActionPanel`). */
+  readonly cost: ResourceAmounts;
   readonly onBuy: () => void;
 }
 
-export function DeckPanel({ left, canBuy, onBuy }: DeckPanelProps): JSX.Element {
+export function DeckPanel({ left, canBuy, cost, onBuy }: DeckPanelProps): JSX.Element {
   /*
    * Der oberste Ruecken ist gezeichnet, die darunter sind nur Tiefe - deshalb
    * einer weniger als die Zahl sagt. Ab drei waechst der Stapel nicht weiter,
@@ -49,24 +61,35 @@ export function DeckPanel({ left, canBuy, onBuy }: DeckPanelProps): JSX.Element 
         title={left === 0 ? 'Der Stapel ist leer' : `Noch ${left} Karten im Stapel`}
         onClick={onBuy}
       >
-        <span className="deck__body">
-          <span className="deck__behind-stack" aria-hidden="true">
-            {/*
-             * Nur die Lage im Stapel wird uebergeben, nicht die fertige
-             * Verschiebung: ein `transform` im `style` liesse sich vom Blatt
-             * nicht mehr ueberschreiben, und genau das braucht die Faecherung
-             * beim Darueberfahren. Was aus `--i` wird, steht in `index.css`.
-             */}
-            {Array.from({ length: behind }, (_unused, index) => (
-              <span
-                key={index}
-                className="deck__behind"
-                style={{ '--i': index + 1 } as CSSProperties}
-              />
-            ))}
-          </span>
+        {/*
+         * Preis und Stapel nebeneinander, und zwar in dieser Reihenfolge: was
+         * man hergibt, steht links von dem, was man bekommt. Ueber der Karte
+         * ginge es nicht - dort liegt der Faecher, der sich beim Darueberfahren
+         * aufspreizt, und zwei Dinge an derselben Stelle koennen nicht beide
+         * zeigen, was sie meinen.
+         */}
+        <span className="deck__stage">
+          <CostHint cost={cost} layout="column" className="deck__cost" />
 
-          <CardBack />
+          <span className="deck__body">
+            <span className="deck__behind-stack" aria-hidden="true">
+              {/*
+               * Nur die Lage im Stapel wird uebergeben, nicht die fertige
+               * Verschiebung: ein `transform` im `style` liesse sich vom Blatt
+               * nicht mehr ueberschreiben, und genau das braucht die Faecherung
+               * beim Darueberfahren. Was aus `--i` wird, steht in `index.css`.
+               */}
+              {Array.from({ length: behind }, (_unused, index) => (
+                <span
+                  key={index}
+                  className="deck__behind"
+                  style={{ '--i': index + 1 } as CSSProperties}
+                />
+              ))}
+            </span>
+
+            <CardBack />
+          </span>
         </span>
 
         <span className="deck__count" data-testid="deck-left" aria-hidden="true">
@@ -76,7 +99,9 @@ export function DeckPanel({ left, canBuy, onBuy }: DeckPanelProps): JSX.Element 
         <span className="deck__label">{left === 0 ? 'Stapel leer' : 'Karte kaufen'}</span>
 
         <span className="visually-hidden">
-          {left === 0 ? 'Der Stapel ist leer' : `noch ${left} Karten im Stapel`}
+          {left === 0
+            ? 'Der Stapel ist leer'
+            : `noch ${left} Karten im Stapel, kostet ${resourceList(cost)}`}
         </span>
       </button>
     </section>

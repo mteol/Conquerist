@@ -189,12 +189,34 @@ export function TradeOfferDialog({
          * sonst sind ein Blick - und die Namen stehen weiter darauf, also
          * verliert weder das Vorlesewerkzeug noch jemand, der Farben schlecht
          * unterscheidet.
+         *
+         * **Und sie stehen beschriftet da, nicht in einer Reihenfolge.** Hier
+         * standen die zwei Reihen mit einem „für" dazwischen - in der Richtung
+         * dessen, der anbietet. Wer angeboten bekommt, liest sie damit
+         * zwangslaeufig falsch herum: was dort links stand, war das, was man
+         * *bekommt*, und rechts, was man *hergibt*. Unter einer ablaufenden
+         * Frist ist das die denkbar schlechteste Stelle zum Umdrehen im Kopf.
+         *
+         * Genau dieser Befund hat schon den Kasten fuer Gegenangebote weiter
+         * unten geformt; er gilt hier genauso, und deshalb ist es jetzt
+         * dieselbe Form. Die Beschriftung ist beide Male dieselbe, nur die
+         * Zuordnung dreht sich: wer anbietet, gibt sein `give`, wer angeboten
+         * bekommt, gibt das `want` des anderen.
          */}
-        <p className="offer__terms">
-          <ResourceRow amounts={trade.offer.give} />
-          <span className="offer__for">für</span>
-          <ResourceRow amounts={trade.offer.want} />
-        </p>
+        <dl className="terms offer__terms" data-testid="offer-terms">
+          <div>
+            <dt>Du gibst</dt>
+            <dd>
+              <ResourceRow amounts={mine ? trade.offer.give : trade.offer.want} />
+            </dd>
+          </div>
+          <div>
+            <dt>Du bekommst</dt>
+            <dd>
+              <ResourceRow amounts={mine ? trade.offer.want : trade.offer.give} />
+            </dd>
+          </div>
+        </dl>
 
         <p className="offer__clock" data-testid="offer-clock">
           Noch <b>{left}</b> Sekunden
@@ -234,7 +256,7 @@ export function TradeOfferDialog({
                         <div className="counter" data-testid={`counter-${player.id}`}>
                           <span className="counter__who">{player.name} hält dagegen</span>
 
-                          <dl className="counter__terms">
+                          <dl className="terms counter__terms">
                             <div>
                               <dt>Du gibst</dt>
                               <dd>

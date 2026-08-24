@@ -2402,8 +2402,14 @@ body {
   cursor: pointer;
 }
 
+/* Dieselbe Aufteilung wie beim Bauteil: der Stapel blasst, sein Preis nicht. */
 .deck__pile:disabled {
   cursor: not-allowed;
+}
+
+.deck__pile:disabled .deck__body,
+.deck__pile:disabled .deck__count,
+.deck__pile:disabled .deck__label {
   opacity: 0.45;
 }
 
@@ -2418,8 +2424,26 @@ body {
   --fan: 0;
 
   position: relative;
-  width: 4.6rem;
-  height: 5.8rem;
+  /*
+   * 3.7 x 4.65rem statt 4.6 x 5.8rem - dieselbe `viewBox`-Proportion (46/58),
+   * nur kleiner. Die Karte gibt genau ab, was die Preisspalte daneben braucht:
+   * 3.7 + 0.25 Abstand + 0.85 Marke ergibt 4.8rem, also fast auf den Punkt die
+   * 4.6rem, die sie vorher allein belegte. Die Ecke ist `--tray-strip` breit
+   * und haette fuer beides in voller Groesse keinen Platz.
+   */
+  width: 3.7rem;
+  height: 4.65rem;
+}
+
+/*
+ * Preis und Stapel nebeneinander, unten buendig: die Karte ist hoeher als die
+ * Preisspalte, und beide sollen auf derselben Grundlinie stehen wie die Zahl
+ * darunter.
+ */
+.deck__stage {
+  display: flex;
+  gap: 0.25rem;
+  align-items: flex-end;
 }
 
 /*
@@ -2591,6 +2615,128 @@ body {
  * liegt. Jetzt liegt es da. Was von der Platte bleibt, ist der Kontaktschatten
  * unter dem Stueck; er ist der Unterschied zwischen „liegt" und „ist aufgemalt".
  */
+/* --- Was etwas kostet ------------------------------------------------------ *
+ *
+ * Eine Marke je Karte, in der Gelaendefarbe der Ressource und mit ihrem Motiv -
+ * dieselben zwei Traeger wie auf jeder Karte im Spiel (Designregel 7). Die
+ * Begruendung fuer „Marken statt Zahl" steht in `CostHint.tsx`.
+ *
+ * Das Zeichen liegt an zwei Orten und bringt seine Lage nicht selbst mit: es
+ * bekommt sie von `.build__cost` bzw. `.deck__cost`. Hier steht nur, woraus es
+ * besteht und wie es sich bewegt.
+ */
+.cost {
+  display: flex;
+  gap: 0.15rem;
+  /* Es erscheint beim Darueberfahren und darf dabei nicht selbst im Weg
+     stehen - sonst faehrt man ueber das Bauteil und trifft seinen Preis. */
+  pointer-events: none;
+}
+
+.cost--row {
+  flex-wrap: wrap;
+  justify-content: center;
+  /*
+   * Drei Marken je Zeile. Eine Stadt kostet fuenf Karten; nebeneinander waere
+   * die Reihe breiter als die Ecke und liefe an ihrem Rand hinaus. Umgebrochen
+   * ist sie ein kleiner Stapel, und das ist ohnehin die Form, in der die Karten
+   * auf dem Tisch laegen.
+   */
+  max-width: 3.05rem;
+}
+
+.cost--column {
+  flex-direction: column;
+}
+
+.cost__mark {
+  display: grid;
+  place-items: center;
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 1px solid rgb(22 32 42 / 35%);
+  border-radius: 2px;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 30%);
+
+  /*
+   * Der Ruhezustand ist der unsichtbare: geduckt, ein wenig tiefer, und ohne
+   * Verzoegerung wieder dorthin zurueck. Die Staffelung steht deshalb bei der
+   * Hover-Regel und nicht hier - sonst zoegerte auch das Verschwinden, und ein
+   * Preis, der nach dem Wegfahren noch nachklappert, sieht aus wie ein Fehler.
+   */
+  opacity: 0;
+  transform: translateY(0.25rem) scale(0.82);
+  transition:
+    opacity 130ms ease,
+    transform 190ms cubic-bezier(0.2, 0.7, 0.3, 1.35);
+}
+
+.cost__mark .card__glyph {
+  width: 0.62rem;
+  height: 0.62rem;
+  /* Auf einer 0.85rem grossen Marke traegt die feine Bruchkante im Erz nicht
+     mehr - sie wird zu einem hellen Fleck. Also nur der Koerper. */
+  fill: rgb(22 32 42 / 85%);
+}
+
+.cost__mark .card__glyph-cut {
+  display: none;
+}
+
+/*
+ * Sie kommen nacheinander an, so wie jemand Karten hinlegt. `--i` ist die Lage
+ * in der Reihe und kommt aus `CostHint.tsx`; dieselbe Staffelung wie am Eingang
+ * (`.start__ways`) und im Kaufstapel.
+ */
+.build__pick:hover .cost__mark,
+.build__pick:focus-visible .cost__mark,
+.deck__pile:hover .cost__mark,
+.deck__pile:focus-visible .cost__mark {
+  opacity: 1;
+  transform: none;
+  transition-delay: calc(var(--i, 0) * 40ms);
+}
+
+/*
+ * Ueber dem Bauteil, mittig, auf einem Stueck Pergament - und **auch am
+ * gesperrten Knopf**: was ein Haus kostet, will man gerade dann wissen, wenn es
+ * nicht geht. Die Bewegung darunter (das Stueck hebt sich) bleibt dagegen dem
+ * vorbehalten, was man anfassen kann; deshalb steht hier kein `:not(:disabled)`
+ * und dort schon.
+ */
+.build__cost {
+  position: absolute;
+  bottom: calc(100% - 0.1rem);
+  left: 50%;
+  z-index: 1;
+  padding: 0.2rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--radius);
+  background: var(--parchment);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translate(-50%, 0.2rem);
+  transition:
+    opacity 130ms ease,
+    transform 160ms ease;
+}
+
+.build__pick:hover .build__cost,
+.build__pick:focus-visible .build__cost {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/*
+ * Neben dem Kaufstapel steht das Zeichen ohne Pergament darunter: es liegt auf
+ * der offenen See und nicht ueber einem anderen Ding, und ein Kaesten um drei
+ * Marken waere hier eine Fassung ohne Bild darin. Der Platz ist reserviert, die
+ * Marken erscheinen darin - so rutscht beim Darueberfahren nichts.
+ */
+.deck__cost {
+  padding-bottom: 0.15rem;
+}
+
 .build {
   display: flex;
   gap: 0.7rem;
@@ -2598,6 +2744,7 @@ body {
 }
 
 .build__pick {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
@@ -2610,9 +2757,22 @@ body {
   cursor: pointer;
 }
 
+/*
+ * Gesperrt wird das Bauteil, nicht der ganze Knopf.
+ *
+ * Am Knopf stand hier `opacity: 0.32`, und das traf alles darin - seit der
+ * Preis mit darinsteht also auch ihn. Ausgerechnet am gesperrten Bauteil ist er
+ * am meisten wert („woran fehlt es?"), und mit 32 Prozent waere er dort das
+ * Blasseste am Bildschirm gewesen. Also blassen die zwei Dinge, die den
+ * Zustand meinen: das Stueck und seine Zahl.
+ */
 .build__pick:disabled {
-  opacity: 0.32;
   cursor: not-allowed;
+}
+
+.build__pick:disabled .build__piece,
+.build__pick:disabled .build__left {
+  opacity: 0.32;
 }
 
 /*
@@ -2729,6 +2889,31 @@ body {
   .devcard:hover .devcard__face,
   .devcard:focus-visible .devcard__face {
     transform: none;
+  }
+
+  /*
+   * Der Preis erscheint, er kommt nur nicht mehr angeflogen.
+   *
+   * Das Ein- und Ausblenden bleibt - es ist ein Wechsel der Deckkraft und keine
+   * Bewegung. Weg muessen das Anheben, das Kleinerwerden und vor allem die
+   * Staffelung: fuenf Marken, die nacheinander eintrudeln, sind genau die Art
+   * Bewegung, die hier abbestellt wurde.
+   */
+  .cost__mark {
+    transform: none;
+  }
+
+  .build__pick:hover .cost__mark,
+  .build__pick:focus-visible .cost__mark,
+  .deck__pile:hover .cost__mark,
+  .deck__pile:focus-visible .cost__mark {
+    transition-delay: 0s;
+  }
+
+  .build__cost,
+  .build__pick:hover .build__cost,
+  .build__pick:focus-visible .build__cost {
+    transform: translate(-50%, 0);
   }
 
   /*
@@ -3651,12 +3836,36 @@ body {
   text-align: right;
 }
 
+/*
+ * Die Ueberschrift des Blattes - sie bleibt stehen, der Verlauf faehrt darunter
+ * durch. Die Zahl rechts sagt, wie viel dahintersteckt.
+ */
+.log__head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.log__total {
+  /* Keine Versalien und kein Sperrsatz wie in der Ueberschrift daneben: das
+     ist eine Zahl und keine Beschriftung. */
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
 .log {
   margin: 0;
   padding: 0;
-  /* Offen heisst: jemand liest gerade. Dann darf mehr als ein halbes Dutzend
-     Zeilen dastehen, ohne dass man scrollt. */
-  max-height: 17rem;
+  /*
+   * Der Verlauf reicht bis zum Anfang der Partie, also bemisst sich die Hoehe
+   * am Bildschirm und nicht mehr an einer Zeilenzahl. Hier standen 17rem, und
+   * das war das Mass fuer zwanzig Eintraege; jetzt nimmt das Blatt, was der
+   * Bildschirm unter dem Symbol hergibt (es haengt bei 2.6rem, unten bleibt
+   * eine Handbreit Luft), und hoert bei 30rem auf - laenger liest ohnehin
+   * niemand am Stueck.
+   */
+  max-height: min(30rem, calc(100vh - 8rem));
   overflow-y: auto;
   list-style: none;
   color: var(--ink-muted);
@@ -3668,6 +3877,43 @@ body {
   margin-top: 0.15rem;
   padding-top: 0.15rem;
   border-top: 1px solid rgb(22 32 42 / 8%);
+}
+
+/*
+ * Die Wegmarke einer Runde.
+ *
+ * Sie ist kein eigener Listenpunkt, sondern die erste Zeile ihres Eintrags:
+ * ein `li`, das keinen Verlauf traegt, waere fuer ein Vorlesegeraet ein
+ * leerer Punkt in einer Liste.
+ *
+ * **Sie klebt nicht.** `position: sticky` waere hier eine Zusage, die die
+ * Verschachtelung nicht halten kann: die Marke sitzt im `li` ihres ersten
+ * Eintrags, und ein klebendes Element kommt nie ueber seinen Elternkasten
+ * hinaus - sie klebte also genau eine Zeile lang. Damit sie ueber ihrem ganzen
+ * Block stuende, muesste jede Runde eine eigene Liste bekommen; das ist mehr
+ * Verschachtelung, als eine Wegmarke wert ist.
+ *
+ * Sie tut deshalb, was ein Zwischentitel tut: sie trennt sichtbar und benennt,
+ * was darunter kommt. In derselben Schrift wie die Ueberschrift des Blattes,
+ * damit beide als Beschriftung lesbar sind und nicht als Verlaufszeile.
+ */
+.log__round {
+  display: block;
+  margin: 0 0 0.1rem;
+  color: var(--ink);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/*
+ * Ueber einer Wegmarke steht keine Trennlinie: die Marke trennt bereits, und
+ * beides uebereinander waere zweimal dasselbe.
+ */
+.log__entry:has(> .log__round) {
+  border-top: 0;
+  padding-top: 0.35rem;
 }
 
 /* --- Das Brett ------------------------------------------------------------ */
@@ -4588,18 +4834,40 @@ body {
  * der unter einer laufenden Frist entschieden wird. Karten sind ein Blick,
  * ein Satz ist eine Zeile Lesen.
  */
-.offer__terms {
+/*
+ * Bedingungen mit Beschriftung statt mit Reihenfolge.
+ *
+ * Dieselbe Form fuer das Angebot und fuer ein Gegenangebot, und zwar seit
+ * beide denselben Befund tragen: eine Reihe „X für Y" liest jeder aus seiner
+ * eigenen Richtung, und die Haelfte am Tisch liest sie damit verkehrt. „Du
+ * gibst" und „Du bekommst" lassen sich nicht falsch herum lesen.
+ */
+.terms {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: center;
-  margin: 0.2rem 0 0.6rem;
+  flex-direction: column;
+  gap: 0.15rem;
 }
 
-.offer__for {
+.terms > div {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.88rem;
+}
+
+.terms dt {
   color: var(--ink-muted);
-  font-size: 0.9rem;
+}
+
+.terms dd {
+  margin: 0;
+  font-weight: 650;
+  text-align: right;
+}
+
+.offer__terms {
+  margin: 0.2rem 0 0.6rem;
 }
 
 .offer__clock {
@@ -4665,28 +4933,9 @@ body {
   color: var(--ink-muted);
 }
 
+/* Die Form steht in `.terms`; hier bleibt nur, was der Kasten dazutut. */
 .counter__terms {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
   margin: 0 0 0.5rem;
-}
-
-.counter__terms > div {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: space-between;
-  font-size: 0.88rem;
-}
-
-.counter__terms dt {
-  color: var(--ink-muted);
-}
-
-.counter__terms dd {
-  margin: 0;
-  font-weight: 650;
-  text-align: right;
 }
 
 .counter__buttons {

@@ -1,7 +1,9 @@
 import type { JSX } from 'react';
 import { PIECE_IDS, type PieceId, type RuleSet } from '@conquerist/shared';
 import { CITY_PATH, ROAD_PATH, SETTLEMENT_PATH, VIEWBOX } from '../board/shapes';
+import { resourceList } from '../game/labels';
 import type { ActionTargets, BuildableKind } from '../game/targets';
+import { CostHint } from './CostHint';
 
 /**
  * Die Bauteile - und die Absage, wenn eines nicht geht.
@@ -42,6 +44,16 @@ export interface ActionPanelProps {
    * wie der Knopf, an dem er haengt, naemlich was jetzt ueberhaupt geht.
    */
   readonly stock: { readonly piecesLeft: RuleSet['pieceStock']; readonly color: string } | null;
+  /**
+   * Was die Bauteile kosten - aus dem Regelwerk der Partie, nicht aus einer
+   * Tabelle in der Oberflaeche.
+   *
+   * Eine alte Partie spielt unter den Regeln weiter, unter denen sie begonnen
+   * hat (der `GameState` traegt sein RuleSet als Kopie in sich). Eine zweite
+   * Preisliste im Client waere genau die Sorte zweiter Wahrheit, die dann
+   * irgendwann etwas anderes behauptet als das Brett.
+   */
+  readonly costs: RuleSet['buildCosts'];
   /** Welches Bauteil gerade gewaehlt ist. `null` heisst: das Brett ist ruhig. */
   readonly buildMode: BuildableKind | null;
   readonly onBuildMode: (kind: BuildableKind | null) => void;
@@ -65,6 +77,7 @@ export function ActionPanel({
   targets,
   error,
   stock,
+  costs,
   buildMode,
   onBuildMode,
   onDismissError,
@@ -107,6 +120,8 @@ export function ActionPanel({
           const active = buildMode === piece;
           /** `null`, solange es keinen eigenen Sitz gibt - dann gibt es keinen Vorrat. */
           const left = stock === null ? null : (stock.piecesLeft[piece] ?? 0);
+          const cost = costs[piece];
+          const price = cost === undefined ? null : resourceList(cost);
 
           return (
             <button
@@ -126,6 +141,17 @@ export function ActionPanel({
               onClick={() => onBuildMode(active ? null : piece)}
             >
               {/*
+               * Der Preis, beim Darueberfahren.
+               *
+               * Er stand nirgends. Was ein Haus kostet, weiss man nach der
+               * dritten Partie auswendig - davor raet man, und der Knopf sagte
+               * bloss „geht nicht", ohne je zu verraten, woran es fehlt. Genau
+               * dort ist die Auskunft am meisten wert, deshalb erscheint sie
+               * **auch am gesperrten Bauteil**: die Bewegung darunter bleibt
+               * dem vorbehalten, was man anfassen kann, der Preis nicht.
+               */}
+              {cost === undefined ? null : <CostHint cost={cost} className="build__cost" />}
+              {/*
                * Der Traeger der Bewegung, und zwar nur er: das Stueck hebt sich,
                * die Zahl darunter bleibt liegen. Stiege der ganze Knopf, wanderte
                * die Zahl mit - und eine Zahl, die beim Darueberfahren ihre Zeile
@@ -135,7 +161,9 @@ export function ActionPanel({
                 <PieceMark piece={piece} color={stock?.color ?? 'currentColor'} />
               </span>
 
-              <span className="visually-hidden">{BUILD_LABELS[piece]}</span>
+              <span className="visually-hidden">
+                {price === null ? BUILD_LABELS[piece] : `${BUILD_LABELS[piece]}, kostet ${price}`}
+              </span>
 
               {left === null ? null : (
                 <>
