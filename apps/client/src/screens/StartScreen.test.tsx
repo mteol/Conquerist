@@ -131,6 +131,7 @@ describe('Startbildschirm', () => {
             code: 'K7X2',
             seatCount: 3,
             started: true,
+            deletable: false,
             turn: 4,
             yourTurn: true,
             seats: [
@@ -161,6 +162,7 @@ describe('Startbildschirm', () => {
             code: 'M8Y3',
             seatCount: 4,
             started: false,
+            deletable: false,
             seats: [{ name: 'Dana', color: '#c0392b', connected: true }],
           },
         ]}
@@ -205,6 +207,7 @@ describe('Startbildschirm', () => {
             code: 'K7X2',
             seatCount: 3,
             started: true,
+            deletable: false,
             turn: 4,
             seats: [{ name: 'Anna', color: '#c0392b', connected: true }],
           },
@@ -222,6 +225,49 @@ describe('Startbildschirm', () => {
     expect(onAbandon).toHaveBeenCalledWith('K7X2');
   });
 
+  /**
+   * Loeschen statt abbrechen.
+   *
+   * Ob es erlaubt ist, steht in `deletable` und kommt vom Server - der
+   * Bildschirm rechnet nicht nach, wem der Tisch gehoert und wer noch daran
+   * sitzt.
+   */
+  it('bietet dem Gastgeber Loeschen an, wo alle gegangen sind', async () => {
+    const onAbandon = vi.fn();
+    const onDelete = vi.fn();
+    render(
+      <StartScreen
+        onStartLocal={vi.fn()}
+        onCreateRoom={vi.fn()}
+        onJoinRoom={vi.fn()}
+        onResume={vi.fn()}
+        onAbandon={onAbandon}
+        onDelete={onDelete}
+        myRooms={[
+          {
+            code: 'K7X2',
+            deletable: true,
+            seatCount: 3,
+            started: true,
+            turn: 4,
+            seats: [{ name: 'Anna', color: '#c0392b', connected: true }],
+          },
+        ]}
+      />,
+    );
+
+    // Nicht neben „Partie abbrechen", sondern an dessen Stelle: zwei
+    // Ausgaenge nebeneinander laden dazu ein, den falschen zu treffen.
+    expect(screen.queryByRole('button', { name: 'Partie abbrechen' })).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Partie löschen' }));
+    expect(screen.getByText(/kommt nicht wieder/)).toBeDefined();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ja, löschen' }));
+    expect(onDelete).toHaveBeenCalledWith('K7X2');
+    expect(onAbandon).not.toHaveBeenCalled();
+  });
+
   it('laesst die Rueckfrage zurueckziehen', async () => {
     const onAbandon = vi.fn();
     render(
@@ -236,6 +282,7 @@ describe('Startbildschirm', () => {
             code: 'M8Y3',
             seatCount: 4,
             started: false,
+            deletable: false,
             seats: [{ name: 'Dana', color: '#c0392b', connected: true }],
           },
         ]}
@@ -254,6 +301,21 @@ describe('Startbildschirm', () => {
 });
 
 describe('Der Eingang', () => {
+  /*
+   * Unter der Wortmarke stand ein Vorspann („Drei bis sechs Spieler. Sechs
+   * Geraete oder eins."). Er sagte nichts, was die Reiter darunter nicht
+   * besser sagen, und war die einzige Fliesstextzeile auf einem Bildschirm aus
+   * lauter Bedienung. Was er an Platz freigibt, gehoert der Marke.
+   */
+  it('traegt unter der Wortmarke keinen Vorspann mehr', () => {
+    const { container } = render(
+      <StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />,
+    );
+
+    expect(container.querySelector('.start__lead')).toBeNull();
+    expect(screen.queryByText(/Sechs Geräte oder eins/)).toBeNull();
+  });
+
   /*
    * Diese Faelle kommen aus `MenuScreen.test.tsx`. Der Bildschirm, den sie
    * geprueft haben, gibt es nicht mehr - die Sache, die sie pruefen, schon:
@@ -323,6 +385,7 @@ describe('Der Eingang', () => {
       code: 'K7X2',
       seatCount: 3,
       started: true,
+      deletable: false,
       turn: 4,
       seats: [{ name: 'Anna', color: '#c0392b', connected: true }],
     };
@@ -350,6 +413,7 @@ describe('Der Eingang', () => {
       code: 'K7X2',
       seatCount: 3,
       started: true,
+      deletable: false,
       turn: 4,
       seats: [{ name: 'Anna', color: '#c0392b', connected: true }],
     };

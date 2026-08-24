@@ -435,14 +435,24 @@ body {
  * Die Marke fuellt ihre Spalte, statt sich am Fenster zu bemessen.
  *
  * Hier stand `min(78vw, 42rem)`, und das war richtig, solange sie mittig auf
- * einem leeren Bildschirm sass. In der Panel-Spalte (hoechstens 27rem) haette
- * `78vw` sie auf einem breiten Fenster ueber den Rand geschoben - `.start` mit
- * seinem `overflow: hidden` haette sie schlicht abgeschnitten.
+ * einem leeren Bildschirm sass. In der Panel-Spalte haette `78vw` sie auf einem
+ * breiten Fenster ueber den Rand geschoben - `.start` mit seinem
+ * `overflow: hidden` haette sie schlicht abgeschnitten.
+ *
+ * Die Spalte misst hoechstens 34rem und innen, nach dem Rand, 28rem - dort
+ * stand die Marke zuletzt auf 21rem. Unter 62rem faellt die zweite Spalte weg
+ * und das Panel bekommt die ganze Breite; erst dort bindet die Schranke.
  */
 .wordmark {
   display: block;
   width: 100%;
-  max-width: 26rem;
+  /*
+   * Die Schranke liegt ueber der Spaltenbreite und bindet damit nur dort, wo
+   * die Marke ohnehin frei stuende. Sie bleibt trotzdem stehen: ohne sie
+   * bemisst sich die Marke allein am Fenster, und das war der Fall, in dem sie
+   * `.start` mit seinem `overflow: hidden` einmal abgeschnitten hat.
+   */
+  max-width: 34rem;
   height: auto;
   fill: var(--parchment);
 }
@@ -664,7 +674,16 @@ body {
    */
   position: relative;
   display: grid;
-  grid-template-columns: minmax(20rem, 27rem) 1fr;
+  /*
+   * Die linke Spalte traegt die Wortmarke, und die bemisst sich an ihr.
+   *
+   * Hier standen 27rem, solange unter der Marke ein Vorspann stand („Drei bis
+   * sechs Spieler…") - der brauchte Zeilenbreite, die Marke bekam, was uebrig
+   * war. Der Vorspann ist weg: er sagte nichts, was die Reiter darunter nicht
+   * besser sagen, und stand als einzige Fliesstextzeile auf einem Bildschirm
+   * aus lauter Bedienung. Was er an Platz freigibt, geht an die Marke.
+   */
+  grid-template-columns: minmax(20rem, 34rem) 1fr;
   min-height: 100vh;
   /* Das Hexfeld reicht ueber den Rand hinaus, damit es sich verliert statt an
      einer Kante aufzuhoeren. Was darueber hinausragt, wird hier beschnitten. */
@@ -706,15 +725,6 @@ body {
   /* Die Wortmarke traegt ihre eigene Groesse; der Kopf haelt nur den Abstand
      zur Reiterreihe. */
   display: block;
-}
-
-.start__lead {
-  margin: 0.7rem 0 0;
-  max-width: 30ch;
-  color: var(--on-sea-muted);
-  font-size: 0.9rem;
-  letter-spacing: 0.02em;
-  animation: enter-rise 320ms ease-out 260ms backwards;
 }
 
 /*

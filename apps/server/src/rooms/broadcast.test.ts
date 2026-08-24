@@ -2,7 +2,7 @@ import { rollOpening } from './openingFixture.js';
 import { describe, expect, it, vi } from 'vitest';
 import { GAME_EVENT, ROOM_EVENT, setupPlayer } from '@conquerist/shared';
 import { broadcastGame, broadcastRoom } from './broadcast.js';
-import { createRoom, joinRoom, setConnected, startGame, type Room } from './room.js';
+import { createRoom, joinRoom, leaveRoom, setConnected, startGame, type Room } from './room.js';
 import type { EventSink } from '../ws/events.js';
 
 function runningRoom(): Room {
@@ -164,5 +164,57 @@ describe('Zustellung', () => {
       expect(send.mock.calls[0]![0]).toBe(ROOM_EVENT);
       expect(send.mock.calls[0]![1].code).toBe('K7X2');
     }
+  });
+});
+
+/**
+ * Wer aufgestanden ist, bekommt nichts mehr an den Tisch getragen.
+ *
+ * Das ist die Behebung des Rubberbands: der Platz bleibt beim Verlassen
+ * stehen, also gingen Raum- und Spielstaende weiter an ihn hinaus. Beim
+ * naechsten Ereignis am Tisch setzte der Client daraufhin seinen Raum wieder -
+ * und stand im Wartebereich statt auf dem Startbildschirm, weil sein
+ * Spielstand beim Verlassen weggeraeumt worden war.
+ */
+describe('Zustellung an einen verlassenen Platz', () => {
+  it('laesst den Raumstand aus, ohne die anderen zu uebergehen', () => {
+    const room = leaveRoom(runningRoom(), 'u2');
+    const targets = sinks(['u1', 'u2', 'u3']);
+
+    broadcastRoom(room, targets);
+
+    const sentTo = (id: string): number =>
+      (targets.get(id)![0]!.send as unknown as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    expect(sentTo('u2')).toBe(0);
+    expect(sentTo('u1')).toBe(1);
+    expect(sentTo('u3')).toBe(1);
+  });
+
+  it('laesst auch den Spielstand aus', () => {
+    const room = leaveRoom(runningRoom(), 'u2');
+    const targets = sinks(['u1', 'u2', 'u3']);
+
+    broadcastGame(room, targets);
+
+    expect(
+      (targets.get('u2')![0]!.send as unknown as ReturnType<typeof vi.fn>).mock.calls,
+    ).toHaveLength(0);
+    expect(
+      (targets.get('u1')![0]!.send as unknown as ReturnType<typeof vi.fn>).mock.calls,
+    ).toHaveLength(1);
+  });
+
+  it('traegt wieder zu, sobald er zurueck ist', () => {
+    const left = leaveRoom(runningRoom(), 'u2');
+    const back = joinRoom(left, 'u2', 'Ben');
+    if (!back.ok) throw new Error(back.error);
+    const targets = sinks(['u1', 'u2', 'u3']);
+
+    broadcastRoom(back.room, targets);
+
+    expect(
+      (targets.get('u2')![0]!.send as unknown as ReturnType<typeof vi.fn>).mock.calls,
+    ).toHaveLength(1);
   });
 });

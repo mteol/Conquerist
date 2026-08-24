@@ -23,6 +23,19 @@ import type { Room } from './room.js';
  *
  * Ein Spieler kann mehrere Verbindungen haben (zweiter Tab, Handy daneben);
  * deshalb eine Liste Senken je Nutzer.
+ *
+ * **Wer `away` ist, bekommt nichts.** Zugestellt wird, wer am Tisch sitzt - und
+ * wer aufgestanden ist, sitzt nicht daran. Das ist keine Sparsamkeit, sondern
+ * die Behebung eines Fehlers, den die Tuer im Spielbildschirm sichtbar gemacht
+ * hat: der Platz bleibt beim Verlassen stehen, also gingen die Raumstaende
+ * weiter hinaus. Beim naechsten Ereignis am Tisch - einer, der sich abmeldet,
+ * eine ablaufende Frist - setzte der Client seinen Raum daraufhin wieder, und
+ * weil sein Spielstand beim Verlassen weggeraeumt worden war, stand er
+ * ploetzlich im Wartebereich statt auf dem Startbildschirm. Man wurde,
+ * woertlich, an den Tisch zurueckgezogen, den man gerade verlassen hatte.
+ *
+ * Zurueck kommt der Stand mit der Rueckkehr: `room.join` nimmt `away` weg und
+ * verteilt danach Raum und Partie.
  */
 export type Sinks = ReadonlyMap<string, readonly EventSink[]>;
 
@@ -43,6 +56,7 @@ export function broadcastRoom(room: Room, sinks: Sinks): void {
   };
 
   for (const seat of room.seats) {
+    if (seat.away) continue;
     for (const sink of sinks.get(seat.userId) ?? []) sink.send(ROOM_EVENT, payload);
   }
 }
@@ -93,6 +107,8 @@ export function broadcastGame(room: Room, sinks: Sinks, transition?: Transition)
       : { type: transition.action.type, actor: transition.action.player };
 
   for (const seat of room.seats) {
+    if (seat.away) continue;
+
     const targets = sinks.get(seat.userId) ?? [];
     if (targets.length === 0) continue;
 

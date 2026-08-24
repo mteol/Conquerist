@@ -4,6 +4,7 @@ import {
   CHOOSE_COLOR,
   CONFIGURE_ROOM,
   CREATE_ROOM,
+  DELETE_ROOM,
   HELLO,
   JOIN_ROOM,
   LEAVE_ROOM,
@@ -23,8 +24,9 @@ import {
   applyAction,
   applySystemAction,
   chooseColor,
-  isAway,
   configureRoom,
+  deleteRoom,
+  isAway,
   joinRoom,
   leaveRoom,
   renameSeat,
@@ -265,6 +267,39 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     registry.abandon(result.room.code);
 
     return { ended: true };
+  });
+
+  /**
+   * Loeschen - der Gastgeber raeumt einen Tisch weg, an dem niemand mehr sitzt.
+   *
+   * `registry.remove` und nicht `registry.abandon`: das ist der Unterschied
+   * zwischen „diese Partie ist zu Ende" und „diese Partie soll es nicht mehr
+   * geben". Ein Abbruch bleibt nachlesbar, weil noch jemand daran gespielt hat;
+   * ein verwaister Tisch hat niemanden mehr, fuer den er aufzuheben waere - der
+   * Fremdschluessel raeumt Sitze und Log gleich mit ab.
+   *
+   * Eine Absage kommt hier als Absage heraus und nicht still: „nur der
+   * Gastgeber" und „es sitzen noch Mitspieler daran" sind beides Saetze, die
+   * jemand lesen soll. Beim Aussteigen ist das anders, weil es dort um einen
+   * fremden Raumcode geht; hier steht die Karte vor einem, und wer sie sieht,
+   * sitzt an diesem Tisch.
+   */
+  router.register(DELETE_ROOM, (payload, context) => {
+    const user = requireUser(context, users);
+    const room = requireRoom(registry.get(payload.code));
+
+    const allowed = deleteRoom(room, user.id);
+    if (!allowed.ok) throw new RejectedError(allowed.error);
+
+    if (context.session.roomCode === payload.code) context.session.roomCode = null;
+
+    deps.clock?.disarm(room.code);
+    // An die eigenen weiteren Tabs: dort steht sonst ein Tisch, den es nicht
+    // mehr gibt. Weiter reicht das nicht - es sitzt ja niemand sonst daran.
+    broadcastOver(room, sinks.map, `${user.name} hat die Partie gelöscht`);
+    registry.remove(room.code);
+
+    return {};
   });
 
   router.register(MY_ROOMS, (_payload, context) => {

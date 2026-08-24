@@ -71,6 +71,13 @@ export interface StartScreenProps {
    * abgebrochen), und der Client soll es nicht ein zweites Mal wissen.
    */
   readonly onAbandon?: (code: string) => void;
+  /**
+   * Wegraeumen statt abbrechen - nur, wo `deletable` es sagt.
+   *
+   * Der Bildschirm prueft nicht nach, wem der Tisch gehoert und wer noch daran
+   * sitzt: das steht in der Zusammenfassung, weil der Server es durchsetzt.
+   */
+  readonly onDelete?: (code: string) => void;
   /** Wer angemeldet ist - fuer die Konto-Ecke oben rechts. */
   readonly identity?: Identity | null;
   readonly onRegister?: () => void;
@@ -164,6 +171,7 @@ export function StartScreen({
   myRooms = [],
   onResume,
   onAbandon,
+  onDelete,
   identity = null,
   onRegister = noop,
   onLogin = noop,
@@ -325,7 +333,6 @@ export function StartScreen({
              */}
             <span className="visually-hidden">Conquerist</span>
           </h1>
-          <p className="start__lead">Drei bis sechs Spieler. Sechs Geräte oder eins.</p>
         </header>
 
         <fieldset className="field-group start__ways" style={order(0)}>
@@ -545,21 +552,18 @@ export function StartScreen({
 
                     {abandoning === entry.code ? (
                       <div className="resume__confirm" role="group">
-                        <p className="resume__warning">
-                          {entry.started
-                            ? 'Die Partie ist danach für alle am Tisch vorbei und zählt als abgebrochen.'
-                            : 'Dein Platz an diesem Tisch wird wieder frei.'}
-                        </p>
+                        <p className="resume__warning">{exitWarning(entry)}</p>
                         <div className="resume__actions">
                           <button
                             type="button"
                             className="button button--no"
                             onClick={() => {
                               setAbandoning(null);
-                              onAbandon?.(entry.code);
+                              if (entry.deletable) onDelete?.(entry.code);
+                              else onAbandon?.(entry.code);
                             }}
                           >
-                            {entry.started ? 'Ja, abbrechen' : 'Ja, verlassen'}
+                            {`Ja, ${exitVerb(entry).toLocaleLowerCase('de')}`}
                           </button>
                           <button
                             type="button"
@@ -585,7 +589,11 @@ export function StartScreen({
                             className="button button--ghost"
                             onClick={() => setAbandoning(entry.code)}
                           >
-                            {entry.started ? 'Partie abbrechen' : 'Tisch verlassen'}
+                            {entry.deletable
+                              ? 'Partie löschen'
+                              : entry.started
+                                ? 'Partie abbrechen'
+                                : 'Tisch verlassen'}
                           </button>
                         )}
                       </div>
@@ -632,6 +640,32 @@ export function StartScreen({
       </div>
     </main>
   );
+}
+
+/**
+ * Wie der Ausgang aus dieser Partie heisst.
+ *
+ * Drei Faelle und drei Verben, weil es drei verschiedene Vorgaenge sind:
+ * loeschen raeumt weg (der Tisch gehoert mir und sonst sitzt niemand mehr
+ * daran), abbrechen beendet fuer alle, verlassen gibt bloss einen Platz frei.
+ * Ein gemeinsames „Entfernen" waere ein Wort, das drei Dinge meint.
+ *
+ * Ob geloescht werden darf, steht in `deletable` und wird hier nicht
+ * nachgerechnet - die Regel gehoert dem Server.
+ */
+function exitVerb(room: RoomSummary): string {
+  if (room.deletable) return 'Löschen';
+  return room.started ? 'Abbrechen' : 'Verlassen';
+}
+
+/** Was der Klick anrichtet - ein Satz, und zwar vor der Entscheidung. */
+function exitWarning(room: RoomSummary): string {
+  if (room.deletable) {
+    return 'Die Partie wird mit ihrem ganzen Verlauf gelöscht und kommt nicht wieder.';
+  }
+  return room.started
+    ? 'Die Partie ist danach für alle am Tisch vorbei und zählt als abgebrochen.'
+    : 'Dein Platz an diesem Tisch wird wieder frei.';
 }
 
 /**

@@ -27,6 +27,8 @@ export const LEAVE_ROOM = 'room.leave';
 export const ROOM_LEFT = 'room.left';
 export const ABANDON_ROOM = 'room.abandon';
 export const ROOM_ABANDONED = 'room.abandoned';
+export const DELETE_ROOM = 'room.delete';
+export const ROOM_DELETED = 'room.deleted';
 export const MY_ROOMS = 'room.mine';
 export const MY_ROOMS_OK = 'room.mine.ok';
 export const CONFIGURE_ROOM = 'room.configure';
@@ -157,6 +159,16 @@ export const RoomSummarySchema = z.object({
   /** Nur bei laufenden Partien. */
   turn: z.number().int().min(0).optional(),
   yourTurn: z.boolean().optional(),
+  /**
+   * Ob dieser Betrachter diese Partie loeschen darf.
+   *
+   * Eine fertige Antwort und keine Angaben zum Selberrechnen (etwa `hostId`
+   * plus „wer ist noch da"). Die Regel steht auf dem Server, weil er sie
+   * durchsetzt; stuende sie zusaetzlich im Client, gaebe es zwei Fassungen
+   * davon, und die zweite waere die, die man beim naechsten Mal zu aendern
+   * vergisst. Die Karte liest hier bloss ab, ob es den Knopf gibt.
+   */
+  deletable: z.boolean(),
 });
 
 export const MyRoomsResponseSchema = z.object({ rooms: z.array(RoomSummarySchema) });
@@ -186,6 +198,17 @@ export const AbandonRoomResponseSchema = z.object({
   ended: z.boolean(),
 });
 
+/**
+ * Wegraeumen, was niemand mehr braucht.
+ *
+ * Der Unterschied zum Abbruch ist nicht die Hoeflichkeit, sondern der Bestand:
+ * eine abgebrochene Partie bleibt in der Datenbank stehen, eine geloeschte ist
+ * fort - samt Startzustand und Log. Deshalb darf das nur der Gastgeber, und
+ * nur, wenn ausser ihm niemand mehr am Tisch sitzt. Wer noch da ist, hat an
+ * dieser Partie etwas, das ihm gehoert.
+ */
+export const DeleteRoomRequestSchema = z.object({ code: RoomCodeSchema });
+
 export const EmptyRequestSchema = z.object({});
 export const EmptyResponseSchema = z.object({});
 
@@ -199,6 +222,7 @@ export type ChooseColorRequest = z.infer<typeof ChooseColorRequestSchema>;
 export type RenameRequest = z.infer<typeof RenameRequestSchema>;
 export type JoinRoomRequest = z.infer<typeof JoinRoomRequestSchema>;
 export type AbandonRoomRequest = z.infer<typeof AbandonRoomRequestSchema>;
+export type DeleteRoomRequest = z.infer<typeof DeleteRoomRequestSchema>;
 export type AbandonRoomResponse = z.infer<typeof AbandonRoomResponseSchema>;
 export type ActRequest = z.infer<typeof ActRequestSchema>;
 export type RoomCode = z.infer<typeof RoomCodeSchema>;

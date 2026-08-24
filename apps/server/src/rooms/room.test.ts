@@ -17,6 +17,7 @@ import {
   chooseColor,
   configureRoom,
   createRoom,
+  deleteRoom,
   isAway,
   joinRoom,
   leaveRoom,
@@ -213,6 +214,70 @@ describe('Aussteigen', () => {
     if (!started.ok) throw new Error(started.error);
 
     expect(abandonRoom(started.room, 'u9').kind).toBe('none');
+  });
+});
+
+/**
+ * Loeschen ist nicht abbrechen.
+ *
+ * Ein Abbruch beendet eine Partie, an der noch jemand haengt, und bleibt
+ * nachlesbar. Geloescht wird ein Tisch, an dem niemand mehr sitzt - und dann
+ * gibt es ihn nicht mehr.
+ */
+describe('Loeschen', () => {
+  it('laesst den Gastgeber einen Wartebereich wegraeumen, in dem er allein ist', () => {
+    let room = withThree();
+    for (const id of ['u2', 'u3']) room = leaveRoom(room, id);
+
+    expect(deleteRoom(room, 'u1').ok).toBe(true);
+  });
+
+  it('haelt ihn auf, solange noch jemand am Tisch sitzt', () => {
+    const result = deleteRoom(withThree(), 'u1');
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('haette abgelehnt werden muessen');
+    expect(result.error).toMatch(/Mitspieler/);
+  });
+
+  it('laesst eine laufende Partie loeschen, aus der alle gegangen sind', () => {
+    const started = startGame(withThree(), 'u1');
+    if (!started.ok) throw new Error(started.error);
+
+    let room = started.room;
+    // In der Partie bleiben die Sitze stehen und tragen `away` - „alle
+    // gegangen" sieht hier anders aus als im Wartebereich.
+    for (const id of ['u2', 'u3']) room = leaveRoom(room, id);
+
+    expect(room.seats).toHaveLength(3);
+    expect(deleteRoom(room, 'u1').ok).toBe(true);
+    // Solange einer noch sitzt, nicht: ihm gehoert die Partie mit.
+    expect(deleteRoom(leaveRoom(started.room, 'u2'), 'u1').ok).toBe(false);
+  });
+
+  it('gehoert dem Gastgeber und nicht dem, der zufaellig uebrig ist', () => {
+    const started = startGame(withThree(), 'u1');
+    if (!started.ok) throw new Error(started.error);
+
+    // In der laufenden Partie wandert die Gastgeberrolle nicht mit: der
+    // Startzustand steht, und wer ihn erzeugt hat, bleibt es.
+    let room = leaveRoom(started.room, 'u1');
+    room = leaveRoom(room, 'u3');
+
+    const result = deleteRoom(room, 'u2');
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('haette abgelehnt werden muessen');
+    expect(result.error).toMatch(/erstellt/);
+  });
+
+  it('reicht die Rolle im Wartebereich weiter, wenn der Gastgeber geht', () => {
+    let room = withThree();
+    for (const id of ['u1', 'u3']) room = leaveRoom(room, id);
+
+    // `leaveRoom` setzt den ersten Verbliebenen zum Gastgeber - der Tisch soll
+    // nicht deshalb unaufraeumbar werden, weil der Gruender als Erster ging.
+    expect(room.hostId).toBe('u2');
+    expect(deleteRoom(room, 'u2').ok).toBe(true);
   });
 });
 

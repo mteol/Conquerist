@@ -191,6 +191,9 @@ function Online({
         onAbandon={(code) => {
           void online.abandonRoom(code);
         }}
+        onDelete={(code) => {
+          void online.deleteRoom(code);
+        }}
         identity={online.identity}
         onRegister={() => openAccount('register')}
         onLogin={() => openAccount('login')}

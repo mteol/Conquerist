@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRoom, joinRoom, startGame, type Room } from './room.js';
+import { createRoom, joinRoom, leaveRoom, startGame, type Room } from './room.js';
 import { summaryOf } from './summary.js';
 
 function full(): Room {
@@ -45,5 +45,30 @@ describe('Zusammenfassung', () => {
     const text = JSON.stringify(summaryOf(started.room, 'u1'));
     expect(text).not.toContain('rng');
     expect(text).not.toContain('resources');
+  });
+});
+
+describe('Ob geloescht werden darf', () => {
+  it('sagt Nein, solange Mitspieler am Tisch sitzen', () => {
+    expect(summaryOf(full(), 'u1').deletable).toBe(false);
+  });
+
+  it('sagt es nur dem Gastgeber, und nur wenn er allein uebrig ist', () => {
+    let room = full();
+    for (const id of ['u2', 'u3']) room = leaveRoom(room, id);
+
+    expect(summaryOf(room, 'u1').deletable).toBe(true);
+  });
+
+  it('sagt es auch bei einer laufenden Partie, aus der alle gegangen sind', () => {
+    const started = startGame(full(), 'u1');
+    if (!started.ok) throw new Error(started.error);
+
+    let room = started.room;
+    for (const id of ['u2', 'u3']) room = leaveRoom(room, id);
+
+    expect(summaryOf(room, 'u1').deletable).toBe(true);
+    // Derselbe Tisch, anderer Betrachter: die Frage haengt an dem, der fragt.
+    expect(summaryOf(room, 'u2').deletable).toBe(false);
   });
 });

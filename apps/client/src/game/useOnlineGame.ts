@@ -8,6 +8,7 @@ import {
   CHOOSE_COLOR,
   CONFIGURE_ROOM,
   CREATE_ROOM,
+  DELETE_ROOM,
   GAME_EVENT,
   HELLO,
   JOIN_ROOM,
@@ -82,6 +83,12 @@ export interface OnlineGame {
    * `true` sagt genau das.
    */
   readonly abandonRoom: (code: string) => Promise<boolean>;
+  /**
+   * Wegraeumen, was niemand mehr braucht - nur der Gastgeber, nur an einem
+   * Tisch, an dem sonst keiner mehr sitzt. Ob das hier gilt, sagt
+   * `RoomSummary.deletable`; durchgesetzt wird es auf dem Server.
+   */
+  readonly deleteRoom: (code: string) => Promise<void>;
   readonly configureRoom: (
     seatCount: number,
     seed: string,
@@ -379,6 +386,24 @@ export function useOnlineGame(
     [send, refreshMyRooms],
   );
 
+  const deleteRoom = useCallback(
+    async (code: string): Promise<void> => {
+      try {
+        await send(DELETE_ROOM, { code });
+        if (codeRef.current === code) {
+          codeRef.current = null;
+          dispatch({ type: 'left' });
+        }
+        await refreshMyRooms();
+      } catch (error) {
+        // „Es sitzen noch Mitspieler daran" ist ein gewoehnlicher Ausgang und
+        // kein Absturz - der Grund bleibt lesbar, die Liste bleibt stehen.
+        dispatch({ type: 'error', message: messageOf(error) });
+      }
+    },
+    [send, refreshMyRooms],
+  );
+
   const configureRoom = useCallback(
     async (seatCount: number, seed: string, victoryPointGoal: number): Promise<void> => {
       try {
@@ -457,6 +482,7 @@ export function useOnlineGame(
       joinRoom,
       leaveRoom,
       abandonRoom,
+      deleteRoom,
       configureRoom,
       chooseColor,
       rename,
@@ -478,6 +504,7 @@ export function useOnlineGame(
       joinRoom,
       leaveRoom,
       abandonRoom,
+      deleteRoom,
       configureRoom,
       chooseColor,
       rename,

@@ -309,6 +309,45 @@ export function isAway(room: Room, userId: string): boolean {
   return room.seats.find((seat) => seat.userId === userId)?.away === true;
 }
 
+/**
+ * Ob ausser dem Gastgeber niemand mehr an diesem Tisch sitzt.
+ *
+ * Zwei Faelle, und sie sehen verschieden aus, weil das Verlassen es tut: im
+ * Wartebereich raeumt es den Sitz ganz weg, also heisst „alle sind gegangen"
+ * dort schlicht, dass nur noch einer dasteht. In einer laufenden Partie bleibt
+ * der Sitz stehen und traegt `away` - dort heisst es, dass jeder Platz ausser
+ * dem des Gastgebers leer ist.
+ *
+ * Der Gastgeber selbst zaehlt nicht mit, egal wie er dasitzt: er ist der, der
+ * gleich auf „loeschen" drueckt. Ob er dabei gerade selbst weggegangen ist,
+ * aendert nichts daran, dass niemand sonst mehr etwas von dieser Partie hat.
+ */
+export function isDeserted(room: Room): boolean {
+  return room.seats.every((seat) => seat.away || seat.userId === room.hostId);
+}
+
+/**
+ * Loeschen - der Gastgeber raeumt weg, was niemand mehr braucht.
+ *
+ * Zwei Bedingungen, und beide sind Regeln und keine Vorsichtsmassnahmen:
+ *
+ *   - **Nur der Gastgeber.** Dieselbe Grenze wie beim Umstellen und beim
+ *     Starten (`configureRoom`, `startGame`) - der Tisch ist seiner.
+ *   - **Nur, wenn sonst niemand mehr da ist.** Sonst waere es der Abbruch aus
+ *     `abandonRoom`, nur ohne Spur und ohne Nachricht an die, denen die Partie
+ *     ebenfalls gehoerte. Wer noch am Tisch sitzt, soll nicht erfahren, dass es
+ *     seine Partie gab, indem sie verschwindet.
+ *
+ * Der Raum kommt unveraendert zurueck; wegzuwerfen ist Sache der Registry.
+ * Diese Datei entscheidet, **ob** - nicht, wohin damit.
+ */
+export function deleteRoom(room: Room, byUserId: string): RoomResult {
+  if (byUserId !== room.hostId) return fail('Nur wer die Partie erstellt hat, kann sie löschen');
+  if (!isDeserted(room)) return fail('Es sitzen noch Mitspieler an diesem Tisch');
+
+  return ok(room);
+}
+
 export function setConnected(room: Room, userId: string, connected: boolean): Room {
   const index = room.seats.findIndex((seat) => seat.userId === userId);
   if (index < 0) return room;

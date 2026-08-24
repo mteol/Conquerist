@@ -18,6 +18,8 @@ import {
   AbandonRoomRequestSchema,
   AbandonRoomResponseSchema,
   ActRequestSchema,
+  DELETE_ROOM,
+  DeleteRoomRequestSchema,
   CHOOSE_COLOR,
   COLOR_CHOSEN,
   CONFIGURE_ROOM,
@@ -44,6 +46,7 @@ import {
   MyRoomsResponseSchema,
   ROOM_ABANDONED,
   ROOM_CREATED,
+  ROOM_DELETED,
   ROOM_JOINED,
   ROOM_LEFT,
   RoomCodeResponseSchema,
@@ -99,6 +102,11 @@ export const protocol = {
     responseType: ROOM_ABANDONED,
     request: AbandonRoomRequestSchema,
     response: AbandonRoomResponseSchema,
+  },
+  [DELETE_ROOM]: {
+    responseType: ROOM_DELETED,
+    request: DeleteRoomRequestSchema,
+    response: EmptyResponseSchema,
   },
   [MY_ROOMS]: {
     responseType: MY_ROOMS_OK,

@@ -5082,3 +5082,91 @@ im Client.
 - **Niemand kann einen Abbruch aufhalten.** Wer am Tisch sitzt, darf ihn
   beenden, ohne die anderen zu fragen. Bei drei Freunden am selben Abend ist das
   richtig; in einer Runde Fremder wäre eine Mehrheit die bessere Regel.
+
+## Das Rubberband, der Gastgeber und ein Vorspann zu viel (2026-08-24, `main`)
+
+Vier Befunde vom Tisch, gleich nach der Tür.
+
+### Man wurde an den Tisch zurückgezogen, den man gerade verlassen hatte
+
+Der auffälligste zuerst, weil die anderen drei an ihm hängen: wer die Partie
+verließ, stand nach einer Weile wieder im **Wartebereich** — auf ebender Seite,
+auf der der Gastgeber Tischgröße, Seed und Siegpunktziel einstellt.
+
+Die Kette ist kurz und jedes Glied für sich richtig. Verlassen läßt den Sitz
+stehen (das ist der Sinn von `away`), also ging jeder weitere Raumstand weiter
+an ihn hinaus. Beim nächsten Ereignis am Tisch — einer meldet sich ab, jemand
+benennt sich um, eine Frist läuft ab — kam ein `room.state` an, der Client setzte
+`state.room` wieder, und weil `left` seinen Spielstand weggeräumt hatte, war
+`view` dabei `null`. `App` liest genau diese beiden: Raum ohne Sicht heißt
+Wartebereich. Fertig war das Gummiband.
+
+Behoben an der Wurzel und nicht am Symptom: **`broadcastRoom` und `broadcastGame`
+überspringen einen Sitz, der `away` ist.** Zugestellt wird, wer am Tisch sitzt,
+und wer aufgestanden ist, sitzt nicht daran — derselbe Satz, mit dem seit
+Etappe 4 begründet ist, warum ein Verlassender kein `room.state` mehr bekommt.
+Er galt nur bisher nicht für den, dessen Platz stehenblieb. Zurück kommt der
+Stand mit der Rückkehr: `room.join` nimmt `away` weg und verteilt danach.
+
+Belegt: mit wiedereingesetzter Zustellung fallen genau zwei Tests um — der
+Zustellungstest und der, der das Rubberband über den Handler nachstellt (Cem
+benennt sich um, Ben darf davon nichts merken).
+
+### Der Gastgeber räumt auf
+
+`room.delete`, und der Unterschied zum Abbruch ist nicht die Höflichkeit,
+sondern der Bestand: eine abgebrochene Partie bleibt nachlesbar in der
+Datenbank, eine gelöschte ist fort — der Fremdschlüssel nimmt Sitze und Log
+gleich mit. Deshalb zwei Bedingungen, beide Regeln und keine
+Vorsichtsmaßnahmen:
+
+- **Nur der Gastgeber.** Dieselbe Grenze wie beim Umstellen und beim Starten.
+- **Nur, wenn sonst niemand mehr am Tisch sitzt.** Sonst wäre es der Abbruch,
+  nur ohne Spur und ohne Nachricht an die, denen die Partie ebenfalls gehörte.
+
+„Alle sind gegangen" sieht in den beiden Phasen verschieden aus, weil das
+Verlassen es tut: im Wartebereich ist der Sitz weg, in der laufenden Partie
+steht er und trägt `away`. `isDeserted` faßt beides in einer Zeile. Und die
+Gastgeberrolle wandert im Wartebereich mit (`leaveRoom` setzt den ersten
+Verbliebenen) — ein Tisch soll nicht unaufräumbar werden, bloß weil der Gründer
+als erster ging.
+
+Auf der Karte steht dann **„Partie löschen" an der Stelle von „Partie
+abbrechen"**, nicht daneben: zwei Ausgänge nebeneinander laden dazu ein, den
+falschen zu treffen. Ob es erlaubt ist, sagt `RoomSummary.deletable` — eine
+fertige Antwort und keine Angaben zum Selberrechnen. Die Regel steht auf dem
+Server, weil er sie durchsetzt; stünde sie zusätzlich im Client, gäbe es zwei
+Fassungen davon.
+
+### Der Vorspann und die Marke
+
+Unter der Wortmarke stand „Drei bis sechs Spieler. Sechs Geräte oder eins." Er
+sagte nichts, was die vier Reiter darunter nicht besser sagen, und war die
+einzige Fließtextzeile auf einem Bildschirm aus lauter Bedienung. Weg damit —
+und was er an Platz freigibt, geht an die Marke: die Panel-Spalte wächst von
+27rem auf 34rem, innen also von 21rem auf 28rem, und genau so breit steht die
+Marke jetzt da (+33 %). Ihre Schranke steigt auf 34rem mit, damit sie unterhalb
+von 62rem — wo die zweite Spalte wegfällt — nicht am alten Maß hängenbleibt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                   |
+| `pnpm test`         | grün — shared 626 / 36 Dateien, server 197 / 20, client 390 / 37 |
+| `pnpm build`        | grün                                                             |
+| `pnpm format:check` | grün (bis auf `public/mess.html`, unversioniert und älter)       |
+
+15 neue Tests. **Nicht im Browser nachgemessen** — die Erweiterung war nicht
+verbunden. Die Marke ist deshalb gerechnet und nicht gesehen: 34rem Spalte
+minus zweimal 3rem Rand ergibt 28rem, und `max-width` bindet dort nicht. Wer
+als nächstes davorsitzt, schaut bitte hin.
+
+### Was offen bleibt
+
+- **Die Vorschau wird schmaler.** Was die Spalte gewinnt, verliert das Brett
+  daneben — zwischen 62rem und rund 80rem Fensterbreite merkt man das.
+- **Am Tisch sieht man weiterhin nicht, wer gegangen ist** und wer bloß
+  offline: `away` geht nach wie vor nicht auf die Leitung. Seit der Zustellung
+  ist das sogar spürbarer geworden, denn ein Weggegangener aktualisiert für die
+  anderen nichts mehr.

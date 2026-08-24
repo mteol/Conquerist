@@ -3,6 +3,7 @@ import {
   ABANDON_ROOM,
   ACT,
   CHOOSE_COLOR,
+  DELETE_ROOM,
   GAME_EVENT,
   HELLO,
   JOIN_ROOM,
@@ -451,5 +452,89 @@ describe('Neuladen', () => {
     // Ein Abriss ist keine Entscheidung - dorthin gehoert man zurueck.
     expect(context.session.roomCode).toBe('K7X2');
     expect(seen.map((entry) => entry.type)).toContain(ROOM_EVENT);
+  });
+});
+
+describe('Loeschen ueber das Protokoll', () => {
+  /** Alle ausser dem Gastgeber verlassen die laufende Partie. */
+  async function deserted(): Promise<ReturnType<typeof runningTable>> {
+    const table = runningTable();
+    for (const guest of [table.ben, table.cem]) {
+      await table.router.dispatch(
+        message(LEAVE_ROOM, {}),
+        contextFor(guest.user.id, guest.tokenHash, { send: (): void => undefined }),
+      );
+    }
+    return table;
+  }
+
+  it('nimmt den Raum samt Log aus der Datenbank', async () => {
+    const { registry, store, router, anna } = await deserted();
+    const context = contextFor(anna.user.id, anna.tokenHash, { send: (): void => undefined });
+
+    const response = await router.dispatch(message(DELETE_ROOM, { code: 'K7X2' }), context);
+
+    expect(response.ok).toBe(true);
+    expect(registry.get('K7X2')).toBeUndefined();
+    expect(context.session.roomCode).toBeNull();
+
+    // Der Unterschied zum Abbruch: hier bleibt nichts stehen.
+    expect(store.loadAll()).toEqual([]);
+    expect(store.abandonedAt('K7X2')).toBeUndefined();
+  });
+
+  it('sagt dem Gastgeber, dass noch jemand am Tisch sitzt', async () => {
+    const { registry, router, anna } = runningTable();
+    const context = contextFor(anna.user.id, anna.tokenHash, { send: (): void => undefined });
+
+    const response = await router.dispatch(message(DELETE_ROOM, { code: 'K7X2' }), context);
+
+    expect(response.ok).toBe(false);
+    expect(response.error?.message).toMatch(/Mitspieler/);
+    expect(registry.get('K7X2')).toBeDefined();
+  });
+
+  it('laesst einen Mitspieler den Tisch nicht wegraeumen', async () => {
+    const { registry, router, ben } = await deserted();
+    const context = contextFor(ben.user.id, ben.tokenHash, { send: (): void => undefined });
+
+    const response = await router.dispatch(message(DELETE_ROOM, { code: 'K7X2' }), context);
+
+    expect(response.ok).toBe(false);
+    expect(registry.get('K7X2')).toBeDefined();
+  });
+});
+
+/**
+ * Das Rubberband.
+ *
+ * Wer die Partie verliess, sass weiter auf dem Sitz - und bekam deshalb jeden
+ * weiteren Raumstand zugestellt. Beim naechsten Ereignis am Tisch setzte sein
+ * Client den Raum wieder, und weil der Spielstand beim Verlassen weggeraeumt
+ * worden war, stand er im Wartebereich: auf der Seite, auf der der Gastgeber
+ * Tischgroesse, Seed und Siegpunktziel einstellt.
+ */
+describe('Nach dem Verlassen', () => {
+  it('zieht kein Ereignis am Tisch den Weggegangenen zurueck', async () => {
+    const { sinks, router, ben, cem } = runningTable();
+    const bensPost = listener(sinks, ben.user.id);
+    const cemsPost = listener(sinks, cem.user.id);
+
+    await router.dispatch(
+      message(LEAVE_ROOM, {}),
+      contextFor(ben.user.id, ben.tokenHash, { send: (): void => undefined }),
+    );
+    bensPost.length = 0;
+    cemsPost.length = 0;
+
+    // Irgendetwas am Tisch: Cem benennt sich um. Das verteilt Raum und Partie.
+    await router.dispatch(
+      message(RENAME, { name: 'Cemal' }),
+      contextFor(cem.user.id, cem.tokenHash, { send: (): void => undefined }),
+    );
+
+    expect(bensPost).toEqual([]);
+    // Wer noch am Tisch sitzt, bekommt selbstverstaendlich weiter alles.
+    expect(cemsPost.map((entry) => entry.type)).toContain(ROOM_EVENT);
   });
 });
