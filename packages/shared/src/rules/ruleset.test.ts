@@ -27,6 +27,11 @@ describe('CLASSIC_RULES', () => {
     expect(RuleSetSchema.safeParse(CLASSIC_RULES).success).toBe(true);
   });
 
+  it('fuehrt genau die fuenf Rohstoffe als Kartensorten', () => {
+    expect(CLASSIC_RULES.cards).toEqual([...RESOURCE_IDS]);
+    expect(CLASSIC_RULES_56.cards).toEqual([...RESOURCE_IDS]);
+  });
+
   it('nennt zu jedem Bauteil vollstaendige Kosten', () => {
     for (const buildable of BUILDABLE_IDS) {
       const cost = CLASSIC_RULES.buildCosts[buildable];
@@ -109,6 +114,17 @@ describe('RuleSetSchema', () => {
    * Tippfehler: ein Schluessel, den es nicht gibt, wird weiterhin abgewiesen -
    * und genau das prueft der Test darunter.
    */
+  /*
+   * Wie `tradeOfferMs` und `dice`: das RuleSet jeder laufenden Partie liegt als
+   * JSON in der Datenbank, und keine dort abgelegte Zeile kennt `cards`.
+   */
+  it('ergaenzt `cards` in einem gespeicherten Regelwerk ohne dieses Feld', () => {
+    const stored = rules();
+    delete stored['cards'];
+
+    expect(RuleSetSchema.parse(stored).cards).toEqual([...RESOURCE_IDS]);
+  });
+
   it('liest eine ausgelassene Sorte als null', () => {
     const sparsam = rules();
     delete (sparsam['buildCosts'] as Record<string, Record<string, number>>)['road']!['ore'];

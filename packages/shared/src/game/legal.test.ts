@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { CLASSIC_RULES } from '../rules/index.js';
+import { CARD_IDS } from '../scenario/index.js';
 import {
   CENTER_EDGE,
   afterOpening,
@@ -150,6 +151,46 @@ describe('legalActions', () => {
     expect(types).toContain('tradeWithBank');
     expect(types).toContain('endTurn');
     expect(expectAllAccepted(state, 'p1')).toBe(actions.length);
+  });
+
+  /*
+   * `legalActions` zaehlt ueber die Sorten dieses Tisches, nicht ueber alle,
+   * die es gibt. An einem Basistisch waeren es sonst vierundsechzig
+   * Bankgeschaefte statt fuenfundzwanzig - drei Viertel davon mit Karten, die
+   * dort nicht vorkommen.
+   */
+  it('nennt nur Bankgeschaefte mit den Sorten dieses Tisches', () => {
+    const state = giving(testGame({ phase: { kind: 'main' } }), 'p1', { ore: 4 });
+
+    const sorten = new Set(
+      legalActions(state, 'p1')
+        .filter((action) => action.type === 'tradeWithBank')
+        .flatMap((action) => [action.give, action.receive]),
+    );
+
+    expect(sorten.size).toBeGreaterThan(0);
+    for (const sorte of sorten) expect(state.rules.cards).toContain(sorte);
+  });
+
+  it('bietet an einem Staedte-Tisch auch Handelswaren an', () => {
+    const state = giving(
+      testGame({
+        phase: { kind: 'main' },
+        rules: { ...CLASSIC_RULES, cards: [...CARD_IDS] },
+        // Ohne Papier im Vorrat waere der Tausch zu Recht kein Zug.
+        bank: hand({ brick: 19, lumber: 19, wool: 19, grain: 19, ore: 19, paper: 12 }),
+      }),
+      'p1',
+      { ore: 4 },
+    );
+
+    const empfangen = new Set(
+      legalActions(state, 'p1')
+        .filter((action) => action.type === 'tradeWithBank')
+        .map((action) => action.receive),
+    );
+
+    expect(empfangen).toContain('paper');
   });
 
   it('nennt keinen Tausch, den der Kurs nicht hergibt', () => {

@@ -1,5 +1,4 @@
 import type { EdgeId } from '../geometry/index.js';
-import { RESOURCE_IDS } from '../scenario/index.js';
 import type { GameAction } from './actions.js';
 import { boardOf } from './board.js';
 import {
@@ -165,8 +164,14 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
           actions.push({ type: 'buildCity', player, vertex });
         }
       }
-      for (const give of RESOURCE_IDS) {
-        for (const receive of RESOURCE_IDS) {
+      /*
+       * Ueber die Sorten dieses Tisches, nicht ueber alle, die es gibt: an
+       * einem Basistisch gaebe es sonst vierundsechzig Bankgeschaefte statt
+       * fuenfundzwanzig, und drei Viertel davon mit Karten, die dort nicht
+       * vorkommen.
+       */
+      for (const give of state.rules.cards) {
+        for (const receive of state.rules.cards) {
           if (canTradeWithBank(state, player, give, receive) === null) {
             actions.push({ type: 'tradeWithBank', player, give, receive });
           }

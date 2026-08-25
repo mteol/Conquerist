@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { DevelopmentDeckSchema } from '../game/development.js';
 import { CLASSIC_56 } from '../scenario/blueprints/classic56.js';
-import { CARD_IDS, CardIdSchema, type CardId } from '../scenario/terrain.js';
+import { CARD_IDS, CardIdSchema, RESOURCE_IDS, type CardId } from '../scenario/terrain.js';
 import { CLASSIC_DICE, DiceSpecSchema } from './dice.js';
 
 /**
@@ -105,6 +105,25 @@ export const DEFAULT_VICTORY_POINT_GOAL = 10;
 export const RuleSetSchema = z.object({
   /** Stabiler Bezeichner, etwa `"classic"`. */
   id: z.string().min(1),
+  /**
+   * Welche Kartensorten an diesem Tisch im Spiel sind.
+   *
+   * `CARD_IDS` kennt acht, das Basisspiel fuenf. Ohne diese Angabe boete
+   * `legalActions` dort vierundsechzig Bankgeschaefte statt fuenfundzwanzig,
+   * und die Auswahldialoge zeigten drei Sorten, die es an diesem Tisch nicht
+   * gibt.
+   *
+   * **Nicht aus `resourceBank` abgeleitet:** ein Vorrat darf mitten in der
+   * Partie auf null fallen, und eine Sorte verschwaende dann aus der
+   * Bedienung. Was im Spiel ist, aendert sich waehrend einer Partie nicht.
+   *
+   * Mit Vorgabe, aus demselben Grund wie `dice` und `robberRoll`: das RuleSet
+   * jeder laufenden Partie liegt als JSON in der Datenbank.
+   */
+  cards: z
+    .array(CardIdSchema)
+    .min(1)
+    .default([...RESOURCE_IDS]),
   /** Was jedes Bauteil kostet. */
   buildCosts: z.record(BuildableIdSchema, CardAmountsSchema),
   /** Wie viele Teile jeder Spieler insgesamt bauen kann. */
@@ -173,6 +192,7 @@ export type RuleSet = z.infer<typeof RuleSetSchema>;
 /** Das Regelwerk des Basisspiels. */
 export const CLASSIC_RULES: RuleSet = {
   id: 'classic',
+  cards: [...RESOURCE_IDS],
 
   buildCosts: {
     road: cardAmounts({ brick: 1, lumber: 1 }),
