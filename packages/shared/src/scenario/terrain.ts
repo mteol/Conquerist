@@ -16,6 +16,40 @@ export type ResourceId = (typeof RESOURCE_IDS)[number];
 
 export const ResourceIdSchema = z.enum(RESOURCE_IDS);
 
+/**
+ * Die Handelswaren aus Staedte & Ritter.
+ *
+ * Sie liegen auf derselben Hand wie Rohstoffe und werden wie sie gehandelt,
+ * gestohlen und abgeworfen - aber sie bezahlen nie ein Bauwerk und entstehen
+ * nur an Staedten. Deshalb eine eigene Liste neben `RESOURCE_IDS` und keine
+ * Erweiterung davon: wo im Code `ResourceId` steht, darf keine Handelsware
+ * hin, und das soll der Compiler sagen und nicht ein Kommentar.
+ */
+export const COMMODITY_IDS = ['paper', 'cloth', 'coin'] as const;
+
+export type CommodityId = (typeof COMMODITY_IDS)[number];
+
+export const CommodityIdSchema = z.enum(COMMODITY_IDS);
+
+/**
+ * Alles, was auf der Hand liegen kann.
+ *
+ * Die Reihenfolge ist Teil der Zusage: `cardAt` zaehlt eine fremde Hand in
+ * genau dieser Folge durch, damit ein Diebstahl aus Seed und Zustand
+ * rekonstruierbar bleibt (Regel 2). Rohstoffe zuerst - so zieht derselbe Seed
+ * in einer Basispartie weiterhin dieselbe Karte wie vor der Erweiterung.
+ */
+export const CARD_IDS = [...RESOURCE_IDS, ...COMMODITY_IDS] as const;
+
+export type CardId = (typeof CARD_IDS)[number];
+
+export const CardIdSchema = z.enum(CARD_IDS);
+
+/** Ob diese Kartensorte eine Handelsware ist. */
+export function isCommodity(card: CardId): card is CommodityId {
+  return (COMMODITY_IDS as readonly string[]).includes(card);
+}
+
 /** Die Gelaendearten des Basisspiels. */
 export const TERRAIN_IDS = ['hills', 'forest', 'pasture', 'fields', 'mountains', 'desert'] as const;
 
@@ -41,6 +75,28 @@ export const TERRAIN_YIELD: Readonly<Record<TerrainId, ResourceId | null>> = {
 /** Die Ressource eines Gelaendes, oder `null` bei der Wueste. */
 export function terrainYield(terrain: TerrainId): ResourceId | null {
   return TERRAIN_YIELD[terrain];
+}
+
+/**
+ * Welche Handelsware eine **Stadt** an diesem Gelaende zusaetzlich abwirft.
+ *
+ * `null` heisst: dieses Gelaende gibt der Stadt zwei Rohstoffe statt einem
+ * Rohstoff und einer Handelsware. Bewusst `null` und nicht ein fehlender
+ * Schluessel - so erzwingt der Compiler einen Eintrag, sobald jemand eine
+ * Gelaendeart hinzufuegt. Dieselbe Bauform wie `TERRAIN_YIELD` darueber.
+ */
+export const TERRAIN_COMMODITY: Readonly<Record<TerrainId, CommodityId | null>> = {
+  hills: null,
+  forest: 'paper',
+  pasture: 'cloth',
+  fields: null,
+  mountains: 'coin',
+  desert: null,
+};
+
+/** Die Handelsware eines Gelaendes, oder `null`. */
+export function terrainCommodity(terrain: TerrainId): CommodityId | null {
+  return TERRAIN_COMMODITY[terrain];
 }
 
 /** Ob auf diesem Gelaende ein Zahlenchip liegen muss. */
