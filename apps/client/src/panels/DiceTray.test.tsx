@@ -209,3 +209,97 @@ describe('DiceTray', () => {
     expect(container.querySelector('.die--numeral')?.textContent).toBe('11');
   });
 });
+
+/**
+ * Der dritte Wuerfel.
+ *
+ * Er hat sechs Seiten wie die anderen - und traegt trotzdem keine Augen. Genau
+ * dafuer steht `render` in der Wuerfelschale: gefragt wird, wie eine Seite
+ * gezeigt wird, nicht wie viele es sind.
+ */
+describe('Der Ereigniswuerfel', () => {
+  const CITIES: DiceSpec = [
+    ...CLASSIC_DICE,
+    { id: 'event', faces: 6, countsTowardYield: false, render: 'event' as const },
+  ];
+
+  function wurf(first: number, second: number, event: number): Roll {
+    return [
+      { die: 'first', value: first },
+      { die: 'second', value: second },
+      { die: 'event', value: event },
+    ];
+  }
+
+  it('zeigt ein Zeichen statt Augen', () => {
+    const { container } = render(tray({ spec: CITIES, roll: wurf(5, 3, 1), total: 8 }));
+
+    const event = container.querySelector('.die--event');
+    expect(event).not.toBeNull();
+    expect(event?.querySelector('.die__pip')).toBeNull();
+    expect(event?.querySelector('.die__event-ship')).not.toBeNull();
+  });
+
+  it('faerbt die drei Stadttore nach ihrem Bereich', () => {
+    for (const [seite, bereich] of [
+      [4, 'trade'],
+      [5, 'politics'],
+      [6, 'science'],
+    ] as const) {
+      const { container, unmount } = render(
+        tray({ spec: CITIES, roll: wurf(5, 3, seite), total: 8 }),
+      );
+
+      expect(container.querySelector(`.die__event-gate--${bereich}`)).not.toBeNull();
+      unmount();
+    }
+  });
+
+  /*
+   * Farbe ist nie der einzige Traeger (Designregel 7): in jedem Tor steht das
+   * Motiv der Handelsware, mit der sein Bereich bezahlt wird.
+   */
+  it('setzt in jedes Tor das Motiv seiner Handelsware', () => {
+    const { container } = render(tray({ spec: CITIES, roll: wurf(5, 3, 4), total: 8 }));
+
+    // Das Tuchmotiv sind drei gefaltete Lagen.
+    const motiv = container.querySelector('.die__event-gate--trade .die__event-motif');
+    expect(motiv).not.toBeNull();
+    expect(motiv?.querySelectorAll('path')).toHaveLength(3);
+  });
+
+  it('nennt das Ereignis in der Vorleseansage statt es zu zaehlen', () => {
+    render(tray({ spec: CITIES, roll: wurf(5, 3, 1), total: 8 }));
+
+    expect(screen.getByTestId('dice').getAttribute('aria-label')).toBe(
+      'Wurf: 5 und 3, zusammen 8, Ereignis: Barbarenschiff',
+    );
+  });
+
+  it('wirft alle drei und gibt jedem einen eigenen Scheitel', () => {
+    const { container } = render(
+      tray({ spec: CITIES, roll: null, total: null, canRoll: true, landing: wurf(2, 5, 4) }),
+    );
+
+    const flying = container.querySelectorAll('.throw');
+    expect(flying).toHaveLength(3);
+
+    const peaks = new Set(
+      [...flying].map((node) => (node as HTMLElement).style.getPropertyValue('--peak-x')),
+    );
+    expect(peaks.size).toBe(3);
+  });
+
+  it('traegt das Zeichen auch auf den Flaechen des fliegenden Wuerfels', () => {
+    const { container } = render(
+      tray({ spec: CITIES, roll: null, total: null, canRoll: true, landing: wurf(2, 5, 4) }),
+    );
+
+    // Der dritte Kubus - seine sechs Flaechen tragen Tore und Schiffe.
+    const cubes = container.querySelectorAll('.throw .cube');
+    const letzter = cubes[cubes.length - 1];
+
+    expect(letzter?.querySelectorAll('.die--event')).toHaveLength(6);
+    expect(letzter?.querySelectorAll('.die__pip')).toHaveLength(0);
+  });
+});

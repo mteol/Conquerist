@@ -51,6 +51,19 @@
   --mountains: #8a8f98;
   --desert: #ddc9a3;
 
+  /*
+   * Die drei Bereiche von Staedte & Ritter: Handel, Politik, Wissenschaft.
+   *
+   * Sie kommen aus derselben Welt wie die Gelaendefarben und sind keine neue
+   * Palette: Handel nimmt das Gelb des Ackerlands, Politik ein Blau aus der
+   * Tiefsee-Familie, Wissenschaft das Gruen des Waldes. Alle drei sind auf dem
+   * hellen Wuerfelkoerper (#fbf6ea) gemischt, nicht auf der Tiefsee - dort
+   * stehen sie, und dort muessen sie tragen.
+   */
+  --track-trade: #c08a12;
+  --track-politics: #2f5c8f;
+  --track-science: #2f6b3a;
+
   --accent: var(--fields);
   --ok: #3f8f5b;
   --warn: #d99a2b;
@@ -4087,6 +4100,71 @@ body {
   display: grid;
   place-items: center;
   font-size: 1.05rem;
+}
+
+/*
+ * Der Ereigniswuerfel: ein Zeichen statt neun Punktplaetzen.
+ *
+ * Deshalb ein eigenes Raster - das 3x3 der Augenwuerfel setzte ein einzelnes
+ * Kind in die Mitte einer von neun Zellen statt in die Mitte des Wuerfels.
+ */
+.die--event {
+  grid-template-columns: 1fr;
+  padding: 0.24rem;
+}
+
+.die__event {
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * Das Schiff ist dunkel wie die Augen der anderen Wuerfel - es ist die Gefahr
+ * und kein Bereich, und eine vierte Farbe daneben waere eine Bedeutung, die es
+ * nicht gibt.
+ */
+.die__event-ship {
+  fill: var(--ink);
+}
+
+.die__event-mast {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+/* Der Torbogen ist eine Linie, das Motiv darin die Flaeche. */
+.die__event-gate {
+  fill: currentcolor;
+}
+
+.die__event-arch {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.die__event-gate--trade {
+  color: var(--track-trade);
+}
+
+.die__event-gate--politics {
+  color: var(--track-politics);
+}
+
+.die__event-gate--science {
+  color: var(--track-science);
+}
+
+/*
+ * Die Binnenlinien der Motive stehen sonst in Pergament - auf dem hellen
+ * Wuerfelkoerper waeren sie unsichtbar. Hier schneiden sie hell in die
+ * Bereichsfarbe.
+ */
+.die__event-gate .card__glyph-cut {
+  stroke: #fbf6ea;
 }
 
 /* Vor dem ersten Wurf: ein Wuerfel, der noch nichts zeigt. */

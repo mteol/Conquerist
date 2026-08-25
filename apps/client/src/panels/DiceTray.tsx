@@ -1,6 +1,13 @@
 import type { CSSProperties, JSX } from 'react';
-import type { DiceSpec, Roll } from '@conquerist/shared';
+import {
+  EVENT_FACES,
+  type DiceSpec,
+  type DieSpec,
+  type EventFace,
+  type Roll,
+} from '@conquerist/shared';
 import { NumeralText } from '../type/Numerals';
+import { EVENT_FACE_LABELS, EventDie } from './EventDie';
 
 /**
  * Die Wuerfel - und zugleich der Zug, mit dem man sie wirft.
@@ -102,8 +109,10 @@ export function DiceTray({
           aria-hidden="true"
         >
           {thrown === null
-            ? shown.map(({ die, value }) => <Die key={die.id} faces={die.faces} value={value} />)
-            : spec.map((die, index) => <Cube key={die.id} value={thrown[index]!} index={index} />)}
+            ? shown.map(({ die, value }) => <Die key={die.id} die={die} value={value} />)
+            : spec.map((die, index) => (
+                <Cube key={die.id} die={die} value={thrown[index]!} index={index} />
+              ))}
         </span>
 
         {/* Die Summe erscheint mit dem Wurf, nicht vor ihm. */}
@@ -139,17 +148,32 @@ export function DiceTray({
   );
 }
 
-/** Was eine Vorleseansage aus dem Becher macht - Bewegung traegt hier nichts. */
+/**
+ * Was eine Vorleseansage aus dem Becher macht - Bewegung traegt hier nichts.
+ *
+ * Der Ereigniswuerfel wird **benannt und nicht gezaehlt**. Seine Augenzahl ist
+ * ein Index in eine Tabelle und sagt niemandem etwas; „Wurf: 3 und 4, zusammen
+ * 7, Ereignis: Barbarenschiff" ist die Auskunft, um die es geht.
+ */
 function labelFor(
   canRoll: boolean,
-  shown: readonly { readonly value: number | null }[],
+  shown: readonly { readonly die: DieSpec; readonly value: number | null }[],
   total: number | null,
 ): string {
   if (canRoll) return 'Würfeln';
   if (total === null) return 'Noch kein Wurf';
 
-  const eyes = shown.map(({ value }) => value ?? 0).join(' und ');
-  return `Wurf: ${eyes}, zusammen ${total}`;
+  const eyes = shown
+    .filter(({ die }) => die.render !== 'event')
+    .map(({ value }) => value ?? 0)
+    .join(' und ');
+
+  const event = shown.find(({ die }) => die.render === 'event');
+  const face: EventFace | undefined =
+    event?.value === undefined || event.value === null ? undefined : EVENT_FACES[event.value - 1];
+
+  const ereignis = face === undefined ? '' : `, Ereignis: ${EVENT_FACE_LABELS[face]}`;
+  return `Wurf: ${eyes}, zusammen ${total}${ereignis}`;
 }
 
 /**
@@ -195,7 +219,15 @@ function labelFor(
  * groesser und wieder kleiner wird. Deshalb haengt er an der **waagerechten**
  * Huelle und nicht am Wuerfel: er soll dem Wurf folgen, nicht dem Sprung.
  */
-function Cube({ value, index }: { readonly value: number; readonly index: number }): JSX.Element {
+function Cube({
+  die,
+  value,
+  index,
+}: {
+  readonly die: DieSpec;
+  readonly value: number;
+  readonly index: number;
+}): JSX.Element {
   const face = FACE_TURN[value] ?? FACE_TURN[1]!;
 
   return (
@@ -204,8 +236,14 @@ function Cube({ value, index }: { readonly value: number; readonly index: number
       data-testid={`cube-${value}`}
       style={
         {
-          '--peak-x': index === 0 ? '-24vw' : '-33vw',
-          '--peak-y': index === 0 ? '-33vh' : '-26vh',
+          /*
+           * Je Wuerfel ein eigener Scheitel - zwei gleich fliegende Wuerfel
+           * sind ein Wuerfel. Als Tabelle und nicht als Wechsel zwischen zwei
+           * Werten: mit dem Ereigniswuerfel sind es drei, und der dritte flog
+           * sonst genau wie der zweite.
+           */
+          '--peak-x': PEAKS[index % PEAKS.length]!.x,
+          '--peak-y': PEAKS[index % PEAKS.length]!.y,
           /*
            * Der Versatz steht als **Variable** und nicht als `animationDelay`.
            *
@@ -228,7 +266,7 @@ function Cube({ value, index }: { readonly value: number; readonly index: number
         >
           {CUBE_FACES.map((side) => (
             <span key={side.name} className={`cube__face cube__face--${side.name}`}>
-              <Die faces={6} value={side.value} />
+              <Die die={die} value={side.value} />
             </span>
           ))}
         </span>
@@ -236,6 +274,19 @@ function Cube({ value, index }: { readonly value: number; readonly index: number
     </span>
   );
 }
+
+/**
+ * Wohin die Wuerfel fliegen - je einer einen eigenen Scheitel.
+ *
+ * In `vw`/`vh` und nicht in Pixeln: sie sollen ueber das Brett fliegen, und wie
+ * gross das ist, weiss nur das Fenster. Der dritte liegt zwischen den beiden
+ * anderen und hoeher - sonst waere er die Kopie eines der beiden.
+ */
+const PEAKS: readonly { readonly x: string; readonly y: string }[] = [
+  { x: '-24vw', y: '-33vh' },
+  { x: '-33vw', y: '-26vh' },
+  { x: '-29vw', y: '-37vh' },
+];
 
 /**
  * Das Netz des Wuerfels: welche Augenzahl auf welcher Seite sitzt.
@@ -278,14 +329,33 @@ const FACE_TURN: Readonly<Record<number, { readonly x: number; readonly y: numbe
  * achtseitigen Wuerfeln bleibt lesbar, ohne dass jemand Punkte erfinden muss.
  */
 function Die({
-  faces,
+  die,
   value,
 }: {
-  readonly faces: number;
+  readonly die: DieSpec;
   readonly value: number | null;
 }): JSX.Element {
   if (value === null) return <span className="die die--blank" />;
-  if (faces > PIPS.length) return <span className="die die--numeral">{value}</span>;
+
+  /*
+   * Was auf einer Seite steht, sagt die Wuerfelschale und nicht die Seitenzahl.
+   *
+   * Der Ereigniswuerfel hat auch sechs Seiten - haetten wir hier nach `faces`
+   * gefragt, waeren sechs Punkte dort gemalt worden, wo ein Schiff gehoert.
+   * Genau dafuer traegt `DieSpec` das Feld `render`.
+   */
+  if (die.render === 'event') {
+    const face = EVENT_FACES[value - 1];
+    return face === undefined ? (
+      <span className="die die--numeral">{value}</span>
+    ) : (
+      <span className="die die--event">
+        <EventDie face={face} />
+      </span>
+    );
+  }
+
+  if (die.faces > PIPS.length) return <span className="die die--numeral">{value}</span>;
 
   const pattern = PIPS[value - 1];
   if (pattern === undefined) return <span className="die die--numeral">{value}</span>;
