@@ -59,6 +59,12 @@ export function createGame(
     buildings: {},
     roads: {},
     robber: scenario.robberStart,
+    /*
+     * Ob Barbaren kommen, sagt das Regelwerk und nicht der Aufrufer. Damit ist
+     * die Erweiterung eine Zahl in `rules` und kein zweiter Startpfad - und
+     * eine Basispartie bekommt kein Schiff, das nie faehrt.
+     */
+    barbarians: rules.barbarianTrack > 0 ? { position: 0, attacks: 0 } : null,
     bank: { ...rules.resourceBank },
     longestRoad: { holder: null, length: 0 },
     largestArmy: { holder: null, size: 0 },

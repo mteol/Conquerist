@@ -1,5 +1,5 @@
 import { createRng } from '../random/index.js';
-import { CLASSIC_RULES, type CardAmounts } from '../rules/index.js';
+import { CITIES_RULES, CLASSIC_RULES, type CardAmounts } from '../rules/index.js';
 import { ScenarioDefinitionSchema, type ScenarioDefinition } from '../scenario/index.js';
 import { reduce } from './reducer.js';
 import { EMPTY_CARDS } from './cards.js';
@@ -98,6 +98,7 @@ export function testGame(overrides: Partial<GameState> = {}): GameState {
     buildings: {},
     roads: {},
     robber: TEST_SCENARIO.robberStart,
+    barbarians: null,
     bank: { ...CLASSIC_RULES.resourceBank },
     longestRoad: { holder: null, length: 0 },
     largestArmy: { holder: null, size: 0 },
@@ -112,6 +113,26 @@ export function testGame(overrides: Partial<GameState> = {}): GameState {
   const state = { ...base, ...overrides };
   GameStateSchema.parse(state);
   return state;
+}
+
+/**
+ * Eine Partie nach Staedte-&-Ritter-Regeln, in der Hauptphase.
+ *
+ * Dasselbe Testbrett und dieselben drei Spieler wie `testGame`, aber mit
+ * `CITIES_RULES` - und mit einer Stadt auf dem mittleren Knoten, weil erst
+ * eine Stadt Handelswaren abwirft und weil die Gruendung dort eine setzt.
+ *
+ * Das Barbarenschiff steht auf dem Startfeld. Ohne diesen Eintrag waere jede
+ * Frage an die Fahrstrecke ein Sonderfall statt einer Antwort.
+ */
+export function gameWithCities(overrides: Partial<GameState> = {}): GameState {
+  return testGame({
+    rules: CITIES_RULES,
+    bank: { ...CITIES_RULES.resourceBank },
+    buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city' } },
+    barbarians: { position: 0, attacks: 0 },
+    ...overrides,
+  });
 }
 
 /** Gibt einem Spieler Handkarten. */

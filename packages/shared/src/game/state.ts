@@ -44,6 +44,26 @@ export const BuildingSchema = z.object({
 
 export type Building = z.infer<typeof BuildingSchema>;
 
+/**
+ * Das Barbarenschiff auf seiner Fahrstrecke.
+ *
+ * `null` am `GameState` heisst: an diesem Tisch faehrt keines.
+ */
+export const BarbarianStateSchema = z.object({
+  /** 0 bis `rules.barbarianTrack`. Auf dem letzten Feld landen sie. */
+  position: z.number().int().min(0),
+  /**
+   * Wie oft sie schon gelandet sind.
+   *
+   * Steht hier, weil zwei Regeln daran haengen und beide sonst raten muessten:
+   * der Raeuber bleibt bis zum ersten Ueberfall stehen, und die Wueste wird
+   * erst danach sein Platz.
+   */
+  attacks: z.number().int().min(0),
+});
+
+export type BarbarianState = z.infer<typeof BarbarianStateSchema>;
+
 export const GameStateSchema = z.object({
   /** Das Brett, aus dem Topologie und Ertraege folgen. */
   scenario: ScenarioDefinitionSchema,
@@ -60,6 +80,14 @@ export const GameStateSchema = z.object({
   roads: z.record(z.string(), PlayerIdSchema),
   /** Feld-Id, auf dem der Raeuber steht. */
   robber: z.string(),
+  /**
+   * Das Barbarenschiff. `null` heisst: an diesem Tisch ohne Erweiterung.
+   *
+   * Mit Vorgabe, wie `rollTally` und aus demselben Grund: gespeichert wird nur
+   * der Startzustand, und ein Pflichtfeld ohne Vorgabe liesse jede bestehende
+   * Partie am Schema scheitern.
+   */
+  barbarians: BarbarianStateSchema.nullable().default(null),
   /** Was die Bank noch ausgeben kann. */
   bank: CardAmountsSchema,
   /** Wer die Laengste Handelsstrasse haelt und wie lang sie ist. */

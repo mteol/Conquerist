@@ -30,6 +30,7 @@ import {
   applyPlayYearOfPlenty,
 } from './developmentRules.js';
 import { distributeYield } from './yield.js';
+import { resolveEvent } from './cities/turn.js';
 
 /**
  * Der Reducer: `(state, action) => newState`, rein und ohne Seiteneffekte.
@@ -112,13 +113,22 @@ function rollDice(state: GameState): ReduceResult {
     rollTally: { ...state.rollTally, [total]: (state.rollTally[total] ?? 0) + 1 },
   };
 
+  /*
+   * Erst das Ereignis, dann der Ertrag - so steht es in der Anleitung, und so
+   * muss es stehen: ab 10b kann der Barbarenangriff eine Stadt kosten, und die
+   * soll im selben Wurf nichts mehr ausschuetten. An einem Tisch ohne
+   * Erweiterung faellt kein Ereigniswuerfel, und `resolveEvent` gibt denselben
+   * Zustand zurueck.
+   */
+  const afterEvent = resolveEvent(rolled, roll);
+
   if (total !== state.rules.robberRoll) {
-    return ok({ ...distributeYield(rolled, total), phase: { kind: 'main' } });
+    return ok({ ...distributeYield(afterEvent, total), phase: { kind: 'main' } });
   }
 
-  const pending = playersMustDiscard(rolled);
+  const pending = playersMustDiscard(afterEvent);
   return ok({
-    ...rolled,
+    ...afterEvent,
     phase:
       pending.length > 0
         ? { kind: 'discardPending', pending }
