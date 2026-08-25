@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CLASSIC_RULES } from '../rules/index.js';
+import { CITIES_RULES, CLASSIC_RULES } from '../rules/index.js';
 import { CLASSIC_34, generateScenario } from '../scenario/index.js';
 import { RuleViolationCode } from './errors.js';
 import {
@@ -260,5 +260,83 @@ describe('createGame und der Auftakt', () => {
     const b = afterOpening(createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'saat'));
 
     expect(a.players.map((player) => player.id)).toEqual(b.players.map((player) => player.id));
+  });
+});
+
+/**
+ * Die Gruendung mit Staedte-&-Ritter-Regeln.
+ *
+ * Erste Runde eine Siedlung, zweite Runde eine **Stadt** - dort beginnt jeder
+ * mit beidem, weil erst eine Stadt Handelswaren abwirft.
+ */
+describe('Gruendung mit Staedte & Ritter', () => {
+  function citiesGame(): GameState {
+    for (let versuch = 0; versuch < 500; versuch += 1) {
+      const game = afterOpening(
+        createGame(TEST_SCENARIO, CITIES_RULES, TEST_PLAYERS, `cities-setup-${versuch}`),
+      );
+      if (game.players[0]?.id === TEST_PLAYERS[0]) return game;
+    }
+
+    throw new Error('citiesGame: keine Saat gefunden, bei der der erste Spieler beginnt');
+  }
+
+  /** Die sechs Setzungen bei drei Spielern, Reihenfolge p1 p2 p3 p3 p2 p1. */
+  const spots: readonly (readonly [string, string, string])[] = [
+    ['p1', CENTER_VERTEX, CENTER_EDGE],
+    ['p2', FAR_VERTEX, NEXT_EDGE],
+    ['p3', 'v:-1,0|0,-1|0,0', 'e:-1,0|0,0'],
+    ['p3', 'v:-1,1|0,0|0,1', 'e:-1,1|0,1'],
+    ['p2', 'v:0,-1|1,-2|1,-1', 'e:0,-1|1,-1'],
+    ['p1', 'v:-2,1|-2,2|-1,1', 'e:-2,1|-1,1'],
+  ];
+
+  function played(): GameState {
+    let state = citiesGame();
+    for (const [player, vertex, edge] of spots) state = place(state, player, vertex, edge);
+    return state;
+  }
+
+  it('setzt in der ersten Runde eine Siedlung', () => {
+    const state = played();
+    expect(state.buildings[CENTER_VERTEX]).toMatchObject({ owner: 'p1', kind: 'settlement' });
+  });
+
+  it('setzt in der zweiten Runde eine Stadt', () => {
+    const state = played();
+    expect(state.buildings['v:-2,1|-2,2|-1,1']).toMatchObject({ owner: 'p1', kind: 'city' });
+    expect(state.buildings['v:-1,1|0,0|0,1']).toMatchObject({ owner: 'p3', kind: 'city' });
+  });
+
+  it('nimmt dafuer eine Stadt aus dem Vorrat und nicht eine zweite Siedlung', () => {
+    const p1 = played().players.find((entry) => entry.id === 'p1')!;
+
+    expect(p1.piecesLeft.settlement).toBe(CITIES_RULES.pieceStock.settlement! - 1);
+    expect(p1.piecesLeft.city).toBe(CITIES_RULES.pieceStock.city! - 1);
+  });
+
+  /*
+   * Die Startkarten kommen von der zweiten Setzung, und es ist eine Karte je
+   * angrenzendem Feld - auch bei einer Stadt. So steht es in beiden
+   * Anleitungen, und Handelswaren sind beim Start nicht dabei.
+   */
+  it('gibt einen Rohstoff je Feld an der Stadt, keine Handelswaren', () => {
+    const p1 = played().players.find((entry) => entry.id === 'p1')!;
+
+    expect(p1.resources.paper).toBe(0);
+    expect(p1.resources.cloth).toBe(0);
+    expect(p1.resources.coin).toBe(0);
+    expect(Object.values(p1.resources).reduce((sum, n) => sum + n, 0)).toBeGreaterThan(0);
+  });
+
+  it('setzt das Barbarenschiff auf sein Startfeld', () => {
+    expect(citiesGame().barbarians).toEqual({ position: 0, attacks: 0 });
+  });
+
+  it('bleibt im Basisspiel bei zwei Siedlungen', () => {
+    let state = newGame();
+    for (const [player, vertex, edge] of spots) state = place(state, player, vertex, edge);
+
+    expect(state.buildings['v:-2,1|-2,2|-1,1']).toMatchObject({ kind: 'settlement' });
   });
 });

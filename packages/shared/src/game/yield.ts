@@ -1,10 +1,16 @@
 import type { VertexId } from '../geometry/index.js';
 import type { CardAmounts } from '../rules/index.js';
-import { terrainYield, type ResourceId } from '../scenario/index.js';
+import {
+  terrainCommodity,
+  terrainYield,
+  type CardId,
+  type ResourceId,
+  type TerrainId,
+} from '../scenario/index.js';
 import { boardOf } from './board.js';
 import type { PlayerId } from './player.js';
 import { EMPTY_CARDS, addCards, subtractCards } from './cards.js';
-import type { GameState } from './state.js';
+import type { BuildingKind, GameState } from './state.js';
 
 /**
  * Ertragsverteilung.
@@ -12,6 +18,12 @@ import type { GameState } from './state.js';
  * Eine Siedlung bringt eine Karte, eine Stadt zwei - je angrenzendem Feld, das
  * die gewuerfelte Zahl traegt. Das Feld, auf dem der Raeuber steht, liefert
  * nichts.
+ *
+ * **Mit Staedte & Ritter sind die zwei Karten einer Stadt nicht mehr
+ * zwangslaeufig zweimal dasselbe.** An Wald, Weideland und Gebirge bringt sie
+ * einen Rohstoff und eine Handelsware; an Huegelland und Ackerland weiterhin
+ * zwei Rohstoffe. Ein Verzicht zugunsten von zwei gleichen Karten ist nicht
+ * erlaubt - deshalb steht hier eine Ableitung und keine Wahl.
  *
  * Der unangenehme Teil ist die knappe Bank, und er steht ausdruecklich hier und
  * nicht im Reducer: reicht der Vorrat einer Ressource nicht fuer alle, die
@@ -25,8 +37,41 @@ import type { GameState } from './state.js';
 /** Was ein einzelner Spieler an einem Wurf zu bekommen haette, noch ohne Bank. */
 interface Claim {
   readonly player: PlayerId;
-  readonly resource: ResourceId;
+  /**
+   * `CardId` und nicht `ResourceId`: eine Stadt am Wald bringt Holz **und**
+   * Papier, und beides geht durch dieselbe Bankpruefung.
+   */
+  readonly card: CardId;
   readonly amount: number;
+}
+
+/**
+ * Was ein Bauwerk an einem Feld einbringt.
+ *
+ * Ob Handelswaren ueberhaupt fallen, entscheidet das Regelwerk und nicht das
+ * Gelaende: `TERRAIN_COMMODITY` gilt immer, aber an einem Basistisch steht die
+ * Handelsware nicht in `rules.cards`, und dann bleibt es bei zwei Rohstoffen.
+ * So braucht das Basisspiel keinen Sonderfall und die Erweiterung keinen
+ * Schalter.
+ */
+function claimsAt(
+  state: GameState,
+  player: PlayerId,
+  terrain: TerrainId,
+  resource: ResourceId,
+  kind: BuildingKind,
+): Claim[] {
+  if (kind !== 'city') return [{ player, card: resource, amount: 1 }];
+
+  const commodity = terrainCommodity(terrain);
+  const inPlay = commodity !== null && state.rules.cards.includes(commodity);
+
+  return inPlay
+    ? [
+        { player, card: resource, amount: 1 },
+        { player, card: commodity, amount: 1 },
+      ]
+    : [{ player, card: resource, amount: 2 }];
 }
 
 /** Sammelt alle Ansprueche eines Wurfs - ohne zu pruefen, ob die Bank sie deckt. */
@@ -38,18 +83,16 @@ function claimsForRoll(state: GameState, roll: number): Claim[] {
     if (hexId === state.robber) continue;
 
     const placement = board.hexes.get(hexId);
-    const resource = placement === undefined ? null : terrainYield(placement.terrain);
+    if (placement === undefined) continue;
+
+    const resource = terrainYield(placement.terrain);
     if (resource === null) continue;
 
     for (const vertex of board.topology.hexVertices.get(hexId) ?? []) {
       const building = state.buildings[vertex];
       if (building === undefined) continue;
 
-      claims.push({
-        player: building.owner,
-        resource,
-        amount: building.kind === 'city' ? 2 : 1,
-      });
+      claims.push(...claimsAt(state, building.owner, placement.terrain, resource, building.kind));
     }
   }
 
@@ -67,9 +110,9 @@ function payOut(state: GameState, granted: readonly Claim[]): GameState {
     const current = perPlayer.get(claim.player) ?? EMPTY_CARDS;
     perPlayer.set(claim.player, {
       ...current,
-      [claim.resource]: current[claim.resource] + claim.amount,
+      [claim.card]: current[claim.card] + claim.amount,
     });
-    fromBank = { ...fromBank, [claim.resource]: fromBank[claim.resource] + claim.amount };
+    fromBank = { ...fromBank, [claim.card]: fromBank[claim.card] + claim.amount };
   }
 
   return {
@@ -96,30 +139,33 @@ export function distributeYield(state: GameState, roll: number): GameState {
 
   const granted: Claim[] = [];
 
-  // Je Ressource getrennt entscheiden - die Knappheit beim Lehm geht die Wolle
-  // nichts an.
-  const byResource = new Map<ResourceId, Claim[]>();
+  /*
+   * Je Kartensorte getrennt entscheiden - die Knappheit beim Lehm geht die
+   * Wolle nichts an. Und Holz und Papier sind zwei Sorten: geht das Papier
+   * aus, faellt das Holz nicht mit aus, obwohl beide vom Wald kommen.
+   */
+  const byCard = new Map<CardId, Claim[]>();
   for (const claim of claims) {
-    const bucket = byResource.get(claim.resource);
-    if (bucket === undefined) byResource.set(claim.resource, [claim]);
+    const bucket = byCard.get(claim.card);
+    if (bucket === undefined) byCard.set(claim.card, [claim]);
     else bucket.push(claim);
   }
 
-  for (const [resource, resourceClaims] of byResource) {
-    const demanded = resourceClaims.reduce((sum, claim) => sum + claim.amount, 0);
-    const available = state.bank[resource];
+  for (const [card, cardClaims] of byCard) {
+    const demanded = cardClaims.reduce((sum, claim) => sum + claim.amount, 0);
+    const available = state.bank[card];
 
     if (demanded <= available) {
-      granted.push(...resourceClaims);
+      granted.push(...cardClaims);
       continue;
     }
 
     // Mehrere Anspruchsberechtigte und zu wenig Vorrat: niemand bekommt etwas.
-    const players = new Set(resourceClaims.map((claim) => claim.player));
+    const players = new Set(cardClaims.map((claim) => claim.player));
     if (players.size > 1) continue;
 
     // Genau einer: er bekommt, was noch da ist.
-    const only = resourceClaims[0]!;
+    const only = cardClaims[0]!;
     if (available > 0) granted.push({ ...only, amount: available });
   }
 
@@ -145,10 +191,10 @@ export function grantSetupYield(state: GameState, player: PlayerId, vertex: Vert
     // Ein einzelner Spieler - es gilt die Regel "bekommt, was noch da ist".
     const available = state.bank[resource];
     const alreadyClaimed = claims
-      .filter((claim) => claim.resource === resource)
+      .filter((claim) => claim.card === resource)
       .reduce((sum, claim) => sum + claim.amount, 0);
 
-    if (alreadyClaimed < available) claims.push({ player, resource, amount: 1 });
+    if (alreadyClaimed < available) claims.push({ player, card: resource, amount: 1 });
   }
 
   return payOut(state, claims);

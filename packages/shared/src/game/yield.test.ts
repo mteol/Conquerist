@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CENTER_VERTEX, giving, hand, testGame } from './fixtures.js';
+import { CENTER_VERTEX, gameWithCities, giving, hand, testGame } from './fixtures.js';
 import type { GameState } from './state.js';
 import { distributeYield, grantSetupYield } from './yield.js';
 
@@ -176,5 +176,64 @@ describe('grantSetupYield', () => {
     const next = grantSetupYield(state, 'p1', CENTER_VERTEX);
 
     expect(resourcesOf(next, 'p1')).toEqual(hand({ ore: 3, brick: 1, lumber: 1 }));
+  });
+});
+
+/**
+ * Der Stadtertrag in Staedte & Ritter.
+ *
+ * Zwei Karten wie bisher - aber an Wald, Weideland und Gebirge ist die zweite
+ * eine Handelsware. Ein Verzicht zugunsten von zwei gleichen Karten ist nicht
+ * erlaubt, deshalb gibt es hier keine Wahl.
+ */
+describe('Handelswaren am Stadtertrag', () => {
+  it('gibt der Stadt am Wald ein Holz und ein Papier', () => {
+    const state = gameWithCities();
+
+    expect(resourcesOf(distributeYield(state, 5), 'p1')).toEqual(hand({ lumber: 1, paper: 1 }));
+  });
+
+  it('gibt der Stadt am Huegelland weiterhin zwei Lehm', () => {
+    const state = gameWithCities();
+
+    expect(resourcesOf(distributeYield(state, 6), 'p1')).toEqual(hand({ brick: 2 }));
+  });
+
+  it('gibt der Siedlung am Wald nur das Holz', () => {
+    const state = gameWithCities({
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement' } },
+    });
+
+    expect(resourcesOf(distributeYield(state, 5), 'p1')).toEqual(hand({ lumber: 1 }));
+  });
+
+  /*
+   * Am Basistisch steht die Handelsware nicht in `rules.cards` - dann bleibt
+   * es bei zwei gleichen Rohstoffen, ohne dass irgendwo ein Sonderfall steht.
+   */
+  it('bleibt am Basistisch bei zwei Holz', () => {
+    const state = testGame({
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city' } },
+    });
+
+    expect(resourcesOf(distributeYield(state, 5), 'p1')).toEqual(hand({ lumber: 2 }));
+  });
+
+  /*
+   * Holz und Papier sind zwei Sorten. Geht das Papier aus, faellt das Holz
+   * nicht mit aus - obwohl beide vom selben Feld kommen.
+   */
+  it('behandelt Rohstoff und Handelsware als getrennte Vorraete', () => {
+    const state = gameWithCities({ bank: hand({ lumber: 19, paper: 0 }) });
+
+    expect(resourcesOf(distributeYield(state, 5), 'p1')).toEqual(hand({ lumber: 1 }));
+  });
+
+  /* Die Gruendung gibt einen Rohstoff je Feld - Handelswaren sind nicht dabei. */
+  it('gibt beim Start keine Handelswaren', () => {
+    const state = gameWithCities({ buildings: {} });
+    const nachher = grantSetupYield(state, 'p1', CENTER_VERTEX);
+
+    expect(resourcesOf(nachher, 'p1')).toEqual(hand({ brick: 1, lumber: 1 }));
   });
 });

@@ -9,16 +9,21 @@ import { RuleViolationCode, violation } from './errors.js';
 import { setupPlacementCount, setupPlayerIndex } from './phase.js';
 import type { PlayerId } from './player.js';
 import { EMPTY_CARDS } from './cards.js';
-import { ok, rejected, type GameState, type ReduceResult } from './state.js';
+import { ok, rejected, type BuildingKind, type GameState, type ReduceResult } from './state.js';
 import { grantSetupYield } from './yield.js';
 
 /**
  * Spielstart und Gruendungsphase.
  *
- * In der Gruendung setzt jeder Spieler zwei Siedlungen und zwei Strassen, in
- * Schlangenreihenfolge (`phase.ts`). Beides ist kostenlos und die Siedlung
+ * In der Gruendung setzt jeder Spieler zwei Bauwerke und zwei Strassen, in
+ * Schlangenreihenfolge (`phase.ts`). Beides ist kostenlos und das Bauwerk
  * braucht keinen Strassenanschluss - die Abstandsregel gilt trotzdem. Die
- * zweite Siedlung wirft sofort Ertrag ab; das ist die Startausstattung.
+ * zweite Setzung wirft sofort Ertrag ab; das ist die Startausstattung.
+ *
+ * **Was in der zweiten Runde gesetzt wird, haengt am Regelwerk.** Im
+ * Basisspiel eine zweite Siedlung, in Staedte & Ritter eine **Stadt** - dort
+ * beginnt jeder mit einer Siedlung und einer Stadt, weil erst eine Stadt
+ * Handelswaren abwirft.
  */
 
 /**
@@ -88,7 +93,24 @@ function deckAndRng(rules: RuleSet, seed: string): { deck: DevelopmentCardId[]; 
   return { deck, rng };
 }
 
-/** Setzt eine Gruendungssiedlung - kostenlos, ohne Anschluss, mit Abstandsregel. */
+/**
+ * Was in dieser Setzung auf den Knoten kommt.
+ *
+ * Erste Runde immer eine Siedlung. In der zweiten entscheidet das Regelwerk:
+ * `barbarianTrack > 0` heisst, dass dieser Tisch Staedte & Ritter spielt, und
+ * dort ist die zweite Setzung eine Stadt.
+ *
+ * **Ein Merkmal und kein Name.** `rules.id === 'cities'` waere kuerzer und
+ * falsch: wer eine Variante baut, die Handelswaren kennt und anders heisst,
+ * bekaeme die falsche Gruendung. Gefragt wird nach dem, was die Regel
+ * ausmacht.
+ */
+export function setupBuildingKind(state: GameState, placement: number): BuildingKind {
+  const secondRound = placement >= state.players.length;
+  return secondRound && state.rules.barbarianTrack > 0 ? 'city' : 'settlement';
+}
+
+/** Setzt ein Gruendungsbauwerk - kostenlos, ohne Anschluss, mit Abstandsregel. */
 export function applySetupSettlement(
   state: GameState,
   player: PlayerId,
@@ -107,22 +129,30 @@ export function applySetupSettlement(
   const problem = canPlaceSettlementAt(state, vertex);
   if (problem !== null) return rejected(problem);
 
+  /*
+   * Die Abstandsregel gilt fuer die Stadt genauso - `canPlaceSettlementAt`
+   * fragt nach dem Platz und nicht nach der Bauform, und genau deshalb passt
+   * sie hier unveraendert.
+   */
+  const kind = setupBuildingKind(state, phase.placement);
+
   const placed: GameState = {
     ...state,
-    buildings: { ...state.buildings, [vertex]: { owner: player, kind: 'settlement' } },
+    buildings: { ...state.buildings, [vertex]: { owner: player, kind } },
     players: state.players.map((entry) =>
       entry.id === player
         ? {
             ...entry,
-            piecesLeft: { ...entry.piecesLeft, settlement: entry.piecesLeft.settlement - 1 },
+            piecesLeft: { ...entry.piecesLeft, [kind]: entry.piecesLeft[kind] - 1 },
           }
         : entry,
     ),
     phase: { kind: 'setup', placement: phase.placement, settlement: vertex },
   };
 
-  // Nur die zweite Siedlung bringt Startkarten - das ist die zweite Runde der
-  // Schlange, also ab Setzung `playerCount`.
+  // Nur die zweite Setzung bringt Startkarten - das ist die zweite Runde der
+  // Schlange, also ab Setzung `playerCount`. Eine Karte je angrenzendem Feld,
+  // auch bei einer Stadt: so steht es in beiden Anleitungen.
   const secondRound = phase.placement >= state.players.length;
   return ok(secondRound ? grantSetupYield(placed, player, vertex) : placed);
 }
