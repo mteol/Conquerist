@@ -2641,8 +2641,13 @@ body {
    * die Reihe breiter als die Ecke und liefe an ihrem Rand hinaus. Umgebrochen
    * ist sie ein kleiner Stapel, und das ist ohnehin die Form, in der die Karten
    * auf dem Tisch laegen.
+   *
+   * **Das Mass haengt an der Markengroesse und muss mitwachsen:** drei Marken
+   * (3 x 1.05rem) plus zwei Luecken (2 x 0.15rem) sind 3.45rem, dazu derselbe
+   * Rest Spiel wie vorher. Wer die Marke vergroessert und das hier vergisst,
+   * bekommt zwei Marken je Zeile und einen Preis, der doppelt so hoch steht.
    */
-  max-width: 3.05rem;
+  max-width: 3.65rem;
 }
 
 .cost--column {
@@ -2652,8 +2657,8 @@ body {
 .cost__mark {
   display: grid;
   place-items: center;
-  width: 0.85rem;
-  height: 0.85rem;
+  width: 1.05rem;
+  height: 1.05rem;
   border: 1px solid rgb(22 32 42 / 35%);
   border-radius: 2px;
   box-shadow: 0 1px 1px rgb(0 0 0 / 30%);
@@ -2665,23 +2670,30 @@ body {
    * Preis, der nach dem Wegfahren noch nachklappert, sieht aus wie ein Fehler.
    */
   opacity: 0;
-  transform: translateY(0.25rem) scale(0.82);
+  transform: translateY(0.4rem) scale(0.7);
   transition:
-    opacity 130ms ease,
-    transform 190ms cubic-bezier(0.2, 0.7, 0.3, 1.35);
+    opacity 150ms ease,
+    transform 240ms cubic-bezier(0.2, 0.7, 0.3, 1.45);
 }
 
 .cost__mark .card__glyph {
-  width: 0.62rem;
-  height: 0.62rem;
-  /* Auf einer 0.85rem grossen Marke traegt die feine Bruchkante im Erz nicht
-     mehr - sie wird zu einem hellen Fleck. Also nur der Koerper. */
+  width: 0.78rem;
+  height: 0.78rem;
   fill: rgb(22 32 42 / 85%);
 }
 
-.cost__mark .card__glyph-cut {
-  display: none;
-}
+/*
+ * Die Bruchkante im Erz ist zurueck - und zwar ohne eigene Regel.
+ *
+ * Auf der alten 0.85rem-Marke war sie ein heller Fleck und stand deshalb hier
+ * auf `display: none`. Bei 1.05rem traegt sie wieder, und damit greift einfach
+ * `.card__glyph-cut` von weiter oben: heller Strich auf dem dunklen Koerper,
+ * dieselbe Setzung wie auf der Handkarte. Eine zweite Fassung daneben waere
+ * eine zweite Wahrheit ueber dieselbe Kante.
+ *
+ * Sie ist kein Zierat: ohne sie unterscheiden sich Erz und Lehm auf der Marke
+ * nur durch die Farbe - Designregel 7 will zwei Traeger, nicht einen.
+ */
 
 /*
  * Sie kommen nacheinander an, so wie jemand Karten hinlegt. `--i` ist die Lage
@@ -2694,7 +2706,7 @@ body {
 .deck__pile:focus-visible .cost__mark {
   opacity: 1;
   transform: none;
-  transition-delay: calc(var(--i, 0) * 40ms);
+  transition-delay: calc(var(--i, 0) * 55ms);
 }
 
 /*
