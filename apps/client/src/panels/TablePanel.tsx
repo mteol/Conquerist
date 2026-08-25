@@ -1,5 +1,7 @@
 import type { JSX } from 'react';
+import { awardsHeldBy, type Award } from '../game/awards';
 import type { GameView, PlayerRow as PlayerRowData } from '../game/view';
+import { SeatMarks } from './Awards';
 
 /**
  * Der Tisch: wer sitzt da, wie viele Punkte, wie viele Karten.
@@ -18,6 +20,15 @@ import type { GameView, PlayerRow as PlayerRowData } from '../game/view';
  *
  * Getrennte Mitspieler werden benannt statt eingefaerbt: eine Farbe allein
  * traegt keine Information, die jemand sonst nicht mitbekommt.
+ *
+ * **Neben dem Namen stehen seit den Auszeichnungen zwei Sorten Plaketten:** was
+ * jemand vor sich liegen hat (Laengste Handelsstrasse, Groesste Rittermacht)
+ * und wie viele Ritter er ausgespielt hat. Die Auszeichnung erscheint nur bei
+ * den **anderen** - die eigene liegt als Karte unten links bei den eigenen
+ * Karten, und dieselbe Auskunft an zwei Orten waere eine zu viel. Die
+ * Ritterzahl steht bei allen, auch bei einem selbst: sie ist ein Zaehler und
+ * kein Besitz, und ausgespielte Ritter sind aus der Hand verschwunden - ohne
+ * diese Zahl steht sie nirgends.
  */
 export interface TablePanelProps {
   readonly view: GameView;
@@ -35,6 +46,7 @@ export function TablePanel({ view }: TablePanelProps): JSX.Element {
           acting={view.actingPlayers.includes(player.id)}
           isYou={player.id === view.you}
           gained={view.gains.get(player.id) ?? 0}
+          awards={player.id === view.you ? [] : awardsHeldBy(view.awards, player.id)}
         />
       ))}
     </section>
@@ -46,12 +58,15 @@ function PlayerRow({
   acting,
   isYou,
   gained,
+  awards,
 }: {
   readonly player: PlayerRowData;
   readonly acting: boolean;
   readonly isYou: boolean;
   /** Karten seit dem vorigen Stand; 0 heisst: nichts zu zeigen. */
   readonly gained: number;
+  /** Was dieser Spieler vor sich liegen hat - bei einem selbst leer, siehe oben. */
+  readonly awards: readonly Award[];
 }): JSX.Element {
   return (
     <div
@@ -63,6 +78,9 @@ function PlayerRow({
         {player.name}
         {isYou ? ' (du)' : ''}
       </span>
+
+      <SeatMarks player={player.id} awards={awards} knights={player.playedKnights} />
+
       <span className="seat__points">{player.victoryPoints} SP</span>
 
       <span className="seat__hand" data-testid={`hand-count-${player.id}`}>

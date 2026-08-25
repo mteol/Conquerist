@@ -12,6 +12,7 @@ import {
 } from '@conquerist/shared';
 import { BoardSvg, type Place } from '../board/BoardSvg';
 import { EMPTY_TARGETS, buildKindOf, targetsFrom, type BuildableKind } from '../game/targets';
+import { awardsHeldBy, openAwards } from '../game/awards';
 import { discardCountForView, gameViewOf, type PlayerRow } from '../game/view';
 import { ActionPanel } from '../panels/ActionPanel';
 import { DeckPanel } from '../panels/DeckPanel';
@@ -20,6 +21,7 @@ import { DiceTray } from '../panels/DiceTray';
 import { HandPanel } from '../panels/HandPanel';
 import { TurnPanel } from '../panels/TurnPanel';
 import { DevelopmentCards } from '../panels/DevelopmentCards';
+import { AwardCards, OpenAwards } from '../panels/Awards';
 import { ResourcePickDialog } from '../dialogs/ResourcePickDialog';
 import { LogPanel } from '../panels/LogPanel';
 import { StatusPanel } from '../panels/StatusPanel';
@@ -587,6 +589,15 @@ export function GameScreen({
             />
           ) : null}
 
+          {/*
+           * Die eigenen Auszeichnungen liegen bei den eigenen Karten - und
+           * zwar **auch dann, wenn die Hand noch zugedeckt ist**. Sie sind
+           * kein Geheimnis: dass jemand die Laengste Handelsstrasse haelt,
+           * steht bei allen anderen offen am Tisch, und was am Tisch offen
+           * liegt, kann der eigene Bildschirm nicht verdecken.
+           */}
+          <AwardCards awards={awardsHeldBy(display.awards, display.you)} />
+
           <TurnPanel
             view={display}
             targets={targets}
@@ -598,6 +609,15 @@ export function GameScreen({
         </div>
 
         <div className="tray__controls">
+          {/*
+           * Was noch niemand hat, liegt beim uebrigen Bankmaterial - vor dem
+           * Kaufstapel, also am weitesten innen. Es ist das einzige Stueck in
+           * dieser Ecke, das man nicht anfasst; nach aussen wird die Reihe
+           * bedienbarer, und die Wuerfel in der Ecke selbst sind das Ende
+           * dieser Steigerung.
+           */}
+          <OpenAwards awards={openAwards(display.awards)} />
+
           <DeckPanel
             left={display.deckLeft}
             canBuy={targets.buyCard !== null}

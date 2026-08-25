@@ -23,10 +23,22 @@ import type { DevelopmentCardId } from '@conquerist/shared';
  * Handkarten. Dort tragen Gelaendefarbe **und** Motiv dieselbe Aussage doppelt;
  * hier sind alle fuenf Karten dasselbe Pergament, das Motiv waere der einzige
  * Traeger - und genau das verbietet Designregel 7.
+ *
+ * **Die Klasse ist uebersteuerbar, seit der Helm zweimal gebraucht wird.** Er
+ * steht auf der Ritterkarte und - eine Handbreit kleiner - in der Plakette am
+ * Tisch, die sagt, wie viele Ritter jemand schon ausgespielt hat. Zwei Motive
+ * fuer dieselbe Sache waeren zwei Helme, die irgendwann auseinanderlaufen; die
+ * Groesse ist das einzige, was sich unterscheiden soll, und die steht im Blatt.
  */
-export function DevelopmentGlyph({ card }: { readonly card: DevelopmentCardId }): JSX.Element {
+export function DevelopmentGlyph({
+  card,
+  className = 'devcard__glyph',
+}: {
+  readonly card: DevelopmentCardId;
+  readonly className?: string;
+}): JSX.Element {
   return (
-    <svg className="devcard__glyph" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
       {SHAPES[card]}
     </svg>
   );

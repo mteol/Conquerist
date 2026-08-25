@@ -55,6 +55,7 @@ function tableView(gains: ReadonlyMap<string, number>): GameView {
     turn: 1,
     longestRoad: { holder: null, length: 0 },
     largestArmy: { holder: null, size: 0 },
+    awards: [],
     deckLeft: 25,
     canOfferTrade: false,
     you: seats[0]!.id,

@@ -5853,3 +5853,138 @@ Regel 7). Wer hier eine Zeile hinzufügt, mißt nach.
 | ---------------- | -------------------------------------------------------- |
 | `pnpm typecheck` | grün                                                     |
 | `pnpm test`      | grün — shared 638 / 37, server 202 / 22, client 422 / 40 |
+
+---
+
+## Die Auszeichnungen kommen auf den Tisch (2026-08-25, `main`)
+
+Längste Handelsstraße und Größte Rittermacht standen seit Etappe 2 richtig im
+Zustand und wurden bis eben **nirgends gezeigt** — außer im Endstand, also nach
+der Partie. Zwei Siegpunkte je Stück, ein Wettlauf über die ganze Partie, und
+kein Spieler konnte sehen, ob er ihn führt. Dazu kam ein zweites Loch: **wie
+viele Ritter jemand ausgespielt hat, stand ebenfalls nirgends.** Die Karte
+verschwindet beim Ausspielen aus der Hand, und genau daran hängt, ob sich der
+nächste Ritter lohnt.
+
+### Der Entwurf in drei Sätzen (Designregel 1)
+
+**Rolle:** die Karte wandert, statt daß eine Anzeige sie beschreibt. Am Tisch
+liegt die Längste Handelsstraße in der Mitte, bis jemand sie nimmt; dann liegt
+sie vor ihm, sichtbar für alle, bis einer sie ihm wegnimmt.
+
+**Aufbau:** genau drei Orte, und der Ort sagt schon, wem sie gehört.
+
+- **Frei** → rechte Ecke beim übrigen Bankmaterial, mit ihrer Bedingung („ab 5
+  Straßen"). Solange sie niemand hat, ist die Bedingung die einzige Auskunft,
+  die zählt.
+- **Eigen** → unten links bei den eigenen Karten, als quadratische Karte.
+- **Fremd** → als kleine Plakette neben dem Namen am Tisch, oben links.
+
+**Woran man sich erinnert:** daß die Karte umzieht. Sie verschwindet aus der
+Ecke, in der sie eine Partie lang lag, und taucht bei jemandem auf.
+
+### Getroffene Entscheidungen
+
+**Ein Stück liegt an genau einem Ort.** Die naheliegende Fassung wäre gewesen,
+die Auszeichnung immer rechts stehen zu lassen und ihren Inhaber
+danebenzuschreiben — dann stünde dieselbe Sache an zwei Stellen, und zwei
+Stellen können auseinanderlaufen. Die Tests prüfen deshalb nicht nur, daß etwas
+erscheint, sondern daß es an den beiden anderen Stellen **nicht** erscheint.
+
+**Die eigene Auszeichnung steht nicht zusätzlich am Tisch.** Der Tisch
+beantwortet die Frage, die man über _andere_ stellt — der Satz steht seit Etappe
+4 in `TablePanel` und trägt hier zum zweiten Mal.
+
+**Die Ritterzahl dagegen steht bei allen, auch bei einem selbst.** Sie ist ein
+Zähler und kein Besitz: die Auszeichnung liegt irgendwo als Karte, die
+ausgespielten Ritter liegen nirgends. Ohne die Plakette müßte man sie sich
+merken.
+
+**Ein Anzeigemodell statt zweier `if` im JSX** (`game/awards.ts`). Beide
+Auszeichnungen sind dasselbe Ding in drei Lagen, und an jeder der drei Stellen
+wird dieselbe Frage gestellt: wer hält sie, mit welchem Wert, was bräuchte man
+dafür. Gerechnet wird nichts — `holder`, `length` und `size` kommen fertig aus
+der Sicht, Schwelle und Punktwert aus dem RuleSet (Regel 3). Der Endstand liest
+seither dasselbe Modell und nennt die Auszeichnungen damit endlich so wie der
+Rest des Spiels: „Straße" und „Heer" standen dort als Kurzformen, die es
+nirgends sonst gibt (Designregel 8).
+
+**„Gleichauf bei 7" ist keine Zierde, sondern ein Fall, den der Zustand
+hergibt.** `recomputeLongestRoad` läßt die Straße bei Gleichstand ohne Inhaber
+liegen und **führt ihre Länge trotzdem**. Eine Karte, die dann „ab 5 Straßen"
+sagt, ist schlicht falsch — die fünf sind längst überboten. Ein eigener Test
+hält den Fall.
+
+**Quadratisch, und das ist der Unterschied, den man zuerst sieht.** Alle anderen
+Karten des Spiels stehen hoch (4.6 auf 5.8rem); diese beiden liegen quer. Wer
+die Ecke überfliegt, trennt sie an der Form von Rohstoff- und
+Entwicklungskarten, bevor er ein Motiv gelesen hat. Die Breite bleibt die der
+übrigen Karten — eine Karte ist eine Karte.
+
+**Zwei neue Motive, und beide mußten zweimal lesbar sein.** Dasselbe Zeichen
+steht auf einer 4.6rem großen Karte und als 0.95rem kleine Plakette am Tisch,
+also rund vierzehn Pixel. Was dort noch durchkommt, ist eine einzige kräftige
+Silhouette.
+
+- **Handelsstraße: eine gezogene Strecke**, als einziges Motiv des Spiels nicht
+  gefüllt. Ein Kantenzug ist ein Weg, der durchgeht — das zeigt eine Linie mit
+  runden Ecken, und eine Ansammlung von Balken zeigt es nicht. Die
+  „Straßenbau"-Karte daneben hat zwei parallele Balken, weil sie zwei Straßen
+  hergibt; hier ist es eine Strecke mit Knick. Strichbreite steht im Blatt und
+  nicht als Attribut am Pfad — die Falle aus `CLAUDE.md`, an der einmal jede
+  gebaute Straße unsichtbar geworden ist.
+- **Rittermacht: zwei gekreuzte Klingen, kein zweiter Helm.** Der Helm gehört
+  der Ritterkarte und heißt dort „ein Ritter"; ihn hier zu wiederholen hieße
+  „ein Ritter" für „das größte Heer". Drei kleine Helme nebeneinander wären die
+  naheliegende Lösung und fallen an der Größe: in der Plakette bekäme jeder vier
+  Pixel. Wie viele Ritter jemand wirklich hat, sagt daneben die Helmplakette
+  mit ihrer Zahl — Form **und** Zahl, nie die Form allein (Designregel 7).
+
+**Der Helm ist jetzt zweimal im Gebrauch**, auf der Karte und in der Plakette.
+`DevelopmentGlyph` nimmt deshalb eine Klasse entgegen; zwei gezeichnete Helme
+wären zwei, die auseinanderlaufen, und die Größe ist das einzige, was sich
+unterscheiden soll.
+
+**Die eigenen Auszeichnungen erscheinen auch bei zugedeckter Hand.** Sie sind
+kein Geheimnis — daß jemand die Längste Handelsstraße hält, steht bei allen
+anderen offen am Tisch, und was am Tisch offen liegt, kann der eigene
+Bildschirm nicht verdecken.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                 |
+| ------------------- | -------------------------------------------------------- |
+| `pnpm typecheck`    | grün                                                     |
+| `pnpm test`         | grün — shared 638 / 37, server 202 / 22, client 432 / 42 |
+| `pnpm build`        | grün, Client-Bundle 442 kB (131 kB gzip), CSS 52.9 kB    |
+| `pnpm format:check` | grün — nach dem Nachziehen von `public/mess.html`        |
+
+Zehn neue Tests: fünf auf dem Anzeigemodell (`game/awards.test.ts`), fünf auf
+dem Bildschirm (`panels/awards.test.tsx`).
+
+**Die Zeile `format:check` stand hier zuerst auf „grün", ohne daß sie gemessen
+war.** Sie war rot, und zwar seit `25ea393`: der Meßrahmen `public/mess.html`
+ist eingecheckt und war nie durch Prettier gelaufen. Die zwei Abschnitte davor
+führen die Warnung noch ehrlich mit; hier ist sie stillschweigend zu „grün"
+geworden. Die Datei ist jetzt formatiert, und damit stimmt die Zeile auch.
+Eine geschätzte Zahl in dieser Tabelle macht die ganze Tabelle wertlos — das
+steht in `CLAUDE.md` und ist genau hier passiert.
+
+Ein Fehler in der ersten Fassung der Bildschirmtests ist erwähnenswert, weil er
+jederzeit wiederkommt: sie hielten `defaultSeats(3)[0]` für „ich". **Der Auftakt
+würfelt aus, wer beginnt, und ordnet `players` danach um** — je nach Seed prüfte
+der Test damit die Zeile eines Mitspielers. Wer in einem Bildschirmtest „ich"
+braucht, nimmt ihn aus dem Zustand (`state.players[0]`), nicht aus der Sitzliste.
+
+### Offene Punkte
+
+- **Nicht im Browser nachgemessen.** Die Erweiterung war in dieser Sitzung nicht
+  verbunden; geprüft sind Typen, Tests, Build und Format, nicht das Bild. Die
+  Rechnung geht auf (zwei Karten zu 73.6 px plus Fuge in einer Ecke von
+  mindestens 236 px; Kartenhöhe 73.6 px gegen rund 57 px Inhalt), aber gemessen
+  ist sie nicht. Der nächste Durchgang sieht die rechte Ecke an — sie trägt
+  jetzt vier Stücke und bricht um.
+- **Der Verlauf sagt nichts, wenn eine Auszeichnung den Besitzer wechselt.** Die
+  Karte zieht um, und niemand erklärt warum — genau die Lücke, die Designregel 5
+  sonst schließt. `describeTransition` in `shared` wäre der Ort, mit Test; hier
+  bewußt nicht mitgemacht, weil es Spiellogik ist und nicht Oberfläche.

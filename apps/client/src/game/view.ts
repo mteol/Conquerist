@@ -9,6 +9,7 @@ import {
   type Roll,
   type RuleSet,
 } from '@conquerist/shared';
+import { awardsOf, type Award } from './awards';
 
 /**
  * Vom Protokoll auf den Bildschirm.
@@ -80,6 +81,16 @@ export interface GameView {
   readonly turn: number;
   readonly longestRoad: GameState['longestRoad'];
   readonly largestArmy: PlayerView['largestArmy'];
+  /**
+   * Dieselben zwei Auszeichnungen, aber als Anzeigemodell: mit Namen, Farbe des
+   * Inhabers, Schwelle und Punktwert.
+   *
+   * Sie stehen **neben** `longestRoad` und `largestArmy` und nicht an ihrer
+   * Stelle: die zwei rohen Felder sind das, was der Zustand sagt, und die
+   * Abrechnung am Spielende liest sie unveraendert. `awards` ist, was der Tisch
+   * daraus zeigt - drei Stellen, ein Modell, siehe `game/awards.ts`.
+   */
+  readonly awards: readonly Award[];
   /** Wie viele Entwicklungskarten der Stapel noch hergibt. */
   readonly deckLeft: number;
   /**
@@ -269,6 +280,7 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     turn: view.turn,
     longestRoad: view.longestRoad,
     largestArmy: view.largestArmy,
+    awards: awardsOf(view),
     deckLeft: view.deckLeft,
     canOfferTrade: view.canOfferTrade,
     you: view.you,

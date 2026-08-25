@@ -1826,6 +1826,203 @@ body {
     0 0 0 2px var(--accent);
 }
 
+/*
+ * Die Auszeichnungen: Laengste Handelsstrasse und Groesste Rittermacht.
+ *
+ * **Quadratisch, und das ist der Unterschied, den man zuerst sieht.** Alle
+ * anderen Karten des Spiels stehen hoch (4.6 auf 5.8rem); diese beiden liegen
+ * quer. Wer die Ecke ueberfliegt, trennt sie damit von Rohstoff- und
+ * Entwicklungskarten, bevor er ein Motiv gelesen hat - Form vor Farbe vor
+ * Schrift, dieselbe Reihenfolge, in der ein Tisch ueberhaupt gelesen wird.
+ * Die Breite bleibt die der uebrigen Karten: eine Karte ist eine Karte, und ein
+ * Sonderformat waere ein zweites Mass in derselben Ablage.
+ *
+ * **Gerundet und nicht geschnitten.** Sie sind Spielmaterial, und Spielmaterial
+ * hat seine Form aus der Wirklichkeit (Designregel 3) - die 45-Grad-Fase
+ * gehoert der Bedienung.
+ *
+ * Kein Stapelversatz und keine Faecherung: es gibt von jeder genau eine, und
+ * eine Tiefe, die nichts andeutet, waere Dekoration.
+ */
+.awards {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Was noch frei liegt, steht in der rechten Ecke beim Bankmaterial - und
+ * bricht dort um wie alles andere, statt unter das Brett zu laufen.
+ */
+.awards--open {
+  margin: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.awardcard {
+  /*
+   * Der Kartenkoerper traegt dunkle Tinte, auch wenn er auf der Tiefsee liegt.
+   *
+   * Er liegt heute in der Ablage, wo `--ink` noch der Grundwert ist - aber
+   * dieselbe Karte steht schon zweimal woanders, und `.panel` definiert `--ink`
+   * auf die helle Schrift um. Wer sie einmal in ein Panel haengt, soll dabei
+   * nicht creme auf Pergament bekommen (der Befund, der in `CLAUDE.md` unter
+   * `.button--ghost` steht: an den Fundstellen repariert, kommt er wieder).
+   */
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
+
+  position: relative;
+  display: grid;
+  gap: 0.08rem;
+  align-content: center;
+  justify-items: center;
+  width: 4.6rem;
+  height: 4.6rem;
+  padding: 0 0.15rem;
+  border: 1px solid rgb(22 32 42 / 65%);
+  border-radius: 7px;
+  background: var(--parchment-2);
+  box-shadow: var(--lift);
+  color: var(--ink);
+}
+
+/*
+ * Die eigene Karte traegt die eigene Sitzfarbe an der Kante.
+ *
+ * Sie sagt nicht, wem die Karte gehoert - das sagt der Ort, an dem sie liegt.
+ * Sie ist da, damit man sie **wiedererkennt**, wenn sie den Besitzer wechselt:
+ * dieselbe Farbe steht drueben am Tisch am Rand der Sitzzeile, und eine Karte,
+ * die von dort nach hier wandert, soll dabei nicht die Farbe verlieren.
+ *
+ * Ein zweiter Rahmen und kein breiterer: `border-color` allein haette die
+ * Kontur der Karte gegen die Sitzfarbe getauscht, und bei einem hellen Sitz
+ * verlaere die Karte ihren Umriss auf dem Pergament.
+ */
+.awardcard--held {
+  box-shadow:
+    var(--lift),
+    inset 0 0 0 2px var(--seat, transparent);
+}
+
+/*
+ * Frei zu haben: dieselbe Karte, nur etwas zurueckgenommen.
+ *
+ * **Nicht ausgegraut und kein gestrichelter Umriss.** Beides haette „hier ist
+ * ein leerer Platz" gesagt; die Karte liegt aber wirklich da, sie hat nur noch
+ * keinen Besitzer. Was ihren Zustand traegt, ist die Fusszeile - dort steht
+ * statt eines Wertes die Bedingung.
+ */
+.awardcard--open {
+  background: var(--parchment);
+  opacity: 0.92;
+}
+
+.awardcard__glyph {
+  width: 2.1rem;
+  height: 2.1rem;
+  /* Dieselbe Tinte wie in Rohstoff- und Entwicklungsmotiv - eine Handschrift. */
+  fill: rgb(22 32 42 / 82%);
+}
+
+/*
+ * Die Strecke der Handelsstrasse ist gezogen und nicht gefuellt.
+ *
+ * Sie steht als einziges Motiv des Spiels so da, und der Grund ist ihr Inhalt:
+ * ein Kantenzug ist ein Weg, der durchgeht - das zeigt eine Linie mit runden
+ * Ecken, und eine Ansammlung von Balken zeigt es nicht.
+ *
+ * Die Regel steht hier und nicht als Attribut am Pfad: ein
+ * Praesentationsattribut verliert gegen jede gleichnamige Regel im Blatt, und
+ * genau daran ist in Etappe 3 schon einmal jede gebaute Strasse unsichtbar
+ * geworden.
+ */
+.glyph__route {
+  fill: none;
+  stroke: rgb(22 32 42 / 82%);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.awardcard__name {
+  max-width: 100%;
+  color: var(--ink);
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+}
+
+/*
+ * Die Fusszeile: der Wert, der sie traegt - oder die Bedingung, die sie
+ * hergibt.
+ *
+ * Tabellenziffern, weil hier laufend verglichen wird („6 Straßen" gegen die
+ * eigene Laenge); Fliesstext und keine Anzeigeschrift, weil es ein Satzstueck
+ * ist und keine Zahl, die den Inhalt ausmacht (Designregel 3).
+ */
+.awardcard__foot {
+  color: var(--ink-muted);
+  font-size: 0.55rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  text-align: center;
+}
+
+/*
+ * Die Plaketten am Tisch: fremde Auszeichnungen und ausgespielte Ritter.
+ *
+ * **Sie sind aus demselben Pergament wie die Karte, die sie vertreten** - nur
+ * handgross statt kartengross. Ein flaches Zeichen ohne Koerper haette wie ein
+ * Symbol in einer Statuszeile ausgesehen; hier soll es aussehen, als laege
+ * etwas vor jemandem.
+ *
+ * `align-self: center`, weil die Sitzzeile auf der Grundlinie ausgerichtet ist:
+ * ein Kaestchen ohne Text hat keine, und ohne diese Zeile haengt es an seiner
+ * Unterkante.
+ */
+.seat__marks {
+  display: flex;
+  gap: 0.2rem;
+  align-self: center;
+}
+
+.seat__mark {
+  display: flex;
+  gap: 0.15rem;
+  align-items: center;
+  padding: 0.1rem 0.2rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: 4px;
+  background: var(--parchment-2);
+  line-height: 1;
+}
+
+.seat__mark-glyph {
+  width: 0.95rem;
+  height: 0.95rem;
+  fill: rgb(22 32 42 / 82%);
+}
+
+/*
+ * Die Zahl neben dem Helm.
+ *
+ * Sie ist der eigentliche Inhalt der Plakette - der Helm sagt nur, was gezaehlt
+ * wird. Deshalb Tabellenziffern und dunkle Tinte auf dem Pergament: drei Sitze
+ * untereinander mit 2, 3 und 5 Rittern sind eine Tabelle, auch wenn sie nicht
+ * so heisst, und eine springende Ziffer machte aus dem Vergleich ein Lesen.
+ */
+.seat__mark-number {
+  color: var(--ink-base);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
 /* Rohstoffe waehlen - Erfindung und Monopol. */
 .pick {
   display: flex;

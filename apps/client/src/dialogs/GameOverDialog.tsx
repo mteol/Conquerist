@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import type { PieceId, PlayerInView, PlayerView } from '@conquerist/shared';
+import { awardsOf } from '../game/awards';
 import { CloseButton } from './CloseButton';
 
 /**
@@ -41,6 +42,14 @@ export function GameOverDialog({ view, onClose }: GameOverDialogProps): JSX.Elem
     (view.rules.pieceStock[piece] ?? 0) - (player.piecesLeft[piece] ?? 0);
 
   const countOf = (total: number): number => view.rollTally[String(total)] ?? 0;
+
+  /*
+   * Dasselbe Anzeigemodell wie am Tisch. Der Dialog bekommt eine `PlayerView`
+   * und keine `GameView` - er haengt auch am Abbruch, wo es keine gibt -, also
+   * baut er es sich hier. Die Rechnung ist keine: `awardsOf` legt zusammen, was
+   * schon dasteht.
+   */
+  const awards = awardsOf(view);
 
   /*
    * Der laengste Balken fuellt die Breite, alle anderen stehen im Verhaeltnis
@@ -88,19 +97,25 @@ export function GameOverDialog({ view, onClose }: GameOverDialogProps): JSX.Elem
               <tr key={player.id} data-testid={`over-player-${player.id}`}>
                 <th scope="row" style={{ borderLeftColor: player.color }}>
                   {player.name}
-                  {view.longestRoad.holder === player.id ? (
-                    <span
-                      className="over__badge"
-                      title={`Längste Straße (${view.longestRoad.length})`}
-                    >
-                      Straße
-                    </span>
-                  ) : null}
-                  {view.largestArmy.holder === player.id ? (
-                    <span className="over__badge" title={`Größtes Heer (${view.largestArmy.size})`}>
-                      Heer
-                    </span>
-                  ) : null}
+                  {/*
+                   * Dieselben zwei Namen wie am Tisch und auf den Karten:
+                   * „Straße" und „Heer" standen hier als Kurzform, und ein
+                   * Wort, das nur in der Abrechnung so heisst, laesst den
+                   * Sieger einer Sache gewinnen, die er nie gesehen hat
+                   * (Designregel 8). Die Auszeichnungen tragen ihre Namen
+                   * seit `game/awards.ts` an einer Stelle.
+                   */}
+                  {awards
+                    .filter((award) => award.holder === player.id)
+                    .map((award) => (
+                      <span
+                        key={award.id}
+                        className="over__badge"
+                        title={`${award.label} (${award.value})`}
+                      >
+                        {award.short}
+                      </span>
+                    ))}
                 </th>
                 <td>
                   <strong>{player.victoryPoints}</strong>
