@@ -7,6 +7,7 @@ import {
   type Roll,
 } from '@conquerist/shared';
 import { NumeralText } from '../type/Numerals';
+import { THROW_STAGGER_MS } from '../game/useSettledRoll';
 import { EVENT_FACE_LABELS, EventDie } from './EventDie';
 
 /**
@@ -253,7 +254,7 @@ function Cube({
            * haette seinen Schatten und seine Drehung eine Siebzigstelsekunde
            * vor sich selbst geworfen. Eine Variable erreicht alle vier.
            */
-          '--delay': `${index * 70}ms`,
+          '--delay': `${index * THROW_STAGGER_MS}ms`,
         } as CSSProperties
       }
     >

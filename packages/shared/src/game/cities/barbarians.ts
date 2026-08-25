@@ -15,13 +15,25 @@ import type { GameState } from '../state.js';
  */
 
 /**
+ * Was `barbarianStrength` wirklich braucht: die Belegung des Bretts.
+ *
+ * Ein eigener Typ statt `GameState`, damit auch eine `PlayerView` die Staerke
+ * ausrechnen kann - dieselbe Bauform und derselbe Grund wie bei `HarborSource`
+ * in `trade.ts`. Es ist keine Regel, die damit zweimal ausgelegt wird; es ist
+ * dieselbe Funktion.
+ */
+export interface BuildingSource {
+  readonly buildings: GameState['buildings'];
+}
+
+/**
  * Die Staerke des Heeres: jede Stadt auf dem Brett, Metropolen mitgezaehlt.
  *
  * Gerechnet und nicht gespeichert - eine abgelegte Zahl liefe beim ersten
  * Ausbau zur Stadt auseinander. Dieselbe Haltung wie bei den Siegpunkten.
  */
-export function barbarianStrength(state: GameState): number {
-  return Object.values(state.buildings).filter((building) => building.kind === 'city').length;
+export function barbarianStrength(source: BuildingSource): number {
+  return Object.values(source.buildings).filter((building) => building.kind === 'city').length;
 }
 
 /**

@@ -29,20 +29,51 @@ import { cameFromRoll } from './view';
  * gar kein `matchMedia` gibt (node, jsdom): im Zweifel wird nicht gewartet.
  */
 
+/** Die Wurfanimation in `index.css`. */
+const THROW_ANIMATION_MS = 1050;
+
 /**
- * Wie lange der Tisch anhaelt.
+ * Der Versatz von einem Wuerfel zum naechsten.
  *
- * Etwas laenger als die Animation in `index.css` (1050 ms) plus der Versatz des
- * zweiten Wuerfels (70 ms): der Tisch soll aufgehen, **nachdem** beide liegen,
- * nicht waehrend der zweite noch rollt.
+ * Steht hier und wird von `DiceTray` **importiert**, nicht abgeschrieben:
+ * dieselbe Zahl an zwei Orten war schon einmal eine stille Kopplung, und sie
+ * ist jetzt eine.
+ */
+export const THROW_STAGGER_MS = 70;
+
+/**
+ * Das Auslaufen.
  *
- * **Die 100 ms mehr sind das Auslaufen.** Der Wurf ist von einem Bogen zu einem
- * Wurf mit drei Aufschlaegen geworden, und ein Wuerfel, der zur Ruhe kommt,
- * braucht sichtbar Zeit dafuer - ohne sie sieht das Ausrollen aus wie ein
- * Abbruch. Wer die Animation dort aendert, aendert diese Zahl mit: sie ist die
+ * Der Wurf ist ein Wurf mit drei Aufschlaegen, und ein Wuerfel, der zur Ruhe
+ * kommt, braucht sichtbar Zeit dafuer - ohne sie sieht das Ausrollen aus wie
+ * ein Abbruch.
+ */
+const THROW_SETTLE_MS = 60;
+
+/**
+ * Wie lange der Tisch anhaelt - abhaengig davon, **wie viele** Wuerfel fallen.
+ *
+ * Der Tisch soll aufgehen, nachdem der **letzte** liegt, nicht waehrend er
+ * noch rollt. Solange es zwei Wuerfel gab, stand hier eine feste 1180; mit dem
+ * Ereigniswuerfel aus Staedte & Ritter faellt ein dritter mit 140 ms Versatz,
+ * und die feste Zahl liess den Tisch aufgehen, waehrend er noch unterwegs war.
+ * Der Verlaufssatz stuende dann wieder vor dem Wurf - genau der Fehler, gegen
+ * den es diesen Haken gibt.
+ *
+ * Wer die Animation im Blatt aendert, aendert die Zahlen hier mit. Das ist die
  * einzige Kopplung zwischen Blatt und Ablauf, und sie bricht still.
  */
-export const THROW_MS = 1180;
+export function throwMs(dice: number): number {
+  return THROW_ANIMATION_MS + Math.max(0, dice - 1) * THROW_STAGGER_MS + THROW_SETTLE_MS;
+}
+
+/**
+ * Die alte feste Zahl, weiterhin fuer zwei Wuerfel - Tests rechnen damit.
+ *
+ * Sie bleibt als abgeleiteter Wert stehen und nicht als zweite Konstante: eine
+ * Kopie waere genau die Doppelung, die `throwMs` gerade aufloest.
+ */
+export const THROW_MS = throwMs(2);
 
 /** Was am Wurf haengt und deshalb mit ihm wartet. */
 export interface Rollable {
@@ -104,11 +135,19 @@ export function useSettledRoll<T extends Rollable>(game: T): Settled<T> {
     }
 
     setLanding(next.lastRoll);
-    timer.current = setTimeout(() => {
-      timer.current = null;
-      setLanding(null);
-      setShown(latest.current);
-    }, THROW_MS);
+    timer.current = setTimeout(
+      () => {
+        timer.current = null;
+        setLanding(null);
+        setShown(latest.current);
+      },
+      /*
+       * Gezaehlt wird, was wirklich faellt - nicht "zwei". Mit dem
+       * Ereigniswuerfel sind es drei, und der dritte ist 140 ms nach dem
+       * ersten unterwegs.
+       */
+      throwMs(next.lastRoll?.length ?? 2),
+    );
   }, [version, shownVersion, game.view, shown.view]);
 
   // Wer den Bildschirm verlaesst, waehrend die Wuerfel fliegen, laesst keinen

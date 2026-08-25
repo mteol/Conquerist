@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import {
+  barbarianStrength,
   tradeRateFor,
   type DevelopmentCardId,
   type EdgeId,
@@ -11,6 +12,7 @@ import {
   type Roll,
 } from '@conquerist/shared';
 import { BoardSvg, type Place } from '../board/BoardSvg';
+import { BarbarianTrack } from '../panels/BarbarianTrack';
 import { EMPTY_TARGETS, buildKindOf, targetsFrom, type BuildableKind } from '../game/targets';
 import { awardsHeldBy, openAwards } from '../game/awards';
 import { discardCountForView, gameViewOf, type PlayerRow } from '../game/view';
@@ -516,6 +518,24 @@ export function GameScreen({
        * beilaeufig, das andere selten und dann genau. Ein Ort fuer „was ist
        * gerade", einer fuer „was liegt jetzt auf dem Tisch".
        */}
+      {/*
+       * Die Fahrstrecke liest ihren Stand aus derselben `view` wie alles
+       * andere - und damit aus dem Stand, den `useSettledRoll` zurueckhaelt,
+       * solange die Wuerfel fliegen. Das Schiff rueckt vor, **nachdem** sie
+       * liegen; frueher erklaerte die Bewegung nicht mehr den Wechsel, sondern
+       * kaeme ihm hinterher.
+       *
+       * `defenders={null}`: es gibt noch keine Ritter, und eine Null, die
+       * niemals steigen kann, sagt "gerade nicht" ueber etwas, das nie geht.
+       * Die Zahl kommt in Etappe 10b dazu.
+       */}
+      <BarbarianTrack
+        barbarians={view.barbarians}
+        track={view.rules.barbarianTrack}
+        strength={barbarianStrength(view)}
+        defenders={null}
+      />
+
       <div className="topline">
         {/*
          * Die Tuer nach draussen, links vom Status.
