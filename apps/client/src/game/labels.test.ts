@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RESOURCE_IDS, TERRAIN_IDS, terrainYield } from '@conquerist/shared';
+import { RESOURCE_IDS, TERRAIN_IDS, terrainYield, cardAmounts } from '@conquerist/shared';
 import {
   RESOURCE_COLORS,
   RESOURCE_LABELS,
@@ -39,9 +39,11 @@ describe('Bezeichner', () => {
   });
 
   it('zaehlt nur auf, was vorhanden ist', () => {
-    expect(resourceList({ brick: 2, lumber: 0, wool: 1, grain: 0, ore: 0 })).toBe(
+    expect(resourceList(cardAmounts({ brick: 2, lumber: 0, wool: 1, grain: 0, ore: 0 }))).toBe(
       '2 Lehm, 1 Wolle',
     );
-    expect(resourceList({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 })).toBe('nichts');
+    expect(resourceList(cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 }))).toBe(
+      'nichts',
+    );
   });
 });

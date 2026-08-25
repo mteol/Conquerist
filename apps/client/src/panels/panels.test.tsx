@@ -11,6 +11,7 @@ import {
   setupPlayer,
   type GameState,
 } from '@conquerist/shared';
+import { cardAmounts } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { gameViewOf } from '../game/view';
@@ -420,7 +421,7 @@ describe('Der Preis am Bauteil', () => {
         stock={null}
         costs={{
           ...CLASSIC_RULES.buildCosts,
-          road: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 2 },
+          road: cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 2 }),
         }}
         buildMode={null}
         onBuildMode={vi.fn()}

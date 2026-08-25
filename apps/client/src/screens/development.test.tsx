@@ -12,6 +12,7 @@ import {
   setupPlayer,
   type GameState,
 } from '@conquerist/shared';
+import { cardAmounts } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { GameScreen } from './GameScreen';
@@ -52,7 +53,7 @@ function playable(overrides: Partial<GameState> = {}): GameState {
     currentPlayerIndex: base.players.findIndex((entry) => entry.id === viewer),
     players: base.players.map((entry) =>
       entry.id === viewer
-        ? { ...entry, resources: { brick: 4, lumber: 4, wool: 4, grain: 4, ore: 4 } }
+        ? { ...entry, resources: cardAmounts({ brick: 4, lumber: 4, wool: 4, grain: 4, ore: 4 }) }
         : entry,
     ),
     ...overrides,
@@ -91,7 +92,7 @@ describe('Entwicklungskarten in der Oberflaeche', () => {
     const arm = playable({
       players: afterSetup().players.map((entry) => ({
         ...entry,
-        resources: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 },
+        resources: cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 }),
       })),
     });
 

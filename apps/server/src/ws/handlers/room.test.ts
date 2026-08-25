@@ -17,6 +17,7 @@ import {
   type GameAction,
   type GameState,
 } from '@conquerist/shared';
+import { cardAmounts } from '@conquerist/shared';
 import { openDatabase } from '../../db/database.js';
 import { Sessions } from '../../identity/sessions.js';
 import { Users } from '../../identity/users.js';
@@ -76,8 +77,8 @@ function fixture() {
   const offer: GameAction = {
     type: 'offerTrade',
     player: anna!.user.id,
-    give: { brick: 0, lumber: 2, wool: 0, grain: 0, ore: 0 },
-    want: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 },
+    give: cardAmounts({ brick: 0, lumber: 2, wool: 0, grain: 0, ore: 0 }),
+    want: cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 }),
     at: 0,
   };
   const acted = applyAction(

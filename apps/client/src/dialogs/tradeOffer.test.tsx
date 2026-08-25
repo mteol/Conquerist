@@ -14,6 +14,7 @@ import {
   type GameState,
   type PlayerView,
 } from '@conquerist/shared';
+import { cardAmounts } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { TradeOfferDialog } from './TradeOfferDialog';
@@ -46,10 +47,10 @@ function afterSetup(): GameState {
       ...player,
       resources:
         index === 0
-          ? { brick: 0, lumber: 3, wool: 0, grain: 0, ore: 0 }
+          ? cardAmounts({ brick: 0, lumber: 3, wool: 0, grain: 0, ore: 0 })
           : index === 1
-            ? { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 2 }
-            : { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 },
+            ? cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 2 })
+            : cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 }),
     })),
   };
 }
@@ -57,8 +58,8 @@ function afterSetup(): GameState {
 const OFFER: GameAction = {
   type: 'offerTrade',
   player: ids[0]!,
-  give: { brick: 0, lumber: 2, wool: 0, grain: 0, ore: 0 },
-  want: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 },
+  give: cardAmounts({ brick: 0, lumber: 2, wool: 0, grain: 0, ore: 0 }),
+  want: cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 }),
   at: 0,
 };
 
@@ -158,8 +159,8 @@ describe('TradeOfferDialog aus Sicht eines Mitspielers', () => {
       expect.objectContaining({
         type: 'counterTrade',
         player: ids[1],
-        give: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 },
-        want: { brick: 0, lumber: 1, wool: 0, grain: 0, ore: 0 },
+        give: cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 }),
+        want: cardAmounts({ brick: 0, lumber: 1, wool: 0, grain: 0, ore: 0 }),
       }),
     );
   });
@@ -182,7 +183,10 @@ describe('das Gegenangebot haengt an seinem Angebot', () => {
       ...state,
       players: state.players.map((player, index) =>
         index === 1
-          ? { ...player, resources: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 } }
+          ? {
+              ...player,
+              resources: cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 }),
+            }
           : player,
       ),
     };
@@ -191,8 +195,8 @@ describe('das Gegenangebot haengt an seinem Angebot', () => {
   const ZWEITES_OFFER: GameAction = {
     type: 'offerTrade',
     player: ids[0]!,
-    give: { brick: 0, lumber: 1, wool: 0, grain: 0, ore: 0 },
-    want: { brick: 1, lumber: 0, wool: 0, grain: 0, ore: 0 },
+    give: cardAmounts({ brick: 0, lumber: 1, wool: 0, grain: 0, ore: 0 }),
+    want: cardAmounts({ brick: 1, lumber: 0, wool: 0, grain: 0, ore: 0 }),
     at: 0,
   };
 
@@ -389,8 +393,8 @@ describe('das Gegenangebot aus Sicht des Anbieters', () => {
   const COUNTER: GameAction = {
     type: 'counterTrade',
     player: ids[1]!,
-    give: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 2 },
-    want: { brick: 0, lumber: 3, wool: 0, grain: 0, ore: 0 },
+    give: cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 2 }),
+    want: cardAmounts({ brick: 0, lumber: 3, wool: 0, grain: 0, ore: 0 }),
     at: 0,
   };
 
@@ -451,7 +455,7 @@ describe('das Gegenangebot aus Sicht des Anbieters', () => {
   it('laesst auch ablehnen, was man sich nicht leisten koennte', () => {
     const teuer: GameAction = {
       ...COUNTER,
-      want: { brick: 0, lumber: 9, wool: 0, grain: 0, ore: 0 },
+      want: cardAmounts({ brick: 0, lumber: 9, wool: 0, grain: 0, ore: 0 }),
     };
     show(play(afterSetup(), OFFER, teuer), ids[0]!);
 

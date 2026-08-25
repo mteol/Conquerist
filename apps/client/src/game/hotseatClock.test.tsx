@@ -11,6 +11,7 @@ import {
   setupPlayer,
   type GameState,
 } from '@conquerist/shared';
+import { cardAmounts } from '@conquerist/shared';
 import { render, screen } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { useHotseatGame } from './useHotseatGame';
@@ -40,16 +41,16 @@ function withOpenOffer(): GameState {
       ...player,
       resources:
         index === 0
-          ? { brick: 0, lumber: 3, wool: 0, grain: 0, ore: 0 }
-          : { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 2 },
+          ? cardAmounts({ brick: 0, lumber: 3, wool: 0, grain: 0, ore: 0 })
+          : cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 2 }),
     })),
   };
 
   const offered = reduce(main, {
     type: 'offerTrade',
     player: ids[0]!,
-    give: { brick: 0, lumber: 2, wool: 0, grain: 0, ore: 0 },
-    want: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 },
+    give: cardAmounts({ brick: 0, lumber: 2, wool: 0, grain: 0, ore: 0 }),
+    want: cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 }),
     at: Date.now(),
   });
   if (!offered.ok) throw new Error(offered.error.message);

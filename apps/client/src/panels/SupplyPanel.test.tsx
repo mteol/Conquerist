@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { CLASSIC_RULES, CLASSIC_RULES_56 } from '@conquerist/shared';
+import { CLASSIC_RULES, CLASSIC_RULES_56, cardAmounts } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import { SupplyPanel } from './SupplyPanel';
 
@@ -17,7 +17,7 @@ import { SupplyPanel } from './SupplyPanel';
 function panel(props: Partial<Parameters<typeof SupplyPanel>[0]> = {}) {
   return render(
     <SupplyPanel
-      bank={{ brick: 12, lumber: 19, wool: 3, grain: 0, ore: 7 }}
+      bank={cardAmounts({ brick: 12, lumber: 19, wool: 3, grain: 0, ore: 7 })}
       start={CLASSIC_RULES.resourceBank}
       deckLeft={9}
       deckStart={25}

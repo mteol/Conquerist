@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { RESOURCE_IDS, type ResourceId } from '@conquerist/shared';
+import { cardAmounts } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import { RESOURCE_LABELS } from '../game/labels';
 import type { PlayerRow } from '../game/view';
@@ -14,7 +15,7 @@ const player: PlayerRow = {
   color: '#c0392b',
   victoryPoints: 2,
   cardCount: 8,
-  resources: { brick: 3, lumber: 2, wool: 2, grain: 1, ore: 0 },
+  resources: cardAmounts({ brick: 3, lumber: 2, wool: 2, grain: 1, ore: 0 }),
   piecesLeft: { road: 13, settlement: 3, city: 4 },
   developmentCards: [],
   developmentCount: 0,
@@ -39,7 +40,9 @@ describe('DiscardDialog', () => {
     expect(screen.getByRole('button', { name: /Abwerfen/ })).toHaveProperty('disabled', false);
     await userEvent.click(screen.getByRole('button', { name: /Abwerfen/ }));
 
-    expect(onConfirm).toHaveBeenCalledWith({ brick: 2, lumber: 1, wool: 1, grain: 0, ore: 0 });
+    expect(onConfirm).toHaveBeenCalledWith(
+      cardAmounts({ brick: 2, lumber: 1, wool: 1, grain: 0, ore: 0 }),
+    );
   });
 
   it('laesst nicht mehr waehlen, als auf der Hand liegt', async () => {
@@ -328,8 +331,8 @@ describe('TradeDialog, Reiter Spieler', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Angebot auf den Tisch legen' }));
 
     expect(onOffer).toHaveBeenCalledWith(
-      { brick: 1, lumber: 0, wool: 0, grain: 0, ore: 0 },
-      { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 },
+      cardAmounts({ brick: 1, lumber: 0, wool: 0, grain: 0, ore: 0 }),
+      cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 }),
     );
   });
 

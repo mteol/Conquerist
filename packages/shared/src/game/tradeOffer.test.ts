@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { CLASSIC_RULES, RuleSetSchema } from '../rules/index.js';
+import { CLASSIC_RULES, RuleSetSchema, cardAmounts } from '../rules/index.js';
 import { PhaseSchema } from './phase.js';
 import { TradeResponseSchema } from './tradeOffer.js';
 
 const offer = {
   from: 'p1',
-  give: { brick: 0, lumber: 2, wool: 0, grain: 0, ore: 0 },
-  want: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 },
+  give: cardAmounts({ lumber: 2 }),
+  want: cardAmounts({ ore: 1 }),
 };
 
 describe('TradeResponseSchema', () => {

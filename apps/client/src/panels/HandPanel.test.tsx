@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import type { ResourceAmounts } from '@conquerist/shared';
+import { cardAmounts, type ResourceAmounts } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import { HandPanel } from './HandPanel';
 
-const hand: ResourceAmounts = { brick: 2, lumber: 3, wool: 0, grain: 1, ore: 0 };
+const hand: ResourceAmounts = cardAmounts({ brick: 2, lumber: 3, wool: 0, grain: 1, ore: 0 });
 
 describe('Handkarten', () => {
   it('zeigt je Ressource einen Stapel mit seiner Anzahl', () => {
@@ -49,7 +49,7 @@ describe('Handkarten', () => {
   });
 
   it('sagt es, wenn die Hand leer ist, statt eine leere Flaeche zu zeigen', () => {
-    const empty: ResourceAmounts = { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 };
+    const empty: ResourceAmounts = cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 });
     render(<HandPanel resources={empty} cardCount={0} covered={false} onReveal={vi.fn()} />);
 
     expect(screen.getByText(/Keine Karten/)).toBeDefined();

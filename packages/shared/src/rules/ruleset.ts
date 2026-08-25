@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { DevelopmentDeckSchema } from '../game/development.js';
 import { CLASSIC_56 } from '../scenario/blueprints/classic56.js';
-import { ResourceIdSchema } from '../scenario/terrain.js';
+import { CARD_IDS, CardIdSchema, type CardId } from '../scenario/terrain.js';
 import { CLASSIC_DICE, DiceSpecSchema } from './dice.js';
 
 /**
@@ -33,15 +33,60 @@ export type PieceId = (typeof PIECE_IDS)[number];
 export const PieceIdSchema = z.enum(PIECE_IDS);
 
 /**
- * Ressourcenmengen als vollstaendiger `Record<ResourceId, number>`.
+ * Eine vollstaendige Kartenmenge aus dem, was genannt ist - alles andere null.
  *
- * Vollstaendig und nicht teilweise: der Reducer soll ab Etappe 2 rechnen
- * duerfen, ohne bei jedem Zugriff `?? 0` zu schreiben. Eine fehlende Ressource
- * ist ein Fehler in den Daten und soll hier auffallen, nicht dort.
+ * Der eine Ort, an dem eine Menge vervollstaendigt wird. Das Schema unten
+ * benutzt ihn zum Einlesen, die Regelwerke zum Hinschreiben: acht Nullen je
+ * Baukostenzeile waeren sechs Zeilen, die nichts aussagen, und die erste
+ * vergessene faellt erst zur Laufzeit auf.
  */
-export const ResourceAmountsSchema = z.record(ResourceIdSchema, z.number().int().min(0));
+export function cardAmounts(part: Partial<Record<CardId, number>>): Record<CardId, number> {
+  const full = {} as Record<CardId, number>;
+  for (const card of CARD_IDS) full[card] = part[card] ?? 0;
+  return full;
+}
 
-export type ResourceAmounts = z.infer<typeof ResourceAmountsSchema>;
+/**
+ * Kartenmengen als vollstaendiger `Record<CardId, number>`.
+ *
+ * Vollstaendig und nicht teilweise: der Reducer soll rechnen duerfen, ohne bei
+ * jedem Zugriff `?? 0` zu schreiben. Eine fehlende Sorte ist ein Fehler in den
+ * Daten und soll hier auffallen, nicht dort.
+ *
+ * **Der Schluessel ist `CardId` und nicht `ResourceId`.** Handelswaren liegen
+ * auf derselben Hand wie Rohstoffe, werden gestohlen, abgeworfen und
+ * gehandelt wie sie - ein zweiter Mengensatz daneben muesste jede
+ * Handoperation doppelt fuehren und waere damit eine zweite Wahrheit ueber
+ * dieselbe Hand. Was sich wirklich unterscheidet (was ein Bauwerk kostet, was
+ * ein Hafen hergibt, was das Aquaedukt gibt), steht weiterhin als `ResourceId`
+ * da und ist damit compilergeschuetzt.
+ *
+ * **`partialRecord` plus `transform` ist kein Zierat, sondern die Rettung der
+ * gespeicherten Partien.** Seit Etappe 6 liegt der Startzustand jeder Partie
+ * als JSON in der Datenbank, und die dort abgelegten Mengensaetze haben fuenf
+ * Schluessel, weil es damals fuenf Sorten gab.
+ *
+ * Ein `z.record` mit Enum-Schluessel ist in Zod 4 **erschoepfend**: es verlangt
+ * jede Sorte. Die drei neuen fehlen in jeder abgelegten Partie, und ohne
+ * `partialRecord` schluege deshalb nicht etwa eine Rechnung fehl - es schluege
+ * das Einlesen fehl, und beim naechsten Serverstart waere jede laufende Partie
+ * weg. Gemessen beim Umbau: sechs Testfehler, alle mit
+ * `"expected number, received undefined"`.
+ *
+ * Eingelesen wird also, was dasteht; ergaenzt wird der Rest mit null. Dieselbe
+ * Auffuellung traegt jede spaetere Sorte.
+ */
+export const ResourceAmountsSchema = z
+  .partialRecord(CardIdSchema, z.number().int().min(0))
+  .transform((amounts): Record<CardId, number> => cardAmounts(amounts));
+
+/**
+ * Ausdruecklich geschrieben und nicht aus dem Schema abgeleitet: `z.infer`
+ * eines Schemas mit `transform` liefert den **Ausgangs**typ, und der ist hier
+ * schon der vollstaendige Record - aber die Ableitung waere von der genauen
+ * Rueckgabe des `transform` abhaengig und damit stiller als noetig.
+ */
+export type ResourceAmounts = Record<CardId, number>;
 
 /**
  * Zwischen welchen Siegpunktzielen der Wartebereich waehlen laesst.
@@ -130,10 +175,10 @@ export const CLASSIC_RULES: RuleSet = {
   id: 'classic',
 
   buildCosts: {
-    road: { brick: 1, lumber: 1, wool: 0, grain: 0, ore: 0 },
-    settlement: { brick: 1, lumber: 1, wool: 1, grain: 1, ore: 0 },
-    city: { brick: 0, lumber: 0, wool: 0, grain: 2, ore: 3 },
-    developmentCard: { brick: 0, lumber: 0, wool: 1, grain: 1, ore: 1 },
+    road: cardAmounts({ brick: 1, lumber: 1 }),
+    settlement: cardAmounts({ brick: 1, lumber: 1, wool: 1, grain: 1 }),
+    city: cardAmounts({ grain: 2, ore: 3 }),
+    developmentCard: cardAmounts({ wool: 1, grain: 1, ore: 1 }),
   },
 
   pieceStock: {
@@ -142,7 +187,12 @@ export const CLASSIC_RULES: RuleSet = {
     city: 4,
   },
 
-  resourceBank: { brick: 19, lumber: 19, wool: 19, grain: 19, ore: 19 },
+  /*
+   * Die drei Handelswaren stehen mit null da, und das ist die Aussage: an
+   * einem Basistisch gibt es sie nicht. Eine fehlende Sorte saehe aus wie ein
+   * Versehen, eine Null sagt, dass jemand hingesehen hat.
+   */
+  resourceBank: cardAmounts({ brick: 19, lumber: 19, wool: 19, grain: 19, ore: 19 }),
 
   victoryPointGoal: DEFAULT_VICTORY_POINT_GOAL,
   victoryPoints: {
@@ -190,7 +240,7 @@ export const CLASSIC_RULES: RuleSet = {
 export const CLASSIC_RULES_56: RuleSet = {
   ...CLASSIC_RULES,
 
-  resourceBank: { brick: 24, lumber: 24, wool: 24, grain: 24, ore: 24 },
+  resourceBank: cardAmounts({ brick: 24, lumber: 24, wool: 24, grain: 24, ore: 24 }),
 
   developmentDeck: {
     knight: 20,

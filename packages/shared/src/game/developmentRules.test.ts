@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { cardAmounts } from '../rules/ruleset.js';
 import { CLASSIC_RULES } from '../rules/ruleset.js';
 import { buildDeck, isPlayable } from './development.js';
 import {
@@ -25,7 +26,7 @@ function rich(overrides: Partial<GameState> = {}): GameState {
     deck: ['knight', 'monopoly', 'yearOfPlenty'],
     players: testGame().players.map((entry, index) =>
       index === 0
-        ? { ...entry, resources: { brick: 5, lumber: 5, wool: 5, grain: 5, ore: 5 } }
+        ? { ...entry, resources: cardAmounts({ brick: 5, lumber: 5, wool: 5, grain: 5, ore: 5 }) }
         : entry,
     ),
     ...overrides,
@@ -56,7 +57,7 @@ describe('Entwicklungskarten kaufen', () => {
     const arm = rich({
       players: testGame().players.map((entry) => ({
         ...entry,
-        resources: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 },
+        resources: cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 }),
       })),
     });
 
@@ -210,7 +211,10 @@ describe('Erfindung und Monopol', () => {
       players: testGame().players.map((entry, index) =>
         index === 0
           ? { ...entry, developmentCards: [{ id: card, boughtOnTurn: 1 }] }
-          : { ...entry, resources: { brick: 0, lumber: 3, wool: 0, grain: 0, ore: 0 } },
+          : {
+              ...entry,
+              resources: cardAmounts({ brick: 0, lumber: 3, wool: 0, grain: 0, ore: 0 }),
+            },
       ),
     });
   }

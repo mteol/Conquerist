@@ -1,14 +1,19 @@
 import type { ResourceAmounts } from '../rules/index.js';
-import { RESOURCE_IDS, type ResourceId } from '../scenario/index.js';
+import { CARD_IDS, type CardId } from '../scenario/index.js';
 
 /**
- * Rechnen mit Ressourcenmengen.
+ * Rechnen mit Kartenmengen.
  *
- * `ResourceAmounts` ist ein vollstaendiger `Record<ResourceId, number>` (Regel 5:
+ * `ResourceAmounts` ist ein vollstaendiger `Record<CardId, number>` (Regel 5:
  * Ressourcen als Record, nicht als feste Felder). Vollstaendig heisst: jede
- * Ressource ist genannt, auch mit null. Das erspart im Reducer jedes `?? 0` und
- * macht aus einer vergessenen Ressource einen Compilerfehler statt eines
- * stillen Rechenfehlers.
+ * Sorte ist genannt, auch mit null. Das erspart im Reducer jedes `?? 0` und
+ * macht aus einer vergessenen Sorte einen Compilerfehler statt eines stillen
+ * Rechenfehlers.
+ *
+ * **Gerechnet wird ueber `CARD_IDS`, nicht ueber `RESOURCE_IDS`.** Was auf
+ * einer Hand liegt, wird gleich behandelt - Handelswaren werden gestohlen,
+ * abgeworfen und gehandelt wie Rohstoffe. Der Unterschied steht dort, wo er
+ * gilt: in den Baukosten, an den Haefen und beim Ertrag.
  *
  * Alle Funktionen hier sind rein und geben neue Objekte zurueck.
  */
@@ -20,19 +25,22 @@ export const EMPTY_RESOURCES: ResourceAmounts = {
   wool: 0,
   grain: 0,
   ore: 0,
+  paper: 0,
+  cloth: 0,
+  coin: 0,
 };
 
 /** Baut eine Menge aus einer Funktion je Ressource - die gemeinsame Grundlage aller Rechnungen. */
-function fromEach(pick: (resource: ResourceId) => number): ResourceAmounts {
+function fromEach(pick: (card: CardId) => number): ResourceAmounts {
   const result = { ...EMPTY_RESOURCES };
-  for (const resource of RESOURCE_IDS) result[resource] = pick(resource);
+  for (const resource of CARD_IDS) result[resource] = pick(resource);
   return result;
 }
 
 /** Wie viele Karten die Menge insgesamt umfasst. */
 export function countResources(amounts: ResourceAmounts): number {
   let total = 0;
-  for (const resource of RESOURCE_IDS) total += amounts[resource];
+  for (const resource of CARD_IDS) total += amounts[resource];
   return total;
 }
 
@@ -67,7 +75,7 @@ export function scaleResources(amounts: ResourceAmounts, factor: number): Resour
 
 /** Ob `have` die Kosten `cost` vollstaendig deckt. */
 export function canAfford(have: ResourceAmounts, cost: ResourceAmounts): boolean {
-  return RESOURCE_IDS.every((resource) => have[resource] >= cost[resource]);
+  return CARD_IDS.every((resource) => have[resource] >= cost[resource]);
 }
 
 /**
@@ -77,7 +85,7 @@ export function canAfford(have: ResourceAmounts, cost: ResourceAmounts): boolean
  * Karten werden durchnummeriert, der Zufall liefert den Index. Ueber die feste
  * Reihenfolge bleibt der Diebstahl aus Seed und Zustand rekonstruierbar - Regel 2.
  */
-export function resourceAt(amounts: ResourceAmounts, index: number): ResourceId {
+export function resourceAt(amounts: ResourceAmounts, index: number): CardId {
   const total = countResources(amounts);
   if (!Number.isInteger(index) || index < 0 || index >= total) {
     throw new RangeError(
@@ -86,7 +94,7 @@ export function resourceAt(amounts: ResourceAmounts, index: number): ResourceId 
   }
 
   let remaining = index;
-  for (const resource of RESOURCE_IDS) {
+  for (const resource of CARD_IDS) {
     if (remaining < amounts[resource]) return resource;
     remaining -= amounts[resource];
   }

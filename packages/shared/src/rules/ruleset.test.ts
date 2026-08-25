@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { RESOURCE_IDS } from '../scenario/terrain.js';
+import { CARD_IDS, RESOURCE_IDS } from '../scenario/terrain.js';
 import {
   BUILDABLE_IDS,
   CLASSIC_RULES,
   CLASSIC_RULES_56,
   PIECE_IDS,
   RuleSetSchema,
+  cardAmounts,
   rulesFor,
 } from './ruleset.js';
 
@@ -29,7 +30,7 @@ describe('CLASSIC_RULES', () => {
   it('nennt zu jedem Bauteil vollstaendige Kosten', () => {
     for (const buildable of BUILDABLE_IDS) {
       const cost = CLASSIC_RULES.buildCosts[buildable];
-      expect(Object.keys(cost).sort()).toEqual([...RESOURCE_IDS].sort());
+      expect(Object.keys(cost).sort()).toEqual([...CARD_IDS].sort());
     }
   });
 
@@ -67,13 +68,9 @@ describe('CLASSIC_RULES', () => {
     expect(deck.knight).toBe(14);
     expect(CLASSIC_RULES.handLimitBeforeDiscard).toBe(7);
     expect(CLASSIC_RULES.pieceStock).toEqual({ road: 15, settlement: 5, city: 4 });
-    expect(CLASSIC_RULES.buildCosts.settlement).toEqual({
-      brick: 1,
-      lumber: 1,
-      wool: 1,
-      grain: 1,
-      ore: 0,
-    });
+    expect(CLASSIC_RULES.buildCosts.settlement).toEqual(
+      cardAmounts({ brick: 1, lumber: 1, wool: 1, grain: 1 }),
+    );
   });
 });
 
@@ -99,9 +96,30 @@ describe('RuleSetSchema', () => {
     expect(RuleSetSchema.safeParse(broken).success).toBe(false);
   });
 
-  it('lehnt unvollstaendige Kosten ab', () => {
+  /*
+   * Bis zur Erweiterung wurde eine unvollstaendige Kostenzeile abgewiesen. Das
+   * geht nicht mehr, und der Grund ist wichtiger als die Regel: seit Etappe 6
+   * liegt der Startzustand jeder Partie als JSON in der Datenbank, und die
+   * dort abgelegten Mengensaetze kennen die drei Handelswaren nicht. Ein
+   * erschoepfendes Schema wiese sie alle ab - beim naechsten Serverstart waere
+   * jede laufende Partie weg.
+   *
+   * Weggelassen heisst deshalb ab jetzt **null**, und `cardAmounts` schreibt es
+   * beim Einlesen aus. Was dabei nicht verlorengeht, ist der Schutz vor dem
+   * Tippfehler: ein Schluessel, den es nicht gibt, wird weiterhin abgewiesen -
+   * und genau das prueft der Test darunter.
+   */
+  it('liest eine ausgelassene Sorte als null', () => {
+    const sparsam = rules();
+    delete (sparsam['buildCosts'] as Record<string, Record<string, number>>)['road']!['ore'];
+
+    const parsed = RuleSetSchema.parse(sparsam);
+    expect(parsed.buildCosts.road).toEqual(cardAmounts({ brick: 1, lumber: 1 }));
+  });
+
+  it('lehnt eine Sorte ab, die es nicht gibt', () => {
     const broken = rules();
-    delete (broken['buildCosts'] as Record<string, Record<string, number>>)['road']!['ore'];
+    (broken['buildCosts'] as Record<string, Record<string, number>>)['road']!['erz'] = 1;
 
     expect(RuleSetSchema.safeParse(broken).success).toBe(false);
   });

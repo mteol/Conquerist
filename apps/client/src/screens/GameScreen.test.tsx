@@ -11,6 +11,7 @@ import {
   setupPlayer,
   type GameState,
 } from '@conquerist/shared';
+import { cardAmounts } from '@conquerist/shared';
 import { fireEvent, render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { useLocalGame } from '../game/useLocalGame';
@@ -88,7 +89,7 @@ function richMainPhase(): GameState {
     currentPlayerIndex: 0,
     players: state.players.map((player, index) =>
       index === 0
-        ? { ...player, resources: { brick: 4, lumber: 4, wool: 4, grain: 4, ore: 4 } }
+        ? { ...player, resources: cardAmounts({ brick: 4, lumber: 4, wool: 4, grain: 4, ore: 4 }) }
         : player,
     ),
   };
@@ -419,9 +420,15 @@ describe('Abwerfen nach einer Sieben', () => {
       currentPlayerIndex: 0,
       players: state.players.map((player, index) =>
         index === 0
-          ? { ...player, resources: { brick: 4, lumber: 4, wool: 0, grain: 0, ore: 0 } }
+          ? {
+              ...player,
+              resources: cardAmounts({ brick: 4, lumber: 4, wool: 0, grain: 0, ore: 0 }),
+            }
           : index === 2
-            ? { ...player, resources: { brick: 0, lumber: 0, wool: 4, grain: 4, ore: 0 } }
+            ? {
+                ...player,
+                resources: cardAmounts({ brick: 0, lumber: 0, wool: 4, grain: 4, ore: 0 }),
+              }
             : player,
       ),
     };

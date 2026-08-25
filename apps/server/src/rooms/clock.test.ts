@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { stampAction, type GameAction, type GameState } from '@conquerist/shared';
+import { cardAmounts } from '@conquerist/shared';
 
 import { createRoomClock } from './clock.js';
 import { RoomRegistry } from './registry.js';
@@ -47,8 +48,8 @@ function inMainPhase(): Room {
 const OFFER: GameAction = {
   type: 'offerTrade',
   player: 'u1',
-  give: { brick: 0, lumber: 2, wool: 0, grain: 0, ore: 0 },
-  want: { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 },
+  give: cardAmounts({ brick: 0, lumber: 2, wool: 0, grain: 0, ore: 0 }),
+  want: cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 1 }),
   at: 0,
 };
 
