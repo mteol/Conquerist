@@ -87,9 +87,28 @@ export const HelloResponseSchema = z.object({
   login: z.string().optional(),
 });
 
+/**
+ * Nach welchem Regelwerk ein Raum spielt.
+ *
+ * Eine Kennung und keine Wahrheit ueber die Regeln selbst - was `cities`
+ * bedeutet, steht in `rules/cities.ts`. Hier steht nur, was der Tisch
+ * ausgesucht hat.
+ */
+export const ROOM_VARIANTS = ['classic', 'cities'] as const;
+
+export type RoomVariant = (typeof ROOM_VARIANTS)[number];
+
+export const RoomVariantSchema = z.enum(ROOM_VARIANTS);
+
 export const CreateRoomRequestSchema = z.object({
   seatCount: z.number().int().min(MIN_SEATS).max(MAX_SEATS),
   seed: z.string().trim().min(1).max(24),
+  /**
+   * Mit Vorgabe wie das Siegpunktziel und aus demselben Grund: ausgesucht wird
+   * im Wartebereich, und ein aelterer Client, der das Feld nicht kennt,
+   * bekommt das Basisspiel statt einer Absage.
+   */
+  variant: RoomVariantSchema.default('classic'),
   /**
    * Mit Vorgabe, und das ist der Grund: eingestellt wird das Ziel im
    * Wartebereich, nicht beim Erstellen. Ein Pflichtfeld zwaenge den

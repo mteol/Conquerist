@@ -1,7 +1,9 @@
 import {
   CLASSIC_34,
   CLASSIC_56,
+  citiesRulesFor,
   rulesFor,
+  type RoomVariant,
   MAX_VICTORY_POINT_GOAL,
   MIN_VICTORY_POINT_GOAL,
   SEAT_COLORS,
@@ -67,6 +69,8 @@ export interface Room {
   /** `null`, solange der Wartebereich laeuft. */
   readonly game: GameState | null;
   /** Zaehlt bei jeder Aenderung hoch; der Client verwirft aeltere Staende. */
+  /** Nach welchem Regelwerk gespielt wird. */
+  readonly variant: RoomVariant;
   readonly version: number;
   readonly createdAt: number;
 }
@@ -109,6 +113,7 @@ export function createRoom(
   seatCount: number,
   seed: string,
   victoryPointGoal: number,
+  variant: RoomVariant = 'classic',
   now = 0,
 ): RoomResult {
   if (blueprintFor(seatCount) === undefined) {
@@ -123,6 +128,7 @@ export function createRoom(
     seatCount,
     seed,
     victoryPointGoal,
+    variant,
     seats: [
       { userId: hostId, name: hostName, color: seatColorAt(0), connected: true, away: false },
     ],
@@ -380,6 +386,7 @@ export function configureRoom(
   seatCount: number,
   seed: string,
   victoryPointGoal: number,
+  variant: RoomVariant = 'classic',
 ): RoomResult {
   if (byUserId !== room.hostId) return fail('Nur wer die Partie erstellt hat, kann sie umstellen');
   if (room.game !== null) return fail('Die Partie läuft bereits');
@@ -392,7 +399,7 @@ export function configureRoom(
   const goal = checkGoal(victoryPointGoal);
   if (goal !== null) return fail(goal);
 
-  return ok({ ...room, seatCount, seed, victoryPointGoal, version: room.version + 1 });
+  return ok({ ...room, seatCount, seed, victoryPointGoal, variant, version: room.version + 1 });
 }
 
 /** Ob dieses Siegpunktziel einstellbar ist - der Satz dazu, oder `null`. */
@@ -414,6 +421,15 @@ export function startGame(room: Room, byUserId: string): RoomResult {
   if (blueprint === undefined) return fail('Kein passendes Brett');
 
   const scenario = generateScenario(blueprint, room.seed);
+
+  /*
+   * Welches Regelwerk gilt, entscheidet die Wahl am Tisch - und die
+   * Tischgroesse waehlt danach zwischen den beiden Ausgaben. Zwei Fragen,
+   * zwei Funktionen; keine davon rechnet die andere nach.
+   */
+  const base =
+    room.variant === 'cities' ? citiesRulesFor(room.seatCount) : rulesFor(room.seatCount);
+
   const game = createGame(
     /*
      * Das eingestellte Ziel wird hier ins Regelwerk geschrieben - genau
@@ -424,7 +440,7 @@ export function startGame(room: Room, byUserId: string): RoomResult {
      * ueberlebt: das Regelwerk gehoert zur Partie, nicht zum Programm.
      */
     scenario,
-    { ...rulesFor(room.seatCount), victoryPointGoal: room.victoryPointGoal },
+    { ...base, victoryPointGoal: room.victoryPointGoal },
     room.seats.map((seat) => seat.userId),
     room.seed,
   );

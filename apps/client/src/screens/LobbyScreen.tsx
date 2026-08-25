@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type JSX } from 'react';
 import {
   MAX_SEATS,
+  DEFAULT_VICTORY_POINT_GOAL,
+  DEFAULT_VICTORY_POINT_GOAL_CITIES,
   MAX_VICTORY_POINT_GOAL,
   MIN_SEATS,
   MIN_VICTORY_POINT_GOAL,
@@ -10,6 +12,7 @@ import {
   rulesFor,
   seatColorName,
   type RoomEvent,
+  type RoomVariant,
 } from '@conquerist/shared';
 import { BoardSvg } from '../board/BoardSvg';
 import { SETTLEMENT_PATH, VIEWBOX } from '../board/shapes';
@@ -73,13 +76,36 @@ import { blueprintsFor, randomSeed } from './StartScreen';
  * Information statt einer Verzierung. Die Zahl steht trotzdem daneben: Farbe
  * und Form allein duerfen nichts tragen, was jemand sonst nicht mitbekommt.
  */
+/**
+ * Welches Siegpunktziel nach einem Wechsel des Regelwerks gilt.
+ *
+ * **Nur wenn es noch auf der Vorgabe des alten stand.** Wer eine eigene Zahl
+ * eingestellt hat, behaelt sie - eine Umstellung, die eine getroffene
+ * Entscheidung ueberschreibt, ist ein Eingriff in eine fremde Entscheidung.
+ * Dieselbe Lehre wie bei der Sitzfarbe (`CLAUDE.md`): was einstellbar wird,
+ * hoert auf, ableitbar zu sein.
+ */
+export function goalFor(next: RoomVariant, current: number): number {
+  const vorgabeDesNeuen =
+    next === 'cities' ? DEFAULT_VICTORY_POINT_GOAL_CITIES : DEFAULT_VICTORY_POINT_GOAL;
+  const vorgabeDesAlten =
+    next === 'cities' ? DEFAULT_VICTORY_POINT_GOAL : DEFAULT_VICTORY_POINT_GOAL_CITIES;
+
+  return current === vorgabeDesAlten ? vorgabeDesNeuen : current;
+}
+
 export interface LobbyScreenProps {
   readonly room: RoomEvent;
   readonly youId: string;
   readonly onStart: () => void;
   readonly onLeave: () => void;
   /** Tischgroesse, Seed und Siegpunktziel umstellen. Der Server prueft alles noch einmal. */
-  readonly onConfigure: (seatCount: number, seed: string, victoryPointGoal: number) => void;
+  readonly onConfigure: (
+    seatCount: number,
+    seed: string,
+    victoryPointGoal: number,
+    variant: RoomVariant,
+  ) => void;
   /** Sich eine Farbe aussuchen. Belegte weist der Server ab. */
   readonly onChooseColor: (color: string) => void;
   /** Sich umbenennen. */
@@ -138,7 +164,7 @@ export function LobbyScreen({
       setSeed(room.seed);
       return;
     }
-    onConfigure(room.seatCount, trimmed, room.victoryPointGoal);
+    onConfigure(room.seatCount, trimmed, room.victoryPointGoal, room.variant);
   };
 
   const commitName = (): void => {
@@ -270,7 +296,9 @@ export function LobbyScreen({
                   type="button"
                   className="button button--ghost"
                   disabled={!canShrink}
-                  onClick={() => onConfigure(room.seatCount - 1, room.seed, room.victoryPointGoal)}
+                  onClick={() =>
+                    onConfigure(room.seatCount - 1, room.seed, room.victoryPointGoal, room.variant)
+                  }
                 >
                   Platz entfernen
                 </button>
@@ -278,7 +306,9 @@ export function LobbyScreen({
                   type="button"
                   className="button button--ghost"
                   disabled={!canGrow}
-                  onClick={() => onConfigure(room.seatCount + 1, room.seed, room.victoryPointGoal)}
+                  onClick={() =>
+                    onConfigure(room.seatCount + 1, room.seed, room.victoryPointGoal, room.variant)
+                  }
                 >
                   Platz hinzufügen
                 </button>
@@ -377,10 +407,62 @@ export function LobbyScreen({
                   <button
                     type="button"
                     className="button button--ghost"
-                    onClick={() => onConfigure(room.seatCount, randomSeed(), room.victoryPointGoal)}
+                    onClick={() =>
+                      onConfigure(room.seatCount, randomSeed(), room.victoryPointGoal, room.variant)
+                    }
                   >
                     Neu würfeln
                   </button>
+                ) : null}
+              </div>
+            </section>
+
+            {/*
+             * Das Regelwerk steht **vor** dem Siegpunktziel, weil es die Zahl
+             * daneben mitbestimmt: Staedte & Ritter spielt auf 13, das
+             * Basisspiel auf 10.
+             *
+             * Zwei Knoepfe und keine Liste - es sind zwei Moeglichkeiten, und
+             * eine Auswahlliste fuer zwei Eintraege versteckt die Haelfte des
+             * Angebots hinter einem Klick.
+             */}
+            <section className="lobby__row" aria-label="Regelwerk">
+              <span className="eyebrow">Regelwerk</span>
+              <div className="lobby__value">
+                <p className="lobby__variant" data-testid="variant">
+                  {room.variant === 'cities' ? 'Städte & Ritter' : 'Basisspiel'}
+                </p>
+                <span className="lobby__origin">
+                  {room.variant === 'cities'
+                    ? 'Handelswaren, Ritter, Metropolen'
+                    : 'Straßen, Siedlungen, Städte'}
+                </span>
+                {canConfigure ? (
+                  <div className="lobby__resize" role="group" aria-label="Regelwerk wählen">
+                    {(['classic', 'cities'] as const).map((choice) => (
+                      <button
+                        key={choice}
+                        type="button"
+                        className={
+                          room.variant === choice
+                            ? 'button button--ghost is-chosen'
+                            : 'button button--ghost'
+                        }
+                        aria-pressed={room.variant === choice}
+                        disabled={room.variant === choice}
+                        onClick={() =>
+                          onConfigure(
+                            room.seatCount,
+                            room.seed,
+                            goalFor(choice, room.victoryPointGoal),
+                            choice,
+                          )
+                        }
+                      >
+                        {choice === 'cities' ? 'Städte & Ritter' : 'Basisspiel'}
+                      </button>
+                    ))}
+                  </div>
                 ) : null}
               </div>
             </section>
@@ -397,7 +479,9 @@ export function LobbyScreen({
                 <p className="lobby__goal" data-testid="goal">
                   {room.victoryPointGoal}
                 </p>
-                <span className="lobby__origin">10 sind das Original</span>
+                <span className="lobby__origin">
+                  {room.variant === 'cities' ? '13 sind das Original' : '10 sind das Original'}
+                </span>
                 {canConfigure ? (
                   <div className="lobby__resize">
                     <button
@@ -406,7 +490,12 @@ export function LobbyScreen({
                       aria-label="Ein Siegpunkt weniger"
                       disabled={room.victoryPointGoal <= MIN_VICTORY_POINT_GOAL}
                       onClick={() =>
-                        onConfigure(room.seatCount, room.seed, room.victoryPointGoal - 1)
+                        onConfigure(
+                          room.seatCount,
+                          room.seed,
+                          room.victoryPointGoal - 1,
+                          room.variant,
+                        )
                       }
                     >
                       −
@@ -417,7 +506,12 @@ export function LobbyScreen({
                       aria-label="Ein Siegpunkt mehr"
                       disabled={room.victoryPointGoal >= MAX_VICTORY_POINT_GOAL}
                       onClick={() =>
-                        onConfigure(room.seatCount, room.seed, room.victoryPointGoal + 1)
+                        onConfigure(
+                          room.seatCount,
+                          room.seed,
+                          room.victoryPointGoal + 1,
+                          room.variant,
+                        )
                       }
                     >
                       +

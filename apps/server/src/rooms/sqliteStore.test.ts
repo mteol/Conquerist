@@ -168,3 +168,47 @@ describe('Wer den Tisch verlassen hat', () => {
     expect(isAway(loaded, ids[0]!)).toBe(false);
   });
 });
+
+/**
+ * Das Regelwerk ueberlebt den Neustart.
+ *
+ * Es gehoert zum Raum und nicht zum Programm: ein Serverneustart darf aus
+ * einer Staedte-&-Ritter-Partie keine Basispartie machen.
+ */
+describe('Das Regelwerk auf der Platte', () => {
+  it('traegt die Variante ueber einen Neustart', () => {
+    const { store, ids } = withUsers();
+
+    const created = createRoom('K7X4', ids[0]!, 'Anna', 3, 'platte-probe', 13, 'cities');
+    if (!created.ok) throw new Error(created.error);
+    store.save(created.room);
+
+    const [loaded] = store.loadAll();
+    expect(loaded?.variant).toBe('cities');
+  });
+
+  it('liest eine Zeile aus der Zeit davor als Basisspiel', () => {
+    const { store, ids, database } = withUsers();
+    store.save(waitingRoom(ids));
+
+    // So sieht die Spalte in einer Datenbank aus, die den Schritt gerade erst
+    // durchlaufen hat: der Vorgabewert des `ALTER TABLE`.
+    database.prepare(`UPDATE rooms SET variant = 'classic' WHERE code = 'K7X2'`).run();
+
+    const [loaded] = store.loadAll();
+    expect(loaded?.variant).toBe('classic');
+  });
+
+  /*
+   * Ein Wert, den es als Regelwerk nicht gibt, ist keine Variante - er wird
+   * nicht durchgereicht, sondern auf das Basisspiel zurueckgesetzt.
+   */
+  it('faengt eine Variante ab, die es nicht gibt', () => {
+    const { store, ids, database } = withUsers();
+    store.save(waitingRoom(ids));
+    database.prepare(`UPDATE rooms SET variant = 'seefahrer' WHERE code = 'K7X2'`).run();
+
+    const [loaded] = store.loadAll();
+    expect(loaded?.variant).toBe('classic');
+  });
+});

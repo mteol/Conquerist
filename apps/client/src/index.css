@@ -2460,6 +2460,42 @@ body {
 }
 
 /*
+ * Der Name des Regelwerks steht in derselben Zeile wie das Siegpunktziel
+ * darunter, aber kleiner: es ist ein Wort und keine Zahl, und zwei Zeilen in
+ * 2rem nebeneinander waeren zwei Ueberschriften ohne Rangfolge.
+ */
+.lobby__variant {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--parchment);
+}
+
+/*
+ * Die getroffene Wahl ist gesperrt - und **sichtbar** gesperrt.
+ *
+ * `disabled` allein aendert an einem Knopf mit eigenem Hintergrund die Farben
+ * nicht; im Browser gemessen waere er identisch zum offenen. Genau diese Falle
+ * steht in CLAUDE.md, und sie ist hier besonders scharf: der gesperrte Knopf
+ * ist der, auf dem man steht, und wenn er aussieht wie der andere, sieht die
+ * Wahl aus wie keine.
+ */
+.button--ghost.is-chosen {
+  border-color: var(--parchment);
+  background: var(--parchment);
+  color: var(--ink-base);
+  opacity: 1;
+  /*
+   * Nicht `not-allowed` aus `.button:disabled`: dieser Knopf ist gesperrt,
+   * weil man schon dort steht, und nicht, weil etwas fehlt. Ein Verbotszeichen
+   * ueber der eigenen Wahl liest sich als Fehler.
+   */
+  cursor: default;
+}
+
+/*
  * Woher die Zehn kommt - ein Zusatz, kein Satz.
  *
  * Hier standen zwei: „Zehn wie in der Schachtel." bei zehn und „Zwischen 5 und

@@ -1,6 +1,11 @@
 import { randomInt } from 'node:crypto';
 
-import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, type GameAction } from '@conquerist/shared';
+import {
+  ROOM_CODE_ALPHABET,
+  ROOM_CODE_LENGTH,
+  type GameAction,
+  type RoomVariant,
+} from '@conquerist/shared';
 import { createRoom, type Room, type RoomResult } from './room.js';
 import type { RoomStore } from './store.js';
 
@@ -57,6 +62,7 @@ export class RoomRegistry {
     seatCount: number,
     seed: string,
     victoryPointGoal: number,
+    variant: RoomVariant = 'classic',
   ): RoomResult {
     const code = this.freeCode();
     if (code === null) return { ok: false, error: 'Kein freier Raumcode - bitte gleich nochmal' };
@@ -68,6 +74,7 @@ export class RoomRegistry {
       seatCount,
       seed,
       victoryPointGoal,
+      variant,
       this.now(),
     );
     if (created.ok) {

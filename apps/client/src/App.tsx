@@ -285,8 +285,8 @@ function Online({
         onLeave={() => {
           void online.leaveRoom();
         }}
-        onConfigure={(seatCount, seed, victoryPointGoal) => {
-          void online.configureRoom(seatCount, seed, victoryPointGoal);
+        onConfigure={(seatCount, seed, victoryPointGoal, variant) => {
+          void online.configureRoom(seatCount, seed, victoryPointGoal, variant);
         }}
         onChooseColor={(color) => {
           void online.chooseColor(color);

@@ -485,3 +485,73 @@ describe('Siegpunktziel', () => {
     if (started.ok) expect(started.room.game?.rules.victoryPointGoal).toBe(7);
   });
 });
+
+/**
+ * Das Regelwerk am Tisch.
+ *
+ * Welches gilt, entscheidet die Wahl im Wartebereich - die Tischgroesse waehlt
+ * danach zwischen den beiden Ausgaben. Zwei Fragen, zwei Funktionen.
+ */
+describe('Regelwerk', () => {
+  function citiesRoom(): Room {
+    const created = createRoom('K7X3', 'u1', 'Anna', 3, 'raum-probe', 13, 'cities');
+    if (!created.ok) throw new Error(created.error);
+
+    let current = created.room;
+    for (const [id, name] of [
+      ['u2', 'Ben'],
+      ['u3', 'Cem'],
+    ] as const) {
+      const joined = joinRoom(current, id, name);
+      if (!joined.ok) throw new Error(joined.error);
+      current = joined.room;
+    }
+    return current;
+  }
+
+  it('bleibt ohne Angabe beim Basisspiel', () => {
+    expect(room().variant).toBe('classic');
+  });
+
+  it('startet eine Partie nach Staedte-&-Ritter-Regeln', () => {
+    const started = startGame(citiesRoom(), 'u1');
+
+    expect(started.ok).toBe(true);
+    if (!started.ok) return;
+
+    expect(started.room.game?.rules.id).toBe('cities');
+    expect(started.room.game?.rules.cards).toHaveLength(8);
+  });
+
+  it('setzt das Barbarenschiff auf sein Startfeld', () => {
+    const started = startGame(citiesRoom(), 'u1');
+
+    expect(started.ok).toBe(true);
+    if (started.ok) expect(started.room.game?.barbarians).toEqual({ position: 0, attacks: 0 });
+  });
+
+  it('gibt einer Basispartie kein Schiff, das nie faehrt', () => {
+    const started = startGame(withThree(), 'u1');
+
+    expect(started.ok).toBe(true);
+    if (started.ok) expect(started.room.game?.barbarians).toBeNull();
+  });
+
+  /*
+   * Das eingestellte Siegpunktziel geht ins Regelwerk der Partie - genau
+   * einmal, beim Start. Bei Staedte & Ritter sind es dreizehn.
+   */
+  it('schreibt das eingestellte Ziel ins Regelwerk', () => {
+    const started = startGame(citiesRoom(), 'u1');
+
+    expect(started.ok).toBe(true);
+    if (started.ok) expect(started.room.game?.rules.victoryPointGoal).toBe(13);
+  });
+
+  it('laesst den Host umstellen, solange die Partie nicht laeuft', () => {
+    const changed = configureRoom(room(), 'u1', 3, 'raum-probe', 13, 'cities');
+
+    expect(changed.ok).toBe(true);
+    if (changed.ok) expect(changed.room.variant).toBe('cities');
+  });
+});

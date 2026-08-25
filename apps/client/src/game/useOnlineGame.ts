@@ -21,6 +21,7 @@ import {
   isEventType,
   START_GAME,
   DEFAULT_VICTORY_POINT_GOAL,
+  type RoomVariant,
   type AuthResponse,
   type GameAction,
   type LoginRequest,
@@ -93,6 +94,7 @@ export interface OnlineGame {
     seatCount: number,
     seed: string,
     victoryPointGoal: number,
+    variant: RoomVariant,
   ) => Promise<void>;
   /** Sich eine Sitzfarbe aussuchen. Belegte lehnt der Server ab. */
   readonly chooseColor: (color: string) => Promise<void>;
@@ -331,6 +333,8 @@ export function useOnlineGame(
         seatCount,
         seed,
         victoryPointGoal: DEFAULT_VICTORY_POINT_GOAL,
+        // Wie das Siegpunktziel: ausgesucht wird im Wartebereich.
+        variant: 'classic',
       });
       codeRef.current = code;
       return code;
@@ -405,9 +409,14 @@ export function useOnlineGame(
   );
 
   const configureRoom = useCallback(
-    async (seatCount: number, seed: string, victoryPointGoal: number): Promise<void> => {
+    async (
+      seatCount: number,
+      seed: string,
+      victoryPointGoal: number,
+      variant: RoomVariant,
+    ): Promise<void> => {
       try {
-        await send(CONFIGURE_ROOM, { seatCount, seed, victoryPointGoal });
+        await send(CONFIGURE_ROOM, { seatCount, seed, victoryPointGoal, variant });
       } catch (error) {
         // Der Server prueft die Grenzen noch einmal. Wird es abgelehnt, bleibt
         // der alte Stand stehen und der Grund sichtbar - der Wartebereich darf

@@ -8,6 +8,7 @@ const roomPayload = {
   seatCount: 3,
   seed: 'abc',
   victoryPointGoal: 10,
+  variant: 'classic' as const,
   started: false,
   seats: [{ userId: 'u1', name: 'Anna', color: '#c0392b', connected: true }],
 };

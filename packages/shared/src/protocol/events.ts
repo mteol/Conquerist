@@ -5,6 +5,7 @@ import { PlayerIdSchema } from '../game/player.js';
 import { PlayerViewSchema } from '../game/playerView.js';
 import { MAX_VICTORY_POINT_GOAL, MIN_VICTORY_POINT_GOAL } from '../rules/ruleset.js';
 import { MAX_SEATS, MIN_SEATS } from '../seats.js';
+import { RoomVariantSchema } from './room.js';
 import { DisplayNameSchema, RoomCodeSchema } from './room.js';
 
 /**
@@ -46,6 +47,14 @@ export const RoomEventSchema = z.object({
    * sie gestartet ist.
    */
   victoryPointGoal: z.number().int().min(MIN_VICTORY_POINT_GOAL).max(MAX_VICTORY_POINT_GOAL),
+  /**
+   * Nach welchem Regelwerk gespielt wird.
+   *
+   * Mit Vorgabe wie das Siegpunktziel im Anforderungsschema: ein Raumstand aus
+   * der Zeit davor kennt das Feld nicht, und `classic` ist genau das, was
+   * damals galt.
+   */
+  variant: RoomVariantSchema.default('classic'),
   started: z.boolean(),
   seats: z.array(SeatInRoomSchema),
 });

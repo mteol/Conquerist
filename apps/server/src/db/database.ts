@@ -53,6 +53,7 @@ const MIGRATIONS: readonly ((database: AppDatabase) => void)[] = [
   stepSeatColorAndGoal,
   stepAbandonedRooms,
   stepSeatAway,
+  stepRoomVariant,
 ];
 
 export function migrate(database: AppDatabase): void {
@@ -313,5 +314,18 @@ function stepAbandonedRooms(database: AppDatabase): void {
 function stepSeatAway(database: AppDatabase): void {
   database.exec(`
     ALTER TABLE room_seats ADD COLUMN away INTEGER NOT NULL DEFAULT 0;
+  `);
+}
+
+/**
+ * Etappe 10a: nach welchem Regelwerk ein Raum spielt.
+ *
+ * `DEFAULT 'classic'` ist genau das, was vorher galt - bis zu diesem Schritt
+ * gab es nur das Basisspiel. Der Bestand bekommt also keinen Fantasiewert,
+ * sondern seinen eigenen.
+ */
+function stepRoomVariant(database: AppDatabase): void {
+  database.exec(`
+    ALTER TABLE rooms ADD COLUMN variant TEXT NOT NULL DEFAULT 'classic';
   `);
 }

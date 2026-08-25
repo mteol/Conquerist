@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MAX_VICTORY_POINT_GOAL, SEAT_COLORS } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
-import { LobbyScreen } from './LobbyScreen';
+import { LobbyScreen, goalFor } from './LobbyScreen';
 
 const room = {
   code: 'K7X2',
@@ -10,6 +10,7 @@ const room = {
   seatCount: 3,
   seed: 'abc',
   victoryPointGoal: 10,
+  variant: 'classic' as const,
   started: false,
   seats: [
     { userId: 'u1', name: 'Anna', color: '#c0392b', connected: true },
@@ -115,7 +116,7 @@ describe('Wartebereich', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Platz hinzufügen' }));
 
-    expect(onConfigure).toHaveBeenCalledWith(4, 'abc', 10);
+    expect(onConfigure).toHaveBeenCalledWith(4, 'abc', 10, 'classic');
   });
 
   it('nimmt einen Platz weg, solange einer frei ist', async () => {
@@ -124,7 +125,7 @@ describe('Wartebereich', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Platz entfernen' }));
 
-    expect(onConfigure).toHaveBeenCalledWith(3, 'abc', 10);
+    expect(onConfigure).toHaveBeenCalledWith(3, 'abc', 10, 'classic');
   });
 
   it('geht nie unter die kleinste Tischgroesse', () => {
@@ -258,7 +259,7 @@ describe('Siegpunktziel', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Ein Siegpunkt mehr' }));
 
-    expect(onConfigure).toHaveBeenCalledWith(3, 'abc', 11);
+    expect(onConfigure).toHaveBeenCalledWith(3, 'abc', 11, 'classic');
   });
 
   it('geht nicht ueber seine Grenzen hinaus', () => {
@@ -272,5 +273,63 @@ describe('Siegpunktziel', () => {
       'disabled',
       false,
     );
+  });
+});
+
+describe('Regelwerk', () => {
+  it('nennt das eingestellte Regelwerk', () => {
+    render(lobby({ room: { ...room, variant: 'cities' as const } }));
+
+    expect(screen.getByTestId('variant').textContent).toBe('Städte & Ritter');
+  });
+
+  it('stellt es dem Host um', async () => {
+    const onConfigure = vi.fn();
+    render(lobby({ onConfigure }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Städte & Ritter' }));
+
+    expect(onConfigure).toHaveBeenCalledWith(3, 'abc', 13, 'cities');
+  });
+
+  /*
+   * Der gesperrte Knopf ist der, auf dem man steht. `disabled` allein aendert
+   * an einem Knopf mit eigenem Hintergrund die Farben nicht - die Wahl saehe
+   * dann aus wie keine (CLAUDE.md).
+   */
+  it('zeigt die getroffene Wahl als getroffen', () => {
+    render(lobby());
+
+    const gewaehlt = screen.getByRole('button', { name: 'Basisspiel' });
+    expect(gewaehlt.className).toContain('is-chosen');
+    expect(gewaehlt.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('laesst Mitspieler nur lesen', () => {
+    render(lobby({ youId: 'u2' }));
+
+    expect(screen.getByTestId('variant')).toBeDefined();
+    expect(screen.queryByRole('group', { name: 'Regelwerk wählen' })).toBeNull();
+  });
+});
+
+/**
+ * Das Siegpunktziel beim Wechsel des Regelwerks.
+ *
+ * Die Vorgabe springt mit - aber nur, solange sie noch die Vorgabe war. Wer
+ * eine eigene Zahl eingestellt hat, behaelt sie: eine Umstellung, die eine
+ * getroffene Entscheidung ueberschreibt, ist ein Eingriff in eine fremde
+ * Entscheidung (dieselbe Lehre wie bei der Sitzfarbe).
+ */
+describe('goalFor', () => {
+  it('springt von der einen Vorgabe auf die andere', () => {
+    expect(goalFor('cities', 10)).toBe(13);
+    expect(goalFor('classic', 13)).toBe(10);
+  });
+
+  it('laesst eine eingestellte Zahl stehen', () => {
+    expect(goalFor('cities', 12)).toBe(12);
+    expect(goalFor('classic', 8)).toBe(8);
+    expect(goalFor('cities', 13)).toBe(13);
   });
 });

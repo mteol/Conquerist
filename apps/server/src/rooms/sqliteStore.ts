@@ -31,6 +31,7 @@ interface RoomRow {
   readonly seat_count: number;
   readonly seed: string;
   readonly victory_point_goal: number;
+  readonly variant: string;
   readonly version: number;
   readonly created_at: number;
   readonly start_state: string | null;
@@ -59,11 +60,11 @@ export class SqliteRoomStore implements RoomStore {
     const write = this.database.transaction(() => {
       this.database
         .prepare(
-          `INSERT INTO rooms (code, host_id, seat_count, seed, victory_point_goal, version, created_at, start_state, finished_at)
-           VALUES (@code, @hostId, @seatCount, @seed, @victoryPointGoal, @version, @createdAt, @startState, @finishedAt)
+          `INSERT INTO rooms (code, host_id, seat_count, seed, victory_point_goal, variant, version, created_at, start_state, finished_at)
+           VALUES (@code, @hostId, @seatCount, @seed, @victoryPointGoal, @variant, @version, @createdAt, @startState, @finishedAt)
            ON CONFLICT(code) DO UPDATE SET
              host_id = @hostId, seat_count = @seatCount, seed = @seed,
-             victory_point_goal = @victoryPointGoal,
+             victory_point_goal = @victoryPointGoal, variant = @variant,
              version = @version, finished_at = @finishedAt,
              -- Der Startzustand wird nie ueberschrieben: er entsteht einmal
              -- beim Start und ist danach der Anker fuer das ganze Log.
@@ -75,6 +76,7 @@ export class SqliteRoomStore implements RoomStore {
           seatCount: room.seatCount,
           seed: room.seed,
           victoryPointGoal: room.victoryPointGoal,
+          variant: room.variant,
           version: room.version,
           createdAt: room.createdAt,
           startState: room.game === null ? null : JSON.stringify(room.game),
@@ -172,6 +174,13 @@ export class SqliteRoomStore implements RoomStore {
       seatCount: row.seat_count,
       seed: row.seed,
       victoryPointGoal: row.victory_point_goal,
+      /*
+       * Eine Zeile aus der Zeit vor der Erweiterung traegt `classic` aus dem
+       * `DEFAULT` des Migrationsschritts. Der Riegel hier faengt trotzdem ab,
+       * was die Spalte sonst noch enthalten koennte - eine unbekannte Variante
+       * waere ein Regelwerk, das es nicht gibt.
+       */
+      variant: row.variant === 'cities' ? 'cities' : 'classic',
       seats,
       game,
       version: row.version,

@@ -175,6 +175,7 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
       payload.seatCount,
       payload.seed,
       payload.victoryPointGoal,
+      payload.variant,
     );
     if (!created.ok) throw new RejectedError(created.error);
 
@@ -325,6 +326,7 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
       payload.seatCount,
       payload.seed,
       payload.victoryPointGoal,
+      payload.variant,
     );
     if (!changed.ok) throw new RejectedError(changed.error);
 
