@@ -1,4 +1,4 @@
-import type { ResourceAmounts } from '../rules/ruleset.js';
+import type { CardAmounts } from '../rules/ruleset.js';
 import type { HarborDefinition } from '../scenario/harbor.js';
 import { RESOURCE_IDS, type ResourceId, type TerrainId } from '../scenario/terrain.js';
 
@@ -40,7 +40,7 @@ export function harborLabel(harbor: HarborDefinition): string {
 }
 
 /** Zaehlt eine Kartenmenge auf; leer bleibt nicht leer, sondern wird benannt. */
-export function resourceList(amounts: ResourceAmounts): string {
+export function resourceList(amounts: CardAmounts): string {
   const parts = RESOURCE_IDS.filter((resource) => (amounts[resource] ?? 0) > 0).map(
     (resource) => `${amounts[resource] ?? 0} ${RESOURCE_LABELS[resource]}`,
   );

@@ -1,10 +1,10 @@
 import { useEffect, useState, type JSX } from 'react';
 import {
-  EMPTY_RESOURCES,
+  EMPTY_CARDS,
   resourceList,
   type GameAction,
   type PlayerView,
-  type ResourceAmounts,
+  type CardAmounts,
   type TradeResponse,
 } from '@conquerist/shared';
 import { ResourceRow } from '../panels/ResourceCard';
@@ -92,8 +92,8 @@ export function TradeOfferDialog({
   const expiresAt = trade?.expiresAt ?? 0;
 
   const [left, setLeft] = useState(() => secondsLeft(expiresAt, clockOffset));
-  const [counterGive, setCounterGive] = useState<ResourceAmounts>(NO_AMOUNTS);
-  const [counterWant, setCounterWant] = useState<ResourceAmounts>(NO_AMOUNTS);
+  const [counterGive, setCounterGive] = useState<CardAmounts>(NO_AMOUNTS);
+  const [counterWant, setCounterWant] = useState<CardAmounts>(NO_AMOUNTS);
   const [countering, setCountering] = useState(false);
   /** Das Angebot, zu dem die drei Werte darueber gehoeren. Siehe unten. */
   const [answeredOffer, setAnsweredOffer] = useState<string | null>(null);
@@ -346,7 +346,7 @@ export function TradeOfferDialog({
                 </p>
 
                 <TradeAmounts
-                  owned={me?.resources ?? EMPTY_RESOURCES}
+                  owned={me?.resources ?? EMPTY_CARDS}
                   give={counterGive}
                   want={counterWant}
                   onGive={setCounterGive}

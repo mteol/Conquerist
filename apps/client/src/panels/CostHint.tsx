@@ -1,5 +1,5 @@
 import type { CSSProperties, JSX } from 'react';
-import { RESOURCE_IDS, type ResourceAmounts, type ResourceId } from '@conquerist/shared';
+import { RESOURCE_IDS, type CardAmounts, type ResourceId } from '@conquerist/shared';
 import { RESOURCE_COLORS } from '../game/labels';
 import { ResourceGlyph } from './ResourceGlyph';
 
@@ -29,7 +29,7 @@ import { ResourceGlyph } from './ResourceGlyph';
  * aufzuscheinen.
  */
 export interface CostHintProps {
-  readonly cost: ResourceAmounts;
+  readonly cost: CardAmounts;
   /**
    * Wo das Zeichen liegt - und damit, wie es sich stapelt.
    *
@@ -73,7 +73,7 @@ export function CostHint({ cost, layout = 'row', className }: CostHintProps): JS
  * Siedlung an derselben Stelle stehen. `Object.keys` gaebe die Reihenfolge des
  * Literals zurueck, und die ist eine Zufaelligkeit der Datei, in der es steht.
  */
-function marksOf(cost: ResourceAmounts): readonly ResourceId[] {
+function marksOf(cost: CardAmounts): readonly ResourceId[] {
   return RESOURCE_IDS.flatMap((resource) =>
     Array.from({ length: cost[resource] ?? 0 }, () => resource),
   );

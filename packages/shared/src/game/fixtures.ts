@@ -1,8 +1,8 @@
 import { createRng } from '../random/index.js';
-import { CLASSIC_RULES, type ResourceAmounts } from '../rules/index.js';
+import { CLASSIC_RULES, type CardAmounts } from '../rules/index.js';
 import { ScenarioDefinitionSchema, type ScenarioDefinition } from '../scenario/index.js';
 import { reduce } from './reducer.js';
-import { EMPTY_RESOURCES } from './resources.js';
+import { EMPTY_CARDS } from './cards.js';
 import { GameStateSchema, type GameState } from './state.js';
 
 /**
@@ -70,8 +70,8 @@ export const HARBOR2_ORE_VERTEX = 'v:1,-1|2,-2|2,-1';
 export const TEST_PLAYERS = ['p1', 'p2', 'p3'] as const;
 
 /** Fuellt eine Teilangabe zu einer vollstaendigen Ressourcenmenge auf. */
-export function hand(partial: Partial<ResourceAmounts> = {}): ResourceAmounts {
-  return { ...EMPTY_RESOURCES, ...partial };
+export function hand(partial: Partial<CardAmounts> = {}): CardAmounts {
+  return { ...EMPTY_CARDS, ...partial };
 }
 
 /**
@@ -115,11 +115,7 @@ export function testGame(overrides: Partial<GameState> = {}): GameState {
 }
 
 /** Gibt einem Spieler Handkarten. */
-export function giving(
-  state: GameState,
-  id: string,
-  resources: Partial<ResourceAmounts>,
-): GameState {
+export function giving(state: GameState, id: string, resources: Partial<CardAmounts>): GameState {
   return {
     ...state,
     players: state.players.map((player) =>

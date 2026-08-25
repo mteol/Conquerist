@@ -6,7 +6,7 @@ import { seatColorAt } from '../seats.js';
 import { createGame, setupPlayer } from './setup.js';
 import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
-import { countResources } from './resources.js';
+import { countCards } from './cards.js';
 import { PlayerViewSchema, playerViewOf } from './playerView.js';
 import type { GameState } from './state.js';
 
@@ -67,7 +67,7 @@ describe('PlayerView', () => {
     const own = view.players.find((player) => player.id === 'p2')!;
 
     expect(own.resources).toEqual(state.players[1]!.resources);
-    expect(own.cardCount).toBe(countResources(state.players[1]!.resources));
+    expect(own.cardCount).toBe(countCards(state.players[1]!.resources));
   });
 
   it('zeigt von fremden Haenden nur die Anzahl', () => {
@@ -85,7 +85,7 @@ describe('PlayerView', () => {
     const view = playerViewOf(state, 'p1', seats, 1);
 
     view.players.forEach((player, index) => {
-      expect(player.cardCount).toBe(countResources(state.players[index]!.resources));
+      expect(player.cardCount).toBe(countCards(state.players[index]!.resources));
     });
   });
 

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ResourceAmountsSchema, RuleSetSchema } from '../rules/index.js';
+import { CardAmountsSchema, RuleSetSchema } from '../rules/index.js';
 import { ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { Seat } from '../seats.js';
 import { DevelopmentCardIdSchema, DevelopmentCardSchema } from './development.js';
@@ -9,7 +9,7 @@ import { playableDevelopmentCards, roadBuildingTargets } from './legal.js';
 import { canOfferAnything } from './playerTrade.js';
 import { PhaseSchema } from './phase.js';
 import { PlayerIdSchema } from './player.js';
-import { countResources } from './resources.js';
+import { countCards } from './cards.js';
 import { publicVictoryPointsOf, victoryPointsOf } from './scoring.js';
 import { BuildingSchema } from './state.js';
 import type { GameState } from './state.js';
@@ -36,7 +36,7 @@ export const PlayerInViewSchema = z.object({
   /** Immer sichtbar - am Tisch waere sie abzaehlbar. */
   cardCount: z.number().int().min(0),
   /** Nur beim Empfaenger gefuellt, bei allen anderen `null`. */
-  resources: ResourceAmountsSchema.nullable(),
+  resources: CardAmountsSchema.nullable(),
   /**
    * Entwicklungskarten auf der Hand - **nur beim Empfaenger**, sonst `null`.
    *
@@ -69,7 +69,7 @@ export const PlayerViewSchema = z.object({
   buildings: z.record(z.string(), BuildingSchema),
   roads: z.record(z.string(), PlayerIdSchema),
   robber: z.string(),
-  bank: ResourceAmountsSchema,
+  bank: CardAmountsSchema,
   longestRoad: z.object({
     holder: PlayerIdSchema.nullable(),
     length: z.number().int().min(0),
@@ -159,7 +159,7 @@ export function playerViewOf(
         name: seat?.name ?? player.id,
         color: seat?.color ?? '#8b93a3',
         connected: connected.get(player.id) ?? true,
-        cardCount: countResources(player.resources),
+        cardCount: countCards(player.resources),
         resources: player.id === viewer ? player.resources : null,
         developmentCards: player.id === viewer ? player.developmentCards : null,
         developmentCount: player.developmentCards.length,

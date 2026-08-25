@@ -1,17 +1,10 @@
 import type { HexId } from '../geometry/index.js';
 import { nextInt } from '../random/index.js';
-import type { ResourceAmounts } from '../rules/index.js';
+import type { CardAmounts } from '../rules/index.js';
 import { boardOf } from './board.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { PlayerId } from './player.js';
-import {
-  EMPTY_RESOURCES,
-  addResources,
-  canAfford,
-  countResources,
-  resourceAt,
-  subtractResources,
-} from './resources.js';
+import { EMPTY_CARDS, addCards, canAfford, countCards, cardAt, subtractCards } from './cards.js';
 import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './state.js';
 
 /**
@@ -32,7 +25,7 @@ export function discardCountFor(state: GameState, player: PlayerId): number {
   const owner = findPlayer(state, player);
   if (owner === undefined) return 0;
 
-  const held = countResources(owner.resources);
+  const held = countCards(owner.resources);
   return held > state.rules.handLimitBeforeDiscard ? Math.floor(held / 2) : 0;
 }
 
@@ -47,7 +40,7 @@ export function playersMustDiscard(state: GameState): PlayerId[] {
 export function applyDiscard(
   state: GameState,
   player: PlayerId,
-  resources: ResourceAmounts,
+  resources: CardAmounts,
 ): ReduceResult {
   const phase = state.phase;
   if (phase.kind !== 'discardPending' || !phase.pending.includes(player)) {
@@ -64,7 +57,7 @@ export function applyDiscard(
   }
 
   const required = discardCountFor(state, player);
-  const offered = countResources(resources);
+  const offered = countCards(resources);
   if (offered !== required) {
     return rejected(
       violation(
@@ -88,10 +81,10 @@ export function applyDiscard(
     ...state,
     players: state.players.map((entry) =>
       entry.id === player
-        ? { ...entry, resources: subtractResources(entry.resources, resources) }
+        ? { ...entry, resources: subtractCards(entry.resources, resources) }
         : entry,
     ),
-    bank: addResources(state.bank, resources),
+    bank: addCards(state.bank, resources),
     phase:
       pending.length === 0
         ? { kind: 'robberPending', resume: 'main' }
@@ -110,7 +103,7 @@ export function victimsAt(state: GameState, hex: HexId, thief: PlayerId): Player
     if (found.includes(building.owner)) continue;
 
     const victim = findPlayer(state, building.owner);
-    if (victim !== undefined && countResources(victim.resources) > 0) found.push(building.owner);
+    if (victim !== undefined && countCards(victim.resources) > 0) found.push(building.owner);
   }
 
   return found;
@@ -182,17 +175,16 @@ export function applyMoveRobber(
 
   // Die Hand wird durchnummeriert, der Zufall liefert den Index - so bleibt der
   // Diebstahl aus Seed und Aktionsfolge rekonstruierbar.
-  const [index, rng] = nextInt(state.rng, countResources(robbed.resources));
-  const taken = resourceAt(robbed.resources, index);
-  const one: ResourceAmounts = { ...EMPTY_RESOURCES, [taken]: 1 };
+  const [index, rng] = nextInt(state.rng, countCards(robbed.resources));
+  const taken = cardAt(robbed.resources, index);
+  const one: CardAmounts = { ...EMPTY_CARDS, [taken]: 1 };
 
   return ok({
     ...moved,
     rng,
     players: moved.players.map((entry) => {
-      if (entry.id === victim)
-        return { ...entry, resources: subtractResources(entry.resources, one) };
-      if (entry.id === player) return { ...entry, resources: addResources(entry.resources, one) };
+      if (entry.id === victim) return { ...entry, resources: subtractCards(entry.resources, one) };
+      if (entry.id === player) return { ...entry, resources: addCards(entry.resources, one) };
       return entry;
     }),
   });

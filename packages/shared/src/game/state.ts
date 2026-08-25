@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { RuleSetSchema, ResourceAmountsSchema } from '../rules/index.js';
+import { RuleSetSchema, CardAmountsSchema } from '../rules/index.js';
 import { ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { RuleViolation } from './errors.js';
 import { DevelopmentCardIdSchema } from './development.js';
@@ -61,7 +61,7 @@ export const GameStateSchema = z.object({
   /** Feld-Id, auf dem der Raeuber steht. */
   robber: z.string(),
   /** Was die Bank noch ausgeben kann. */
-  bank: ResourceAmountsSchema,
+  bank: CardAmountsSchema,
   /** Wer die Laengste Handelsstrasse haelt und wie lang sie ist. */
   longestRoad: z.object({
     holder: PlayerIdSchema.nullable(),

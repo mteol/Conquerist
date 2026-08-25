@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { CLASSIC_RULES, type ResourceAmounts } from '../rules/index.js';
+import { CLASSIC_RULES, type CardAmounts } from '../rules/index.js';
 import { CLASSIC_34, RESOURCE_IDS, generateScenario } from '../scenario/index.js';
 import type { GameAction } from './actions.js';
 import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
 import { replay } from './replay.js';
-import { EMPTY_RESOURCES, countResources } from './resources.js';
+import { EMPTY_CARDS, countCards } from './cards.js';
 import { discardCountFor } from './robber.js';
 import { victoryPointsOf } from './scoring.js';
 import { giving, hand, testGame } from './fixtures.js';
@@ -29,15 +29,15 @@ const PLAYERS = ['anna', 'ben', 'cem'] as const;
 /** Alle Karten im Spiel - Bank plus alle Haende. Muss immer gleich bleiben. */
 function totalCards(state: GameState): number {
   return state.players.reduce(
-    (sum, player) => sum + countResources(player.resources),
-    countResources(state.bank),
+    (sum, player) => sum + countCards(player.resources),
+    countCards(state.bank),
   );
 }
 
 /** Wirft die haeufigsten Karten ab - irgendeine Wahl muss die Strategie treffen. */
-function chooseDiscard(state: GameState, player: string): ResourceAmounts {
+function chooseDiscard(state: GameState, player: string): CardAmounts {
   const owner = state.players.find((entry) => entry.id === player)!;
-  const chosen: ResourceAmounts = { ...EMPTY_RESOURCES };
+  const chosen: CardAmounts = { ...EMPTY_CARDS };
 
   let left = discardCountFor(state, player);
   while (left > 0) {
@@ -265,7 +265,7 @@ describe('Spielerhandel', () => {
     }, start);
 
     expect(played.phase).toEqual({ kind: 'main' });
-    expect(countResources(played.players[0]!.resources)).toBe(2);
+    expect(countCards(played.players[0]!.resources)).toBe(2);
 
     const restored = replay(start, actions);
     expect(restored.ok).toBe(true);

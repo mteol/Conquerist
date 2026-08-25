@@ -1,10 +1,5 @@
 import type { JSX } from 'react';
-import {
-  EMPTY_RESOURCES,
-  RESOURCE_IDS,
-  type ResourceAmounts,
-  type ResourceId,
-} from '@conquerist/shared';
+import { EMPTY_CARDS, RESOURCE_IDS, type CardAmounts, type ResourceId } from '@conquerist/shared';
 import { RESOURCE_LABELS } from '../game/labels';
 import { ResourceCard } from '../panels/ResourceCard';
 
@@ -25,17 +20,17 @@ import { ResourceCard } from '../panels/ResourceCard';
  */
 export interface TradeAmountsProps {
   /** Die eigene Hand - Obergrenze fuer das, was man weggibt. */
-  readonly owned: ResourceAmounts;
-  readonly give: ResourceAmounts;
-  readonly want: ResourceAmounts;
-  readonly onGive: (next: ResourceAmounts) => void;
-  readonly onWant: (next: ResourceAmounts) => void;
+  readonly owned: CardAmounts;
+  readonly give: CardAmounts;
+  readonly want: CardAmounts;
+  readonly onGive: (next: CardAmounts) => void;
+  readonly onWant: (next: CardAmounts) => void;
 }
 
 /** Beide Seiten leer - der Startwert jeder Mengenwahl. */
-export const NO_AMOUNTS: ResourceAmounts = { ...EMPTY_RESOURCES };
+export const NO_AMOUNTS: CardAmounts = { ...EMPTY_CARDS };
 
-export function totalOf(amounts: ResourceAmounts): number {
+export function totalOf(amounts: CardAmounts): number {
   return RESOURCE_IDS.reduce((sum, resource) => sum + (amounts[resource] ?? 0), 0);
 }
 
@@ -45,7 +40,7 @@ export function totalOf(amounts: ResourceAmounts): number {
  * Dieselbe Form wie `checkShape` in `shared` - hier nur als Ja/Nein fuer die
  * Sperre am Knopf. Die verbindliche Auslegung bleibt dort.
  */
-export function isTradeShapeValid(give: ResourceAmounts, want: ResourceAmounts): boolean {
+export function isTradeShapeValid(give: CardAmounts, want: CardAmounts): boolean {
   if (totalOf(give) === 0 || totalOf(want) === 0) return false;
 
   return !RESOURCE_IDS.some((resource) => (give[resource] ?? 0) > 0 && (want[resource] ?? 0) > 0);
@@ -68,11 +63,11 @@ export function TradeAmounts({
    * aus derselben Funktion und koennen nicht auseinanderlaufen.
    */
   const step = (
-    amounts: ResourceAmounts,
+    amounts: CardAmounts,
     resource: ResourceId,
     delta: number,
     max: number,
-  ): ResourceAmounts | null => {
+  ): CardAmounts | null => {
     const next = (amounts[resource] ?? 0) + delta;
     if (next < 0 || next > max) return null;
     return { ...amounts, [resource]: next };

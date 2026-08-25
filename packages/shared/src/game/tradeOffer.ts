@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ResourceAmountsSchema } from '../rules/index.js';
+import { CardAmountsSchema } from '../rules/index.js';
 import { PlayerIdSchema } from './player.js';
 
 /**
@@ -14,9 +14,9 @@ import { PlayerIdSchema } from './player.js';
 export const TradeOfferSchema = z.object({
   from: PlayerIdSchema,
   /** Was der Anbieter hergibt. */
-  give: ResourceAmountsSchema,
+  give: CardAmountsSchema,
   /** Was er dafuer will. */
-  want: ResourceAmountsSchema,
+  want: CardAmountsSchema,
 });
 
 export type TradeOffer = z.infer<typeof TradeOfferSchema>;
@@ -39,14 +39,14 @@ export const TradeResponseSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('countered'),
     /** Aus Sicht des Konternden: was **er** hergibt. */
-    give: ResourceAmountsSchema,
-    want: ResourceAmountsSchema,
+    give: CardAmountsSchema,
+    want: CardAmountsSchema,
   }),
   z.object({
     kind: z.literal('rejected'),
     /** Das Gegenangebot, das der Anbieter ausgeschlagen hat - fuer den Verlauf. */
-    give: ResourceAmountsSchema,
-    want: ResourceAmountsSchema,
+    give: CardAmountsSchema,
+    want: CardAmountsSchema,
   }),
 ]);
 

@@ -8,7 +8,7 @@ import { buildDeck, type DevelopmentCardId } from './development.js';
 import { RuleViolationCode, violation } from './errors.js';
 import { setupPlacementCount, setupPlayerIndex } from './phase.js';
 import type { PlayerId } from './player.js';
-import { EMPTY_RESOURCES } from './resources.js';
+import { EMPTY_CARDS } from './cards.js';
 import { ok, rejected, type GameState, type ReduceResult } from './state.js';
 import { grantSetupYield } from './yield.js';
 
@@ -47,7 +47,7 @@ export function createGame(
     rules,
     players: playerIds.map((id) => ({
       id,
-      resources: { ...EMPTY_RESOURCES },
+      resources: { ...EMPTY_CARDS },
       piecesLeft: { ...rules.pieceStock },
       developmentCards: [],
       playedKnights: 0,

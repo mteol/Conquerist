@@ -11,7 +11,7 @@ import {
   victimsAt,
 } from './robber.js';
 import { PhaseSchema } from './phase.js';
-import { countResources } from './resources.js';
+import { countCards } from './cards.js';
 import type { GameState } from './state.js';
 
 /** Ein Knoten am Huegelfeld `1,-1`, der nicht neben `CENTER_VERTEX` liegt. */
@@ -199,8 +199,8 @@ describe('applyMoveRobber', () => {
     const result = applyMoveRobber(state, 'p1', '1,-1', 'p2');
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(countResources(resourcesOf(result.state, 'p1'))).toBe(1);
-      expect(countResources(resourcesOf(result.state, 'p2'))).toBe(2);
+      expect(countCards(resourcesOf(result.state, 'p1'))).toBe(1);
+      expect(countCards(resourcesOf(result.state, 'p2'))).toBe(2);
       // Die Karte wechselt den Besitzer, sie verschwindet nicht.
       expect(result.state.bank).toEqual(state.bank);
     }

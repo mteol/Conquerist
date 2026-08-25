@@ -6,7 +6,7 @@ import {
   type GameAction,
   type PlayerId,
   type PlayerView,
-  type ResourceAmounts,
+  type CardAmounts,
   type ResourceId,
   type Roll,
 } from '@conquerist/shared';
@@ -689,7 +689,7 @@ export function GameScreen({
           key={view.you}
           player={you}
           required={mustDiscard}
-          onConfirm={(resources: ResourceAmounts) => {
+          onConfirm={(resources: CardAmounts) => {
             onAct({ type: 'discard', player: view.you, resources });
           }}
         />

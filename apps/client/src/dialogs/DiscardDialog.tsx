@@ -1,10 +1,5 @@
 import { useState, type JSX } from 'react';
-import {
-  EMPTY_RESOURCES,
-  RESOURCE_IDS,
-  type ResourceAmounts,
-  type ResourceId,
-} from '@conquerist/shared';
+import { EMPTY_CARDS, RESOURCE_IDS, type CardAmounts, type ResourceId } from '@conquerist/shared';
 import { RESOURCE_LABELS } from '../game/labels';
 import { ResourceCard } from '../panels/ResourceCard';
 import type { PlayerRow } from '../game/view';
@@ -24,12 +19,12 @@ import type { PlayerRow } from '../game/view';
 export interface DiscardDialogProps {
   readonly player: PlayerRow;
   readonly required: number;
-  readonly onConfirm: (resources: ResourceAmounts) => void;
+  readonly onConfirm: (resources: CardAmounts) => void;
 }
 
 export function DiscardDialog({ player, required, onConfirm }: DiscardDialogProps): JSX.Element {
-  const [chosen, setChosen] = useState<ResourceAmounts>({ ...EMPTY_RESOURCES });
-  const held = player.resources ?? EMPTY_RESOURCES;
+  const [chosen, setChosen] = useState<CardAmounts>({ ...EMPTY_CARDS });
+  const held = player.resources ?? EMPTY_CARDS;
   const total = RESOURCE_IDS.reduce((sum, resource) => sum + (chosen[resource] ?? 0), 0);
 
   /**

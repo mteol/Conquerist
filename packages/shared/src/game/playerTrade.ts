@@ -1,10 +1,10 @@
-import type { ResourceAmounts } from '../rules/index.js';
+import type { CardAmounts } from '../rules/index.js';
 import { RESOURCE_IDS } from '../scenario/index.js';
 import { deadlineOf } from './deadline.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { Phase } from './phase.js';
 import type { PlayerId } from './player.js';
-import { addResources, canAfford, countResources, subtractResources } from './resources.js';
+import { addCards, canAfford, countCards, subtractCards } from './cards.js';
 import {
   findPlayer,
   ok,
@@ -28,12 +28,12 @@ import type { TradeResponse } from './tradeOffer.js';
  */
 
 /** Ob eine Seite des Tauschs ueberhaupt etwas enthaelt. */
-function isEmpty(amounts: ResourceAmounts): boolean {
-  return countResources(amounts) === 0;
+function isEmpty(amounts: CardAmounts): boolean {
+  return countCards(amounts) === 0;
 }
 
 /** Ob dieselbe Sorte auf beiden Seiten steht - dann waere ein Teil kein Tausch. */
-function overlaps(give: ResourceAmounts, want: ResourceAmounts): boolean {
+function overlaps(give: CardAmounts, want: CardAmounts): boolean {
   return RESOURCE_IDS.some((resource) => give[resource] > 0 && want[resource] > 0);
 }
 
@@ -44,9 +44,9 @@ function overlaps(give: ResourceAmounts, want: ResourceAmounts): boolean {
  * einmal hier und nicht zweimal weiter unten.
  */
 function checkShape(
-  owner: { readonly resources: ResourceAmounts },
-  give: ResourceAmounts,
-  want: ResourceAmounts,
+  owner: { readonly resources: CardAmounts },
+  give: CardAmounts,
+  want: CardAmounts,
 ): RuleViolation | null {
   if (isEmpty(give) || isEmpty(want)) {
     return violation(
@@ -76,8 +76,8 @@ function checkShape(
 export function canOfferTrade(
   state: GameState,
   player: PlayerId,
-  give: ResourceAmounts,
-  want: ResourceAmounts,
+  give: CardAmounts,
+  want: CardAmounts,
 ): RuleViolation | null {
   if (state.phase.kind !== 'main') {
     return violation(RuleViolationCode.WRONG_PHASE, 'Angeboten wird in der Hauptphase');
@@ -109,14 +109,14 @@ export function canOfferAnything(state: GameState, player: PlayerId): boolean {
   if (state.players.length < 2) return false;
 
   const owner = findPlayer(state, player);
-  return owner !== undefined && countResources(owner.resources) > 0;
+  return owner !== undefined && countCards(owner.resources) > 0;
 }
 
 export function applyOfferTrade(
   state: GameState,
   player: PlayerId,
-  give: ResourceAmounts,
-  want: ResourceAmounts,
+  give: CardAmounts,
+  want: CardAmounts,
   at: number,
 ): ReduceResult {
   const problem = canOfferTrade(state, player, give, want);
@@ -273,8 +273,8 @@ export function applyRespondTrade(
 export function canCounterTrade(
   state: GameState,
   player: PlayerId,
-  give: ResourceAmounts,
-  want: ResourceAmounts,
+  give: CardAmounts,
+  want: CardAmounts,
 ): RuleViolation | null {
   const problem = checkResponder(state, player);
   if (problem !== null) return problem;
@@ -285,8 +285,8 @@ export function canCounterTrade(
 export function applyCounterTrade(
   state: GameState,
   player: PlayerId,
-  give: ResourceAmounts,
-  want: ResourceAmounts,
+  give: CardAmounts,
+  want: CardAmounts,
   at: number,
 ): ReduceResult {
   const problem = canCounterTrade(state, player, give, want);
@@ -318,7 +318,7 @@ export function applyCounterTrade(
 export function termsFor(
   state: GameState,
   partner: PlayerId,
-): { readonly partnerGives: ResourceAmounts; readonly partnerGets: ResourceAmounts } | null {
+): { readonly partnerGives: CardAmounts; readonly partnerGets: CardAmounts } | null {
   const trade = openTrade(state);
   if (trade === null) return null;
 
@@ -398,10 +398,7 @@ export function applyAcceptTrade(
   // zurueck, nicht den Zustand, deshalb zwei Schritte statt zweier Kopien.
   const afterOfferer = withPlayer(state, player, (entry) => ({
     ...entry,
-    resources: addResources(
-      subtractResources(entry.resources, terms.partnerGets),
-      terms.partnerGives,
-    ),
+    resources: addCards(subtractCards(entry.resources, terms.partnerGets), terms.partnerGives),
   }));
 
   return ok({
@@ -410,8 +407,8 @@ export function applyAcceptTrade(
       entry.id === partner
         ? {
             ...entry,
-            resources: addResources(
-              subtractResources(entry.resources, terms.partnerGives),
+            resources: addCards(
+              subtractCards(entry.resources, terms.partnerGives),
               terms.partnerGets,
             ),
           }

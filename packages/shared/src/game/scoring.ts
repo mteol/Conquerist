@@ -1,4 +1,4 @@
-import { countCards } from './development.js';
+import { countDevelopmentCards } from './development.js';
 import type { PlayerId } from './player.js';
 import type { GameState } from './state.js';
 
@@ -50,7 +50,8 @@ export function victoryPointsOf(state: GameState, player: PlayerId): number {
   const hand = state.players.find((entry) => entry.id === player);
   if (hand !== undefined) {
     points +=
-      countCards(hand.developmentCards, 'victoryPoint') * state.rules.victoryPoints.developmentCard;
+      countDevelopmentCards(hand.developmentCards, 'victoryPoint') *
+      state.rules.victoryPoints.developmentCard;
   }
 
   return points;

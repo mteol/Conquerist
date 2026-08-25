@@ -5,7 +5,7 @@ import {
   type GameState,
   type PlayerId,
   type PlayerView,
-  type ResourceAmounts,
+  type CardAmounts,
   type Roll,
   type RuleSet,
 } from '@conquerist/shared';
@@ -32,7 +32,7 @@ export interface PlayerRow {
   readonly victoryPoints: number;
   readonly cardCount: number;
   /** `null` heisst: gehoert jemand anderem. Die Anzahl bleibt sichtbar. */
-  readonly resources: ResourceAmounts | null;
+  readonly resources: CardAmounts | null;
   readonly piecesLeft: RuleSet['pieceStock'];
   readonly isCurrent: boolean;
   /** Ob dieser Spieler gerade eine offene Verbindung hat. */

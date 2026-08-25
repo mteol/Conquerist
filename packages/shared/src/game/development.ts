@@ -64,7 +64,10 @@ export function buildDeck(counts: DevelopmentDeck): DevelopmentCardId[] {
 }
 
 /** Karten dieser Art auf einer Hand. */
-export function countCards(cards: readonly DevelopmentCard[], id: DevelopmentCardId): number {
+export function countDevelopmentCards(
+  cards: readonly DevelopmentCard[],
+  id: DevelopmentCardId,
+): number {
   return cards.filter((card) => card.id === id).length;
 }
 

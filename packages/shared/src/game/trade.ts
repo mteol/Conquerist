@@ -1,9 +1,9 @@
-import type { ResourceAmounts } from '../rules/index.js';
+import type { CardAmounts } from '../rules/index.js';
 import type { ResourceId } from '../scenario/index.js';
 import { boardOf } from './board.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { PlayerId } from './player.js';
-import { EMPTY_RESOURCES, addResources, canAfford, subtractResources } from './resources.js';
+import { EMPTY_CARDS, addCards, canAfford, subtractCards } from './cards.js';
 import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './state.js';
 
 /**
@@ -77,7 +77,7 @@ export function canTradeWithBank(
   }
 
   const rate = tradeRateFor(state, player, give);
-  const cost: ResourceAmounts = { ...EMPTY_RESOURCES, [give]: rate };
+  const cost: CardAmounts = { ...EMPTY_CARDS, [give]: rate };
   if (!canAfford(owner.resources, cost)) {
     return violation(
       RuleViolationCode.INSUFFICIENT_RESOURCES,
@@ -102,8 +102,8 @@ export function applyTradeWithBank(
   if (problem !== null) return rejected(problem);
 
   const rate = tradeRateFor(state, player, give);
-  const given: ResourceAmounts = { ...EMPTY_RESOURCES, [give]: rate };
-  const taken: ResourceAmounts = { ...EMPTY_RESOURCES, [receive]: 1 };
+  const given: CardAmounts = { ...EMPTY_CARDS, [give]: rate };
+  const taken: CardAmounts = { ...EMPTY_CARDS, [receive]: 1 };
 
   return ok({
     ...state,
@@ -111,10 +111,10 @@ export function applyTradeWithBank(
       entry.id === player
         ? {
             ...entry,
-            resources: addResources(subtractResources(entry.resources, given), taken),
+            resources: addCards(subtractCards(entry.resources, given), taken),
           }
         : entry,
     ),
-    bank: subtractResources(addResources(state.bank, given), taken),
+    bank: subtractCards(addCards(state.bank, given), taken),
   });
 }

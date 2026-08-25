@@ -1,5 +1,5 @@
 import { useState, type JSX } from 'react';
-import { RESOURCE_IDS, type ResourceAmounts, type ResourceId } from '@conquerist/shared';
+import { RESOURCE_IDS, type CardAmounts, type ResourceId } from '@conquerist/shared';
 import { RESOURCE_LABELS } from '../game/labels';
 import { ResourceGlyph } from './ResourceGlyph';
 
@@ -28,9 +28,9 @@ import { ResourceGlyph } from './ResourceGlyph';
  */
 export interface SupplyPanelProps {
   /** Was die Bank noch hergibt - offenes Material, steht so in der `PlayerView`. */
-  readonly bank: ResourceAmounts;
+  readonly bank: CardAmounts;
   /** Womit die Partie angefangen hat, aus `rules.resourceBank`. */
-  readonly start: ResourceAmounts;
+  readonly start: CardAmounts;
   readonly deckLeft: number;
   readonly deckStart: number;
 }

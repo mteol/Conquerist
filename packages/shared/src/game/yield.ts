@@ -1,9 +1,9 @@
 import type { VertexId } from '../geometry/index.js';
-import type { ResourceAmounts } from '../rules/index.js';
+import type { CardAmounts } from '../rules/index.js';
 import { terrainYield, type ResourceId } from '../scenario/index.js';
 import { boardOf } from './board.js';
 import type { PlayerId } from './player.js';
-import { EMPTY_RESOURCES, addResources, subtractResources } from './resources.js';
+import { EMPTY_CARDS, addCards, subtractCards } from './cards.js';
 import type { GameState } from './state.js';
 
 /**
@@ -60,11 +60,11 @@ function claimsForRoll(state: GameState, roll: number): Claim[] {
 function payOut(state: GameState, granted: readonly Claim[]): GameState {
   if (granted.length === 0) return state;
 
-  const perPlayer = new Map<PlayerId, ResourceAmounts>();
-  let fromBank = EMPTY_RESOURCES;
+  const perPlayer = new Map<PlayerId, CardAmounts>();
+  let fromBank = EMPTY_CARDS;
 
   for (const claim of granted) {
-    const current = perPlayer.get(claim.player) ?? EMPTY_RESOURCES;
+    const current = perPlayer.get(claim.player) ?? EMPTY_CARDS;
     perPlayer.set(claim.player, {
       ...current,
       [claim.resource]: current[claim.resource] + claim.amount,
@@ -78,9 +78,9 @@ function payOut(state: GameState, granted: readonly Claim[]): GameState {
       const gain = perPlayer.get(player.id);
       return gain === undefined
         ? player
-        : { ...player, resources: addResources(player.resources, gain) };
+        : { ...player, resources: addCards(player.resources, gain) };
     }),
-    bank: subtractResources(state.bank, fromBank),
+    bank: subtractCards(state.bank, fromBank),
   };
 }
 

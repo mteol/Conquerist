@@ -76,7 +76,7 @@ export function cardAmounts(part: Partial<Record<CardId, number>>): Record<CardI
  * Eingelesen wird also, was dasteht; ergaenzt wird der Rest mit null. Dieselbe
  * Auffuellung traegt jede spaetere Sorte.
  */
-export const ResourceAmountsSchema = z
+export const CardAmountsSchema = z
   .partialRecord(CardIdSchema, z.number().int().min(0))
   .transform((amounts): Record<CardId, number> => cardAmounts(amounts));
 
@@ -86,7 +86,7 @@ export const ResourceAmountsSchema = z
  * schon der vollstaendige Record - aber die Ableitung waere von der genauen
  * Rueckgabe des `transform` abhaengig und damit stiller als noetig.
  */
-export type ResourceAmounts = Record<CardId, number>;
+export type CardAmounts = Record<CardId, number>;
 
 /**
  * Zwischen welchen Siegpunktzielen der Wartebereich waehlen laesst.
@@ -106,11 +106,11 @@ export const RuleSetSchema = z.object({
   /** Stabiler Bezeichner, etwa `"classic"`. */
   id: z.string().min(1),
   /** Was jedes Bauteil kostet. */
-  buildCosts: z.record(BuildableIdSchema, ResourceAmountsSchema),
+  buildCosts: z.record(BuildableIdSchema, CardAmountsSchema),
   /** Wie viele Teile jeder Spieler insgesamt bauen kann. */
   pieceStock: z.record(PieceIdSchema, z.number().int().min(1)),
   /** Wie viele Karten je Ressource die Bank vorhaelt. */
-  resourceBank: ResourceAmountsSchema,
+  resourceBank: CardAmountsSchema,
   /** Siegpunkte, die das Spiel beenden. */
   victoryPointGoal: z.number().int().min(2),
   /**

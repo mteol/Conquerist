@@ -1,9 +1,9 @@
 import type { EdgeId, VertexId } from '../geometry/index.js';
-import type { PieceId, ResourceAmounts, RuleSet } from '../rules/index.js';
+import type { PieceId, CardAmounts, RuleSet } from '../rules/index.js';
 import { boardOf } from './board.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { PlayerId } from './player.js';
-import { addResources, canAfford, subtractResources } from './resources.js';
+import { addCards, canAfford, subtractCards } from './cards.js';
 import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './state.js';
 
 /**
@@ -95,7 +95,7 @@ function canPay(
   state: GameState,
   player: PlayerId,
   piece: PieceId,
-  cost: ResourceAmounts,
+  cost: CardAmounts,
 ): RuleViolation | null {
   const owner = findPlayer(state, player);
   if (owner === undefined) {
@@ -126,7 +126,7 @@ function canPay(
 function pay(
   state: GameState,
   player: PlayerId,
-  cost: ResourceAmounts,
+  cost: CardAmounts,
   pieces: Partial<Record<PieceId, number>>,
 ): GameState {
   return {
@@ -139,13 +139,13 @@ function pay(
         piecesLeft[piece as PieceId] += delta;
       }
 
-      return { ...entry, resources: subtractResources(entry.resources, cost), piecesLeft };
+      return { ...entry, resources: subtractCards(entry.resources, cost), piecesLeft };
     }),
-    bank: addResources(state.bank, cost),
+    bank: addCards(state.bank, cost),
   };
 }
 
-function costOf(rules: RuleSet, piece: 'road' | 'settlement' | 'city'): ResourceAmounts {
+function costOf(rules: RuleSet, piece: 'road' | 'settlement' | 'city'): CardAmounts {
   return rules.buildCosts[piece];
 }
 

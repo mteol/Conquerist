@@ -1,5 +1,5 @@
 import {
-  countResources,
+  countCards,
   yieldTotal,
   type GameAction,
   type GameState,
@@ -21,7 +21,7 @@ export function situationFromGame(
   action: GameAction,
 ): Situation {
   const total = (state: GameState): number =>
-    state.players.reduce((sum, player) => sum + countResources(player.resources), 0);
+    state.players.reduce((sum, player) => sum + countCards(player.resources), 0);
 
   const difference = total(after) - total(before);
 

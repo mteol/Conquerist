@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { PieceIdSchema, ResourceAmountsSchema } from '../rules/index.js';
+import { PieceIdSchema, CardAmountsSchema } from '../rules/index.js';
 import { DevelopmentCardSchema } from './development.js';
 
 /**
@@ -23,7 +23,7 @@ export type PlayerId = z.infer<typeof PlayerIdSchema>;
 export const PlayerStateSchema = z.object({
   id: PlayerIdSchema,
   /** Die Handkarten. Ab Etappe 5 die geheime Haelfte. */
-  resources: ResourceAmountsSchema,
+  resources: CardAmountsSchema,
   /** Wie viele Teile noch im Vorrat liegen. Aufgebraucht heisst: nicht mehr baubar. */
   piecesLeft: z.record(PieceIdSchema, z.number().int().min(0)),
   /** Entwicklungskarten auf der Hand. Geheim wie die Ressourcen. */

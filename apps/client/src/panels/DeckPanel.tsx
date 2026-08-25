@@ -1,5 +1,5 @@
 import type { CSSProperties, JSX } from 'react';
-import type { ResourceAmounts } from '@conquerist/shared';
+import type { CardAmounts } from '@conquerist/shared';
 import { resourceList } from '../game/labels';
 import { CostHint } from './CostHint';
 
@@ -39,7 +39,7 @@ export interface DeckPanelProps {
    */
   readonly canBuy: boolean;
   /** Was eine Karte kostet - aus dem Regelwerk der Partie (siehe `ActionPanel`). */
-  readonly cost: ResourceAmounts;
+  readonly cost: CardAmounts;
   readonly onBuy: () => void;
 }
 

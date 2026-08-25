@@ -1,12 +1,12 @@
 import type { EdgeId } from '../geometry/index.js';
-import type { ResourceAmounts } from '../rules/index.js';
+import type { CardAmounts } from '../rules/index.js';
 import type { ResourceId } from '../scenario/index.js';
 import { canPlaceRoadAt } from './build.js';
 import { boardOf } from './board.js';
-import { countCards, isPlayable, type DevelopmentCardId } from './development.js';
+import { countDevelopmentCards, isPlayable, type DevelopmentCardId } from './development.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { PlayerId } from './player.js';
-import { EMPTY_RESOURCES, addResources, canAfford, subtractResources } from './resources.js';
+import { EMPTY_CARDS, addCards, canAfford, subtractCards } from './cards.js';
 import {
   findPlayer,
   ok,
@@ -37,8 +37,8 @@ import {
  */
 
 /** Was eine Entwicklungskarte kostet. */
-function priceOf(state: GameState): ResourceAmounts {
-  return state.rules.buildCosts.developmentCard ?? EMPTY_RESOURCES;
+function priceOf(state: GameState): CardAmounts {
+  return state.rules.buildCosts.developmentCard ?? EMPTY_CARDS;
 }
 
 /** Die zwei Bedingungen, die fuer Kauf und Ausspielen gleich sind. */
@@ -117,10 +117,10 @@ export function applyBuyDevelopmentCard(state: GameState, player: PlayerId): Red
   return ok({
     ...state,
     deck: rest,
-    bank: addResources(state.bank, cost),
+    bank: addCards(state.bank, cost),
     players: withPlayer(state, player, (entry) => ({
       ...entry,
-      resources: subtractResources(entry.resources, cost),
+      resources: subtractCards(entry.resources, cost),
       developmentCards: [...entry.developmentCards, { id: drawn, boughtOnTurn: state.turn }],
     })),
   });
@@ -307,7 +307,7 @@ export function applyPlayYearOfPlenty(
     return rejected(violation(RuleViolationCode.INVALID_TRADE, 'Genau zwei Rohstoffe'));
   }
 
-  const wanted = { ...EMPTY_RESOURCES };
+  const wanted = { ...EMPTY_CARDS };
   for (const pick of picks) wanted[pick] = (wanted[pick] ?? 0) + 1;
 
   if (!canAfford(state.bank, wanted)) {
@@ -318,10 +318,10 @@ export function applyPlayYearOfPlenty(
 
   return ok({
     ...spent,
-    bank: subtractResources(spent.bank, wanted),
+    bank: subtractCards(spent.bank, wanted),
     players: withPlayer(spent, player, (entry) => ({
       ...entry,
-      resources: addResources(entry.resources, wanted),
+      resources: addCards(entry.resources, wanted),
     })),
   });
 }
@@ -369,5 +369,5 @@ export function applyPlayMonopoly(
 /** Siegpunktkarten auf der Hand. Sie zaehlen, ohne je gespielt zu werden. */
 export function victoryPointCardsOf(state: GameState, player: PlayerId): number {
   const hand = findPlayer(state, player);
-  return hand === undefined ? 0 : countCards(hand.developmentCards, 'victoryPoint');
+  return hand === undefined ? 0 : countDevelopmentCards(hand.developmentCards, 'victoryPoint');
 }

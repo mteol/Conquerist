@@ -3,7 +3,7 @@ import { RESOURCE_LABELS, resourceList } from './labels.js';
 import type { GameAction } from './actions.js';
 import { yieldTotal } from './dice.js';
 import type { PlayerId } from './player.js';
-import { countResources } from './resources.js';
+import { countCards } from './cards.js';
 import type { GameState } from './state.js';
 
 /**
@@ -156,7 +156,7 @@ function describeGains(
     const previous = before.players[index];
     if (previous === undefined) return;
 
-    const gained = countResources(player.resources) - countResources(previous.resources);
+    const gained = countCards(player.resources) - countCards(previous.resources);
     if (gained > 0) parts.push(`${nameOf(player.id)} +${gained}`);
   });
 

@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { RESOURCE_IDS, type ResourceAmounts, type ResourceId } from '@conquerist/shared';
+import { RESOURCE_IDS, type CardAmounts, type ResourceId } from '@conquerist/shared';
 import { RESOURCE_COLORS, RESOURCE_LABELS } from '../game/labels';
 import { ResourceGlyph } from './ResourceGlyph';
 
@@ -86,7 +86,7 @@ export function ResourceCard({ resource, held, count }: ResourceCardProps): JSX.
  * weiter als „2 Holz, 1 Erz", und wer die Farben nicht unterscheidet, verliert
  * nichts.
  */
-export function ResourceRow({ amounts }: { readonly amounts: ResourceAmounts }): JSX.Element {
+export function ResourceRow({ amounts }: { readonly amounts: CardAmounts }): JSX.Element {
   const posten = RESOURCE_IDS.map((resource) => ({
     resource,
     amount: amounts[resource] ?? 0,

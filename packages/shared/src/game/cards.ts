@@ -1,10 +1,10 @@
-import type { ResourceAmounts } from '../rules/index.js';
+import type { CardAmounts } from '../rules/index.js';
 import { CARD_IDS, type CardId } from '../scenario/index.js';
 
 /**
  * Rechnen mit Kartenmengen.
  *
- * `ResourceAmounts` ist ein vollstaendiger `Record<CardId, number>` (Regel 5:
+ * `CardAmounts` ist ein vollstaendiger `Record<CardId, number>` (Regel 5:
  * Ressourcen als Record, nicht als feste Felder). Vollstaendig heisst: jede
  * Sorte ist genannt, auch mit null. Das erspart im Reducer jedes `?? 0` und
  * macht aus einer vergessenen Sorte einen Compilerfehler statt eines stillen
@@ -19,7 +19,7 @@ import { CARD_IDS, type CardId } from '../scenario/index.js';
  */
 
 /** Nichts von allem. Startwert fuer jede Hand. */
-export const EMPTY_RESOURCES: ResourceAmounts = {
+export const EMPTY_CARDS: CardAmounts = {
   brick: 0,
   lumber: 0,
   wool: 0,
@@ -31,21 +31,21 @@ export const EMPTY_RESOURCES: ResourceAmounts = {
 };
 
 /** Baut eine Menge aus einer Funktion je Ressource - die gemeinsame Grundlage aller Rechnungen. */
-function fromEach(pick: (card: CardId) => number): ResourceAmounts {
-  const result = { ...EMPTY_RESOURCES };
+function fromEach(pick: (card: CardId) => number): CardAmounts {
+  const result = { ...EMPTY_CARDS };
   for (const resource of CARD_IDS) result[resource] = pick(resource);
   return result;
 }
 
 /** Wie viele Karten die Menge insgesamt umfasst. */
-export function countResources(amounts: ResourceAmounts): number {
+export function countCards(amounts: CardAmounts): number {
   let total = 0;
   for (const resource of CARD_IDS) total += amounts[resource];
   return total;
 }
 
 /** Komponentenweise Summe. */
-export function addResources(a: ResourceAmounts, b: ResourceAmounts): ResourceAmounts {
+export function addCards(a: CardAmounts, b: CardAmounts): CardAmounts {
   return fromEach((resource) => a[resource] + b[resource]);
 }
 
@@ -56,25 +56,23 @@ export function addResources(a: ResourceAmounts, b: ResourceAmounts): ResourceAm
  * Regelfehler, der erst Runden spaeter als unmoegliche Handkartenzahl auffiele;
  * Aufrufer pruefen vorher mit `canAfford`.
  */
-export function subtractResources(a: ResourceAmounts, b: ResourceAmounts): ResourceAmounts {
+export function subtractCards(a: CardAmounts, b: CardAmounts): CardAmounts {
   return fromEach((resource) => {
     const left = a[resource] - b[resource];
     if (left < 0) {
-      throw new RangeError(
-        `subtractResources: ${resource} waere ${left} - es fehlen ${-left} Karten`,
-      );
+      throw new RangeError(`subtractCards: ${resource} waere ${left} - es fehlen ${-left} Karten`);
     }
     return left;
   });
 }
 
 /** Komponentenweise Vervielfachung. */
-export function scaleResources(amounts: ResourceAmounts, factor: number): ResourceAmounts {
+export function scaleCards(amounts: CardAmounts, factor: number): CardAmounts {
   return fromEach((resource) => amounts[resource] * factor);
 }
 
 /** Ob `have` die Kosten `cost` vollstaendig deckt. */
-export function canAfford(have: ResourceAmounts, cost: ResourceAmounts): boolean {
+export function canAfford(have: CardAmounts, cost: CardAmounts): boolean {
   return CARD_IDS.every((resource) => have[resource] >= cost[resource]);
 }
 
@@ -85,12 +83,10 @@ export function canAfford(have: ResourceAmounts, cost: ResourceAmounts): boolean
  * Karten werden durchnummeriert, der Zufall liefert den Index. Ueber die feste
  * Reihenfolge bleibt der Diebstahl aus Seed und Zustand rekonstruierbar - Regel 2.
  */
-export function resourceAt(amounts: ResourceAmounts, index: number): CardId {
-  const total = countResources(amounts);
+export function cardAt(amounts: CardAmounts, index: number): CardId {
+  const total = countCards(amounts);
   if (!Number.isInteger(index) || index < 0 || index >= total) {
-    throw new RangeError(
-      `resourceAt: Index ${index} liegt ausserhalb einer Hand mit ${total} Karten`,
-    );
+    throw new RangeError(`cardAt: Index ${index} liegt ausserhalb einer Hand mit ${total} Karten`);
   }
 
   let remaining = index;
@@ -100,5 +96,5 @@ export function resourceAt(amounts: ResourceAmounts, index: number): CardId {
   }
 
   // Unerreichbar: die Summe der Anteile ist `total`, und `index < total`.
-  throw new RangeError(`resourceAt: Index ${index} nicht aufloesbar`);
+  throw new RangeError(`cardAt: Index ${index} nicht aufloesbar`);
 }

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ResourceAmountsSchema } from '../rules/index.js';
+import { CardAmountsSchema } from '../rules/index.js';
 import { ResourceIdSchema } from '../scenario/index.js';
 import { PlayerIdSchema } from './player.js';
 
@@ -31,7 +31,7 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({ ...Base, type: z.literal('rollDice') }),
 
   /** Nach einer Sieben: die Haelfte abwerfen. Der Spieler waehlt selbst aus. */
-  z.object({ ...Base, type: z.literal('discard'), resources: ResourceAmountsSchema }),
+  z.object({ ...Base, type: z.literal('discard'), resources: CardAmountsSchema }),
   /**
    * Raeuber versetzen und stehlen. `victim` ist `null`, wenn am neuen Feld
    * niemand mit Karten wohnt - sonst muss ein Anlieger benannt werden.
@@ -98,8 +98,8 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({
     ...Base,
     type: z.literal('offerTrade'),
-    give: ResourceAmountsSchema,
-    want: ResourceAmountsSchema,
+    give: CardAmountsSchema,
+    want: CardAmountsSchema,
     at: z.number().int().min(0),
   }),
 
@@ -119,8 +119,8 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({
     ...Base,
     type: z.literal('counterTrade'),
-    give: ResourceAmountsSchema,
-    want: ResourceAmountsSchema,
+    give: CardAmountsSchema,
+    want: CardAmountsSchema,
     at: z.number().int().min(0),
   }),
 

@@ -3,7 +3,7 @@ import {
   CLASSIC_34,
   CLASSIC_56,
   CLASSIC_RULES,
-  EMPTY_RESOURCES,
+  EMPTY_CARDS,
   RESOURCE_IDS,
   createGame,
   discardCountFor,
@@ -11,7 +11,7 @@ import {
   replay,
   type GameAction,
   type PlayerId,
-  type ResourceAmounts,
+  type CardAmounts,
   type ScenarioBlueprint,
 } from '@conquerist/shared';
 import { defaultSeats } from '../seats';
@@ -61,8 +61,8 @@ interface Outcome {
 }
 
 /** Legt die geforderte Zahl Karten aus der Hand zusammen - wie der Dialog. */
-function discardChoice(resources: ResourceAmounts, count: number): ResourceAmounts {
-  const chosen: ResourceAmounts = { ...EMPTY_RESOURCES };
+function discardChoice(resources: CardAmounts, count: number): CardAmounts {
+  const chosen: CardAmounts = { ...EMPTY_CARDS };
   let left = count;
 
   for (const resource of RESOURCE_IDS) {

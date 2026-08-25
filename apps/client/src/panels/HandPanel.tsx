@@ -1,5 +1,5 @@
 import type { CSSProperties, JSX } from 'react';
-import { RESOURCE_IDS, type ResourceAmounts } from '@conquerist/shared';
+import { RESOURCE_IDS, type CardAmounts } from '@conquerist/shared';
 import { RESOURCE_COLORS, RESOURCE_LABELS } from '../game/labels';
 import { ResourceGlyph } from './ResourceGlyph';
 
@@ -22,7 +22,7 @@ import { ResourceGlyph } from './ResourceGlyph';
  */
 export interface HandPanelProps {
   /** `null` heisst: fremde Hand. Dann gibt es hier nichts zu zeigen. */
-  readonly resources: ResourceAmounts | null;
+  readonly resources: CardAmounts | null;
   readonly cardCount: number;
   /** Zugedeckt: die Karten liegen auf dem Ruecken, die Anzahl bleibt lesbar. */
   readonly covered: boolean;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EMPTY_RESOURCES, GAME_EVENT } from '@conquerist/shared';
+import { EMPTY_CARDS, GAME_EVENT } from '@conquerist/shared';
 import { broadcastGame } from './broadcast.js';
 import { applyAction, createRoom, joinRoom, startGame, type Room } from './room.js';
 import { rollOpening } from './openingFixture.js';
@@ -57,10 +57,10 @@ function tableReadyToTrade(): Room {
         ...player,
         resources:
           player.id === 'u1'
-            ? { ...EMPTY_RESOURCES, brick: 2 }
+            ? { ...EMPTY_CARDS, brick: 2 }
             : player.id === 'u2'
-              ? { ...EMPTY_RESOURCES, grain: 2 }
-              : { ...EMPTY_RESOURCES },
+              ? { ...EMPTY_CARDS, grain: 2 }
+              : { ...EMPTY_CARDS },
       })),
     },
   };
@@ -92,8 +92,8 @@ describe('Ein Handel, wie ihn beide Seiten erleben', () => {
         {
           type: 'offerTrade',
           player: 'u1',
-          give: { ...EMPTY_RESOURCES, brick: 1 },
-          want: { ...EMPTY_RESOURCES, grain: 1 },
+          give: { ...EMPTY_CARDS, brick: 1 },
+          want: { ...EMPTY_CARDS, grain: 1 },
           at: 1_000,
         },
       ],
@@ -124,8 +124,8 @@ describe('Ein Handel, wie ihn beide Seiten erleben', () => {
         {
           type: 'offerTrade',
           player: 'u1',
-          give: { ...EMPTY_RESOURCES, brick: 1 },
-          want: { ...EMPTY_RESOURCES, grain: 1 },
+          give: { ...EMPTY_CARDS, brick: 1 },
+          want: { ...EMPTY_CARDS, grain: 1 },
           at: 1_000,
         },
       ],

@@ -1,10 +1,5 @@
 import { useState, type JSX } from 'react';
-import {
-  EMPTY_RESOURCES,
-  RESOURCE_IDS,
-  type ResourceAmounts,
-  type ResourceId,
-} from '@conquerist/shared';
+import { EMPTY_CARDS, RESOURCE_IDS, type CardAmounts, type ResourceId } from '@conquerist/shared';
 import { RESOURCE_LABELS } from '../game/labels';
 import type { PlayerRow } from '../game/view';
 import { ResourceCard } from '../panels/ResourceCard';
@@ -30,7 +25,7 @@ export interface TradeDialogProps {
   readonly canTrade: (give: ResourceId, receive: ResourceId) => boolean;
   /** Ob der Spieler jetzt ueberhaupt ein Angebot machen duerfte. */
   readonly canOffer: boolean;
-  readonly onOffer: (give: ResourceAmounts, want: ResourceAmounts) => void;
+  readonly onOffer: (give: CardAmounts, want: CardAmounts) => void;
   readonly onConfirm: (give: ResourceId, receive: ResourceId) => void;
   readonly onClose: () => void;
 }
@@ -49,8 +44,8 @@ export function TradeDialog({
   const [tab, setTab] = useState<Tab>('bank');
   const [give, setGive] = useState<ResourceId | null>(null);
   const [receive, setReceive] = useState<ResourceId | null>(null);
-  const [offerGive, setOfferGive] = useState<ResourceAmounts>(NO_AMOUNTS);
-  const [offerWant, setOfferWant] = useState<ResourceAmounts>(NO_AMOUNTS);
+  const [offerGive, setOfferGive] = useState<CardAmounts>(NO_AMOUNTS);
+  const [offerWant, setOfferWant] = useState<CardAmounts>(NO_AMOUNTS);
 
   const ready = give !== null && receive !== null && canTrade(give, receive);
   const offerReady = isTradeShapeValid(offerGive, offerWant);
@@ -148,7 +143,7 @@ export function TradeDialog({
             </p>
 
             <TradeAmounts
-              owned={player.resources ?? EMPTY_RESOURCES}
+              owned={player.resources ?? EMPTY_CARDS}
               give={offerGive}
               want={offerWant}
               onGive={setOfferGive}
