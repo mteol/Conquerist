@@ -662,3 +662,68 @@ describe('Der Weg zurueck zum Start', () => {
     expect(onLeave).toHaveBeenCalled();
   });
 });
+
+/**
+ * Der Vorrat der Bank steht im Bild, nicht nur im Zustand.
+ *
+ * Geprueft am ganzen Bildschirm und nicht nur an der Komponente: dass
+ * `SupplyPanel` seine Zahlen richtig setzt, sagt sein eigener Test. Hier geht
+ * es um die Verdrahtung - bekommt es die Bank der laufenden Partie und das
+ * Regelwerk, aus dem die Ausgangsmenge stammt.
+ */
+describe('Die Stapel-Uebersicht', () => {
+  it('bleibt eingeklappt, bis jemand fragt', () => {
+    render(<LocalGame />);
+
+    expect(screen.getByTestId('supply-toggle').getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByTestId('supply-brick')).toBeNull();
+  });
+
+  it('zeigt den Vorrat der laufenden Partie', async () => {
+    render(<LocalGame />);
+
+    await userEvent.click(screen.getByTestId('supply-toggle'));
+
+    // Die Ausgangsmenge kommt aus dem Regelwerk der Partie, nicht aus dem Code.
+    const brick = screen.getByTestId('supply-brick').textContent ?? '';
+    expect(brick).toContain(String(CLASSIC_RULES.resourceBank.brick));
+    expect(screen.getByTestId('supply-deck')).toBeDefined();
+  });
+});
+
+/**
+ * Der Endstand, wenn die Partie herum ist.
+ *
+ * Ueber `LocalGameFrom` mit gesetzter Endphase und nicht ueber eine
+ * ausgespielte Partie: bis zehn Siegpunkte zu spielen pruefte den Reducer,
+ * nicht den Bildschirm. Was hier interessiert, ist die Verdrahtung.
+ */
+describe('Der Endstand', () => {
+  const finished: GameState = {
+    ...start,
+    phase: { kind: 'finished', winner: seats[0]!.id },
+    rollTally: { '6': 4, '8': 2 },
+  };
+
+  it('erscheint von selbst, sobald jemand gewonnen hat', () => {
+    render(<LocalGameFrom state={finished} />);
+
+    expect(screen.getByTestId('over-winner').textContent).toContain(seats[0]!.name);
+    expect(screen.getByTestId('over-roll-6').textContent).toContain('4');
+  });
+
+  /*
+   * Wer ihn wegklickt, soll das Brett ansehen koennen - und danach wieder
+   * hineinkommen. Ein Endstand, den man genau einmal sieht, zwingt zum
+   * Auswendiglernen.
+   */
+  it('bleibt nach dem Schliessen erreichbar', async () => {
+    render(<LocalGameFrom state={finished} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Endstand schließen/ }));
+    expect(screen.queryByTestId('over-winner')).toBeNull();
+
+    await userEvent.click(screen.getByTestId('over-reopen'));
+    expect(screen.getByTestId('over-winner')).toBeDefined();
+  });
+});

@@ -105,6 +105,7 @@ export function testGame(overrides: Partial<GameState> = {}): GameState {
     developmentPlayed: false,
     rng: createRng('fixture'),
     lastRoll: null,
+    rollTally: {},
     turn: 1,
   };
 

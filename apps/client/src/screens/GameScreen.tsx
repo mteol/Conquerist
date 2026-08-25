@@ -15,6 +15,7 @@ import { EMPTY_TARGETS, buildKindOf, targetsFrom, type BuildableKind } from '../
 import { discardCountForView, gameViewOf, type PlayerRow } from '../game/view';
 import { ActionPanel } from '../panels/ActionPanel';
 import { DeckPanel } from '../panels/DeckPanel';
+import { SupplyPanel } from '../panels/SupplyPanel';
 import { DiceTray } from '../panels/DiceTray';
 import { HandPanel } from '../panels/HandPanel';
 import { TurnPanel } from '../panels/TurnPanel';
@@ -28,6 +29,7 @@ import { DiscardDialog } from '../dialogs/DiscardDialog';
 import { TradeDialog } from '../dialogs/TradeDialog';
 import { TradeOfferDialog } from '../dialogs/TradeOfferDialog';
 import { VictimDialog } from '../dialogs/VictimDialog';
+import { GameOverDialog } from '../dialogs/GameOverDialog';
 import type { LogEntry } from '../game/hotseat';
 import { useCoarsePointer } from '../useCoarsePointer';
 
@@ -159,6 +161,12 @@ export function GameScreen({
   clockOffset = 0,
 }: GameScreenProps): JSX.Element {
   const [tradeOpen, setTradeOpen] = useState(false);
+  /*
+   * Ob der Endstand gerade weggeklickt ist. Kein `overOpen`, sondern das
+   * Gegenteil: er geht von selbst auf, sobald die Partie herum ist, und nur
+   * das Wegklicken ist eine Entscheidung, die gemerkt werden muss.
+   */
+  const [overClosed, setOverClosed] = useState(false);
   const [robberHex, setRobberHex] = useState<string | null>(null);
   /** Welche Karte gerade eine Auswahl braucht - `null`, wenn keine. */
   const [picking, setPicking] = useState<'yearOfPlenty' | 'monopoly' | null>(null);
@@ -201,6 +209,17 @@ export function GameScreen({
   const previous = useRef<PlayerView | null>(null);
 
   const display = useMemo(() => gameViewOf(view, previous.current ?? undefined), [view]);
+
+  /*
+   * Wie gross der Entwicklungsstapel angefangen hat - die Bezugsgroesse fuer
+   * die Vorratsuebersicht. Aus dem Regelwerk der Partie und nicht als Zahl im
+   * Code: seit der Fuenf-bis-Sechser-Erweiterung sind es je nach Tisch 25 oder
+   * 34 Karten.
+   */
+  const deckStart = useMemo(
+    () => Object.values(view.rules.developmentDeck).reduce((sum, count) => sum + count, 0),
+    [view.rules.developmentDeck],
+  );
   useEffect(() => {
     previous.current = view;
   }, [view]);
@@ -588,6 +607,13 @@ export function GameScreen({
             }}
           />
 
+          <SupplyPanel
+            bank={view.bank}
+            start={view.rules.resourceBank}
+            deckLeft={display.deckLeft}
+            deckStart={deckStart}
+          />
+
           <ActionPanel
             targets={targets}
             error={error}
@@ -686,6 +712,26 @@ export function GameScreen({
           }}
           onClose={() => setTradeOpen(false)}
         />
+      ) : null}
+
+      {view.phase.kind === 'finished' ? (
+        overClosed ? (
+          /*
+           * Die Tuer zurueck zum Endstand. Sie steht da, solange die Partie
+           * beendet ist - wer ihn wegklickt, um das Brett anzusehen, soll ihn
+           * nicht auswendig gelernt haben muessen.
+           */
+          <button
+            type="button"
+            className="button over__reopen"
+            data-testid="over-reopen"
+            onClick={() => setOverClosed(false)}
+          >
+            Endstand
+          </button>
+        ) : (
+          <GameOverDialog view={view} onClose={() => setOverClosed(true)} />
+        )
       ) : null}
 
       {robberHex !== null ? (

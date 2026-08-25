@@ -65,6 +65,7 @@ export function createGame(
     ...deckAndRng(rules, seed),
     developmentPlayed: false,
     lastRoll: null,
+    rollTally: {},
     turn: 0,
   };
 }

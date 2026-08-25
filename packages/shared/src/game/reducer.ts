@@ -100,7 +100,17 @@ function rollDice(state: GameState): ReduceResult {
   const [roll, rng] = rollAll(state.rules.dice, state.rng);
 
   const total = yieldTotal(state.rules.dice, roll);
-  const rolled: GameState = { ...state, rng, lastRoll: roll };
+
+  /*
+   * Die einzige Stelle, an der gezaehlt wird. `applyOpeningRoll` zaehlt
+   * bewusst nicht mit: der Auftakt verteilt Plaetze, keine Ertraege.
+   */
+  const rolled: GameState = {
+    ...state,
+    rng,
+    lastRoll: roll,
+    rollTally: { ...state.rollTally, [total]: (state.rollTally[total] ?? 0) + 1 },
+  };
 
   if (total !== state.rules.robberRoll) {
     return ok({ ...distributeYield(rolled, total), phase: { kind: 'main' } });

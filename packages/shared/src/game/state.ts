@@ -96,6 +96,22 @@ export const GameStateSchema = z.object({
    * waeren danach nicht wiederherstellbar - und genau sie liegen auf dem Tisch.
    */
   lastRoll: RollSchema.nullable(),
+  /**
+   * Wie oft welche Wurfsumme fiel - der Schluessel ist die Summe als Text.
+   *
+   * Eine Summe und kein Protokoll: die Frage dahinter ist "war das Brett
+   * fair", und die braucht keine Reihenfolge. Ein vollstaendiges Wurfprotokoll
+   * waere ein zweites Log, das mit jeder Partie mitwuechse.
+   *
+   * **Mit Vorgabe, und das ist Pflicht.** Gespeichert wird nur der
+   * Startzustand, alles andere entsteht beim Replay; ein Pflichtfeld ohne
+   * Vorgabe liesse jede bestehende Partie am Schema scheitern. So bekommen
+   * aeltere Partien ihre Zaehlung beim naechsten Replay rueckwirkend.
+   *
+   * Auftaktwuerfe zaehlen nicht mit - sie bestimmen die Sitzreihenfolge und
+   * haben nie ein Feld bedient.
+   */
+  rollTally: z.record(z.string(), z.number().int().min(0)).default({}),
   /** Vollstaendige Runden seit Ende der Gruendungsphase. */
   turn: z.number().int().min(0),
 });

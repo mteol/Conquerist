@@ -106,6 +106,8 @@ export const PlayerViewSchema = z.object({
   roadBuildingTargets: z.record(z.string(), z.array(z.string())),
   /** Der letzte Wurf, so wie er im Zustand steht - er ist oeffentlich. */
   lastRoll: RollSchema.nullable(),
+  /** Wie oft welche Wurfsumme fiel - offenes Material, siehe `GameState`. */
+  rollTally: z.record(z.string(), z.number().int().min(0)).default({}),
   turn: z.number().int().min(0),
 });
 
@@ -188,6 +190,7 @@ export function playerViewOf(
     canOfferTrade: canOfferAnything(state, viewer),
     roadBuildingTargets: roadBuildingTargets(state, viewer),
     lastRoll: state.lastRoll,
+    rollTally: state.rollTally,
     turn: state.turn,
   };
 }
