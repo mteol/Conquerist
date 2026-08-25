@@ -30,6 +30,21 @@ export const DieSpecSchema = z.object({
    * Stelle, die jede Erweiterung anfassen muss.
    */
   countsTowardYield: z.boolean(),
+  /**
+   * Wie die Oberflaeche eine Seite zeigt.
+   *
+   * Ein Ereigniswuerfel hat sechs Seiten und keine Augen - sechs Punkte zu
+   * malen, wo ein Schiff gehoert, waere schlimmer als gar kein Bild. Das steht
+   * als Datenfeld hier und nicht als Fallunterscheidung nach Id im Browser:
+   * die Wuerfelschale wird gefragt, nicht der Name.
+   *
+   * **Was** die Symbole bedeuten, steht weiterhin nicht hier, sondern bei der
+   * Erweiterung, die sie einfuehrt (`game/cities/event.ts`). Hier steht nur,
+   * dass ueberhaupt welche zu malen sind.
+   *
+   * Mit Vorgabe, damit gespeicherte Regelwerke ohne dieses Feld weiter parsen.
+   */
+  render: z.enum(['pips', 'event']).default('pips'),
 });
 
 export type DieSpec = z.infer<typeof DieSpecSchema>;
@@ -46,6 +61,6 @@ export type DiceSpec = z.infer<typeof DiceSpecSchema>;
  * Zahlenverteilung des Bretts.
  */
 export const CLASSIC_DICE: DiceSpec = [
-  { id: 'first', faces: 6, countsTowardYield: true },
-  { id: 'second', faces: 6, countsTowardYield: true },
+  { id: 'first', faces: 6, countsTowardYield: true, render: 'pips' },
+  { id: 'second', faces: 6, countsTowardYield: true, render: 'pips' },
 ];

@@ -139,7 +139,6 @@ function DoorMark(): JSX.Element {
  * Anzeige als gar keine: „umsonst" ist eine Auskunft, ein leerer Fleck sieht
  * aus wie ein Fehler.
  */
-const EMPTY_COST = { brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 } as const;
 
 /** Der Satz zum zweiten Schritt - benannt wird, was der Spieler tut (Regel 8). */
 const BUILD_HINTS: Readonly<Record<BuildableKind, string>> = {
@@ -241,6 +240,13 @@ export function GameScreen({
   }, [view.version]);
 
   const targets = useMemo(() => targetsFrom(actions), [actions]);
+
+  /**
+   * Der Preis einer Entwicklungskarte - `undefined`, wenn dieser Tisch keine
+   * kennt. In Staedte & Ritter ersetzen die Fortschrittskarten sie ganz, und
+   * das Regelwerk sagt das, indem es sie nicht preist.
+   */
+  const developmentCost = view.rules.buildCosts.developmentCard;
 
   /**
    * Was auf dem Brett leuchtet.
@@ -618,14 +624,23 @@ export function GameScreen({
            */}
           <OpenAwards awards={openAwards(display.awards)} />
 
-          <DeckPanel
-            left={display.deckLeft}
-            canBuy={targets.buyCard !== null}
-            cost={view.rules.buildCosts.developmentCard ?? EMPTY_COST}
-            onBuy={() => {
-              if (targets.buyCard !== null) onAct(targets.buyCard);
-            }}
-          />
+          {/*
+           * Kein Kaufstapel an einem Tisch, der keine Entwicklungskarten
+           * kennt. Bis zur Erweiterung stand hier ein Ersatzpreis aus lauter
+           * Nullen fuer den Fall, dass das Regelwerk keinen nennt - und
+           * "kostenlos" ist genau die falsche Auskunft ueber etwas, das es
+           * nicht gibt. Was das Regelwerk nicht preist, wird nicht angeboten.
+           */}
+          {developmentCost === undefined ? null : (
+            <DeckPanel
+              left={display.deckLeft}
+              canBuy={targets.buyCard !== null}
+              cost={developmentCost}
+              onBuy={() => {
+                if (targets.buyCard !== null) onAct(targets.buyCard);
+              }}
+            />
+          )}
 
           <SupplyPanel
             bank={view.bank}

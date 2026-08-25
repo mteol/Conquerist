@@ -44,7 +44,10 @@ export const DevelopmentCardSchema = z.object({
 export type DevelopmentCard = z.infer<typeof DevelopmentCardSchema>;
 
 /** Wie viele Karten je Art der Stapel enthaelt - die Zahlen stehen im RuleSet. */
-export const DevelopmentDeckSchema = z.record(DevelopmentCardIdSchema, z.number().int().min(0));
+export const DevelopmentDeckSchema = z.partialRecord(
+  DevelopmentCardIdSchema,
+  z.number().int().min(0),
+);
 
 export type DevelopmentDeck = z.infer<typeof DevelopmentDeckSchema>;
 

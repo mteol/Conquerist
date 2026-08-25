@@ -102,6 +102,15 @@ export const MIN_VICTORY_POINT_GOAL = 5;
 export const MAX_VICTORY_POINT_GOAL = 20;
 export const DEFAULT_VICTORY_POINT_GOAL = 10;
 
+/**
+ * Die Vorgabe fuer Staedte & Ritter.
+ *
+ * Steht neben der anderen und nicht in `cities.ts`, weil der Wartebereich
+ * beide braucht: er schlaegt beim Umstellen des Regelwerks die passende Zahl
+ * vor, und dafuer muss er sie kennen, ohne die Erweiterung zu laden.
+ */
+export const DEFAULT_VICTORY_POINT_GOAL_CITIES = 13;
+
 export const RuleSetSchema = z.object({
   /** Stabiler Bezeichner, etwa `"classic"`. */
   id: z.string().min(1),
@@ -124,8 +133,16 @@ export const RuleSetSchema = z.object({
     .array(CardIdSchema)
     .min(1)
     .default([...RESOURCE_IDS]),
-  /** Was jedes Bauteil kostet. */
-  buildCosts: z.record(BuildableIdSchema, CardAmountsSchema),
+  /**
+   * Was jedes Bauteil kostet.
+   *
+   * **Teilweise, und das ist die Aussage:** was hier fehlt, gibt es an diesem
+   * Tisch nicht. Staedte & Ritter kennt keine Entwicklungskarte, und ihr einen
+   * Preis zu geben, den niemand zahlen darf, waere eine Zeile, die luegt.
+   * `canBuyDevelopmentCard` weist einen fehlenden Preis ausdruecklich ab -
+   * fehlend heisst nicht kostenlos.
+   */
+  buildCosts: z.partialRecord(BuildableIdSchema, CardAmountsSchema),
   /** Wie viele Teile jeder Spieler insgesamt bauen kann. */
   pieceStock: z.record(PieceIdSchema, z.number().int().min(1)),
   /** Wie viele Karten je Ressource die Bank vorhaelt. */
@@ -150,10 +167,33 @@ export const RuleSetSchema = z.object({
   longestRoadMinimum: z.number().int().min(1),
   /** Ab wie vielen ausgespielten Rittern die Groesste Rittermacht vergeben wird. */
   largestArmyMinimum: z.number().int().min(1),
-  /** Wie viele Entwicklungskarten je Art im Stapel liegen. */
+  /**
+   * Wie viele Entwicklungskarten je Art im Stapel liegen.
+   *
+   * Leer heisst: keinen Stapel. So kommt Staedte & Ritter ohne
+   * Entwicklungskarten aus, ohne dass irgendwo ein Sonderfall steht.
+   */
   developmentDeck: DevelopmentDeckSchema,
   /** Ab wie vielen Handkarten bei einer Sieben abgeworfen wird. */
   handLimitBeforeDiscard: z.number().int().min(1),
+
+  /**
+   * Wie viele Felder die Fahrstrecke des Barbarenschiffs hat.
+   *
+   * Null heisst: an diesem Tisch faehrt kein Schiff. Damit ist die Erweiterung
+   * eine Zahl im Regelwerk und kein zweiter Codepfad (Regel 5) - und die
+   * Frage "spielt dieser Tisch Staedte & Ritter" hat eine Antwort, die ein
+   * Merkmal ist und kein Name.
+   */
+  barbarianTrack: z.number().int().min(0).default(0),
+
+  /**
+   * Ob mit den Marken Burg 1 und Burg 2 gespielt wird (Etappe 10e).
+   *
+   * Sagt, **ob** - wo sie liegen, steht im `GameState`. Zwei aehnliche Namen,
+   * zwei verschiedene Fragen.
+   */
+  castleTurns: z.boolean().default(false),
 
   /**
    * Wie lange ein Angebot an die Mitspieler auf dem Tisch liegt, in
@@ -239,6 +279,9 @@ export const CLASSIC_RULES: RuleSet = {
   },
   handLimitBeforeDiscard: 7,
   tradeOfferMs: 60_000,
+
+  barbarianTrack: 0,
+  castleTurns: false,
 
   dice: CLASSIC_DICE,
   robberRoll: 7,

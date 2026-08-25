@@ -25,7 +25,7 @@ import {
 } from './fixtures.js';
 import type { GameState } from './state.js';
 
-const ROAD_COST = CLASSIC_RULES.buildCosts.road;
+const ROAD_COST = CLASSIC_RULES.buildCosts.road!;
 const SETTLEMENT_COST = CLASSIC_RULES.buildCosts.settlement;
 const CITY_COST = CLASSIC_RULES.buildCosts.city;
 

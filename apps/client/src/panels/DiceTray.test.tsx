@@ -160,7 +160,9 @@ describe('DiceTray', () => {
    * schlechter als keine - dann bleibt es beim Umspringen an Ort und Stelle.
    */
   it('wirft nicht, was kein Kubus ist', () => {
-    const eight: DiceSpec = [{ id: 'first', faces: 8, countsTowardYield: true }];
+    const eight: DiceSpec = [
+      { id: 'first', faces: 8, countsTowardYield: true, render: 'pips' as const },
+    ];
 
     render(
       tray({
@@ -179,7 +181,10 @@ describe('DiceTray', () => {
 
   it('zeigt so viele Wuerfel, wie das Regelwerk hat', () => {
     // Die Erweiterungsprobe: ein dritter Wuerfel braucht hier keine Zeile.
-    const spec: DiceSpec = [...CLASSIC_DICE, { id: 'event', faces: 6, countsTowardYield: false }];
+    const spec: DiceSpec = [
+      ...CLASSIC_DICE,
+      { id: 'event', faces: 6, countsTowardYield: false, render: 'pips' as const },
+    ];
 
     const { container } = render(tray({ spec }));
 
@@ -194,7 +199,9 @@ describe('DiceTray', () => {
   });
 
   it('schreibt die Zahl aus, wo es kein gewohntes Augenbild gibt', () => {
-    const spec: DiceSpec = [{ id: 'gross', faces: 12, countsTowardYield: true }];
+    const spec: DiceSpec = [
+      { id: 'gross', faces: 12, countsTowardYield: true, render: 'pips' as const },
+    ];
     const roll: Roll = [{ die: 'gross', value: 11 }];
 
     const { container } = render(tray({ spec, roll, total: 11 }));

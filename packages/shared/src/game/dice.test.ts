@@ -16,7 +16,7 @@ import { rollAll, yieldTotal } from './dice.js';
 /** Eine Schale mit einem dritten, nicht mitzaehlenden Wuerfel - die Erweiterungsprobe. */
 const WITH_EVENT_DIE: DiceSpec = [
   ...CLASSIC_DICE,
-  { id: 'event', faces: 6, countsTowardYield: false },
+  { id: 'event', faces: 6, countsTowardYield: false, render: 'pips' },
 ];
 
 describe('rollAll', () => {
@@ -28,8 +28,8 @@ describe('rollAll', () => {
 
   it('bleibt in den Augen des jeweiligen Wuerfels', () => {
     const spec: DiceSpec = [
-      { id: 'klein', faces: 2, countsTowardYield: true },
-      { id: 'gross', faces: 12, countsTowardYield: true },
+      { id: 'klein', faces: 2, countsTowardYield: true, render: 'pips' },
+      { id: 'gross', faces: 12, countsTowardYield: true, render: 'pips' },
     ];
 
     // Genug Wuerfe, dass eine Grenzverletzung nicht vom Seed abhaengt.

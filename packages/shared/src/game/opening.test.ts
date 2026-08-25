@@ -173,7 +173,7 @@ describe('applyOpeningRoll', () => {
     // fest, dass wirklich mindestens einmal gestochen wurde.
     const zweiseitig = {
       ...CLASSIC_RULES,
-      dice: [{ id: 'first', faces: 2, countsTowardYield: true }],
+      dice: [{ id: 'first', faces: 2, countsTowardYield: true, render: 'pips' as const }],
     };
     let stechen = 0;
 
@@ -213,7 +213,7 @@ describe('applyOpeningRoll', () => {
     // wiederholt sich, solange die Gleichen gleich bleiben.
     const zweiseitig = {
       ...CLASSIC_RULES,
-      dice: [{ id: 'first', faces: 2, countsTowardYield: true }],
+      dice: [{ id: 'first', faces: 2, countsTowardYield: true, render: 'pips' as const }],
     };
 
     for (const saat of SAATEN) {

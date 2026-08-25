@@ -145,8 +145,23 @@ function pay(
   };
 }
 
+/**
+ * Was ein Bauteil an diesem Tisch kostet.
+ *
+ * `buildCosts` ist seit der Erweiterung ein teilweiser Record: was fehlt, gibt
+ * es an diesem Tisch nicht (Staedte & Ritter kennt keine Entwicklungskarte).
+ * Strasse, Siedlung und Stadt nennt jedes Regelwerk - fehlten sie, waere das
+ * kein Spielzug, sondern ein Fehler in den Daten, und der soll laut sein.
+ *
+ * Deshalb hier ein `throw` und kein `ReduceResult`: dieselbe Grenze, die
+ * `createGame` fuer eine unmoegliche Tischgroesse zieht.
+ */
 function costOf(rules: RuleSet, piece: 'road' | 'settlement' | 'city'): CardAmounts {
-  return rules.buildCosts[piece];
+  const cost = rules.buildCosts[piece];
+  if (cost === undefined) {
+    throw new RangeError(`costOf: Das Regelwerk ${rules.id} nennt keinen Preis fuer ${piece}`);
+  }
+  return cost;
 }
 
 /** Prueft eine Strasse vollstaendig: Platz, Anschluss, Kosten, Vorrat. */

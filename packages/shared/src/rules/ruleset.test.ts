@@ -35,13 +35,14 @@ describe('CLASSIC_RULES', () => {
   it('nennt zu jedem Bauteil vollstaendige Kosten', () => {
     for (const buildable of BUILDABLE_IDS) {
       const cost = CLASSIC_RULES.buildCosts[buildable];
-      expect(Object.keys(cost).sort()).toEqual([...CARD_IDS].sort());
+      expect(cost).toBeDefined();
+      expect(Object.keys(cost!).sort()).toEqual([...CARD_IDS].sort());
     }
   });
 
   it('kostet nichts umsonst', () => {
     for (const buildable of BUILDABLE_IDS) {
-      const total = Object.values(CLASSIC_RULES.buildCosts[buildable]).reduce(
+      const total = Object.values(CLASSIC_RULES.buildCosts[buildable]!).reduce(
         (sum, amount) => sum + amount,
         0,
       );

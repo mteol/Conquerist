@@ -36,9 +36,17 @@ import {
  *   4. **Siegpunktkarten werden nie gespielt.** Sie zaehlen, und zwar still.
  */
 
-/** Was eine Entwicklungskarte kostet. */
-function priceOf(state: GameState): CardAmounts {
-  return state.rules.buildCosts.developmentCard ?? EMPTY_CARDS;
+/**
+ * Was eine Entwicklungskarte kostet - `null`, wenn es an diesem Tisch keine
+ * gibt.
+ *
+ * **Fehlend heisst nicht kostenlos.** Bis zur Erweiterung stand hier ein
+ * `?? EMPTY_CARDS`, und das haette in Staedte & Ritter - wo `buildCosts` die
+ * Entwicklungskarte gar nicht nennt - jede Karte zum Nulltarif hergegeben.
+ * Dass der Stapel dort ohnehin leer ist, haette den Fehler nur verdeckt.
+ */
+function priceOf(state: GameState): CardAmounts | null {
+  return state.rules.buildCosts.developmentCard ?? null;
 }
 
 /** Die zwei Bedingungen, die fuer Kauf und Ausspielen gleich sind. */
@@ -84,8 +92,16 @@ export function canBuyDevelopmentCard(state: GameState, player: PlayerId): RuleV
     return violation(RuleViolationCode.BANK_EMPTY, 'Der Entwicklungsstapel ist leer');
   }
 
+  const price = priceOf(state);
+  if (price === null) {
+    return violation(
+      RuleViolationCode.WRONG_PHASE,
+      'An diesem Tisch gibt es keine Entwicklungskarten',
+    );
+  }
+
   const hand = findPlayer(state, player)!;
-  if (!canAfford(hand.resources, priceOf(state))) {
+  if (!canAfford(hand.resources, price)) {
     return violation(
       RuleViolationCode.INSUFFICIENT_RESOURCES,
       `${player} kann keine Entwicklungskarte bezahlen`,
@@ -112,7 +128,18 @@ export function applyBuyDevelopmentCard(state: GameState, player: PlayerId): Red
     return rejected(violation(RuleViolationCode.BANK_EMPTY, 'Der Entwicklungsstapel ist leer'));
   }
 
+  /*
+   * `canBuyDevelopmentCard` oben hat den fehlenden Preis schon abgewiesen -
+   * hier steht die Pruefung ein zweites Mal, weil `subtractCards` mit
+   * `undefined` nicht rechnen kann und ein `!` an dieser Stelle genau die Art
+   * Zusage waere, die spaeter jemand still bricht.
+   */
   const cost = priceOf(state);
+  if (cost === null) {
+    return rejected(
+      violation(RuleViolationCode.WRONG_PHASE, 'An diesem Tisch gibt es keine Entwicklungskarten'),
+    );
+  }
 
   return ok({
     ...state,
