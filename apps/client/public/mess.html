@@ -1,0 +1,75 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Messung</title>
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    color: #eee;
+    font: 13px ui-monospace, monospace;
+  }
+  .rahmen {
+    display: inline-block;
+    margin: 8px;
+    vertical-align: top;
+  }
+  iframe {
+    border: 1px solid #444;
+    display: block;
+  }
+  b {
+    display: block;
+    padding: 2px 0;
+  }
+</style>
+<div id="rahmen"></div>
+<pre id="out">messe…</pre>
+<script>
+  // Zwei Fenster, an denen kein Scrollen die Vorgabe ist: Schreibtisch und
+  // Handy im Querformat.
+  const GROESSEN = [
+    { name: 'desktop', w: 1280, h: 800 },
+    { name: 'quer', w: 740, h: 360 },
+  ];
+
+  const host = document.getElementById('rahmen');
+  const frames = GROESSEN.map((g) => {
+    const box = document.createElement('div');
+    box.className = 'rahmen';
+    const label = document.createElement('b');
+    label.textContent = `${g.name} ${g.w}x${g.h}`;
+    const frame = document.createElement('iframe');
+    frame.width = g.w;
+    frame.height = g.h;
+    frame.src = '/';
+    box.append(label, frame);
+    host.append(box);
+    return { g, frame };
+  });
+
+  function messen(doc, win) {
+    const teile = {};
+    const scrollt = (el, name) => {
+      if (el === null) return;
+      teile[name] = {
+        inhalt: Math.round(el.scrollHeight),
+        sichtbar: Math.round(el.clientHeight),
+        ueberhang: Math.round(el.scrollHeight - el.clientHeight),
+      };
+    };
+    scrollt(doc.documentElement, 'seite');
+    scrollt(doc.querySelector('.start__panel'), 'start__panel');
+    scrollt(doc.querySelector('.lobby'), 'lobby');
+    return teile;
+  }
+
+  window.mess = () =>
+    frames.map(({ g, frame }) => ({
+      fenster: g.name,
+      ...messen(frame.contentDocument, frame.contentWindow),
+    }));
+
+  setTimeout(() => {
+    document.getElementById('out').textContent = JSON.stringify(window.mess(), null, 1);
+  }, 2500);
+</script>
