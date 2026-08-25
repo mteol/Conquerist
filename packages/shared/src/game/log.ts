@@ -1,5 +1,5 @@
 import type { Seat } from '../seats.js';
-import { RESOURCE_LABELS, resourceList } from './labels.js';
+import { CARD_LABELS, RESOURCE_LABELS, resourceList } from './labels.js';
 import type { GameAction } from './actions.js';
 import { yieldTotal } from './dice.js';
 import type { PlayerId } from './player.js';
@@ -111,7 +111,7 @@ function describeAction(
       return `${who} spielt Monopol auf ${RESOURCE_LABELS[action.resource]}`;
 
     case 'tradeWithBank':
-      return `${who} tauscht ${RESOURCE_LABELS[action.give]} gegen ${RESOURCE_LABELS[action.receive]}`;
+      return `${who} tauscht ${CARD_LABELS[action.give]} gegen ${CARD_LABELS[action.receive]}`;
 
     case 'offerTrade':
       return `${who} bietet ${resourceList(action.give)} für ${resourceList(action.want)}`;

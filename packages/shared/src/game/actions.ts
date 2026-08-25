@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { CardAmountsSchema } from '../rules/index.js';
-import { ResourceIdSchema } from '../scenario/index.js';
+import { CardIdSchema, ResourceIdSchema } from '../scenario/index.js';
 import { PlayerIdSchema } from './player.js';
 
 /**
@@ -84,8 +84,8 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   z.object({
     ...Base,
     type: z.literal('tradeWithBank'),
-    give: ResourceIdSchema,
-    receive: ResourceIdSchema,
+    give: CardIdSchema,
+    receive: CardIdSchema,
   }),
 
   /**

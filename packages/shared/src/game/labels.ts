@@ -1,6 +1,12 @@
 import type { CardAmounts } from '../rules/ruleset.js';
 import type { HarborDefinition } from '../scenario/harbor.js';
-import { RESOURCE_IDS, type ResourceId, type TerrainId } from '../scenario/terrain.js';
+import {
+  CARD_IDS,
+  type CardId,
+  type CommodityId,
+  type ResourceId,
+  type TerrainId,
+} from '../scenario/terrain.js';
 
 /**
  * Die deutschen Woerter zu den Ids.
@@ -23,6 +29,24 @@ export const RESOURCE_LABELS: Readonly<Record<ResourceId, string>> = {
   ore: 'Erz',
 };
 
+/**
+ * Die Handelswaren aus Staedte & Ritter.
+ *
+ * "Muenzen" steht im Plural, weil die Karte so heisst - eine einzelne Muenze
+ * gibt es im Spiel nicht.
+ */
+export const COMMODITY_LABELS: Readonly<Record<CommodityId, string>> = {
+  paper: 'Papier',
+  cloth: 'Tuch',
+  coin: 'Münzen',
+};
+
+/** Das deutsche Wort zu jeder Kartensorte - Rohstoff wie Handelsware. */
+export const CARD_LABELS: Readonly<Record<CardId, string>> = {
+  ...RESOURCE_LABELS,
+  ...COMMODITY_LABELS,
+};
+
 export const TERRAIN_LABELS: Readonly<Record<TerrainId, string>> = {
   hills: 'Hügel',
   forest: 'Wald',
@@ -41,8 +65,14 @@ export function harborLabel(harbor: HarborDefinition): string {
 
 /** Zaehlt eine Kartenmenge auf; leer bleibt nicht leer, sondern wird benannt. */
 export function resourceList(amounts: CardAmounts): string {
-  const parts = RESOURCE_IDS.filter((resource) => (amounts[resource] ?? 0) > 0).map(
-    (resource) => `${amounts[resource] ?? 0} ${RESOURCE_LABELS[resource]}`,
+  /*
+   * Ueber `CARD_IDS` und nicht ueber `RESOURCE_IDS`: eine Handelsware liegt
+   * auf derselben Hand und geht ueber denselben Tisch. In einer Basispartie
+   * steht trotzdem nie eine dabei - dort ist ihre Menge null, und was null
+   * ist, wird nicht genannt.
+   */
+  const parts = CARD_IDS.filter((card) => (amounts[card] ?? 0) > 0).map(
+    (card) => `${amounts[card] ?? 0} ${CARD_LABELS[card]}`,
   );
 
   return parts.length === 0 ? 'nichts' : parts.join(', ');

@@ -1,5 +1,5 @@
 import type { CardAmounts } from '../rules/index.js';
-import type { ResourceId } from '../scenario/index.js';
+import type { CardId } from '../scenario/index.js';
 import { boardOf } from './board.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { PlayerId } from './player.js';
@@ -40,8 +40,18 @@ export interface HarborSource {
  * Ein Hafen zaehlt, wenn der Spieler auf einem der beiden Knoten seiner Kante
  * gebaut hat - Siedlung wie Stadt. Der 2:1-Hafen gilt nur fuer seine eigene
  * Ressource, der 3:1-Hafen fuer jede.
+ *
+ * **Handelswaren gehen hier ohne Sonderfall durch.** Ein 2:1-Hafen traegt
+ * immer einen Rohstoff, und `harbor.resource !== give` ist fuer jede
+ * Handelsware damit schon wahr - es gibt keinen Papierhafen, und ein Erzhafen
+ * macht Muenzen nicht billiger. Der 3:1-Hafen (`resource === undefined`)
+ * greift dagegen weiter, und das ist die Regel: "Wer ueber einen 3:1-Hafen
+ * verfuegt, darf Handelswaren auch im Verhaeltnis 3:1 tauschen."
+ *
+ * Das steht hier, weil die Stelle beim naechsten Lesen sonst aussieht, als
+ * haette jemand den Fall vergessen.
  */
-export function tradeRateFor(state: HarborSource, player: PlayerId, give: ResourceId): number {
+export function tradeRateFor(state: HarborSource, player: PlayerId, give: CardId): number {
   const board = boardOf(state.scenario);
   let best = DEFAULT_RATE;
 
@@ -61,8 +71,8 @@ export function tradeRateFor(state: HarborSource, player: PlayerId, give: Resour
 export function canTradeWithBank(
   state: GameState,
   player: PlayerId,
-  give: ResourceId,
-  receive: ResourceId,
+  give: CardId,
+  receive: CardId,
 ): RuleViolation | null {
   if (give === receive) {
     return violation(
@@ -95,8 +105,8 @@ export function canTradeWithBank(
 export function applyTradeWithBank(
   state: GameState,
   player: PlayerId,
-  give: ResourceId,
-  receive: ResourceId,
+  give: CardId,
+  receive: CardId,
 ): ReduceResult {
   const problem = canTradeWithBank(state, player, give, receive);
   if (problem !== null) return rejected(problem);
