@@ -64,12 +64,29 @@ const UNITS: Readonly<Record<AwardId, string>> = {
   largestArmy: 'Ritter',
 };
 
-/** Beide Auszeichnungen, in fester Reihenfolge - sie sollen nicht springen. */
+/**
+ * Die Auszeichnungen **dieses Tisches**, in fester Reihenfolge - sie sollen
+ * nicht springen.
+ *
+ * "Dieses Tisches" ist neu und im Browser aufgefallen: in Staedte & Ritter gibt
+ * es die Groesste Rittermacht nicht, die Sondersiegpunkttafel bleibt in der
+ * Schachtel. Ihre Karte lag trotzdem am Tisch und versprach "ab 3 Ritter" -
+ * ein Wettlauf, den niemand laufen kann, um einen Preis, der null zaehlt.
+ *
+ * Woran es haengt, ist der Punktwert im Regelwerk und kein Name: was null
+ * einbringt, wird nicht vergeben. Damit braucht die Erweiterung hier keinen
+ * Eintrag, und ein spaeteres Regelwerk ohne Handelsstrasse auch nicht.
+ */
 export function awardsOf(view: PlayerView): readonly Award[] {
+  const pointsOf = (id: AwardId): number =>
+    id === 'longestRoad'
+      ? view.rules.victoryPoints.longestRoad
+      : view.rules.victoryPoints.largestArmy;
+
   const seatOf = (id: PlayerId | null): PlayerView['players'][number] | undefined =>
     id === null ? undefined : view.players.find((player) => player.id === id);
 
-  return AWARD_IDS.map((id): Award => {
+  return AWARD_IDS.filter((id) => pointsOf(id) > 0).map((id): Award => {
     const holder = id === 'longestRoad' ? view.longestRoad.holder : view.largestArmy.holder;
     const value = id === 'longestRoad' ? view.longestRoad.length : view.largestArmy.size;
     const seat = seatOf(holder);
@@ -83,10 +100,7 @@ export function awardsOf(view: PlayerView): readonly Award[] {
       holderColor: seat?.color ?? null,
       value,
       minimum: id === 'longestRoad' ? view.rules.longestRoadMinimum : view.rules.largestArmyMinimum,
-      points:
-        id === 'longestRoad'
-          ? view.rules.victoryPoints.longestRoad
-          : view.rules.victoryPoints.largestArmy,
+      points: pointsOf(id),
       unit: UNITS[id],
     };
   });

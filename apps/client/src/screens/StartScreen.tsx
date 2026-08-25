@@ -6,8 +6,10 @@ import {
   generateScenario,
   type GameState,
   type RoomSummary,
+  citiesRulesFor,
   rulesFor,
   type ScenarioBlueprint,
+  type RoomVariant,
 } from '@conquerist/shared';
 import { MAX_SEATS, MIN_SEATS, SEAT_COLORS, defaultSeats, type Seat } from '../seats';
 import { BoardSvg } from '../board/BoardSvg';
@@ -204,6 +206,14 @@ export function StartScreen({
 }: StartScreenProps): JSX.Element {
   const [seats, setSeats] = useState<Seat[]>(() => defaultSeats(MIN_SEATS));
   const [seed, setSeed] = useState(randomSeed);
+
+  /**
+   * Nach welchem Regelwerk die lokale Partie laeuft.
+   *
+   * Nur hier - der Online-Weg fuehrt nicht ueber diesen Bildschirm, dort steht
+   * die Wahl im Wartebereich.
+   */
+  const [variant, setVariant] = useState<RoomVariant>('classic');
   const [localProblem, setLocalProblem] = useState<string | null>(null);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [name, setName] = useState(initialName);
@@ -254,7 +264,7 @@ export function StartScreen({
       const scenario = generateScenario(blueprint, seed);
       return createGame(
         scenario,
-        rulesFor(seats.length),
+        variant === 'cities' ? citiesRulesFor(seats.length) : rulesFor(seats.length),
         seats.map((entry) => entry.id),
         seed,
       );
@@ -263,7 +273,7 @@ export function StartScreen({
       // Was schiefging, sagt beim Starten die Meldung aus `createGame`.
       return null;
     }
-  }, [blueprint, seed, seats]);
+  }, [blueprint, seed, seats, variant]);
 
   const resize = (count: number): void => {
     // Bereits eingetragene Namen ueberleben das Vergroessern.
@@ -389,6 +399,35 @@ export function StartScreen({
                       onChange={() => resize(count)}
                     />
                     <label htmlFor={`seatcount-${count}`}>{count}</label>
+                  </span>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
+
+          {showsBoard ? (
+            <fieldset className="field-group">
+              {/*
+               * Dieselbe Wahl wie im Wartebereich, und aus demselben Grund
+               * dieselbe Form: zwei Moeglichkeiten, zwei Knoepfe. Sie steht
+               * hier vor dem Seed, weil sie bestimmt, was das Brett traegt -
+               * und die Vorschau daneben rechnet mit ihr.
+               */}
+              <legend>Regelwerk</legend>
+              <div className="variantpick">
+                {(['classic', 'cities'] as const).map((choice) => (
+                  <span key={choice}>
+                    <input
+                      id={`variant-${choice}`}
+                      type="radio"
+                      name="variant"
+                      aria-label={choice === 'cities' ? 'Städte & Ritter' : 'Basisspiel'}
+                      checked={variant === choice}
+                      onChange={() => setVariant(choice)}
+                    />
+                    <label htmlFor={`variant-${choice}`}>
+                      {choice === 'cities' ? 'Städte & Ritter' : 'Basisspiel'}
+                    </label>
                   </span>
                 ))}
               </div>

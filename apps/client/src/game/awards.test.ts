@@ -101,3 +101,33 @@ describe('Auszeichnungen', () => {
     expect(awardTitle(army!)).toContain('2 Siegpunkte');
   });
 });
+
+/**
+ * Was null einbringt, wird nicht vergeben.
+ *
+ * In Staedte & Ritter bleibt die Sondersiegpunkttafel "Groesste Rittermacht" in
+ * der Schachtel. Ihre Karte lag trotzdem am Tisch und versprach "ab 3 Ritter" -
+ * ein Wettlauf, den niemand laufen kann, um einen Preis, der null zaehlt. Im
+ * Browser aufgefallen, nicht gerechnet.
+ */
+describe('Auszeichnungen, die es an diesem Tisch nicht gibt', () => {
+  it('laesst die Rittermacht weg, wenn sie null Punkte bringt', () => {
+    const state = afterSetup();
+    const ohne: GameState = {
+      ...state,
+      rules: {
+        ...state.rules,
+        victoryPoints: { ...state.rules.victoryPoints, largestArmy: 0 },
+      },
+    };
+
+    expect(awardsOf(viewOf(ohne)).map((award) => award.id)).toEqual(['longestRoad']);
+  });
+
+  it('zeigt im Basisspiel weiterhin beide', () => {
+    expect(awardsOf(viewOf(afterSetup())).map((award) => award.id)).toEqual([
+      'longestRoad',
+      'largestArmy',
+    ]);
+  });
+});

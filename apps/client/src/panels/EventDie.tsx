@@ -59,15 +59,32 @@ const SHIP: JSX.Element = (
  * unter der Grenze, an der schon die Auszeichnungsmotive entworfen wurden. Ein
  * Zeichen, das man nur kennt, wenn man es schon kennt, traegt nichts.
  *
- * Jetzt ist der Bogen eine Linie und das Motiv fuellt ihn aus: rund neunzehn
- * Pixel auf der ruhenden Seite. Die Form sagt "Stadttor", das Motiv sagt
- * welcher Bereich, die Farbe sagt es noch einmal.
+ * Jetzt ist der Bogen eine Linie und das Motiv fuellt ihn aus. **Die Zahl
+ * dahinter ist gemessen und nicht gerechnet**, und der erste Versuch lag
+ * daneben: hier stand "rund neunzehn Pixel", im Browser waren es 13,8. Der
+ * Grund ist, dass ein Motiv seinen 24er-Kasten nicht ausfuellt - das Tuch
+ * belegt davon fuenfzehn Einheiten in der Breite, nicht vierundzwanzig. Wer
+ * eine Groesse aus einem `scale` herleitet, rechnet mit dem Kasten und sieht
+ * die Form.
+ *
+ * Mit `scale(0.78)` sind es am Ort gemessene **14,9 x 17,9 Pixel** fuer das
+ * Papiermotiv - vorher waren es 9,6 x 11,5. Der Bogen ist dafuer duenner
+ * geworden (1,8 statt 2,2, gemessen 2,9 statt 3,5 Pixel): bei 3,5 auf einer 38
+ * Pixel breiten Seite war er der Held und nicht der Rahmen.
+ *
+ * Gemessen wurde am eingehaengten Wuerfel und nicht an einer Kopie daneben:
+ * ein geklontes SVG bekommt seine Groesse vom Probenrahmen und nicht vom
+ * Wuerfel, und lieferte prompt 17,4 x 22,4 - eine Zahl ueber etwas, das so
+ * nirgends steht.
+ *
+ * Die Form sagt "Stadttor", das Motiv sagt welcher Bereich, die Farbe sagt es
+ * noch einmal.
  */
 function Gate({ face }: { readonly face: Exclude<EventFace, 'ship'> }): JSX.Element {
   return (
     <g className={`die__event-gate die__event-gate--${face}`}>
-      <path d="M3 22 V11 a9 9 0 0 1 18 0 V22" className="die__event-arch" />
-      <g className="die__event-motif" transform="translate(6 6.5) scale(0.5)">
+      <path d="M2 22 V10.5 a10 10 0 0 1 20 0 V22" className="die__event-arch" />
+      <g className="die__event-motif" transform="translate(3 3.2) scale(0.78)">
         {COMMODITY_SHAPES[COMMODITY_OF[face]]}
       </g>
     </g>

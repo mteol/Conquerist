@@ -5988,3 +5988,200 @@ braucht, nimmt ihn aus dem Zustand (`state.players[0]`), nicht aus der Sitzliste
   Karte zieht um, und niemand erklärt warum — genau die Lücke, die Designregel 5
   sonst schließt. `describeTransition` in `shared` wäre der Ort, mit Test; hier
   bewußt nicht mitgemacht, weil es Spiellogik ist und nicht Oberfläche.
+
+---
+
+## Etappe 10a — Handelswaren und der dritte Würfel (2026-08-26, `etappe-10-staedte-und-ritter`)
+
+Der Beginn von **Städte & Ritter**. Die Regeln liegen als Referenz in
+`docs/regeln-staedte-und-ritter.md`, der Entwurf für alle fünf Teiletappen in
+`docs/superpowers/specs/2026-08-25-staedte-und-ritter-design.md`, der Plan für
+diese in `docs/superpowers/plans/2026-08-25-etappe-10a-handelswaren-und-der-dritte-wuerfel.md`.
+
+Was jetzt geht: eine Partie nach Städte-&-Ritter-Regeln, im Wartebereich und
+lokal wählbar. Drei Würfel, davon einer mit Symbolen. Handelswaren als eigene
+Karten auf der Hand, im Bank- und Hafenhandel, im Abwurf und im Angebot.
+Gründung mit Siedlung **und Stadt**. 13 Siegpunkte, keine Entwicklungskarten,
+keine Größte Rittermacht. Das Barbarenschiff fährt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                 |
+| ------------------- | -------------------------------------------------------- |
+| `pnpm typecheck`    | grün                                                     |
+| `pnpm test`         | grün — shared 703 / 42, server 211 / 22, client 459 / 44 |
+| `pnpm build`        | grün, Client-Bundle 451 kB (133 kB gzip), CSS 55.9 kB    |
+| `pnpm format:check` | grün                                                     |
+
+Vorher: 638 / 202 / 432. Neu also 65 Tests in `shared`, 9 im Server, 27 im
+Client.
+
+### Getroffene Entscheidungen
+
+**Ein Mengensatz, zwei Id-Typen.** Handelswaren liegen auf derselben Hand wie
+Rohstoffe und werden gestohlen, abgeworfen und gehandelt wie sie — ein zweiter
+Mengensatz daneben müßte jede Handoperation doppelt führen und wäre eine zweite
+Wahrheit über dieselbe Hand. `ResourceAmounts` heißt deshalb `CardAmounts` und
+hat als Schlüssel `CardId` (acht Sorten). `ResourceId` bleibt der enge Typ:
+Baukosten, Häfen, Geländeertrag und das Aquädukt behalten ihn und sind damit
+compilergeschützt. Der Rename ging über 39 Dateien und hat kein Verhalten
+geändert — gemessen daran, daß 647 / 202 / 432 Tests grün blieben, ohne daß eine
+Erwartung angefaßt wurde.
+
+**Zod 4 macht ein `z.record` mit Enum-Schlüssel erschöpfend, und das wäre
+beinahe teuer geworden.** Seit Etappe 6 liegt der Startzustand jeder Partie als
+JSON in der Datenbank; die dort abgelegten Mengensätze haben fünf Schlüssel.
+Erwartet hatte ich einen stillen Rechenfehler (`undefined - 0` ist `NaN`).
+Tatsächlich schlägt schon das **Einlesen** fehl: sechs Testfehler, alle mit
+„expected number, received undefined". Ohne `partialRecord` wäre beim nächsten
+Serverstart jede laufende Partie weg gewesen. Eingelesen wird jetzt, was
+dasteht; `cardAmounts` ergänzt den Rest mit null.
+
+Damit fällt eine Zusage weg, und sie steht als Test da: eine ausgelassene Sorte
+in einer Kostenzeile wird nicht mehr abgewiesen, sie bedeutet null. Was bleibt,
+ist der Schutz vor dem Tippfehler — einen Schlüssel, den es nicht gibt, weist
+Zod weiterhin ab.
+
+**Fehlend heißt nicht kostenlos.** Aus derselben Umstellung sind `buildCosts`
+und `developmentDeck` teilweise geworden: was fehlt, gibt es an diesem Tisch
+nicht. `priceOf` gab bisher `EMPTY_CARDS` zurück, wenn das Regelwerk keinen
+Preis nennt — in Städte & Ritter hätte das jede Entwicklungskarte zum Nulltarif
+hergegeben, und der leere Stapel hätte den Fehler nur verdeckt. Am Bildschirm
+fällt aus demselben Grund der Kaufstapel weg, wo das Regelwerk ihn nicht preist:
+dort stand ein Ersatzpreis aus lauter Nullen, und „kostenlos" ist die falsche
+Auskunft über etwas, das es nicht gibt.
+
+**Welche Kartensorten am Tisch liegen, ist Daten** (`RuleSet.cards`). Sonst böte
+`legalActions` an einem Basistisch vierundsechzig Bankgeschäfte statt
+fünfundzwanzig. Nicht aus `resourceBank` abgeleitet — ein Vorrat darf mitten in
+der Partie auf null fallen, und eine Sorte verschwände dann aus der Bedienung.
+
+**Der Ereigniswürfel fällt in der Schale, seine Bedeutung liegt woanders.**
+`DieSpec.render` sagt, ob eine Seite Augen oder Symbole trägt — ein Datenfeld
+und keine Fallunterscheidung nach Id im Browser. **Was** die Symbole bedeuten,
+steht in `game/cities/event.ts`; `rules/dice.ts` schließt das im Kopf
+ausdrücklich aus. Der rote Würfel heißt weiter `second`: eine dritte Id machte
+jeden gespeicherten Wurf unlesbar.
+
+**Woran die Erweiterung hängt, ist ein Merkmal und kein Name.** Ob die zweite
+Setzung eine Stadt ist, entscheidet `rules.barbarianTrack > 0` und nicht
+`rules.id === 'cities'`. Wer eine Variante baut, die Handelswaren kennt und
+anders heißt, bekäme sonst die falsche Gründung.
+
+**Die Handelsware ist dieselbe Karte in anderer Ausführung.** Pergamentkörper
+mit geländefarbenem Rand statt ganzflächiger Geländefarbe. Papier kommt aus dem
+Wald, aber Holz und Papier dürfen nicht gleich aussehen — man hält beide
+gleichzeitig und zählt sie vor dem Abwerfen unter Zeitdruck. Zwei Komponenten
+wären zwei Gelegenheiten auseinanderzulaufen; die Begründung stand im Kopf von
+`ResourceCard.tsx` schon, als es fünf Sorten gab.
+
+**Die Farbe trägt am Ereigniswürfel nicht allein.** Die drei Stadttore heißen in
+der Schachtel nur gelb, blau und grün. Hier steht in jedem Tor zusätzlich das
+Motiv der Handelsware, mit der sein Bereich bezahlt wird — wer ein gelbes Tor
+sieht, soll wissen, daß er Tuch verbaut hat.
+
+**Das Schiff gleitet, es springt nicht.** Eine `transition` auf `transform` und
+keine `animation`: eine Animation läuft beim Einhängen und nicht beim
+Aktualisieren, und hier bleibt derselbe Knoten stehen. Der Stand kommt aus
+derselben zurückgehaltenen `view` wie alles andere — das Schiff rückt vor,
+**nachdem** die Würfel liegen.
+
+**`THROW_MS` rechnete den Versatz von zwei Würfeln ein.** Der dritte ist 140 ms
+nach dem ersten unterwegs; der Tisch wäre aufgegangen, während er noch rollte,
+und der Verlaufssatz stünde wieder vor dem Wurf — genau der Fehler, gegen den
+es `useSettledRoll` gibt. Gezählt wird jetzt, was wirklich fällt (`throwMs`),
+und der Versatz steht nur noch an einem Ort statt in Blatt und Bauteil.
+
+### Der Durchgang im Browser — vier Befunde, alle gemessen
+
+Zum ersten Mal seit Etappe 8 ist die Oberfläche im Browser angesehen worden.
+Vier Dinge sind dabei aufgefallen, die kein Test gefunden hat.
+
+**1. Die Regelwerkswahl überlappte sich.** Sie stand in `.seatcount`, und dessen
+Label ist ein 2,9 rem breites Sechseck für **eine Ziffer**. „Städte & Ritter"
+lief darüber hinaus. Eigene Klasse `.variantpick`, Breite folgt dem Wort;
+nachgemessen liegt „Basisspiel" jetzt bei 48–145 px und „Städte & Ritter"
+beginnt bei 153.
+
+**2. Die Barbarenleiste lag auf dem Tischpanel.** Beide standen fest oben links.
+Die Höhe des Tisches hängt an der Zahl der Spieler (gemessen 104 px zu dritt),
+also kann kein fester Abstand darunter stimmen — eine Spalte, in der beide
+fließen, kann es. `.leftrail` trägt jetzt die Lage, `.panel--table` steht
+`static`. Nachgemessen: Tisch 12–116, Leiste 126–169.
+
+**3. „Größte Rittermacht" lag an einem Städte-&-Ritter-Tisch aus** und versprach
+„ab 3 Ritter" — ein Wettlauf, den niemand laufen kann, um einen Preis, der null
+zählt. `awardsOf` zählt jetzt nur auf, was das Regelwerk auch bepunktet. Woran
+es hängt, ist der Punktwert und kein Name: damit braucht ein späteres Regelwerk
+ohne Handelsstraße hier auch keinen Eintrag.
+
+**4. Der farbige Rand der Handelsware kam im Handelsdialog nie an.** Die Regel
+stand da, gegriffen hat sie nie: `.rescard` deklariert weiter unten im Blatt die
+**Kurzform** `border: 1px solid …`, und bei gleicher Spezifität gewinnt die
+spätere Zeile. Gemessen 1 px in `rgba(22 32 42 / 55%)` statt 3 px in
+Geländefarbe — während dieselbe Absicht an der Handkarte ankam, weil ihr
+Selektor zwei Klassen hat. **Das ist die Falle, die in `CLAUDE.md` zweimal
+steht, und ich bin ein drittes Mal hineingelaufen.** Die Regel steht jetzt
+hinter `.rescard`; nachgemessen 3 px in `rgb(47 107 58)`.
+
+Dazu eine Korrektur an einer Zahl, die ich geschrieben und nicht gemessen
+hatte: das Motiv im Stadttor sollte „rund neunzehn Pixel" groß sein, im Browser
+waren es 13,8. Der Grund ist, daß ein Motiv seinen 24er-Kasten nicht ausfüllt —
+das Tuch belegt davon fünfzehn Einheiten in der Breite. Mit `scale(0.78)` sind
+es jetzt gemessene 14,9 × 17,9 px, und der Torbogen ist dafür dünner geworden
+(2,9 statt 3,5 px), weil er sonst der Held war und nicht der Rahmen.
+
+Eine Nebenbemerkung zur Meßweise: eine Sonde an einem **geklonten** SVG lieferte
+17,4 × 22,4 px — eine Zahl über etwas, das so nirgends steht, weil die Kopie
+ihre Größe vom Probenrahmen bekommt. Gemessen wird am eingehängten Element.
+
+**Was der Durchgang bestätigt hat:** der Server lädt **13 bestehende Räume** von
+der Platte — Migration und Kartenauffüllung halten am echten Bestand. Drei
+Würfel fallen, der dritte trägt ein Symbol und keine Augen. Die Vorleseansage
+lautet „Wurf: 2 und 5, zusammen 7, Ereignis: Handel". Nach der Gründung steht
+„Barbaren 3" (drei Städte). Das Schiff rückt bei Schiffswürfen vor. Tuch fällt
+an der Weide und liegt als Pergamentkarte neben Wolle und Erz. Der
+Handelsdialog trägt acht Sorten in zwei Reihen und läuft in einem 544 px
+breiten Fenster nicht über.
+
+### Abweichungen vom Plan
+
+**Aufgabe 10 (Bankhandel) wurde vor Aufgabe 4 gezogen.** `legalActions` über
+`rules.cards` zu zählen setzt voraus, daß `canTradeWithBank` eine `CardId`
+annimmt — sonst steht dazwischen ein Zustand, der nicht typprüft.
+
+**Die Wahl im StartScreen kam erst beim Browser-Durchgang dazu.** Sie stand im
+Plan und ist beim Abarbeiten untergegangen; aufgefallen ist es, weil ohne sie
+keine lokale Städte-&-Ritter-Partie zu starten war.
+
+### Offene Punkte
+
+- **Das Schiff hält ein Feld vor der Küste an.** Eine Zeile in `advanceShip`,
+  mit Begründung im Code. Der Kampf braucht Ritter; ohne sie wäre die
+  Verteidigung immer null, und alle sieben Schiffswürfe verlöre jeder
+  Städtebesitzer eine Stadt. Fällt in 10b.
+- **Die drei Stadttore des Ereigniswürfels werden gelesen und tun nichts.** Die
+  Fortschrittskarten kommen in 10d.
+- **Der Räuber ist frei wie im Basisspiel.** Die Sperre bis zum ersten Überfall
+  gehört zum Überfall und kommt mit ihm in 10b.
+- **Die Ritterstärke fehlt in der Barbarenleiste.** `defenders` ist `null`, weil
+  es noch keine Ritter gibt — eine Null, die niemals steigen kann, sagt „gerade
+  nicht" über etwas, das nie geht. Die Leiste nimmt die Zahl schon entgegen.
+- **Die Barbarenleiste ist noch leise gesetzt**, und das ist eine bewußte
+  Vertagung: sie trägt heute eine Zahl und ab 10b zwei, die gegeneinander
+  stehen. Ihre endgültige Gewichtung gehört in den Zug, in dem der Vergleich
+  entsteht.
+- **Der Handelsdialog ist nach der Korrektur gemessen, aber nicht neu
+  fotografiert** — der Renderer der Browser-Erweiterung fror beim Bildmachen ein
+  (ein bekanntes Verhalten). Die Messung am eingehängten Element ist die härtere
+  Auskunft, aber ein Bild fehlt.
+- **Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen.**
+  Die Leiste bekommt unter 40 rem eine kürzere Fahrstrecke; nachgemessen ist
+  auch das nicht.
+
+### Nächste Etappe
+
+**10b — Ritter und Barbaren.** Ritterfiguren auf Kreuzungen, bauen, aktivieren,
+aufwerten, versetzen, vertreiben, den Räuber vertreiben. Die Fahrstrecke bis zu
+Ende, der Kampf mit allen Sonderfällen, die Retter-Chips, die Stadtmauern und
+die Räubersperre.

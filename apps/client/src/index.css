@@ -331,6 +331,7 @@ body {
 .panel__error,
 .offline__text,
 .devcards__hint,
+.variantpick label,
 .counter {
   corner-shape: bevel;
 }
@@ -1058,6 +1059,59 @@ body {
   outline-offset: 3px;
 }
 
+/*
+ * Die Wahl des Regelwerks - zwei Woerter statt zwei Ziffern.
+ *
+ * Sie stand zuerst in `.seatcount`, und das war falsch gemessen: dessen Label
+ * ist ein 2.9rem breites Sechseck fuer eine einzelne Ziffer. "Staedte &
+ * Ritter" lief darueber hinaus und ueberlappte den Nachbarn - im Browser
+ * gesehen und nicht gerechnet.
+ *
+ * Dieselbe Mechanik (verstecktes Radiofeld, das Label ist der Knopf), aber die
+ * Breite folgt dem Wort. Der Schnitt ist der 45-Grad-Schnitt des ganzen
+ * Programms und nicht das Sechseck des Zaehlers: ein Sechseck sagt "eine von
+ * vielen Zahlen", hier sind es zwei Namen.
+ */
+.variantpick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.variantpick input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.variantpick label {
+  display: block;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid rgb(233 225 207 / 22%);
+  border-radius: 8px;
+  background: rgb(233 225 207 / 6%);
+  color: var(--on-sea);
+  font-weight: 700;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.variantpick label:hover {
+  background: rgb(233 225 207 / 14%);
+}
+
+.variantpick input:checked + label {
+  background: var(--parchment);
+  color: var(--ink-base);
+}
+
+.variantpick input:focus-visible + label {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 /* Eine Zeile je Sitz, mit dem Bauwerk in Spielerfarbe davor. */
 /*
  * Eine Zeile je Sitz. Die Masse sind gegen den Sechserfall gerechnet: sechs
@@ -1438,12 +1492,20 @@ body {
  * und zaehlt sie vor dem Abwerfen unter Zeitdruck; zwei Karten in derselben
  * Farbe und derselben Flaeche waeren im Vorbeisehen eine.
  *
- * Der Rand ist doppelt so breit wie der Kontur, sonst geht die Farbe neben dem
+ * Der Rand ist dreimal so breit wie der Kontur, sonst geht die Farbe neben dem
  * dunklen Kontur unter. `--ware-edge` setzt die Komponente per `style` - eine
  * Regel im Blatt kann die Farbe der Sorte nicht kennen.
+ *
+ * **Die Auswahlkarte hat ihre eigene Regel, und das ist kein Versehen.** Sie
+ * stand zuerst hier mit im Selektor und hat nie gegriffen: `.rescard`
+ * deklariert weiter unten die **Kurzform** `border: 1px solid …`, und bei
+ * gleicher Spezifitaet gewinnt die spaetere Zeile. Im Browser gemessen: 1 px
+ * in rgba(22 32 42 / 55%) statt 3 px in Gelaendefarbe, waehrend dieselbe
+ * Absicht an der Handkarte (Selektor mit zwei Klassen) sauber ankam. Genau die
+ * Falle, die in CLAUDE.md zweimal steht. Die Regel steht deshalb jetzt dort,
+ * wo `.rescard` steht - dahinter.
  */
-.card--ware .card__face,
-.rescard--ware {
+.card--ware .card__face {
   border-color: var(--ware-edge);
   border-width: 3px;
   background: var(--parchment);
@@ -2778,9 +2840,27 @@ body {
   font-size: 0.8rem;
 }
 
-.panel--table {
+/*
+ * Die linke Spalte: der Tisch, darunter die Fahrstrecke des Barbarenheers.
+ *
+ * Die Lage sitzt an der Spalte und nicht mehr am Tisch. Der Grund ist
+ * gemessen: der Tisch ist zu dritt 104 px hoch und zu sechst mehr, also kann
+ * kein fester Abstand fuer die Leiste darunter stimmen. In einer Spalte
+ * fliessen beide, und die Leiste rutscht mit.
+ */
+.leftrail {
+  position: absolute;
   top: 0.75rem;
   left: 0.75rem;
+  z-index: 2;
+  display: grid;
+  gap: 0.65rem;
+  justify-items: start;
+  pointer-events: none;
+}
+
+.panel--table {
+  position: static;
 }
 
 /*
@@ -2811,13 +2891,8 @@ body {
   --lane: 11rem;
   --ship: 1.5rem;
 
-  position: fixed;
-  top: 0.85rem;
-  left: 0.95rem;
-  z-index: 2;
   display: grid;
   gap: 0.25rem;
-  pointer-events: none;
 }
 
 .barbarians__lane {
@@ -4292,7 +4367,13 @@ body {
   stroke-linejoin: round;
 }
 
-/* Der Torbogen ist eine Linie, das Motiv darin die Flaeche. */
+/*
+ * Der Torbogen ist eine Linie, das Motiv darin die Flaeche.
+ *
+ * 1.8 und nicht 2.2: im Browser gemessen sind das 2.9 statt 3.5 Pixel auf
+ * einer 38 Pixel breiten Seite. Bei 3.5 war der Rahmen der Held und das Motiv
+ * der Zusatz - genau umgekehrt zur Absicht.
+ */
 .die__event-gate {
   fill: currentcolor;
 }
@@ -4300,7 +4381,7 @@ body {
 .die__event-arch {
   fill: none;
   stroke: currentcolor;
-  stroke-width: 2.2;
+  stroke-width: 1.8;
   stroke-linecap: round;
 }
 
@@ -5675,6 +5756,17 @@ body {
   color: var(--ink-base);
 }
 
+/*
+ * Dieselbe Handelsware, dieselbe Aussage - und hier, hinter `.rescard`, damit
+ * sie die Kurzform `border` von dort auch schlaegt. Siehe den Block bei
+ * `.card--ware .card__face`.
+ */
+.rescard--ware {
+  border-color: var(--ware-edge);
+  border-width: 3px;
+  background: var(--parchment);
+}
+
 /* Kleiner als auf der Handkarte - die Karte hier ist eine Auswahl, kein Stapel. */
 .rescard .card__glyph {
   width: 1.8rem;
@@ -6256,9 +6348,13 @@ body {
    * Die Spielerliste schrumpft auf eine Zeile: sie ist Auskunft, und auf einem
    * Handy ist der Platz oben links das Wertvollste, was das Brett hat.
    */
-  .panel--table {
+  .leftrail {
     top: 0.4rem;
     left: 0.4rem;
+    gap: 0.45rem;
+  }
+
+  .panel--table {
     font-size: 0.72rem;
   }
 

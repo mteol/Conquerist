@@ -501,40 +501,50 @@ export function GameScreen({
 
       <OpeningPanel view={display} />
 
-      <TablePanel view={display} />
+      {/*
+       * Die linke Spalte: der Tisch und darunter die Fahrstrecke.
+       *
+       * Beide standen zuerst einzeln oben links - und lagen im Browser
+       * uebereinander. Die Hoehe des Tisches haengt an der Zahl der Spieler
+       * (gemessen 104 px zu dritt), also kann kein fester Abstand darunter
+       * stimmen. Eine Spalte, in der beide fliessen, kann es.
+       */}
+      <div className="leftrail">
+        <TablePanel view={display} />
 
-      {/*
-       * **Der Status steht oben, neben der Tuer zum Verlauf.**
-       *
-       * Er lag zuletzt am Fuss der rechten Ecke, unter Kaufstapel und
-       * Bauteilen - also mitten in der Bedienung, obwohl er nichts ist, was man
-       * bedient. Zwischen den Dingen, nach denen man greift, unterbrach der
-       * Satz „Spieler 2 ist am Zug" jedesmal die Reihe, und der Blick musste
-       * ihn ueberspringen, um zu den Bauteilen zu kommen.
-       *
-       * Oben rechts steht er ueber leerer See und teilt sich die Zeile mit dem
-       * Verlauf. Das ist kein Ausweichen, sondern der Ort, an den er gehoert:
-       * beides ist Auskunft ueber den Gang der Partie - das eine staendig und
-       * beilaeufig, das andere selten und dann genau. Ein Ort fuer „was ist
-       * gerade", einer fuer „was liegt jetzt auf dem Tisch".
-       */}
-      {/*
-       * Die Fahrstrecke liest ihren Stand aus derselben `view` wie alles
-       * andere - und damit aus dem Stand, den `useSettledRoll` zurueckhaelt,
-       * solange die Wuerfel fliegen. Das Schiff rueckt vor, **nachdem** sie
-       * liegen; frueher erklaerte die Bewegung nicht mehr den Wechsel, sondern
-       * kaeme ihm hinterher.
-       *
-       * `defenders={null}`: es gibt noch keine Ritter, und eine Null, die
-       * niemals steigen kann, sagt "gerade nicht" ueber etwas, das nie geht.
-       * Die Zahl kommt in Etappe 10b dazu.
-       */}
-      <BarbarianTrack
-        barbarians={view.barbarians}
-        track={view.rules.barbarianTrack}
-        strength={barbarianStrength(view)}
-        defenders={null}
-      />
+        {/*
+         * **Der Status steht oben, neben der Tuer zum Verlauf.**
+         *
+         * Er lag zuletzt am Fuss der rechten Ecke, unter Kaufstapel und
+         * Bauteilen - also mitten in der Bedienung, obwohl er nichts ist, was man
+         * bedient. Zwischen den Dingen, nach denen man greift, unterbrach der
+         * Satz „Spieler 2 ist am Zug" jedesmal die Reihe, und der Blick musste
+         * ihn ueberspringen, um zu den Bauteilen zu kommen.
+         *
+         * Oben rechts steht er ueber leerer See und teilt sich die Zeile mit dem
+         * Verlauf. Das ist kein Ausweichen, sondern der Ort, an den er gehoert:
+         * beides ist Auskunft ueber den Gang der Partie - das eine staendig und
+         * beilaeufig, das andere selten und dann genau. Ein Ort fuer „was ist
+         * gerade", einer fuer „was liegt jetzt auf dem Tisch".
+         */}
+        {/*
+         * Die Fahrstrecke liest ihren Stand aus derselben `view` wie alles
+         * andere - und damit aus dem Stand, den `useSettledRoll` zurueckhaelt,
+         * solange die Wuerfel fliegen. Das Schiff rueckt vor, **nachdem** sie
+         * liegen; frueher erklaerte die Bewegung nicht mehr den Wechsel, sondern
+         * kaeme ihm hinterher.
+         *
+         * `defenders={null}`: es gibt noch keine Ritter, und eine Null, die
+         * niemals steigen kann, sagt "gerade nicht" ueber etwas, das nie geht.
+         * Die Zahl kommt in Etappe 10b dazu.
+         */}
+        <BarbarianTrack
+          barbarians={view.barbarians}
+          track={view.rules.barbarianTrack}
+          strength={barbarianStrength(view)}
+          defenders={null}
+        />
+      </div>
 
       <div className="topline">
         {/*
