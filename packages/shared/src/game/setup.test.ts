@@ -117,7 +117,11 @@ describe('applySetupSettlement', () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.state.buildings[CENTER_VERTEX]).toEqual({ owner: 'p1', kind: 'settlement' });
+      expect(result.state.buildings[CENTER_VERTEX]).toEqual({
+        owner: 'p1',
+        kind: 'settlement',
+        wall: false,
+      });
       expect(result.state.players[0]?.resources).toEqual(hand());
       expect(result.state.players[0]?.piecesLeft.settlement).toBe(
         CLASSIC_RULES.pieceStock.settlement - 1,
@@ -299,13 +303,25 @@ describe('Gruendung mit Staedte & Ritter', () => {
 
   it('setzt in der ersten Runde eine Siedlung', () => {
     const state = played();
-    expect(state.buildings[CENTER_VERTEX]).toMatchObject({ owner: 'p1', kind: 'settlement' });
+    expect(state.buildings[CENTER_VERTEX]).toMatchObject({
+      owner: 'p1',
+      kind: 'settlement',
+      wall: false,
+    });
   });
 
   it('setzt in der zweiten Runde eine Stadt', () => {
     const state = played();
-    expect(state.buildings['v:-2,1|-2,2|-1,1']).toMatchObject({ owner: 'p1', kind: 'city' });
-    expect(state.buildings['v:-1,1|0,0|0,1']).toMatchObject({ owner: 'p3', kind: 'city' });
+    expect(state.buildings['v:-2,1|-2,2|-1,1']).toMatchObject({
+      owner: 'p1',
+      kind: 'city',
+      wall: false,
+    });
+    expect(state.buildings['v:-1,1|0,0|0,1']).toMatchObject({
+      owner: 'p3',
+      kind: 'city',
+      wall: false,
+    });
   });
 
   it('nimmt dafuer eine Stadt aus dem Vorrat und nicht eine zweite Siedlung', () => {

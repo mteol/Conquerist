@@ -21,7 +21,9 @@ function resourcesOf(state: GameState, id: string) {
 /** p1 siedelt an dem angegebenen Knoten und hat die genannten Karten. */
 function trader(vertex: string | null, resources: Record<string, number>): GameState {
   const buildings =
-    vertex === null ? {} : { [vertex]: { owner: 'p1' as const, kind: 'settlement' as const } };
+    vertex === null
+      ? {}
+      : { [vertex]: { owner: 'p1' as const, kind: 'settlement' as const, wall: false } };
   return giving(testGame({ buildings }), 'p1', resources);
 }
 
@@ -48,8 +50,8 @@ describe('tradeRateFor', () => {
     const state = giving(
       testGame({
         buildings: {
-          [HARBOR3_VERTEX]: { owner: 'p1', kind: 'settlement' },
-          [HARBOR2_ORE_VERTEX]: { owner: 'p1', kind: 'city' },
+          [HARBOR3_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false },
+          [HARBOR2_ORE_VERTEX]: { owner: 'p1', kind: 'city', wall: false },
         },
       }),
       'p1',
@@ -62,7 +64,7 @@ describe('tradeRateFor', () => {
 
   it('gilt auch fuer eine Stadt am Hafen', () => {
     const state = giving(
-      testGame({ buildings: { [HARBOR3_VERTEX]: { owner: 'p1', kind: 'city' } } }),
+      testGame({ buildings: { [HARBOR3_VERTEX]: { owner: 'p1', kind: 'city', wall: false } } }),
       'p1',
       {},
     );
@@ -72,7 +74,9 @@ describe('tradeRateFor', () => {
 
   it('nuetzt der fremde Hafen nichts', () => {
     const state = giving(
-      testGame({ buildings: { [HARBOR3_VERTEX]: { owner: 'p2', kind: 'settlement' } } }),
+      testGame({
+        buildings: { [HARBOR3_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false } },
+      }),
       'p1',
       {},
     );
@@ -146,7 +150,9 @@ describe('Handel mit Handelswaren', () => {
   /** Ein Tisch, an dem alle acht Sorten im Spiel sind. */
   function citiesTable(vertex: string | null, cards: Record<string, number>): GameState {
     const buildings =
-      vertex === null ? {} : { [vertex]: { owner: 'p1' as const, kind: 'settlement' as const } };
+      vertex === null
+        ? {}
+        : { [vertex]: { owner: 'p1' as const, kind: 'settlement' as const, wall: false } };
 
     return giving(
       testGame({

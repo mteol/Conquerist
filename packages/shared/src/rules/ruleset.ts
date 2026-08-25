@@ -18,19 +18,91 @@ import { CLASSIC_DICE, DiceSpecSchema } from './dice.js';
  * steht hier.
  */
 
-/** Was sich bauen oder kaufen laesst. */
-export const BUILDABLE_IDS = ['road', 'settlement', 'city', 'developmentCard'] as const;
+/**
+ * Was sich bauen oder kaufen laesst.
+ *
+ * Die hinteren vier gehoeren zu Staedte & Ritter. Sie stehen in derselben
+ * Liste und nicht in einer zweiten daneben: was ein Tisch davon kennt, sagt
+ * sein `buildCosts` - was dort fehlt, gibt es an diesem Tisch nicht. Eine
+ * zweite Liste waere eine zweite Antwort auf dieselbe Frage.
+ *
+ * `knightUpgrade` und `knightActivation` sind Buildables ohne Bauteil: sie
+ * kosten etwas, aber sie stellen nichts Neues aufs Brett. Genau deshalb sind
+ * `BUILDABLE_IDS` und `PIECE_IDS` zwei Listen und nicht eine.
+ */
+export const BUILDABLE_IDS = [
+  'road',
+  'settlement',
+  'city',
+  'developmentCard',
+  'wall',
+  'knight',
+  'knightUpgrade',
+  'knightActivation',
+] as const;
 
 export type BuildableId = (typeof BUILDABLE_IDS)[number];
 
 export const BuildableIdSchema = z.enum(BUILDABLE_IDS);
 
-/** Wovon jeder Spieler einen begrenzten Vorrat hat. Entwicklungskarten gehoeren der Bank. */
-export const PIECE_IDS = ['road', 'settlement', 'city'] as const;
+/**
+ * Wovon jeder Spieler einen begrenzten Vorrat hat. Entwicklungskarten gehoeren
+ * der Bank.
+ *
+ * **Je Ritterstufe ein eigener Vorrat**, und das ist keine Umstaendlichkeit:
+ * die Regel begrenzt auf zwei Ritter **je Stufe**, nicht auf sechs insgesamt.
+ * Ein einziger Zaehler `knight: 6` koennte nicht ausdruecken, dass jemand mit
+ * zwei Starken Rittern keinen dritten aufwerten darf. Und das Aufwerten
+ * verbraucht nichts, es **verschiebt**: `knight1` zurueck, `knight2` heraus.
+ */
+export const PIECE_IDS = [
+  'road',
+  'settlement',
+  'city',
+  'wall',
+  'knight1',
+  'knight2',
+  'knight3',
+] as const;
 
 export type PieceId = (typeof PIECE_IDS)[number];
 
 export const PieceIdSchema = z.enum(PIECE_IDS);
+
+/**
+ * Ein vollstaendiger Teilevorrat aus dem, was genannt ist - alles andere null.
+ *
+ * Das Gegenstueck zu `cardAmounts`, mit demselben Grund: vier Nullen je
+ * Vorratszeile waeren vier Zeilen, die nichts aussagen, und die erste
+ * vergessene faellt erst zur Laufzeit auf.
+ */
+export function pieceCounts(part: Partial<Record<PieceId, number>>): Record<PieceId, number> {
+  const full = {} as Record<PieceId, number>;
+  for (const piece of PIECE_IDS) full[piece] = part[piece] ?? 0;
+  return full;
+}
+
+/**
+ * Teilevorraete als vollstaendiger `Record<PieceId, number>`.
+ *
+ * `partialRecord` plus `transform` aus genau demselben Grund wie bei
+ * `CardAmountsSchema`, und diesmal war der Grund vorher da: seit Etappe 6 liegt
+ * der Startzustand jeder Partie als JSON in der Datenbank, und jeder dort
+ * abgelegte Vorrat kennt drei Bauteile. Ein `z.record` mit Enum-Schluessel ist
+ * in Zod 4 **erschoepfend** - die vier neuen fehlen ueberall, und ohne
+ * Auffuellung schluege nicht eine Rechnung fehl, sondern das **Einlesen**.
+ *
+ * Die untere Grenze ist null und nicht eins: dass ein Basistisch keine Ritter
+ * hat, ist eine Null im Vorrat und kein fehlender Eintrag. `canPay` weist einen
+ * leeren Vorrat ohnehin ab, und damit ist "gibt es hier nicht" dieselbe
+ * Auskunft wie "alle verbaut" - was in beiden Faellen stimmt.
+ */
+export const PieceCountsSchema = z
+  .partialRecord(PieceIdSchema, z.number().int().min(0))
+  .transform((counts): Record<PieceId, number> => pieceCounts(counts));
+
+/** Ausdruecklich geschrieben und nicht abgeleitet - siehe `CardAmounts`. */
+export type PieceCounts = Record<PieceId, number>;
 
 /**
  * Eine vollstaendige Kartenmenge aus dem, was genannt ist - alles andere null.
@@ -144,7 +216,7 @@ export const RuleSetSchema = z.object({
    */
   buildCosts: z.partialRecord(BuildableIdSchema, CardAmountsSchema),
   /** Wie viele Teile jeder Spieler insgesamt bauen kann. */
-  pieceStock: z.record(PieceIdSchema, z.number().int().min(1)),
+  pieceStock: PieceCountsSchema,
   /** Wie viele Karten je Ressource die Bank vorhaelt. */
   resourceBank: CardAmountsSchema,
   /** Siegpunkte, die das Spiel beenden. */
@@ -162,6 +234,14 @@ export const RuleSetSchema = z.object({
     largestArmy: z.number().int().min(0),
     /** Was eine Siegpunktkarte auf der Hand zaehlt. */
     developmentCard: z.number().int().min(0),
+    /**
+     * Was ein Siegpunkt-Chip "Retter Catans" zaehlt.
+     *
+     * Mit Vorgabe, weil das RuleSet jeder laufenden Partie als JSON in der
+     * Datenbank liegt und keines davon dieses Feld kennt. Null heisst: an
+     * diesem Tisch gibt es die Chips nicht.
+     */
+    defender: z.number().int().min(0).default(0),
   }),
   /** Ab wie vielen zusammenhaengenden Strassen die Laengste Handelsstrasse vergeben wird. */
   longestRoadMinimum: z.number().int().min(1),
@@ -176,6 +256,16 @@ export const RuleSetSchema = z.object({
   developmentDeck: DevelopmentDeckSchema,
   /** Ab wie vielen Handkarten bei einer Sieben abgeworfen wird. */
   handLimitBeforeDiscard: z.number().int().min(1),
+
+  /**
+   * Um wie viel **eine** Stadtmauer das Handkartenlimit hebt.
+   *
+   * Steht im Regelwerk und nicht im Code: eine Variante mit einem anderen
+   * Aufschlag ist damit ein zweites RuleSet und kein zweiter Codepfad
+   * (Regel 5). Null heisst: an diesem Tisch aendert eine Mauer nichts am
+   * Limit - im Basisspiel gibt es sie gar nicht.
+   */
+  handLimitPerWall: z.number().int().min(0).default(0),
 
   /**
    * Wie viele Felder die Fahrstrecke des Barbarenschiffs hat.
@@ -241,11 +331,16 @@ export const CLASSIC_RULES: RuleSet = {
     developmentCard: cardAmounts({ wool: 1, grain: 1, ore: 1 }),
   },
 
-  pieceStock: {
+  /*
+   * Mauern und Ritter stehen mit null da, und das ist dieselbe Aussage wie bei
+   * den drei Handelswaren darunter: an einem Basistisch gibt es sie nicht. Ein
+   * fehlender Eintrag saehe aus wie ein Versehen.
+   */
+  pieceStock: pieceCounts({
     road: 15,
     settlement: 5,
     city: 4,
-  },
+  }),
 
   /*
    * Die drei Handelswaren stehen mit null da, und das ist die Aussage: an
@@ -261,6 +356,7 @@ export const CLASSIC_RULES: RuleSet = {
     longestRoad: 2,
     largestArmy: 2,
     developmentCard: 1,
+    defender: 0,
   },
   longestRoadMinimum: 5,
   largestArmyMinimum: 3,
@@ -278,6 +374,7 @@ export const CLASSIC_RULES: RuleSet = {
     monopoly: 2,
   },
   handLimitBeforeDiscard: 7,
+  handLimitPerWall: 0,
   tradeOfferMs: 60_000,
 
   barbarianTrack: 0,

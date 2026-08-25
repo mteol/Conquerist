@@ -118,7 +118,9 @@ describe('applyDiscard', () => {
 describe('victimsAt', () => {
   it('nennt Anlieger mit Karten', () => {
     const state = giving(
-      testGame({ buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement' } } }),
+      testGame({
+        buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false } },
+      }),
       'p2',
       { wool: 1 },
     );
@@ -128,7 +130,7 @@ describe('victimsAt', () => {
 
   it('uebergeht Anlieger ohne Karten', () => {
     const state = testGame({
-      buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement' } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false } },
     });
 
     expect(victimsAt(state, '1,-1', 'p1')).toEqual([]);
@@ -136,7 +138,9 @@ describe('victimsAt', () => {
 
   it('uebergeht den Dieb selbst', () => {
     const state = giving(
-      testGame({ buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement' } } }),
+      testGame({
+        buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
+      }),
       'p1',
       { wool: 3 },
     );
@@ -148,8 +152,8 @@ describe('victimsAt', () => {
     const state = giving(
       testGame({
         buildings: {
-          [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement' },
-          [HILLS_VERTEX_B]: { owner: 'p2', kind: 'settlement' },
+          [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false },
+          [HILLS_VERTEX_B]: { owner: 'p2', kind: 'settlement', wall: false },
         },
       }),
       'p2',
@@ -191,7 +195,7 @@ describe('applyMoveRobber', () => {
 
   it('stiehlt dem benannten Opfer genau eine Karte', () => {
     const state = giving(
-      robbing({ buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement' } } }),
+      robbing({ buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false } } }),
       'p2',
       { wool: 3 },
     );
@@ -210,7 +214,7 @@ describe('applyMoveRobber', () => {
     const build = (rngSeed: string): GameState =>
       giving(
         robbing({
-          buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement' } },
+          buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false } },
           rng: createRng(rngSeed),
         }),
         'p2',
@@ -241,7 +245,7 @@ describe('applyMoveRobber', () => {
 
   it('verlangt ein Opfer, wenn es eines gibt', () => {
     const state = giving(
-      robbing({ buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement' } } }),
+      robbing({ buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false } } }),
       'p2',
       { wool: 1 },
     );

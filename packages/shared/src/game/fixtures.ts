@@ -92,11 +92,14 @@ export function testGame(overrides: Partial<GameState> = {}): GameState {
       piecesLeft: { ...CLASSIC_RULES.pieceStock },
       developmentCards: [],
       playedKnights: 0,
+      defenderPoints: 0,
+      improvements: {},
     })),
     currentPlayerIndex: 0,
     phase: { kind: 'main' },
     buildings: {},
     roads: {},
+    knights: {},
     robber: TEST_SCENARIO.robberStart,
     barbarians: null,
     bank: { ...CLASSIC_RULES.resourceBank },
@@ -129,7 +132,7 @@ export function gameWithCities(overrides: Partial<GameState> = {}): GameState {
   return testGame({
     rules: CITIES_RULES,
     bank: { ...CITIES_RULES.resourceBank },
-    buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city' } },
+    buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } },
     barbarians: { position: 0, attacks: 0 },
     ...overrides,
   });

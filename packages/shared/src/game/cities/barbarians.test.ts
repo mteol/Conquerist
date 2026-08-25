@@ -45,8 +45,8 @@ describe('barbarianStrength', () => {
   it('zaehlt jede Stadt auf dem Brett, egal wem sie gehoert', () => {
     const state = gameWithCities({
       buildings: {
-        [CENTER_VERTEX]: { owner: 'p1', kind: 'city' },
-        [FAR_VERTEX]: { owner: 'p2', kind: 'city' },
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false },
+        [FAR_VERTEX]: { owner: 'p2', kind: 'city', wall: false },
       },
     });
 
@@ -56,8 +56,8 @@ describe('barbarianStrength', () => {
   it('zaehlt Siedlungen nicht mit - die Barbaren wollen Staedte', () => {
     const state = gameWithCities({
       buildings: {
-        [CENTER_VERTEX]: { owner: 'p1', kind: 'city' },
-        [FAR_VERTEX]: { owner: 'p2', kind: 'settlement' },
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false },
+        [FAR_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false },
       },
     });
 

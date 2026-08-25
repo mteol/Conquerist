@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CARD_IDS } from '../scenario/terrain.js';
 import { CITIES_DICE, CITIES_RULES, CITIES_RULES_56, citiesRulesFor } from './cities.js';
-import { RuleSetSchema } from './ruleset.js';
+import { RuleSetSchema, cardAmounts } from './ruleset.js';
 
 describe('CITIES_RULES', () => {
   it('besteht das eigene Schema', () => {
@@ -40,6 +40,31 @@ describe('CITIES_RULES', () => {
 
   it('faehrt ueber sieben Felder', () => {
     expect(CITIES_RULES.barbarianTrack).toBe(7);
+  });
+
+  it('preist Mauer, Ritter, Aufwertung und Helm', () => {
+    expect(CITIES_RULES.buildCosts.wall).toEqual(cardAmounts({ brick: 2 }));
+    expect(CITIES_RULES.buildCosts.knight).toEqual(cardAmounts({ wool: 1, ore: 1 }));
+    expect(CITIES_RULES.buildCosts.knightUpgrade).toEqual(cardAmounts({ wool: 1, ore: 1 }));
+    expect(CITIES_RULES.buildCosts.knightActivation).toEqual(cardAmounts({ grain: 1 }));
+  });
+
+  /*
+   * Zwei je Stufe und nicht sechs insgesamt: genau deshalb hat jede Stufe
+   * einen eigenen Vorrat. Wer zwei Starke Ritter stehen hat, kann keinen
+   * dritten aufwerten - ein einziger Zaehler koennte das nicht sagen.
+   */
+  it('gibt jeder Person sechs Ritter, zwei je Stufe, und drei Mauern', () => {
+    expect(CITIES_RULES.pieceStock.knight1).toBe(2);
+    expect(CITIES_RULES.pieceStock.knight2).toBe(2);
+    expect(CITIES_RULES.pieceStock.knight3).toBe(2);
+    expect(CITIES_RULES.pieceStock.wall).toBe(3);
+  });
+
+  it('hebt das Handkartenlimit je Mauer um zwei und zahlt den Retter-Chip', () => {
+    expect(CITIES_RULES.handLimitBeforeDiscard).toBe(7);
+    expect(CITIES_RULES.handLimitPerWall).toBe(2);
+    expect(CITIES_RULES.victoryPoints.defender).toBe(1);
   });
 });
 

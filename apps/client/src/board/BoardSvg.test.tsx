@@ -230,8 +230,8 @@ describe('BoardSvg', () => {
     const withBoth = {
       ...start,
       buildings: {
-        [vertices[0]!]: { owner: seats[0]!.id, kind: 'settlement' as const },
-        [vertices[8]!]: { owner: seats[0]!.id, kind: 'city' as const },
+        [vertices[0]!]: { owner: seats[0]!.id, kind: 'settlement' as const, wall: false },
+        [vertices[8]!]: { owner: seats[0]!.id, kind: 'city' as const, wall: false },
       },
     };
 
@@ -271,7 +271,10 @@ describe('BoardSvg', () => {
     for (const kind of ['settlement', 'city'] as const) {
       // Ein gebautes Bauwerk und daneben ein Geist auf dieselbe Art: die Stadt
       // braucht eine eigene Siedlung unter sich, damit `buildCity` erlaubt ist.
-      const built = { ...start.buildings, [vertices[0]!]: { owner: 'p1' as const, kind } };
+      const built = {
+        ...start.buildings,
+        [vertices[0]!]: { owner: 'p1' as const, kind, wall: false },
+      };
       const ghost = vertices[8]!;
       const targets = {
         ...EMPTY_TARGETS,

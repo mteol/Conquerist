@@ -1,7 +1,12 @@
 import { CARD_IDS } from '../scenario/terrain.js';
 import { CLASSIC_56 } from '../scenario/blueprints/classic56.js';
 import type { DiceSpec } from './dice.js';
-import { DEFAULT_VICTORY_POINT_GOAL_CITIES, cardAmounts, type RuleSet } from './ruleset.js';
+import {
+  DEFAULT_VICTORY_POINT_GOAL_CITIES,
+  cardAmounts,
+  pieceCounts,
+  type RuleSet,
+} from './ruleset.js';
 
 /**
  * Das Regelwerk der Erweiterung Staedte & Ritter.
@@ -42,13 +47,29 @@ export const CITIES_RULES: RuleSet = {
     road: cardAmounts({ brick: 1, lumber: 1 }),
     settlement: cardAmounts({ brick: 1, lumber: 1, wool: 1, grain: 1 }),
     city: cardAmounts({ grain: 2, ore: 3 }),
+    wall: cardAmounts({ brick: 2 }),
+    knight: cardAmounts({ wool: 1, ore: 1 }),
+    /* Aufwerten kostet dasselbe wie bauen - ein Ritter wird nicht ersetzt,
+     * sondern ausgeruestet. */
+    knightUpgrade: cardAmounts({ wool: 1, ore: 1 }),
+    knightActivation: cardAmounts({ grain: 1 }),
   },
 
-  pieceStock: {
+  /*
+   * **Je Person gezaehlt**, deshalb steht dieselbe Zeile in `CITIES_RULES_56`:
+   * die Fuenf-bis-Sechser-Ergaenzung bringt zwoelf weitere Ritter und sechs
+   * weitere Mauern - fuer **zwei zusaetzliche Personen**. Je Person bleibt es
+   * bei sechs Rittern und drei Mauern.
+   */
+  pieceStock: pieceCounts({
     road: 15,
     settlement: 5,
     city: 4,
-  },
+    wall: 3,
+    knight1: 2,
+    knight2: 2,
+    knight3: 2,
+  }),
 
   /* 19 je Rohstoff wie im Basisspiel, 12 je Handelsware wie in der Schachtel. */
   resourceBank: cardAmounts({
@@ -76,6 +97,8 @@ export const CITIES_RULES: RuleSet = {
      */
     largestArmy: 0,
     developmentCard: 0,
+    /* Jeder Siegpunkt-Chip "Retter Catans" zaehlt einen Punkt. */
+    defender: 1,
   },
   longestRoadMinimum: 5,
   largestArmyMinimum: 3,
@@ -84,6 +107,8 @@ export const CITIES_RULES: RuleSet = {
   developmentDeck: {},
 
   handLimitBeforeDiscard: 7,
+  /* Jede Stadtmauer hebt das Limit um zwei: 7, 9, 11, 13. */
+  handLimitPerWall: 2,
   tradeOfferMs: 60_000,
 
   barbarianTrack: 7,

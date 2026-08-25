@@ -40,9 +40,62 @@ export type BuildingKind = (typeof BUILDING_KINDS)[number];
 export const BuildingSchema = z.object({
   owner: PlayerIdSchema,
   kind: z.enum(BUILDING_KINDS),
+  /**
+   * Ob unter dieser Stadt eine Stadtmauer liegt.
+   *
+   * Am **Gebaeude** und nicht beim Spieler: nur so faellt die Mauer beim
+   * Barbarenueberfall mit der richtigen Stadt, und nur so ist "diese Stadt ist
+   * ummauert" eine Frage an das Bauwerk statt eine Rechnung ueber den
+   * Besitzer. Eine Siedlung traegt nie eine - `canBuildWall` laesst es gar
+   * nicht zu.
+   *
+   * Mit Vorgabe: gespeicherte Partien kennen das Feld nicht, und dort steht
+   * keine Mauer.
+   */
+  wall: z.boolean().default(false),
 });
 
 export type Building = z.infer<typeof BuildingSchema>;
+
+/** Die drei Ritterstufen - zugleich die Staerke des Ritters. */
+export const KNIGHT_LEVELS = [1, 2, 3] as const;
+
+export type KnightLevel = (typeof KNIGHT_LEVELS)[number];
+
+/**
+ * Eine Ritterfigur auf einer Kreuzung.
+ *
+ * Die Stufe **ist** die Staerke (Einfach 1, Stark 2, Maechtig 3) - zwei Felder
+ * dafuer waeren zwei Wahrheiten ueber dasselbe.
+ */
+export const KnightSchema = z.object({
+  owner: PlayerIdSchema,
+  /** 1 Einfacher, 2 Starker, 3 Maechtiger Ritter. */
+  level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  /** Traegt er einen Helm? Nur ein aktivierter Ritter kaempft und handelt. */
+  active: z.boolean(),
+  /**
+   * In welcher Runde er aktiviert wurde. `null`, solange er passiv ist.
+   *
+   * Ohne diese Zahl ist die Regel "fruehestens im naechsten Zug" nicht
+   * pruefbar: ein Ritter, der eben aktiviert wurde, saehe sonst aus wie einer,
+   * der seit drei Runden bereitsteht. Eine Zahl und kein abgeleitetes Flag
+   * "darf handeln" - ein gespeicherter abgeleiteter Wert ist ein Wert, den man
+   * nachzuziehen vergisst.
+   *
+   * Gezaehlt wird in `state.turn`, also in vollen Runden. Weil jeder je Runde
+   * einmal handelt, heisst `activatedOnTurn < state.turn` genau "ab dem
+   * naechsten eigenen Zug".
+   */
+  activatedOnTurn: z.number().int().min(0).nullable(),
+  /**
+   * Ob er in dieser Runde schon aufgewertet wurde. Ein Ritter darf je Zug nur
+   * einmal steigen; `endTurn` setzt es zurueck.
+   */
+  upgradedThisTurn: z.boolean(),
+});
+
+export type Knight = z.infer<typeof KnightSchema>;
 
 /**
  * Das Barbarenschiff auf seiner Fahrstrecke.
@@ -78,6 +131,20 @@ export const GameStateSchema = z.object({
   buildings: z.record(z.string(), BuildingSchema),
   /** Kanten-Id -> wem die Strasse gehoert. */
   roads: z.record(z.string(), PlayerIdSchema),
+  /**
+   * Knoten-Id -> welcher Ritter darauf steht. Was nicht drinsteht, ist frei.
+   *
+   * **Am Zustand und nicht beim Spieler**, und das ist dieselbe Entscheidung
+   * wie bei `buildings`: Ritter stehen auf Kreuzungen. Die Belegung des Bretts
+   * steht einmal in `buildings`, `roads` und `knights` und nirgends sonst -
+   * eine zweite Liste beim Spieler liefe bei der ersten Vertreibung
+   * auseinander, denn dort wechselt eine Figur den Ort, ohne dass ihr Besitzer
+   * etwas tut.
+   *
+   * Mit Vorgabe wie `barbarians` und aus demselben Grund: gespeichert wird nur
+   * der Startzustand.
+   */
+  knights: z.record(z.string(), KnightSchema).default({}),
   /** Feld-Id, auf dem der Raeuber steht. */
   robber: z.string(),
   /**

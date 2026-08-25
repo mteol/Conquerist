@@ -1,7 +1,17 @@
 import type { JSX } from 'react';
-import { PIECE_IDS, type PieceId, type RuleSet } from '@conquerist/shared';
-import { CITY_PATH, ROAD_PATH, SETTLEMENT_PATH, VIEWBOX } from '../board/shapes';
+import type { RuleSet } from '@conquerist/shared';
+import {
+  CITY_PATH,
+  KNIGHT_MAST_PATH,
+  KNIGHT_PATH,
+  KNIGHT_PENNANTS,
+  ROAD_PATH,
+  SETTLEMENT_PATH,
+  VIEWBOX,
+  WALL_PATH,
+} from '../board/shapes';
 import { resourceList } from '../game/labels';
+import type { PieceId } from '@conquerist/shared';
 import type { ActionTargets, BuildableKind } from '../game/targets';
 import { CostHint } from './CostHint';
 
@@ -60,17 +70,47 @@ export interface ActionPanelProps {
   readonly onDismissError: () => void;
 }
 
-const BUILD_LABELS: Readonly<Record<PieceId, string>> = {
+/**
+ * Die Bauteile, die auf dem Brett landen, in der Reihenfolge der Leiste.
+ *
+ * **Nicht `PIECE_IDS`**, und das ist seit Städte & Ritter der Unterschied
+ * zwischen einer Leiste und einem Zettel: die Vorratsliste kennt drei
+ * Ritterstufen, gebaut wird aber immer der Einfache. Was hier steht, ist die
+ * *Absicht* („ich baue einen Ritter"), nicht das Stück im Kästchen.
+ */
+const BUILD_PIECES: readonly BuildableKind[] = ['road', 'settlement', 'city', 'wall', 'knight'];
+
+const BUILD_LABELS: Readonly<Record<BuildableKind, string>> = {
   road: 'Straße',
   settlement: 'Siedlung',
   city: 'Stadt',
+  wall: 'Stadtmauer',
+  knight: 'Ritter',
 };
 
 /** Fuer Vorlesewerkzeuge: „13 Straßen" liest sich vor, eine 13 neben einem Pfad nicht. */
-const STOCK_LABELS: Readonly<Record<PieceId, string>> = {
+const STOCK_LABELS: Readonly<Record<BuildableKind, string>> = {
   road: 'Straßen',
   settlement: 'Siedlungen',
   city: 'Städte',
+  wall: 'Stadtmauern',
+  knight: 'Ritter',
+};
+
+/**
+ * Aus welchem Vorrat ein Bauteil kommt.
+ *
+ * Der Ritter kommt immer aus `knight1`: gebaut wird der Einfache, alles
+ * darüber entsteht durch Aufwerten. Die Zahl am Knopf sagt deshalb, wie viele
+ * **Einfache** noch daliegen, und nicht, wie viele Ritter man insgesamt hat -
+ * der Kommentar steht hier, damit sie beim Lesen nicht das Falsche verspricht.
+ */
+const BUILD_STOCK: Readonly<Record<BuildableKind, PieceId>> = {
+  road: 'road',
+  settlement: 'settlement',
+  city: 'city',
+  wall: 'wall',
+  knight: 'knight1',
 };
 
 export function ActionPanel({
@@ -115,11 +155,19 @@ export function ActionPanel({
        * am Tisch aus Holz sieht man den leeren Platz vor sich.
        */}
       <div className="build" role="group" aria-label="Bauen">
-        {PIECE_IDS.map((piece) => {
+        {/*
+         * **Gefiltert auf das, was dieser Tisch preist.** Was das Regelwerk
+         * nicht nennt, gibt es hier nicht - dieselbe Regel, nach der schon der
+         * Kaufstapel wegfällt, wo es keine Entwicklungskarten gibt. Ohne den
+         * Filter stünden an einem Basistisch zwei Knöpfe, die nie angehen, und
+         * ein Knopf, der nie angeht, sagt „gerade nicht" über etwas, das nie
+         * geht.
+         */}
+        {BUILD_PIECES.filter((piece) => costs[piece] !== undefined).map((piece) => {
           const spots = targets.buildable[piece];
           const active = buildMode === piece;
           /** `null`, solange es keinen eigenen Sitz gibt - dann gibt es keinen Vorrat. */
-          const left = stock === null ? null : (stock.piecesLeft[piece] ?? 0);
+          const left = stock === null ? null : (stock.piecesLeft[BUILD_STOCK[piece]] ?? 0);
           const cost = costs[piece];
           const price = cost === undefined ? null : resourceList(cost);
 
@@ -198,15 +246,36 @@ export function ActionPanel({
   );
 }
 
-/** Dieselbe Silhouette wie auf dem Brett - siehe `board/shapes.ts`. */
-function PieceMark({ piece, color }: { readonly piece: PieceId; readonly color: string }) {
+/**
+ * Dieselbe Silhouette wie auf dem Brett - siehe `board/shapes.ts`.
+ *
+ * Der Ritter trägt hier **eine** Spitze, weil gebaut immer der Einfache wird.
+ * Was er später zeigt, entscheidet seine Stufe auf dem Brett; der Knopf zeigt,
+ * was aus dem Vorrat kommt.
+ */
+function PieceMark({ piece, color }: { readonly piece: BuildableKind; readonly color: string }) {
   return (
     <svg className="piece piece--build" viewBox={VIEWBOX} aria-hidden="true">
       {piece === 'road' ? (
         <path d={ROAD_PATH} style={{ stroke: color }} strokeWidth={4.5} strokeLinecap="round" />
+      ) : piece === 'knight' ? (
+        <>
+          <path
+            d={KNIGHT_MAST_PATH}
+            style={{ stroke: color }}
+            strokeWidth={1.4}
+            strokeLinecap="round"
+          />
+          <path
+            d={`${KNIGHT_PATH} ${KNIGHT_PENNANTS[0]}`}
+            style={{ fill: color, stroke: color }}
+            strokeWidth={1.2}
+            strokeLinejoin="round"
+          />
+        </>
       ) : (
         <path
-          d={piece === 'settlement' ? SETTLEMENT_PATH : CITY_PATH}
+          d={piece === 'settlement' ? SETTLEMENT_PATH : piece === 'wall' ? WALL_PATH : CITY_PATH}
           style={{ fill: color, stroke: color }}
           strokeWidth={1.4}
           strokeLinejoin="round"

@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { CARD_IDS, RESOURCE_IDS } from '../scenario/terrain.js';
 import {
-  BUILDABLE_IDS,
   CLASSIC_RULES,
   CLASSIC_RULES_56,
   PIECE_IDS,
   RuleSetSchema,
   cardAmounts,
+  pieceCounts,
   rulesFor,
 } from './ruleset.js';
 
@@ -32,28 +32,50 @@ describe('CLASSIC_RULES', () => {
     expect(CLASSIC_RULES_56.cards).toEqual([...RESOURCE_IDS]);
   });
 
-  it('nennt zu jedem Bauteil vollstaendige Kosten', () => {
-    for (const buildable of BUILDABLE_IDS) {
-      const cost = CLASSIC_RULES.buildCosts[buildable];
-      expect(cost).toBeDefined();
-      expect(Object.keys(cost!).sort()).toEqual([...CARD_IDS].sort());
+  /*
+   * Ueber die genannten Preise und nicht ueber `BUILDABLE_IDS`: die Liste
+   * kennt seit Staedte & Ritter acht Eintraege, und was ein Tisch davon
+   * kennt, sagt sein eigenes `buildCosts`. Was dort fehlt, gibt es hier nicht -
+   * genau das prueft der Test darunter.
+   */
+  it('nennt zu jedem genannten Bauteil vollstaendige Kosten', () => {
+    for (const cost of Object.values(CLASSIC_RULES.buildCosts)) {
+      expect(Object.keys(cost).sort()).toEqual([...CARD_IDS].sort());
     }
   });
 
   it('kostet nichts umsonst', () => {
-    for (const buildable of BUILDABLE_IDS) {
-      const total = Object.values(CLASSIC_RULES.buildCosts[buildable]!).reduce(
-        (sum, amount) => sum + amount,
-        0,
-      );
+    for (const cost of Object.values(CLASSIC_RULES.buildCosts)) {
+      const total = Object.values(cost).reduce((sum, amount) => sum + amount, 0);
       expect(total).toBeGreaterThan(0);
     }
   });
 
-  it('gibt jedem Spieler einen Vorrat an jedem Bauteil', () => {
-    for (const piece of PIECE_IDS) {
+  it('preist nur, was es im Basisspiel gibt', () => {
+    expect(Object.keys(CLASSIC_RULES.buildCosts).sort()).toEqual([
+      'city',
+      'developmentCard',
+      'road',
+      'settlement',
+    ]);
+  });
+
+  it('gibt jedem Spieler einen Vorrat an den drei Bauteilen des Basisspiels', () => {
+    for (const piece of ['road', 'settlement', 'city'] as const) {
       expect(CLASSIC_RULES.pieceStock[piece]).toBeGreaterThan(0);
     }
+  });
+
+  /*
+   * Null und nicht "fehlt": ein fehlender Eintrag saehe aus wie ein Versehen,
+   * eine Null sagt, dass jemand hingesehen hat. Dieselbe Haltung wie bei den
+   * drei Handelswaren in `resourceBank`.
+   */
+  it('haelt keine Ritter und keine Mauern vor', () => {
+    for (const piece of ['wall', 'knight1', 'knight2', 'knight3'] as const) {
+      expect(CLASSIC_RULES.pieceStock[piece]).toBe(0);
+    }
+    expect(PIECE_IDS).toHaveLength(7);
   });
 
   it('haelt die bekannten Werte des Basisspiels', () => {
@@ -64,6 +86,7 @@ describe('CLASSIC_RULES', () => {
       longestRoad: 2,
       largestArmy: 2,
       developmentCard: 1,
+      defender: 0,
     });
     expect(CLASSIC_RULES.longestRoadMinimum).toBe(5);
     expect(CLASSIC_RULES.largestArmyMinimum).toBe(3);
@@ -73,7 +96,8 @@ describe('CLASSIC_RULES', () => {
     expect(Object.values(deck).reduce((sum, count) => sum + count, 0)).toBe(25);
     expect(deck.knight).toBe(14);
     expect(CLASSIC_RULES.handLimitBeforeDiscard).toBe(7);
-    expect(CLASSIC_RULES.pieceStock).toEqual({ road: 15, settlement: 5, city: 4 });
+    expect(CLASSIC_RULES.handLimitPerWall).toBe(0);
+    expect(CLASSIC_RULES.pieceStock).toEqual(pieceCounts({ road: 15, settlement: 5, city: 4 }));
     expect(CLASSIC_RULES.buildCosts.settlement).toEqual(
       cardAmounts({ brick: 1, lumber: 1, wool: 1, grain: 1 }),
     );
@@ -174,11 +198,42 @@ describe('RuleSetSchema', () => {
     expect(RuleSetSchema.safeParse({ ...rules(), handLimitBeforeDiscard: 0 }).success).toBe(false);
   });
 
-  it('lehnt einen leeren Bauteilvorrat ab', () => {
+  /*
+   * Die untere Grenze ist null und nicht mehr eins. Sie musste fallen, weil
+   * ein Basistisch keine Ritter und keine Mauern hat und das als Null dasteht.
+   * Was bleibt, ist die Abwehr des Unmoeglichen: ein negativer Vorrat.
+   */
+  it('lehnt einen negativen Bauteilvorrat ab', () => {
     const broken = rules();
-    (broken['pieceStock'] as Record<string, number>)['road'] = 0;
+    (broken['pieceStock'] as Record<string, number>)['road'] = -1;
 
     expect(RuleSetSchema.safeParse(broken).success).toBe(false);
+  });
+
+  it('lehnt ein Bauteil ab, das es nicht gibt', () => {
+    const broken = rules();
+    (broken['pieceStock'] as Record<string, number>)['catapult'] = 1;
+
+    expect(RuleSetSchema.safeParse(broken).success).toBe(false);
+  });
+
+  it('fuellt einen gespeicherten Vorrat mit den neuen Bauteilen auf', () => {
+    const stored = rules();
+    stored['pieceStock'] = { road: 15, settlement: 5, city: 4 };
+
+    const parsed = RuleSetSchema.parse(stored);
+    expect(parsed.pieceStock).toEqual(pieceCounts({ road: 15, settlement: 5, city: 4 }));
+    expect(parsed.pieceStock.knight1).toBe(0);
+  });
+
+  it('ergaenzt die Siegpunktwerte und das Mauerlimit gespeicherter Regelwerke', () => {
+    const stored = rules();
+    delete (stored['victoryPoints'] as Record<string, number>)['defender'];
+    delete stored['handLimitPerWall'];
+
+    const parsed = RuleSetSchema.parse(stored);
+    expect(parsed.victoryPoints.defender).toBe(0);
+    expect(parsed.handLimitPerWall).toBe(0);
   });
 
   it('lehnt eine leere Bank ab', () => {

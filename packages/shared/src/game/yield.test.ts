@@ -19,7 +19,7 @@ function resourcesOf(state: GameState, id: string) {
 describe('distributeYield', () => {
   it('gibt dem Besitzer einer Siedlung eine Karte je passendem Feld', () => {
     const state = testGame({
-      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement' } },
+      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement', wall: false } },
     });
 
     expect(resourcesOf(distributeYield(state, 6), 'p1')).toEqual(hand({ brick: 1 }));
@@ -28,7 +28,7 @@ describe('distributeYield', () => {
 
   it('gibt einer Stadt zwei Karten', () => {
     const state = testGame({
-      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'city' } },
+      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'city', wall: false } },
     });
 
     expect(resourcesOf(distributeYield(state, 6), 'p1')).toEqual(hand({ brick: 2 }));
@@ -36,7 +36,7 @@ describe('distributeYield', () => {
 
   it('gibt nichts fuer eine Zahl, die auf keinem angrenzenden Feld liegt', () => {
     const state = testGame({
-      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement' } },
+      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement', wall: false } },
     });
 
     expect(resourcesOf(distributeYield(state, 4), 'p1')).toEqual(hand());
@@ -45,7 +45,7 @@ describe('distributeYield', () => {
   it('laesst die Wueste nichts abwerfen', () => {
     // Die Wueste hat keinen Chip - sie kann gar nicht gewuerfelt werden.
     const state = testGame({
-      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement' } },
+      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement', wall: false } },
     });
 
     for (const roll of [2, 3, 7, 11, 12]) {
@@ -55,7 +55,7 @@ describe('distributeYield', () => {
 
   it('sperrt das Feld, auf dem der Raeuber steht', () => {
     const state = testGame({
-      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement' } },
+      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement', wall: false } },
       robber: '1,-1',
     });
 
@@ -67,8 +67,8 @@ describe('distributeYield', () => {
   it('bedient mehrere Spieler am selben Feld', () => {
     const state = testGame({
       buildings: {
-        [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement' },
-        [HILLS_VERTEX_B]: { owner: 'p2', kind: 'city' },
+        [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement', wall: false },
+        [HILLS_VERTEX_B]: { owner: 'p2', kind: 'city', wall: false },
       },
     });
 
@@ -79,7 +79,7 @@ describe('distributeYield', () => {
 
   it('nimmt die ausgegebenen Karten aus der Bank', () => {
     const state = testGame({
-      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'city' } },
+      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'city', wall: false } },
     });
 
     const next = distributeYield(state, 6);
@@ -89,7 +89,7 @@ describe('distributeYield', () => {
 
   it('laesst den Zustand im uebrigen unberuehrt', () => {
     const state = testGame({
-      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement' } },
+      buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement', wall: false } },
     });
     const before = JSON.stringify(state);
 
@@ -100,7 +100,7 @@ describe('distributeYield', () => {
   describe('wenn die Bank knapp wird', () => {
     it('gibt einem einzelnen Anspruchsberechtigten, was noch da ist', () => {
       const state = testGame({
-        buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'city' } },
+        buildings: { [HILLS_VERTEX_A]: { owner: 'p1', kind: 'city', wall: false } },
         bank: hand({ brick: 1, lumber: 19, wool: 19, grain: 19, ore: 19 }),
       });
 
@@ -114,8 +114,8 @@ describe('distributeYield', () => {
       // Ressource in dieser Runde an niemanden.
       const state = testGame({
         buildings: {
-          [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement' },
-          [HILLS_VERTEX_B]: { owner: 'p2', kind: 'city' },
+          [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement', wall: false },
+          [HILLS_VERTEX_B]: { owner: 'p2', kind: 'city', wall: false },
         },
         bank: hand({ brick: 2, lumber: 19, wool: 19, grain: 19, ore: 19 }),
       });
@@ -129,8 +129,8 @@ describe('distributeYield', () => {
     it('bedient andere Ressourcen desselben Wurfs trotzdem', () => {
       const state = testGame({
         buildings: {
-          [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement' },
-          [HILLS_VERTEX_B]: { owner: 'p2', kind: 'settlement' },
+          [HILLS_VERTEX_A]: { owner: 'p1', kind: 'settlement', wall: false },
+          [HILLS_VERTEX_B]: { owner: 'p2', kind: 'settlement', wall: false },
         },
         bank: hand({ brick: 1, lumber: 19, wool: 19, grain: 19, ore: 19 }),
       });
@@ -148,7 +148,7 @@ describe('grantSetupYield', () => {
     // Die zweite Siedlung der Gruendungsphase bringt sofort Ertrag:
     // Huegel (Lehm) und Wald (Holz), die Wueste nichts.
     const state = testGame({
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement' } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
     });
 
     const next = grantSetupYield(state, 'p1', CENTER_VERTEX);
@@ -201,7 +201,7 @@ describe('Handelswaren am Stadtertrag', () => {
 
   it('gibt der Siedlung am Wald nur das Holz', () => {
     const state = gameWithCities({
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement' } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
     });
 
     expect(resourcesOf(distributeYield(state, 5), 'p1')).toEqual(hand({ lumber: 1 }));
@@ -213,7 +213,7 @@ describe('Handelswaren am Stadtertrag', () => {
    */
   it('bleibt am Basistisch bei zwei Holz', () => {
     const state = testGame({
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city' } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } },
     });
 
     expect(resourcesOf(distributeYield(state, 5), 'p1')).toEqual(hand({ lumber: 2 }));

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { RESOURCE_IDS, type CardId } from '@conquerist/shared';
-import { cardAmounts } from '@conquerist/shared';
+import { cardAmounts, pieceCounts } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import { RESOURCE_LABELS } from '../game/labels';
 import type { PlayerRow } from '../game/view';
@@ -16,7 +16,7 @@ const player: PlayerRow = {
   victoryPoints: 2,
   cardCount: 8,
   resources: cardAmounts({ brick: 3, lumber: 2, wool: 2, grain: 1, ore: 0 }),
-  piecesLeft: { road: 13, settlement: 3, city: 4 },
+  piecesLeft: pieceCounts({ road: 13, settlement: 3, city: 4 }),
   developmentCards: [],
   developmentCount: 0,
   playedKnights: 0,

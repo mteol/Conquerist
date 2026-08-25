@@ -119,7 +119,7 @@ describe('Bewegung', () => {
     const built = {
       ...start,
       buildings: {
-        [vertices[0]!]: { owner: seats[0]!.id, kind: 'settlement' as const },
+        [vertices[0]!]: { owner: seats[0]!.id, kind: 'settlement' as const, wall: false },
       },
     };
 

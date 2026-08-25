@@ -56,6 +56,8 @@ export function createGame(
       piecesLeft: { ...rules.pieceStock },
       developmentCards: [],
       playedKnights: 0,
+      defenderPoints: 0,
+      improvements: {},
     })),
     currentPlayerIndex: 0,
     // Vor der Gruendung wird ausgewuerfelt, wer beginnt. Erst danach steht fest,
@@ -63,6 +65,7 @@ export function createGame(
     phase: { kind: 'opening', rolls: {}, pending: [...playerIds], round: 0 },
     buildings: {},
     roads: {},
+    knights: {},
     robber: scenario.robberStart,
     /*
      * Ob Barbaren kommen, sagt das Regelwerk und nicht der Aufrufer. Damit ist
@@ -138,7 +141,7 @@ export function applySetupSettlement(
 
   const placed: GameState = {
     ...state,
-    buildings: { ...state.buildings, [vertex]: { owner: player, kind } },
+    buildings: { ...state.buildings, [vertex]: { owner: player, kind, wall: false } },
     players: state.players.map((entry) =>
       entry.id === player
         ? {

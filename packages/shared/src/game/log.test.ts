@@ -72,7 +72,7 @@ describe('Verlaufssaetze', () => {
       rules: { ...CLASSIC_RULES, victoryPointGoal: 2 },
       phase: { kind: 'main' },
       currentPlayerIndex: 0,
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement' } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
     });
     const before = giving(base, 'p1', { grain: 2, ore: 3 });
     const action: GameAction = { type: 'buildCity', player: 'p1', vertex: CENTER_VERTEX };

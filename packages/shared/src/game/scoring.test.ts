@@ -11,14 +11,16 @@ describe('victoryPointsOf', () => {
 
   it('zaehlt eine Siedlung als einen Punkt', () => {
     const state = testGame({
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement' } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
     });
 
     expect(victoryPointsOf(state, 'p1')).toBe(1);
   });
 
   it('zaehlt eine Stadt als zwei Punkte', () => {
-    const state = testGame({ buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city' } } });
+    const state = testGame({
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } },
+    });
 
     expect(victoryPointsOf(state, 'p1')).toBe(2);
   });
@@ -26,8 +28,8 @@ describe('victoryPointsOf', () => {
   it('zaehlt fremde Bauwerke nicht mit', () => {
     const state = testGame({
       buildings: {
-        [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement' },
-        [FAR_VERTEX]: { owner: 'p2', kind: 'city' },
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false },
+        [FAR_VERTEX]: { owner: 'p2', kind: 'city', wall: false },
       },
     });
 
@@ -37,7 +39,7 @@ describe('victoryPointsOf', () => {
 
   it('gibt dem Inhaber der Laengsten Handelsstrasse zwei Punkte dazu', () => {
     const state = testGame({
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement' } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
       longestRoad: { holder: 'p1', length: 5 },
     });
 
@@ -61,7 +63,7 @@ describe('victoryPointsOf', () => {
           longestRoad: 5,
         },
       },
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city' } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } },
       longestRoad: { holder: 'p1', length: 5 },
     });
 
@@ -73,7 +75,7 @@ describe('hasWon', () => {
   it('ist falsch unterhalb des Ziels', () => {
     const state = testGame({
       rules: { ...CLASSIC_RULES, victoryPointGoal: 3 },
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city' } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } },
     });
 
     expect(hasWon(state, 'p1')).toBe(false);
@@ -82,7 +84,7 @@ describe('hasWon', () => {
   it('ist wahr ab dem Ziel', () => {
     const state = testGame({
       rules: { ...CLASSIC_RULES, victoryPointGoal: 2 },
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city' } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } },
     });
 
     expect(hasWon(state, 'p1')).toBe(true);
@@ -92,8 +94,8 @@ describe('hasWon', () => {
     const state = testGame({
       rules: { ...CLASSIC_RULES, victoryPointGoal: 2 },
       buildings: {
-        [CENTER_VERTEX]: { owner: 'p1', kind: 'city' },
-        [FAR_VERTEX]: { owner: 'p1', kind: 'city' },
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false },
+        [FAR_VERTEX]: { owner: 'p1', kind: 'city', wall: false },
       },
     });
 

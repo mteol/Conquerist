@@ -11,7 +11,7 @@ import {
   setupPlayer,
   type GameState,
 } from '@conquerist/shared';
-import { cardAmounts } from '@conquerist/shared';
+import { cardAmounts, pieceCounts } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { gameViewOf } from '../game/view';
@@ -132,7 +132,7 @@ describe('ActionPanel', () => {
       <ActionPanel
         targets={actionTargets(state, view.currentPlayerId)}
         error={null}
-        stock={{ piecesLeft: { road: 13, settlement: 3, city: 4 }, color: '#c0392b' }}
+        stock={{ piecesLeft: pieceCounts({ road: 13, settlement: 3, city: 4 }), color: '#c0392b' }}
         costs={CLASSIC_RULES.buildCosts}
         buildMode={null}
         onBuildMode={vi.fn()}
@@ -153,7 +153,7 @@ describe('ActionPanel', () => {
       <ActionPanel
         targets={actionTargets(state, view.currentPlayerId)}
         error={null}
-        stock={{ piecesLeft: { road: 0, settlement: 3, city: 4 }, color: '#c0392b' }}
+        stock={{ piecesLeft: pieceCounts({ road: 0, settlement: 3, city: 4 }), color: '#c0392b' }}
         costs={CLASSIC_RULES.buildCosts}
         buildMode={null}
         onBuildMode={vi.fn()}
@@ -181,7 +181,7 @@ describe('ActionPanel', () => {
       <ActionPanel
         targets={actionTargets(state, view.currentPlayerId)}
         error={null}
-        stock={{ piecesLeft: { road: 13, settlement: 3, city: 4 }, color: '#c0392b' }}
+        stock={{ piecesLeft: pieceCounts({ road: 13, settlement: 3, city: 4 }), color: '#c0392b' }}
         costs={CLASSIC_RULES.buildCosts}
         buildMode={null}
         onBuildMode={vi.fn()}

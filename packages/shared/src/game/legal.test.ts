@@ -55,7 +55,7 @@ describe('legalActions', () => {
   it('nennt nach der Siedlung nur die Kanten an ihr', () => {
     const state = testGame({
       phase: { kind: 'setup', placement: 0, settlement: CENTER_VERTEX },
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement' } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
     });
 
     const actions = legalActions(state, 'p1');
@@ -108,7 +108,7 @@ describe('legalActions', () => {
     const state = giving(
       testGame({
         phase: { kind: 'robberPending', resume: 'main' },
-        buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement' } },
+        buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false } },
       }),
       'p2',
       { wool: 2 },
@@ -135,7 +135,7 @@ describe('legalActions', () => {
         phase: { kind: 'main' },
         // Zwei Strassen weit: der naechste freie Knoten liegt damit zwei
         // Schritte entfernt und verletzt die Abstandsregel nicht.
-        buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement' } },
+        buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
         roads: { [CENTER_EDGE]: 'p1', [NEXT_EDGE]: 'p1' },
       }),
       'p1',
@@ -204,7 +204,7 @@ describe('legalActions', () => {
     const state = giving(
       testGame({
         phase: { kind: 'main' },
-        buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement' } },
+        buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false } },
       }),
       'p1',
       hand(CLASSIC_RULES.buildCosts.city),

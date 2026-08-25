@@ -35,7 +35,13 @@ import {
  * `legalActions` genannt hat. Der Client prueft nirgends selbst, ob jemand das
  * Holz dafuer hat (Regel: der Client kennt keine Regel).
  */
-export type BuildableKind = 'road' | 'settlement' | 'city';
+/**
+ * Was sich auf dem Brett bauen laesst - die **Absicht**, nicht das Stueck im
+ * Vorrat. Seit Staedte & Ritter gehoeren Stadtmauer und Ritter dazu; gebaut
+ * wird immer der Einfache Ritter, und die drei Vorratsstufen (`knight1` bis
+ * `knight3`) sind eine andere Frage.
+ */
+export type BuildableKind = 'road' | 'settlement' | 'city' | 'wall' | 'knight';
 
 export interface ActionTargets {
   readonly vertices: ReadonlyMap<VertexId, GameAction>;
@@ -63,7 +69,7 @@ export const EMPTY_TARGETS: ActionTargets = {
   endTurn: null,
   buyCard: null,
   playKnight: null,
-  buildable: { road: 0, settlement: 0, city: 0 },
+  buildable: { road: 0, settlement: 0, city: 0, wall: 0, knight: 0 },
 };
 
 /**
@@ -115,7 +121,13 @@ export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
   let endTurn: GameAction | null = null;
   let buyCard: GameAction | null = null;
   let playKnight: GameAction | null = null;
-  const buildable: Record<BuildableKind, number> = { road: 0, settlement: 0, city: 0 };
+  const buildable: Record<BuildableKind, number> = {
+    road: 0,
+    settlement: 0,
+    city: 0,
+    wall: 0,
+    knight: 0,
+  };
 
   const claim = <K, V>(map: Map<K, V>, key: K, value: V, what: string): void => {
     if (map.has(key)) {

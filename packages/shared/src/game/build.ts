@@ -222,7 +222,7 @@ export function applyBuildSettlement(
   const paid = pay(state, player, costOf(state.rules, 'settlement'), { settlement: -1 });
   return ok({
     ...paid,
-    buildings: { ...paid.buildings, [vertex]: { owner: player, kind: 'settlement' } },
+    buildings: { ...paid.buildings, [vertex]: { owner: player, kind: 'settlement', wall: false } },
   });
 }
 
@@ -252,6 +252,6 @@ export function applyBuildCity(state: GameState, player: PlayerId, vertex: Verte
   const paid = pay(state, player, costOf(state.rules, 'city'), { city: -1, settlement: +1 });
   return ok({
     ...paid,
-    buildings: { ...paid.buildings, [vertex]: { owner: player, kind: 'city' } },
+    buildings: { ...paid.buildings, [vertex]: { owner: player, kind: 'city', wall: false } },
   });
 }

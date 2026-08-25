@@ -147,6 +147,8 @@ const BUILD_HINTS: Readonly<Record<BuildableKind, string>> = {
   road: 'Straße bauen: Kante auf dem Brett wählen',
   settlement: 'Siedlung bauen: Knoten auf dem Brett wählen',
   city: 'Stadt bauen: eigene Siedlung auf dem Brett wählen',
+  wall: 'Stadtmauer bauen: eigene Stadt auf dem Brett wählen',
+  knight: 'Ritter bauen: freie Kreuzung am eigenen Straßennetz wählen',
 };
 
 export function GameScreen({
