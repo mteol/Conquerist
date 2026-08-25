@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type JSX } from 'react';
+import { useMemo, useState, type CSSProperties, type JSX } from 'react';
 import {
   CLASSIC_34,
   CLASSIC_56,
@@ -17,7 +17,6 @@ import { ConnectionPanel } from '../diagnostics/ConnectionPanel';
 import type { Identity } from '../game/useOnlineGame';
 import { AccountCorner } from './AccountCorner';
 import { HexField } from './HexField';
-import { Wordmark } from './Wordmark';
 import { SeatPiece } from './LobbyScreen';
 
 /** Tut nichts - Vorgabewert fuer die drei Konto-Aktionen ohne Identitaet. */
@@ -26,17 +25,18 @@ function noop(): void {
   // diese Griffe werden nie aufgerufen.
 }
 
-/** Was nur die lokale Partie betrifft - online gibt es diese Fragen nicht. */
-export interface LocalOptions {
-  /**
-   * Handkarten beim Zugwechsel zudecken.
-   *
-   * Am selben Geraet ist das eine echte Frage: der Bildschirm wandert weiter.
-   * Wer zu zweit nebeneinander sitzt und ohnehin alles sieht, will den
-   * Zwischenschritt nicht - deshalb eine Wahl und keine Vorschrift.
-   */
-  readonly concealBetweenTurns: boolean;
-}
+/*
+ * Hier stand `LocalOptions` mit einem einzigen Feld: ob die Handkarten beim
+ * Zugwechsel zugedeckt werden. Es war die letzte Auswahl im Spiel, die wie ein
+ * Formular aussah und nicht wie Spielmaterial - zwei nackte Optionsfelder
+ * unter lauter gezeichneten Kacheln.
+ *
+ * **Sie ist weg, und die vorsichtige Antwort bleibt stehen.** Zugedeckt war
+ * ohnehin die Vorgabe, und sie ist dieselbe Regel, nach der online gespielt
+ * wird: Handkarten sind geheim (Regel 4). Wer zu zweit nebeneinander sitzt und
+ * sowieso alles sieht, drueckt einmal mehr auf „Karten ansehen" - das ist ein
+ * Klick, wo vorher eine Frage vor der Partie stand.
+ */
 
 /**
  * Die Wege in eine Partie - jeder ein Reiter.
@@ -50,9 +50,12 @@ export type Way = 'online' | 'local' | 'join' | 'resume';
 
 export interface StartScreenProps {
   /** An einem Geraet: die Partie beginnt sofort. */
-  readonly onStartLocal: (game: GameState, seats: readonly Seat[], options: LocalOptions) => void;
-  /** Online: es entsteht ein Raum, gespielt wird spaeter. */
-  readonly onCreateRoom: (seatCount: number, seed: string, name: string) => void;
+  readonly onStartLocal: (game: GameState, seats: readonly Seat[]) => void;
+  /*
+   * `onCreateRoom` stand hier. Der Weg „online" fuehrt nicht mehr ueber diesen
+   * Bildschirm: der Raum entsteht direkt vom Titel aus, weil alles, was hier
+   * dafuer einzustellen war, im Wartebereich noch einmal steht (`App.tsx`).
+   */
   readonly onJoinRoom: (code: string, name: string) => void;
   /** Aus `?raum=` in der Adresse - der Einladungslink. */
   readonly initialCode?: string | null;
@@ -83,6 +86,27 @@ export interface StartScreenProps {
   readonly onRegister?: () => void;
   readonly onLogin?: () => void;
   readonly onLogout?: () => void;
+  /**
+   * Welcher Weg beim Aufschlagen offen ist - vom Titelbildschirm vorgewaehlt.
+   *
+   * Es ist ein **Anfangswert und keine Steuerung**: der Reiter bleibt danach
+   * Sache dieses Bildschirms, sonst muesste der Titel den Zustand halten, den
+   * er gar nicht mehr sieht. Ohne Angabe faengt der Bildschirm an, wo er immer
+   * angefangen hat - dafuer gibt es weiter Aufrufer (die Tests).
+   *
+   * Er zaehlt zugleich als **getroffene Entscheidung**: wer vom Titel kommt,
+   * hat gewaehlt, und der Sprung auf „Weiterspielen" (siehe `chosen`) darf ihm
+   * den Reiter nicht unter der Hand wegziehen. Auf dem Titel steht
+   * „Weiterspielen" ohnehin als eigener Eintrag.
+   */
+  readonly initialWay?: Way;
+  /**
+   * Zurueck zum Titel. Fehlt der Griff, fehlt der Knopf.
+   *
+   * Ein Ausgang, der ins Leere fuehrt, ist schlimmer als keiner - und es gibt
+   * Aufrufer ohne Titel davor.
+   */
+  readonly onBack?: () => void;
 }
 
 const BLUEPRINTS: readonly ScenarioBlueprint[] = [CLASSIC_34, CLASSIC_56];
@@ -163,7 +187,6 @@ function order(index: number): CSSProperties {
  */
 export function StartScreen({
   onStartLocal,
-  onCreateRoom,
   onJoinRoom,
   initialCode = null,
   problem = null,
@@ -176,6 +199,8 @@ export function StartScreen({
   onRegister = noop,
   onLogin = noop,
   onLogout = noop,
+  initialWay,
+  onBack,
 }: StartScreenProps): JSX.Element {
   const [seats, setSeats] = useState<Seat[]>(() => defaultSeats(MIN_SEATS));
   const [seed, setSeed] = useState(randomSeed);
@@ -183,7 +208,6 @@ export function StartScreen({
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [name, setName] = useState(initialName);
   const [code, setCode] = useState(initialCode ?? '');
-  const [conceal, setConceal] = useState(true);
   /*
    * Welche Karte gerade nachfragt, ob es ernst gemeint ist.
    *
@@ -201,28 +225,19 @@ export function StartScreen({
    * Ein Einladungslink ist bereits eine Entscheidung: wer ihm gefolgt ist, will
    * beitreten und nichts anderes. Sonst faengt der Bildschirm beim Erstellen an.
    */
-  const [way, setWay] = useState<Way>(initialCode === null ? 'online' : 'join');
-
   /*
-   * Ob der Reiter von Hand gewaehlt wurde.
+   * **Der Weg wird hier nicht mehr gewaehlt, er steht fest.**
    *
-   * `myRooms` kommt vom Server und ist beim ersten Rendern noch leer. Trifft
-   * die Liste ein und es steht eine Partie offen, gehoert der Bildschirm
-   * dorthin - wer schon irgendwo sitzt, will meistens zurueck. Aber nur,
-   * solange niemand selbst gewaehlt hat: einen Reiter unter der Hand
-   * wegzuziehen, waehrend jemand seinen Namen eintippt, waere schlimmer als die
-   * falsche Voreinstellung.
+   * Er kam einmal aus einer Reiterreihe auf diesem Bildschirm, und der Titel
+   * davor waehlte ihn bloss vor. Das waren zwei Orte fuer eine Entscheidung -
+   * und der zweite hat sie nur wiederholt. Jetzt fuehrt der Titel geradewegs
+   * hierher, und dieser Bildschirm ist der Bildschirm **dieses einen Weges**.
+   * Wer den Weg wechseln will, geht zurueck; das ist ein Klick, genau wie der
+   * Reiter einer war.
+   *
+   * Ein Einladungslink schlaegt alles: wer ihm gefolgt ist, will beitreten.
    */
-  const chosen = useRef(initialCode !== null);
-
-  useEffect(() => {
-    if (!chosen.current && myRooms.length > 0) setWay('resume');
-  }, [myRooms.length]);
-
-  const choose = (next: Way): void => {
-    chosen.current = true;
-    setWay(next);
-  };
+  const way: Way = initialCode === null ? (initialWay ?? 'local') : 'join';
 
   /*
    * Bei drei bis vier Spielern passt nur `classic34`, bei fuenf bis sechs nur
@@ -277,36 +292,35 @@ export function StartScreen({
     }
 
     setLocalProblem(null);
-    onStartLocal(preview, seats, { concealBetweenTurns: conceal });
+    onStartLocal(preview, seats);
   };
 
   const shown = problem ?? localProblem;
 
-  /* Wer beitritt oder zurueckkehrt, waehlt weder Tischgroesse noch Brett -
-     beides bestimmt der, der die Partie erstellt hat. */
-  const showsBoard = way === 'online' || way === 'local';
-  const showsName = way === 'online' || way === 'join';
+  /*
+   * Tischgroesse, Brett und Vorschau gehoeren jetzt nur noch der lokalen
+   * Partie. Wer online erstellt, kommt gar nicht mehr hierher - der Raum
+   * entsteht sofort, und alle drei Angaben stehen im Wartebereich. Wer
+   * beitritt oder zurueckkehrt, hat sie noch nie gewaehlt: das bestimmt der,
+   * der die Partie erstellt hat.
+   */
+  const showsBoard = way === 'local';
+  const showsName = way === 'join';
 
   /*
-   * Die Reiter. Wortlaut wie im ganzen Ablauf: Partie, nicht Spiel (Regel 8).
-   * Die Beschriftung ist kurz, weil vier davon nebeneinander stehen; der ganze
-   * Satz steht als zugaenglicher Name daneben, damit ein Vorlesegeraet nicht
-   * bloss "online" vorliest.
+   * Die Ueberschrift des Bildschirms - je Weg eine, und je Weg eine andere.
+   *
+   * Sie ersetzt die Reiterreihe: die sagte, **welche** Wege es gibt, und der
+   * offene Reiter nebenbei, auf welchem man steht. Gebraucht wird nur das
+   * Zweite. Der Bau ist der des Wartebereichs: Kleinlabel, darunter das eine
+   * grosse Wort.
    */
-  const ways: readonly { readonly id: Way; readonly label: string; readonly title: string }[] = [
-    { id: 'online', label: 'Online', title: 'Partie starten — online' },
-    { id: 'local', label: 'Lokal', title: 'Partie starten — lokal' },
-    { id: 'join', label: 'Beitreten', title: 'Partie beitreten' },
-    ...(myRooms.length === 0
-      ? []
-      : [
-          {
-            id: 'resume' as const,
-            label: `Weiterspielen (${myRooms.length})`,
-            title: `Weiterspielen (${myRooms.length})`,
-          },
-        ]),
-  ];
+  const heading: Readonly<Record<Way, { readonly eyebrow: string; readonly title: string }>> = {
+    online: { eyebrow: 'Partie starten', title: 'Online' },
+    local: { eyebrow: 'Partie starten', title: 'An einem Gerät' },
+    join: { eyebrow: 'Partie beitreten', title: 'Raumcode' },
+    resume: { eyebrow: 'Weiterspielen', title: 'Deine Partien' },
+  };
 
   return (
     <main className="start">
@@ -323,36 +337,34 @@ export function StartScreen({
       />
 
       <section className="start__panel">
-        <header className="start__brand">
-          <h1 className="start__title">
-            <Wordmark animated />
-            {/*
-             * Der Titel als Text, nur unsichtbar: die Ueberschrift braucht
-             * einen zugaenglichen Namen, und der darf nicht aus Pfaddaten
-             * erraten werden muessen.
-             */}
-            <span className="visually-hidden">Conquerist</span>
-          </h1>
-        </header>
+        {/*
+         * Hier stand die Wortmarke. Sie steht jetzt auf dem Titelbildschirm
+         * davor (`MenuScreen.tsx`) - **einmal**, und dort ist sie der Inhalt
+         * und nicht die Kopfzeile eines Formulars. Zwei Bildschirme
+         * hintereinander mit demselben Titel sind kein Wiedererkennen, sondern
+         * eine Wiederholung.
+         */}
+        {onBack === undefined ? null : (
+          /*
+           * **„Zum Titel" und nicht „Zurueck".** Auf dem Weg „Weiterspielen"
+           * steht auf jeder Karte „Zurueck in die Partie" beziehungsweise
+           * „Zurueck an den Tisch" - zwei Knoepfe mit demselben ersten Wort,
+           * die in entgegengesetzte Richtungen fuehren. Ein Wort bleibt durch
+           * den ganzen Ablauf gleich (Regel 8), und „zurueck" gehoert hier
+           * denen, die in eine Partie fuehren.
+           */
+          <button type="button" className="button button--ghost start__back" onClick={onBack}>
+            <svg viewBox="0 0 10 10" aria-hidden="true">
+              <path d="M7 1 L3 5 L7 9" />
+            </svg>
+            Zum Titel
+          </button>
+        )}
 
-        <fieldset className="field-group start__ways" style={order(0)}>
-          <legend className="visually-hidden">Weg in eine Partie</legend>
-          <div className="ways">
-            {ways.map((entry) => (
-              <span key={entry.id}>
-                <input
-                  id={`way-${entry.id}`}
-                  type="radio"
-                  name="way"
-                  aria-label={entry.title}
-                  checked={way === entry.id}
-                  onChange={() => choose(entry.id)}
-                />
-                <label htmlFor={`way-${entry.id}`}>{entry.label}</label>
-              </span>
-            ))}
-          </div>
-        </fieldset>
+        <header className="start__head" style={order(0)}>
+          <span className="eyebrow">{heading[way].eyebrow}</span>
+          <h1 className="start__heading">{heading[way].title}</h1>
+        </header>
 
         {/*
          * Ein Traeger fuer alles unter den Reitern, und zwar einer, der beim
@@ -402,14 +414,15 @@ export function StartScreen({
                 </button>
               </div>
               {/*
-               * Brettname und Seed-Zusage stehen in einer Zeile statt in zwei
-               * Bloecken. Es ist dieselbe Auskunft - welches Brett ihr bekommt -
-               * und zwei Zeilen dafuer waren zwei Zeilen zu viel fuer ein
-               * Querformat mit 360 px Hoehe.
+               * Nur noch der Brettname.
+               *
+               * Dahinter stand „- gleicher Seed, gleiches Brett". Der Satz
+               * erklaerte, was die Vorschau daneben **zeigt**: wer den Seed
+               * aendert, sieht das Brett sich aendern, und wer ihn stehen
+               * laesst, sieht es stehen bleiben. Eine Zusage neben ihrem
+               * eigenen Beweis ist eine Zeile zu viel.
                */}
-              <p className="start__note">
-                {blueprint?.name ?? 'Kein passendes Brett'} — gleicher Seed, gleiches Brett.
-              </p>
+              <p className="start__note">{blueprint?.name ?? 'Kein passendes Brett'}</p>
             </fieldset>
           ) : null}
 
@@ -432,21 +445,6 @@ export function StartScreen({
                 onChange={(event) => setName(event.currentTarget.value)}
               />
             </fieldset>
-          ) : null}
-
-          {way === 'online' ? (
-            <section className="way">
-              <p className="way__lead">Jeder an seinem Gerät. Beitritt über Code oder Link.</p>
-
-              <button
-                type="button"
-                className="button button--go"
-                disabled={name.trim() === ''}
-                onClick={() => onCreateRoom(seats.length, seed, name.trim())}
-              >
-                Partie erstellen
-              </button>
-            </section>
           ) : null}
 
           {way === 'join' ? (
@@ -493,30 +491,6 @@ export function StartScreen({
                   </li>
                 ))}
               </ol>
-
-              <fieldset className="field-group way__hand">
-                <legend>Handkarten</legend>
-                <label htmlFor="hand-conceal">
-                  <input
-                    id="hand-conceal"
-                    type="radio"
-                    name="hand"
-                    checked={conceal}
-                    onChange={() => setConceal(true)}
-                  />
-                  Beim Zugwechsel zudecken
-                </label>
-                <label htmlFor="hand-open">
-                  <input
-                    id="hand-open"
-                    type="radio"
-                    name="hand"
-                    checked={!conceal}
-                    onChange={() => setConceal(false)}
-                  />
-                  Offen liegen lassen
-                </label>
-              </fieldset>
 
               <button type="button" className="button" onClick={startLocal}>
                 Lokale Partie starten
@@ -622,22 +596,30 @@ export function StartScreen({
         </div>
       </section>
 
-      <div className="start__preview">
-        {preview === null || !showsBoard ? null : (
-          <BoardSvg
-            state={preview}
-            targets={EMPTY_TARGETS}
-            seats={seats}
-            onPick={() => {
-              /* Die Vorschau ist zum Ansehen da, nicht zum Spielen. */
-            }}
-          />
-        )}
-        <p className="start__caption">
-          Euer Brett zum Seed
-          <b>{seed === '' ? '—' : seed}</b>
-        </p>
-      </div>
+      {/*
+       * Die rechte Haelfte gibt es nur, wo es ein Brett zu zeigen gibt.
+       *
+       * **Die Bildunterschrift stand einmal ausserhalb dieser Bedingung**, und
+       * im Browser las man auf dem Beitreten-Bildschirm „Euer Brett zum Seed
+       * 2v4c305c" - unter einer leeren Flaeche, ueber ein Brett, das niemand
+       * bekommt: der Seed gehoert dort dem, der die Partie erstellt hat, und
+       * die Zeichenkette daneben war die des eigenen Formulars, das gar nicht
+       * mehr sichtbar war. Eine Unterschrift ohne Bild beschreibt irgendetwas.
+       */}
+      {!showsBoard ? null : (
+        <div className="start__preview">
+          {preview === null ? null : (
+            <BoardSvg
+              state={preview}
+              targets={EMPTY_TARGETS}
+              seats={seats}
+              onPick={() => {
+                /* Die Vorschau ist zum Ansehen da, nicht zum Spielen. */
+              }}
+            />
+          )}
+        </div>
+      )}
     </main>
   );
 }

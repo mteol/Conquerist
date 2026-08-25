@@ -3,18 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, userEvent, waitFor } from '../test/dom';
 import { StartScreen, blueprintsFor } from './StartScreen';
 
-/**
- * Auf einen Reiter wechseln - ueber den ganzen Satz, nicht die Aufschrift.
- *
- * Die Reiter tragen kurze Beschriftungen, weil vier davon nebeneinander
- * stehen; ihr zugaenglicher Name ist der ganze Satz. Ein Test, der ueber ihn
- * geht, prueft nebenbei, dass es diesen Namen gibt - ein Vorlesegeraet bekommt
- * sonst nur "Lokal" zu hoeren.
- */
-async function aufDenWeg(satz: string): Promise<void> {
-  await userEvent.click(screen.getByLabelText(satz));
-}
-
 describe('Startbildschirm', () => {
   it('bietet je Tischgroesse nur die Bretter an, die sie tragen', () => {
     expect(blueprintsFor(3).map((blueprint) => blueprint.id)).toEqual(['classic34']);
@@ -23,8 +11,7 @@ describe('Startbildschirm', () => {
   });
 
   it('zeigt eine Namenszeile je Spieler und passt sie der Tischgroesse an', async () => {
-    render(<StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
-    await aufDenWeg('Partie starten — lokal');
+    render(<StartScreen initialWay="local" onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />);
 
     expect(screen.getAllByLabelText(/^Name von Spieler/)).toHaveLength(3);
 
@@ -33,7 +20,7 @@ describe('Startbildschirm', () => {
   });
 
   it('zeigt das Brett, das gespielt wird - und wechselt es mit der Tischgroesse', async () => {
-    render(<StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
+    render(<StartScreen onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />);
 
     // Basisbrett: 19 Felder. Die Vorschau ist kein Bild, sondern dasselbe
     // Brett, das `createGame` gleich bekommt.
@@ -44,7 +31,7 @@ describe('Startbildschirm', () => {
   });
 
   it('zeichnet zu einem anderen Seed ein anderes Brett', async () => {
-    render(<StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
+    render(<StartScreen onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />);
 
     const terrainOf = (): string =>
       screen
@@ -63,8 +50,7 @@ describe('Startbildschirm', () => {
 
   it('startet eine Partie mit den eingetragenen Namen', async () => {
     const onStart = vi.fn();
-    render(<StartScreen onStartLocal={onStart} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
-    await aufDenWeg('Partie starten — lokal');
+    render(<StartScreen initialWay="local" onStartLocal={onStart} onJoinRoom={vi.fn()} />);
 
     const firstName = screen.getAllByLabelText(/^Name von Spieler/)[0]!;
     await neuTippen(firstName, 'Anna');
@@ -81,8 +67,7 @@ describe('Startbildschirm', () => {
 
   it('baut aus demselben Seed dasselbe Brett', async () => {
     const onStart = vi.fn();
-    render(<StartScreen onStartLocal={onStart} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
-    await aufDenWeg('Partie starten — lokal');
+    render(<StartScreen initialWay="local" onStartLocal={onStart} onJoinRoom={vi.fn()} />);
 
     const seed = screen.getByLabelText('Seed');
     await neuTippen(seed, 'immer-gleich');
@@ -94,23 +79,27 @@ describe('Startbildschirm', () => {
     expect(first.scenario).toEqual(second.scenario);
   });
 
-  it('laesst waehlen, ob die Hand zwischen den Zuegen zugedeckt wird', async () => {
-    const onStart = vi.fn();
-    render(<StartScreen onStartLocal={onStart} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
-    await aufDenWeg('Partie starten — lokal');
+  /**
+   * Die Frage nach den Handkarten stellt der Bildschirm nicht mehr.
+   *
+   * Sie war die letzte Auswahl im Spiel, die wie ein Formular aussah - zwei
+   * nackte Optionsfelder unter lauter gezeichneten Kacheln. Zugedeckt war
+   * ohnehin die Vorgabe und ist dieselbe Regel, nach der online gespielt wird;
+   * uebrig bleibt sie als feste Zusage in `App.tsx`.
+   *
+   * Der Test bleibt stehen, weil ein weggelassenes Bedienelement nichts
+   * kaputtmacht: es kommt beim naechsten Umbau einfach wieder, und niemand
+   * merkt es.
+   */
+  it('fragt nicht mehr, ob die Hand zwischen den Zuegen zugedeckt wird', () => {
+    render(<StartScreen initialWay="local" onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />);
 
-    // Voreingestellt zugedeckt: am selben Geraet ist das die vorsichtigere
-    // Annahme, und wer offen spielen will, sagt es einmal.
-    await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
-    expect(onStart.mock.calls[0]![2]).toEqual({ concealBetweenTurns: true });
-
-    await userEvent.click(screen.getByLabelText(/offen liegen lassen/i));
-    await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
-    expect(onStart.mock.calls[1]![2]).toEqual({ concealBetweenTurns: false });
+    expect(screen.queryByText(/Handkarten/i)).toBeNull();
+    expect(screen.queryByLabelText(/offen liegen lassen/i)).toBeNull();
   });
 
   it('haelt die Diagnose aus Etappe 0 zugeklappt bereit', () => {
-    render(<StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
+    render(<StartScreen onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />);
 
     // Zugeklappt heisst: kein Verbindungsaufbau. Der Ping-Knopf existiert erst,
     // wenn man das Feld oeffnet.
@@ -122,8 +111,8 @@ describe('Startbildschirm', () => {
     const onResume = vi.fn();
     render(
       <StartScreen
+        initialWay="resume"
         onStartLocal={vi.fn()}
-        onCreateRoom={vi.fn()}
         onJoinRoom={vi.fn()}
         onResume={onResume}
         myRooms={[
@@ -153,8 +142,8 @@ describe('Startbildschirm', () => {
   it('nennt bei einem Wartebereich, wie viele noch fehlen', () => {
     render(
       <StartScreen
+        initialWay="resume"
         onStartLocal={vi.fn()}
-        onCreateRoom={vi.fn()}
         onJoinRoom={vi.fn()}
         onResume={vi.fn()}
         myRooms={[
@@ -172,20 +161,6 @@ describe('Startbildschirm', () => {
     expect(screen.getByText(/1 von 4/)).toBeDefined();
   });
 
-  it('laesst den Bereich ganz weg, wenn es keine eigenen Partien gibt', () => {
-    render(
-      <StartScreen
-        onStartLocal={vi.fn()}
-        onCreateRoom={vi.fn()}
-        onJoinRoom={vi.fn()}
-        onResume={vi.fn()}
-        myRooms={[]}
-      />,
-    );
-
-    expect(screen.queryByText(/Deine Partien/i)).toBeNull();
-  });
-
   /**
    * Aussteigen von der Karte aus.
    *
@@ -197,8 +172,8 @@ describe('Startbildschirm', () => {
     const onAbandon = vi.fn();
     render(
       <StartScreen
+        initialWay="resume"
         onStartLocal={vi.fn()}
-        onCreateRoom={vi.fn()}
         onJoinRoom={vi.fn()}
         onResume={vi.fn()}
         onAbandon={onAbandon}
@@ -237,8 +212,8 @@ describe('Startbildschirm', () => {
     const onDelete = vi.fn();
     render(
       <StartScreen
+        initialWay="resume"
         onStartLocal={vi.fn()}
-        onCreateRoom={vi.fn()}
         onJoinRoom={vi.fn()}
         onResume={vi.fn()}
         onAbandon={onAbandon}
@@ -272,8 +247,8 @@ describe('Startbildschirm', () => {
     const onAbandon = vi.fn();
     render(
       <StartScreen
+        initialWay="resume"
         onStartLocal={vi.fn()}
-        onCreateRoom={vi.fn()}
         onJoinRoom={vi.fn()}
         onResume={vi.fn()}
         onAbandon={onAbandon}
@@ -309,10 +284,7 @@ describe('Startbildschirm', () => {
    */
   it('gibt der lokalen Sechserpartie den Vorrat ihrer Tischgroesse', async () => {
     const onStartLocal = vi.fn();
-    render(
-      <StartScreen onStartLocal={onStartLocal} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />,
-    );
-    await aufDenWeg('Partie starten — lokal');
+    render(<StartScreen initialWay="local" onStartLocal={onStartLocal} onJoinRoom={vi.fn()} />);
 
     await userEvent.click(screen.getByLabelText('6 Spieler'));
     await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
@@ -325,7 +297,6 @@ describe('Startbildschirm', () => {
     expect(state.bank.brick).toBe(24);
     expect(state.deck.length).toBe(34);
   });
-
 });
 
 describe('Der Eingang', () => {
@@ -336,142 +307,57 @@ describe('Der Eingang', () => {
    * lauter Bedienung. Was er an Platz freigibt, gehoert der Marke.
    */
   it('traegt unter der Wortmarke keinen Vorspann mehr', () => {
-    const { container } = render(
-      <StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />,
-    );
+    const { container } = render(<StartScreen onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />);
 
     expect(container.querySelector('.start__lead')).toBeNull();
     expect(screen.queryByText(/Sechs Geräte oder eins/)).toBeNull();
   });
 
-  /*
-   * Diese Faelle kommen aus `MenuScreen.test.tsx`. Der Bildschirm, den sie
-   * geprueft haben, gibt es nicht mehr - die Sache, die sie pruefen, schon:
-   * dass der Eingang aus demselben Material besteht wie das Spiel und dass
-   * seine Ankunft eine Bewegung ist und kein Blinken.
+  /**
+   * Jeder Weg zeigt genau das, was ihn angeht.
+   *
+   * Das war einmal die Aufgabe der Reiterreihe: ein offener Reiter, ein
+   * Formular. Die Reihe ist weg - der Titel fuehrt geradewegs hierher -, und
+   * damit ist es die Aufgabe des Weges selbst. Geprueft wird deshalb nicht mehr
+   * umgeschaltet, sondern zweimal gerendert.
    */
-  it('traegt die drei Wege in Lesereihenfolge, mit demselben Wort wie ueberall', () => {
-    render(<StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
-
-    // „Partie" und nicht „Spiel": ein Wort durch den ganzen Ablauf (Regel 8).
-    const ways = screen
-      .getAllByRole('radio')
-      .map((node) => node.getAttribute('aria-label'))
-      .filter((label) => label?.startsWith('Partie') === true);
-
-    expect(ways).toEqual(['Partie starten — online', 'Partie starten — lokal', 'Partie beitreten']);
-  });
-
-  it('faengt beim Erstellen an und zeigt immer nur einen Weg', async () => {
-    render(<StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
-
-    // Der offene Reiter entscheidet, was darunter steht - genau ein Weg, nicht
-    // drei untereinander. Das ist der Grund, warum der Bildschirm ohne
-    // Scrollen passt.
-    expect(screen.getByRole('button', { name: 'Partie erstellen' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Lokale Partie starten' })).toBeNull();
-    expect(screen.queryByLabelText('Raumcode')).toBeNull();
-
-    await aufDenWeg('Partie beitreten');
-
-    expect(screen.getByLabelText('Raumcode')).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Partie erstellen' })).toBeNull();
-  });
-
-  it('laesst Tischgroesse und Seed nur da stehen, wo sie jemanden angehen', async () => {
-    render(<StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />);
+  it('laesst Tischgroesse und Seed nur da stehen, wo sie jemanden angehen', () => {
+    const { unmount } = render(
+      <StartScreen initialWay="local" onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />,
+    );
 
     expect(screen.getByLabelText('Seed')).toBeDefined();
+    expect(screen.getByLabelText('3 Spieler')).toBeDefined();
+    unmount();
 
     // Wer beitritt, waehlt weder Tischgroesse noch Brett - beides bestimmt der,
     // der die Partie erstellt hat.
-    await aufDenWeg('Partie beitreten');
+    render(<StartScreen initialWay="join" onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />);
 
     expect(screen.queryByLabelText('Seed')).toBeNull();
     expect(screen.queryByLabelText('3 Spieler')).toBeNull();
+    expect(screen.getByLabelText('Raumcode')).toBeDefined();
   });
 
   it('steht bei einem Einladungslink gleich auf Beitreten', () => {
+    // Der Link schlaegt sogar den Weg, den der Titel mitgibt: wer ihm gefolgt
+    // ist, hat seine Entscheidung getroffen, und ein Bildschirm, der ihn
+    // trotzdem etwas anderes fragt, steht zwischen Klick und Tisch.
     render(
       <StartScreen
         onStartLocal={vi.fn()}
-        onCreateRoom={vi.fn()}
         onJoinRoom={vi.fn()}
+        initialWay="local"
         initialCode="K7X2"
       />,
     );
 
-    // Wer dem Link gefolgt ist, hat seine Entscheidung getroffen. Ein Reiter,
-    // den er erst noch anklicken muesste, waere eine Huerde zwischen Klick und
-    // Tisch.
     expect((screen.getByLabelText('Raumcode') as HTMLInputElement).value).toBe('K7X2');
-    expect((screen.getByLabelText('Partie beitreten') as HTMLInputElement).checked).toBe(true);
-  });
-
-  it('springt auf Weiterspielen, sobald offene Partien eintreffen', async () => {
-    const room = {
-      code: 'K7X2',
-      seatCount: 3,
-      started: true,
-      deletable: false,
-      turn: 4,
-      seats: [{ name: 'Anna', color: '#c0392b', connected: true }],
-    };
-    const { rerender } = render(
-      <StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />,
-    );
-
-    // Die Liste kommt vom Server und ist beim ersten Rendern noch leer.
-    expect(screen.queryByLabelText(/Weiterspielen/)).toBeNull();
-
-    rerender(
-      <StartScreen
-        onStartLocal={vi.fn()}
-        onCreateRoom={vi.fn()}
-        onJoinRoom={vi.fn()}
-        myRooms={[room]}
-      />,
-    );
-
-    expect((screen.getByLabelText('Weiterspielen (1)') as HTMLInputElement).checked).toBe(true);
-  });
-
-  it('zieht den Reiter nicht weg, wenn jemand schon selbst gewaehlt hat', async () => {
-    const room = {
-      code: 'K7X2',
-      seatCount: 3,
-      started: true,
-      deletable: false,
-      turn: 4,
-      seats: [{ name: 'Anna', color: '#c0392b', connected: true }],
-    };
-    const { rerender } = render(
-      <StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />,
-    );
-
-    await aufDenWeg('Partie starten — lokal');
-
-    rerender(
-      <StartScreen
-        onStartLocal={vi.fn()}
-        onCreateRoom={vi.fn()}
-        onJoinRoom={vi.fn()}
-        myRooms={[room]}
-      />,
-    );
-
-    // Einen Reiter unter der Hand wegzuziehen, waehrend jemand Namen eintippt,
-    // waere schlimmer als die falsche Voreinstellung.
-    expect((screen.getByLabelText('Partie starten — lokal') as HTMLInputElement).checked).toBe(
-      true,
-    );
-    expect(screen.getAllByLabelText(/^Name von Spieler/)).toHaveLength(3);
+    expect(screen.queryByLabelText('3 Spieler')).toBeNull();
   });
 
   it('zeichnet das Hexfeld als Hintergrund, nicht als Bild', () => {
-    const { container } = render(
-      <StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />,
-    );
+    const { container } = render(<StartScreen onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />);
 
     // Dasselbe Raster wie im Spiel, mit denselben Funktionen gesetzt.
     const field = container.querySelector('.hexfield');
@@ -479,22 +365,46 @@ describe('Der Eingang', () => {
     expect(field?.querySelectorAll('polygon').length).toBeGreaterThan(50);
   });
 
-  it('traegt den Titel als gezeichnete Wortmarke, den Namen trotzdem als Text', () => {
-    const { container } = render(
-      <StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />,
+  /*
+   * Die Wortmarke wird hier **nicht** mehr geprueft, und das ist kein
+   * Wegfall, sondern ein Umzug: sie steht auf dem Titelbildschirm davor, und
+   * `MenuScreen.test.tsx` prueft sie dort. Zwei Bildschirme hintereinander mit
+   * demselben Titel waeren keine Wiedererkennung, sondern eine Wiederholung.
+   *
+   * Geprueft wird hier stattdessen der Weg zurueck - er ist das, was diesen
+   * Bildschirm mit dem Titel verbindet.
+   */
+  it('bietet den Weg zum Titel nur an, wenn es einen gibt', () => {
+    const { unmount } = render(<StartScreen onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /zum titel/i })).toBeNull();
+    unmount();
+
+    const onBack = vi.fn();
+    render(<StartScreen onStartLocal={vi.fn()} onJoinRoom={vi.fn()} onBack={onBack} />);
+    screen.getByRole('button', { name: /zum titel/i }).click();
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * Der Titel waehlt den Reiter vor - und der Sprung auf „Weiterspielen" darf
+   * ihn danach nicht wegziehen.
+   *
+   * Das ist derselbe Fall wie beim Einladungslink: wer gewaehlt hat, hat
+   * gewaehlt. Eintreffende `myRooms` sind eine Auskunft und keine Korrektur.
+   */
+  it('nimmt den Weg vom Titel entgegen und schreibt ihn ueber den Bildschirm', () => {
+    render(
+      <StartScreen onStartLocal={vi.fn()} onJoinRoom={vi.fn()} initialWay="local" myRooms={[]} />,
     );
 
-    // Die Ueberschrift heisst „Conquerist" - aus Pfaddaten laesst sich kein
-    // zugaenglicher Name ableiten, also steht er unsichtbar daneben.
-    const heading = screen.getByRole('heading', { name: 'Conquerist' });
-    expect(heading.querySelector('.wordmark--enter')).not.toBeNull();
-    expect(container.querySelectorAll('.wordmark__letter').length).toBe(10);
+    // Die Ueberschrift ersetzt die Reiterreihe: sie sagt nicht mehr, welche
+    // Wege es gibt, sondern nur noch, auf welchem man steht.
+    expect(screen.getByRole('heading', { name: 'An einem Gerät' })).toBeDefined();
+    expect(screen.getAllByLabelText(/^Name von Spieler/)).toHaveLength(3);
   });
 
   it('laesst den Aufprall von innen nach aussen laufen, nicht ueberall zugleich', () => {
-    const { container } = render(
-      <StartScreen onStartLocal={vi.fn()} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />,
-    );
+    const { container } = render(<StartScreen onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />);
 
     const delays = [...container.querySelectorAll<HTMLElement>('.hexfield polygon')].map((hex) =>
       Number.parseInt(hex.style.animationDelay, 10),
@@ -511,11 +421,10 @@ describe('Der Eingang', () => {
     expect(Number(first?.style.getPropertyValue('--rest'))).toBeGreaterThan(0);
   });
 
-  it('laesst Reiter, Formular und Ecke in dieser Reihenfolge einfallen', () => {
+  it('laesst Ueberschrift, Formular und Ecke in dieser Reihenfolge einfallen', () => {
     const { container } = render(
       <StartScreen
         onStartLocal={vi.fn()}
-        onCreateRoom={vi.fn()}
         onJoinRoom={vi.fn()}
         identity={{ userId: 'u1', name: 'Gast', isGuest: true }}
       />,
@@ -526,7 +435,7 @@ describe('Der Eingang', () => {
 
     // Eine Choreografie und nicht drei gleichzeitige Spruenge. Die Ecke faellt
     // zuletzt - sie ist eine Zustandsanzeige und kein vierter Weg.
-    expect(platz('.start__ways')).toBeLessThan(platz('.start__form'));
+    expect(platz('.start__head')).toBeLessThan(platz('.start__form'));
     expect(platz('.start__form')).toBeLessThan(platz('.corner'));
   });
 
@@ -534,7 +443,6 @@ describe('Der Eingang', () => {
     render(
       <StartScreen
         onStartLocal={vi.fn()}
-        onCreateRoom={vi.fn()}
         onJoinRoom={vi.fn()}
         identity={{ userId: 'u1', name: 'Gast', isGuest: true }}
         onRegister={vi.fn()}

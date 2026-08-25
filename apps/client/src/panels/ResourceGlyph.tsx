@@ -16,13 +16,32 @@ import type { ResourceId } from '@conquerist/shared';
  */
 export function ResourceGlyph({ resource }: { readonly resource: ResourceId }): JSX.Element {
   return (
-    <svg className="card__glyph" viewBox="0 0 24 24" aria-hidden="true">
-      {SHAPES[resource]}
+    <svg className="card__glyph" viewBox={`0 0 ${GLYPH_BOX} ${GLYPH_BOX}`} aria-hidden="true">
+      {RESOURCE_SHAPES[resource]}
     </svg>
   );
 }
 
-const SHAPES: Readonly<Record<ResourceId, JSX.Element>> = {
+/**
+ * Die Kantenlaenge des Rasters, in dem alle fuenf Motive liegen.
+ *
+ * Sie steht als Zahl da, weil sie ausserhalb dieser Datei gebraucht wird: der
+ * Hafen setzt dasselbe Motiv aufs Brett und muss es dafuer auf Brettmasse
+ * herunterrechnen (`board/harbor.tsx`). Wer den Wert dort abschreibt, hat ihn
+ * beim naechsten Mal an einer Stelle geaendert.
+ */
+export const GLYPH_BOX = 24;
+
+/**
+ * Die fuenf Motive als blosse Formen, ohne ihr SVG darum.
+ *
+ * **Warum sie exportiert sind.** Ein Hafen fuer Erz zeigt dasselbe Motiv wie
+ * die Erzkarte - das ist die ganze Auskunft, die er zu geben hat, und sie darf
+ * nicht als zweite Zeichnung danebenstehen. Auf der Karte sitzt das Motiv in
+ * einem eigenen `<svg>`, auf dem Brett in einer `<g>` mit Transformation;
+ * gemeinsam ist ihnen nur der Inhalt, und genau der steht deshalb hier.
+ */
+export const RESOURCE_SHAPES: Readonly<Record<ResourceId, JSX.Element>> = {
   /** Lehm: drei Ziegel im Verband. */
   brick: (
     <g>

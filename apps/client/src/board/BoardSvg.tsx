@@ -21,6 +21,7 @@ import {
 } from './layout';
 import { nearestTarget, targetPoints } from './pick';
 import { CITY_PATH, SETTLEMENT_PATH } from './shapes';
+import { HARBOR_MARK, HarborMark } from './harbor';
 import { LAYERS, TerrainPatterns, terrainFill } from './terrain';
 import { Numeral } from '../type/Numerals';
 
@@ -74,16 +75,20 @@ const PADDING = 0.2;
 /**
  * Wie weit die Hafenmarken ueber die aeussersten Feldecken hinausragen.
  *
- * Gemessen und nicht geschaetzt: `getBBox()` am fertigen Brett gegen die
- * Eckenspanne gerechnet ergibt 0.35 - eine Marke sitzt HARBOR_OFFSET vor der
- * Kantenmitte und traegt ihren Radius, und die Kantenmitte liegt naeher am
- * Mittelpunkt als eine Ecke. Die viewBox rechnet aus Ecken, also muss dieser
- * Ueberstand dazu.
+ * Gemessen und nicht geschaetzt: `getBBox()` der Hafengruppen gegen die
+ * Eckenspanne der Felder gerechnet ergibt **0.384** (im Browser, bei
+ * `HARBOR_MARK` = 0.27) - eine Marke sitzt HARBOR_OFFSET vor der Kantenmitte
+ * und traegt ihren Radius, und die Kantenmitte liegt naeher am Mittelpunkt als
+ * eine Ecke. Die viewBox rechnet aus Ecken, also muss dieser Ueberstand dazu;
+ * 0.39 laesst dem Ring seine Strichbreite.
+ *
+ * **Die Zahl haengt an `HARBOR_MARK` und ist mit ihr gewachsen** (0.35 -> 0.39,
+ * genau die 0.04, um die der Radius zugelegt hat). Wer die Marke wieder
+ * aendert, aendert diese Zahl mit - sonst schneidet die viewBox an neun
+ * Stellen einen Rand ab, den niemand sucht, weil er nur ein paar Pixel breit
+ * ist.
  */
-const HARBOR_REACH = 0.35;
-
-/** Der Radius der Hafenmarke. Steht auch in `index.css` als `r` am Kreis. */
-const HARBOR_MARK = 0.23;
+const HARBOR_REACH = 0.39;
 
 /**
  * Wo ein Steg anfaengt - knapp innerhalb der Marke.
@@ -416,14 +421,27 @@ export function BoardSvg({
        * zwei Knoten** einen Hafen bedienen - man las es aus der Lage der Marke,
        * und genau die war verdeckt. Jetzt zeigen zwei Linien darauf.
        *
-       * Der Ring traegt die Farbe der Ressource, in der Mitte steht nur das
-       * Verhaeltnis. Der ausgeschriebene Name („2:1 Erz") passt bei dieser
-       * Groesse nicht lesbar aufs Brett und steht deshalb im `title` - sichtbar
-       * beim Zeigen, vorhanden fuer Vorlesewerkzeuge.
+       * **Was in der Marke steht, steht in `board/harbor.tsx`** - sie ist von
+       * einem Kreis mit Aufschrift zu einer kleinen Muenze geworden: das Motiv
+       * der Ressource, wie es auch auf der Handkarte liegt, und darunter das
+       * Verhaeltnis in den gezeichneten Ziffern. Bis dahin war die Ringfarbe
+       * die **einzige** Auskunft darueber, welchen Hafen man vor sich hat, und
+       * das verstoesst gegen Regel 7 in `CLAUDE.md`. Der ausgeschriebene Name
+       * („2:1 Erz") bleibt im `title`: er passt bei dieser Groesse nicht
+       * lesbar aufs Brett und ist fuer Vorlesewerkzeuge da.
+       *
+       * Die Farbe des allgemeinen Hafens ist die Pergamentkante und nicht mehr
+       * die Tiefsee-Tinte. Ein dunkler Ring auf der dunklen See war im Browser
+       * schlicht nicht zu sehen - derselbe Befund wie bei den Strassen am
+       * Brettrand, nur hat ihn hier niemand gemeldet, weil der cremefarbene
+       * Koerper darunter ja dastand.
        */}
       {state.scenario.harbors.map((harbor) => {
         const mark = harborAnchor(harbor.edge, onBoard);
-        const ring = harbor.resource === undefined ? '#16202a' : RESOURCE_COLORS[harbor.resource];
+        const tint =
+          harbor.resource === undefined
+            ? 'var(--parchment-edge)'
+            : RESOURCE_COLORS[harbor.resource];
 
         return (
           <g
@@ -431,6 +449,7 @@ export function BoardSvg({
             className="harbor"
             pointerEvents="none"
             data-testid={`harbor-${harbor.edge}`}
+            data-harbor={harbor.resource ?? 'any'}
           >
             <title>{harborLabel(harbor)}</title>
             {edgeSegment(harbor.edge).map((landing, index) => (
@@ -438,13 +457,10 @@ export function BoardSvg({
                 key={index}
                 className="harbor__dock"
                 d={dockPath(mark, landing, edgeMidpoint(harbor.edge))}
-                style={{ stroke: ring }}
+                style={{ stroke: tint }}
               />
             ))}
-            <circle cx={mark.x} cy={mark.y} r={HARBOR_MARK} style={{ stroke: ring }} />
-            <text x={mark.x} y={mark.y}>
-              {harbor.ratio}:1
-            </text>
+            <HarborMark harbor={harbor} at={mark} tint={tint} />
           </g>
         );
       })}

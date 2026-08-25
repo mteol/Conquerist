@@ -17,6 +17,13 @@ import { TERRAIN_LABELS, type TerrainId } from '@conquerist/shared';
  * Weide, Furchen im Acker, Ziegelverband in der Lehmgrube, Grate im Gebirge,
  * gebrochene Rippel in der Wueste.
  *
+ * **Die Weide hat als einziges Gelaende ein Lebewesen darauf** - Schafe in der
+ * Streulage. Das ist kein Rueckfall in das Motivband von damals: die Tiere
+ * liegen nicht in einem Band am Feldrand, sie stehen ueber das ganze Feld
+ * verteilt im Gras, und das Gras traegt die Flaeche weiter allein. Das Schaf
+ * ist die Ausnahme darin, so wie der alte Baum im Wald und der Doppelgipfel im
+ * Gebirge.
+ *
  * **`userSpaceOnUse` und nicht `objectBoundingBox`.** Damit haengt die Textur
  * am Brett und nicht am einzelnen Feld: zwei benachbarte Waldfelder zeigen
  * einen durchlaufenden Wald statt zweier Kacheln, die zufaellig dasselbe
@@ -104,7 +111,8 @@ interface Tile {
  *
  * **Die Streulage traegt die groessten Marken.** Sie ist duenn besetzt - ein
  * bis zwei Marken je Kachel - und genau das macht sie zur Ausnahme im Bild:
- * der alte Baum, der Doppelgipfel, der Duenenkamm, der Feldstein. Groesse als
+ * der alte Baum, der Doppelgipfel, der Duenenkamm, der Feldstein, das Schaf.
+ * Groesse als
  * Unterschied wirkt nur, wenn das Grosse selten ist.
  */
 export const TILES: Readonly<Record<TextureLayer, Readonly<Record<TerrainId, Tile>>>> = {
@@ -358,12 +366,41 @@ const MARKS: Readonly<Record<TextureLayer, Readonly<Record<TerrainId, JSX.Elemen
       </g>
     ),
 
-    /** Ein hoher Horst und ein Stein - das Runde in zwei Arten. */
+    /**
+     * Ein Mutterschaf, ein Lamm und ein Stein.
+     *
+     * **Warum das Schaf in die Streulage gehoert und nicht in die Grundlage.**
+     * Eine Grundkachel misst 0.53 x 0.45; ein Feld traegt rund vierzehn davon.
+     * Ein Schaf je Grundkachel waeren vierzehn Schafe auf einem Feld, und das
+     * ist keine Weide mehr, sondern eine Tapete mit Schafen. Die Streukachel
+     * ist gut doppelt so gross: rund sechseinhalb je Feld, also ein knappes
+     * Dutzend Tiere in sechs Gruppen. Damit bleibt das Gras das Material
+     * (Grundlage) und das Schaf die **Ausnahme** darauf - genau die Rolle, die
+     * die Streulage hier schon fuer den alten Baum und den Doppelgipfel
+     * spielt.
+     *
+     * **Zwei Groessen und keine zwei gleichen.** Mutterschaf (0.2) und Lamm
+     * (0.14) stehen beieinander wie auf der Koppel; zwei gleich grosse Tiere
+     * nebeneinander waeren wieder das Punktraster, das die ganze Textur
+     * loswerden will.
+     *
+     * **Gefuellt und nicht gestrichen** - als einzige Marke der Weide. Ein
+     * Umriss in Strichbreite 0.02 um einen Koerper von 0.13 Hoehe waere zu
+     * einem Sechstel Kontur; die Silhouette ist das, was ein Schaf auf diese
+     * Entfernung ausmacht. Es ist damit dieselbe Zeichnung wie auf der
+     * Wollkarte (`panels/ResourceGlyph.tsx`): dunkler Koerper, runder Kopf,
+     * zwei Beine. Wer die Karte kennt, erkennt das Feld, das sie abwirft.
+     */
     pasture: (
-      <g className="terrain-line">
-        <path d={tuft(0.28, 0.24, 0.105)} />
-        <path d="M 0.495 0.52 Q 0.55 0.452 0.605 0.52" />
-      </g>
+      <>
+        <g className="terrain-fill">
+          <path d={sheep(0.07, 0.3, 0.2)} />
+          <path d={sheep(0.45, 0.55, 0.14)} />
+        </g>
+        <g className="terrain-line">
+          <path d="M 0.655 0.185 Q 0.71 0.117 0.765 0.185" />
+        </g>
+      </>
     ),
 
     /**
@@ -458,6 +495,63 @@ function tuft(x: number, baseY: number, h: number): string {
     `L ${r(x)} ${r(baseY - h)}`,
     `M ${r(x)} ${r(baseY)}`,
     `Q ${r(x + h * 0.11)} ${r(baseY - h * 0.53)} ${r(x + h * 0.46)} ${r(baseY - h * 0.71)}`,
+  ].join(' ');
+}
+
+/**
+ * Ein Schaf, von der Seite - Koerper, Kopf, zwei Beine.
+ *
+ * `x` ist die linke Kante, `y` die Standlinie, `w` die Groesse. Gezeichnet
+ * wird in Anteilen von `w`, damit Mutterschaf und Lamm dieselbe Figur in zwei
+ * Groessen sind und nicht zwei Zeichnungen desselben Tiers.
+ *
+ * **Der Ruecken ist eine Folge von Boegen und keine Linie.** Drei Q-Segmente
+ * mit verschieden hohen Kontrollpunkten geben dem Vlies seine Beulen; ein
+ * glatter Ruecken sieht aus wie ein Schwein.
+ *
+ * **Das Tier grast, und das ist eine Entscheidung ueber Lesbarkeit und nicht
+ * ueber Stimmung.** In der ersten Fassung stand der Kopf waagerecht neben dem
+ * Widerrist - im Browser nachgesehen verschwand er darin, und uebrig blieb ein
+ * Klumpen mit vier Beinen. Ein gesenkter Kopf haengt schraeg unter der
+ * Rueckenlinie und ist damit die einzige Kante der Figur, die weder
+ * waagerecht noch senkrecht laeuft. Genau daran erkennt man auf achtzehn Pixel
+ * ein Tier und nicht bloss einen Fleck.
+ *
+ * **Die Beine sind kurz und breit** (0.12 w gegen 0.28 w Laenge). Ein
+ * anatomisch richtiges Bein waere bei dieser Groesse ein Strich von einem
+ * Pixel Breite, und ein Pixel Breite ist die Grenze, unterhalb derer der
+ * Browser nicht mehr duenner, sondern blasser zeichnet - dieselbe Falle, an
+ * der die ganze Textur schon einmal fast verschwunden waere.
+ *
+ * Nur `M`, `L`, `Q` und `Z`, alles absolut: `board/terrain.test.tsx` nimmt
+ * jeden Kachelpfad auseinander und kennt keine anderen Befehle.
+ */
+function sheep(x: number, y: number, w: number): string {
+  const px = (unit: number): string => r(x + unit * w);
+  const py = (unit: number): string => r(y - unit * w);
+
+  return [
+    `M ${px(0.02)} ${py(0.34)}`,
+    // Ruecken: drei Vliesbeulen von der Kruppe bis zum Widerrist.
+    `Q ${px(0)} ${py(0.58)} ${px(0.14)} ${py(0.62)}`,
+    `Q ${px(0.24)} ${py(0.76)} ${px(0.36)} ${py(0.66)}`,
+    `Q ${px(0.48)} ${py(0.78)} ${px(0.6)} ${py(0.66)}`,
+    `Q ${px(0.7)} ${py(0.7)} ${px(0.74)} ${py(0.58)}`,
+    // Kurzer Hals, klobiger Kopf - beides schraeg nach unten ins Gras.
+    `L ${px(0.83)} ${py(0.52)}`,
+    `Q ${px(0.99)} ${py(0.46)} ${px(0.97)} ${py(0.3)}`,
+    `Q ${px(0.95)} ${py(0.19)} ${px(0.83)} ${py(0.22)}`,
+    `L ${px(0.75)} ${py(0.32)}`,
+    // Vorderbein, Bauch, Hinterbein - und zurueck zum Schwanz.
+    `L ${px(0.7)} ${py(0.3)}`,
+    `L ${px(0.7)} ${py(0)}`,
+    `L ${px(0.58)} ${py(0)}`,
+    `L ${px(0.58)} ${py(0.28)}`,
+    `L ${px(0.26)} ${py(0.28)}`,
+    `L ${px(0.26)} ${py(0)}`,
+    `L ${px(0.14)} ${py(0)}`,
+    `L ${px(0.14)} ${py(0.3)}`,
+    'Z',
   ].join(' ');
 }
 

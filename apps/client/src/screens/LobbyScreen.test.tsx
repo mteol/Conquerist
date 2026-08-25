@@ -42,18 +42,52 @@ describe('Wartebereich', () => {
     expect(screen.getByText('Ben')).toBeDefined();
   });
 
+  /**
+   * Was erklaert wurde, steht nicht mehr da.
+   *
+   * Drei Saetze sind gefallen: „Gleicher Seed, gleiches Brett - bei euch und
+   * bei allen anderen", „Zehn wie in der Schachtel" und „Zwischen 5 und 20 -
+   * zehn sind die Vorgabe". Sie erklaerten, was daneben ohnehin steht oder was
+   * die gesperrten Knoepfe schon sagen, und sie waren zusammen rund achtzig
+   * Pixel Hoehe auf einem Bildschirm, der ohne Scrollen passen soll.
+   *
+   * Der Test haelt das fest, weil ein weggelassener Satz nichts kaputtmacht -
+   * er kommt beim naechsten Umbau einfach wieder, und niemand merkt es.
+   * Geprueft wird beides: dass die Erklaerungen weg sind **und** dass die eine
+   * Auskunft dasteht, die man nicht sehen kann.
+   */
+  it('erklaert Seed und Siegpunktziel nicht mehr in Saetzen', () => {
+    const { container } = render(lobby());
+    const text = container.textContent ?? '';
+
+    expect(text).not.toMatch(/gleiches Brett/i);
+    expect(text).not.toMatch(/Schachtel/i);
+    expect(text).not.toMatch(/Vorgabe/i);
+    expect(screen.getByText('10 sind das Original')).toBeDefined();
+  });
+
   it('gibt den Startknopf nur dem Host', () => {
     render(lobby({ youId: 'u2' }));
     expect(screen.queryByRole('button', { name: /starten/i })).toBeNull();
     expect(screen.getByText(/Wartet auf Anna/)).toBeDefined();
   });
 
-  it('sperrt den Start, solange Plaetze fehlen, und nennt die Zahl', () => {
+  /**
+   * Die Zahl der Fehlenden steht im Tisch und nicht in einem Satz darunter.
+   *
+   * Hier wurde einmal „Es fehlt noch 1 Mitspieler" geprueft. Der Satz ist weg:
+   * er sagte zum dritten Mal, was der gestrichelte Platz und der gesperrte
+   * Knopf schon sagen - und der Platz sagt es besser, weil man ihn sieht, ohne
+   * zu lesen. Geprueft wird deshalb jetzt die Sperre und der offene Platz; das
+   * ist dieselbe Auskunft an ihren zwei verbliebenen Orten.
+   */
+  it('sperrt den Start, solange Plaetze fehlen, und zeigt sie als offene Sitze', () => {
     render(lobby());
 
     const start = screen.getByRole('button', { name: /starten/i });
     expect(start).toHaveProperty('disabled', true);
-    expect(screen.getByText(/noch 1/i)).toBeDefined();
+    expect(screen.getAllByTestId('seat-open')).toHaveLength(1);
+    expect(screen.queryByText(/Mitspieler/i)).toBeNull();
   });
 
   it('gibt den Start frei, wenn der Tisch voll ist', () => {

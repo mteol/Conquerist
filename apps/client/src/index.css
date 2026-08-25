@@ -301,13 +301,14 @@ body {
  * gestanzte Bedienung.
  */
 .button,
+.menu__entry,
 .ways label,
 .mode,
 .way,
 .way > input,
 .resume__card,
 .lobby__seat,
-.lobby__setting,
+.lobby__settings,
 .lobby__invite input,
 .lobby__namefield input,
 .field input,
@@ -319,6 +320,191 @@ body {
 .devcards__hint,
 .counter {
   corner-shape: bevel;
+}
+
+/* --- Titelbildschirm ------------------------------------------------------ *
+ *
+ * **Er ist zurueck, und der Grund ist ein anderer als beim ersten Mal.**
+ * Gestrichen wurde er, weil er genau eine Frage stellte - welcher Weg - und der
+ * Bildschirm dahinter sie als Ueberschrift noch einmal vortrug: zwei Flaechen
+ * fuer eine Entscheidung. Seither hat der Wartebereich sein Brett bekommen, und
+ * damit sahen Einrichtung und Wartebereich gleich aus - links ein Panel, rechts
+ * das Brett, zweimal derselbe Bau. Ein Eingang, der aussieht wie die Flaeche
+ * dahinter, ist kein Eingang.
+ *
+ * Die alte Doppelung kommt dabei **nicht** mit zurueck: der Bildschirm dahinter
+ * traegt keine Ueberschrift mehr, die den gewaehlten Weg wiederholt. Was er
+ * traegt, ist die Reiterreihe - und die ist kein Vortrag der Antwort, sondern
+ * das Bedienelement, mit dem man sie aendert, ohne zurueckzugehen.
+ */
+
+.menu {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 70% at 50% 45%, var(--sea-700) 0%, transparent 65%), var(--sea-900);
+}
+
+.menu__inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2rem, 6vh, 3.5rem);
+  align-items: center;
+  padding: 2rem 1.25rem;
+  /* Oben so viel Luft, wie die Konto-Ecke hoch ist - sonst laeuft die
+     Wortmarke im schmalen Fenster darunter hindurch. */
+  padding-top: 4rem;
+  text-align: center;
+}
+
+/*
+ * Die Ueberschrift traegt keinen Text, sondern die gezeichnete Wortmarke
+ * (`Wordmark.tsx`) und daneben denselben Namen unsichtbar fuer Vorlesegeraete.
+ * Deshalb hier keine Schriftsetzung - es gibt nichts zu setzen.
+ */
+.menu__title {
+  margin: 0;
+  line-height: 0;
+}
+
+.menu__lead {
+  margin: 1.1rem 0 0;
+  color: var(--on-sea-muted);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  animation: enter-rise 320ms ease-out 260ms backwards;
+}
+
+.menu__entries {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(100%, 22rem);
+}
+
+/*
+ * Drei gleichwertige Zeilen. Keine wird hervorgehoben - welcher Weg der
+ * richtige ist, weiss der Spieler und nicht der Bildschirm.
+ *
+ * Sie fallen von oben nach, in ihrer Lesereihenfolge. Der Platz in der Reihe
+ * kommt als `--i` aus `MenuScreen.tsx`; eine Klasse je Verzoegerung waere
+ * dieselbe Auskunft, nur haendisch gepflegt.
+ */
+.menu__entry {
+  position: relative;
+  overflow: hidden;
+  padding: 0.85rem 1.2rem;
+  border: 1px solid rgb(233 225 207 / 22%);
+  border-radius: var(--radius);
+  background: rgb(233 225 207 / 7%);
+  color: var(--on-sea);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+  animation: enter-drop 300ms cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
+  animation-delay: calc(320ms + var(--i, 0) * 65ms);
+}
+
+/*
+ * **Diese Keyframes haben zwei Etappen lang gefehlt.**
+ *
+ * Beim Wegfall des Hauptmenues ist `menu-rise` zu `enter-rise` geworden und
+ * mitgezogen; `menu-drop` wurde in `enter-drop` **umbenannt, aber nicht
+ * mitgenommen**. Seither stand an `.corner`, `.start__ways` und `.start__form`
+ * ein `animation: enter-drop …` auf einen Namen, den es im Blatt nicht gab -
+ * und eine Animation ohne Keyframes ist keine Animation, sondern nichts. Die
+ * ganze Eingangschoreografie des Startbildschirms lief damit gar nicht, und es
+ * ist niemandem aufgefallen, weil die Elemente ja dastanden.
+ *
+ * Das ist die Falle aus `CLAUDE.md` in ihrer stillsten Form: der Kommentar
+ * daneben beschrieb die Absicht weiter richtig. Wer eine Regel umbenennt,
+ * sucht nach ihrem alten Namen **und** nach ihrem neuen.
+ */
+@keyframes enter-drop {
+  from {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/*
+ * Die Antwort auf den Zeiger ist ein Balken, der aus der Kante waechst, und
+ * ein Ruck von zwei Pixeln - kein Leuchten. Boldness wird an einer Stelle
+ * ausgegeben (Regel 4), und diese Flaeche ist nicht die Stelle.
+ */
+.menu__entry::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--accent);
+  transform: scaleY(0);
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.menu__entry:hover,
+.menu__entry:focus-visible {
+  border-color: rgb(233 225 207 / 45%);
+  background: rgb(233 225 207 / 14%);
+  transform: translateX(2px);
+}
+
+.menu__entry:hover::before,
+.menu__entry:focus-visible::before {
+  transform: scaleY(1);
+}
+
+.menu__entry:active {
+  transform: translateX(2px) scale(0.985);
+}
+
+/* Weiterspielen steht oben und traegt als einziges den Akzent - es ist kein
+   vierter Weg, sondern die Rueckkehr in etwas Angefangenes. */
+.menu__entry--resume {
+  border-color: var(--accent);
+  background: rgb(224 179 74 / 14%);
+}
+
+/*
+ * Der Weg zurueck zum Titel.
+ *
+ * Er steht **ueber** der Reiterreihe und nicht daneben: zurueck ist keine
+ * vierte Wahl neben Online, Lokal und Beitreten, sondern eine Ebene darueber.
+ * Als `button--ghost` und mit einem gezeichneten Winkel davor - ein „<" aus
+ * der Systemschrift waere an dieser Flaeche das einzige gesetzte Zeichen.
+ */
+.start__back {
+  align-self: flex-start;
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  padding-left: 0.7rem;
+  animation: enter-drop 300ms cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
+  animation-delay: 300ms;
+}
+
+.start__back svg {
+  width: 0.6rem;
+  height: 0.6rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* --- Der Eingang ---------------------------------------------------------- *
@@ -422,37 +608,24 @@ body {
 }
 
 /*
- * Die Ueberschrift traegt keinen Text, sondern die gezeichnete Wortmarke
- * (`Wordmark.tsx`) und daneben denselben Namen unsichtbar fuer Vorlesegeraete.
- * Deshalb hier keine Schriftsetzung - es gibt nichts zu setzen.
- */
-.start__title {
-  margin: 0;
-  line-height: 0;
-}
-
-/*
- * Die Marke fuellt ihre Spalte, statt sich am Fenster zu bemessen.
+ * Die Marke steht wieder mittig auf einer freien Flaeche - und darf deshalb
+ * wieder so gross sein, wie sie einmal war.
  *
- * Hier stand `min(78vw, 42rem)`, und das war richtig, solange sie mittig auf
- * einem leeren Bildschirm sass. In der Panel-Spalte haette `78vw` sie auf einem
- * breiten Fenster ueber den Rand geschoben - `.start` mit seinem
- * `overflow: hidden` haette sie schlicht abgeschnitten.
+ * Sie hat eine Wanderung hinter sich: mittig auf dem Hauptmenue
+ * (`min(78vw, 42rem)`), dann in der Panel-Spalte des Startbildschirms, wo
+ * `78vw` sie auf einem breiten Fenster ueber den Rand geschoben haette und
+ * `.start` mit seinem `overflow: hidden` sie abgeschnitten hat - deshalb
+ * damals 34rem. Seit der Titelbildschirm zurueck ist, sitzt sie wieder in
+ * `.menu__inner`, also mittig und ohne Nachbarn.
  *
- * Die Spalte misst hoechstens 34rem und innen, nach dem Rand, 28rem - dort
- * stand die Marke zuletzt auf 21rem. Unter 62rem faellt die zweite Spalte weg
- * und das Panel bekommt die ganze Breite; erst dort bindet die Schranke.
+ * `78vw` bleibt als die Schranke, die im schmalen Fenster bindet, `40rem` als
+ * die im breiten. Eine von beiden allein reicht nicht: ohne `vw` sprengt sie
+ * das Handy, ohne `rem` waechst sie auf einem Fernseher ins Alberne.
  */
 .wordmark {
   display: block;
   width: 100%;
-  /*
-   * Die Schranke liegt ueber der Spaltenbreite und bindet damit nur dort, wo
-   * die Marke ohnehin frei stuende. Sie bleibt trotzdem stehen: ohne sie
-   * bemisst sich die Marke allein am Fenster, und das war der Fall, in dem sie
-   * `.start` mit seinem `overflow: hidden` einmal abgeschnitten hat.
-   */
-  max-width: 34rem;
+  max-width: min(78vw, 40rem);
   height: auto;
   fill: var(--parchment);
 }
@@ -675,6 +848,13 @@ body {
   position: relative;
   display: grid;
   /*
+   * **Ohne Brett faellt die zweite Spalte weg, nicht bloss ihr Inhalt.**
+   * „Beitreten" und „Weiterspielen" zeigen kein Brett - sie kennen keinen
+   * Seed. Bliebe die Spalte stehen, stuende das Panel in einem Drittel des
+   * Fensters und daneben zwei Drittel Nichts; so bekommt es die Breite, die es
+   * ohnehin haette, und das Hexfeld traegt den Rest.
+   */
+  /*
    * Die linke Spalte traegt die Wortmarke, und die bemisst sich an ihr.
    *
    * Hier standen 27rem, solange unter der Marke ein Vorspann stand („Drei bis
@@ -685,6 +865,15 @@ body {
    */
   grid-template-columns: minmax(20rem, 34rem) 1fr;
   min-height: 100vh;
+  /*
+   * **Und nicht mehr als das Fenster.** Ohne diese Zeile wuchs die Rasterzeile
+   * mit dem Panel mit: bei sechs Spielern stand es im Browser auf 902 Pixel in
+   * einem 889 Pixel hohen Fenster, und die ganze Seite bekam einen
+   * Rollbalken - dreizehn Pixel, fuer die man scrollen musste. Mit `max-height`
+   * begrenzt die Zeile das Panel, und dessen `overflow-y: auto` faengt den
+   * Rest ab, statt ihn nach aussen durchzureichen.
+   */
+  max-height: 100vh;
   /* Das Hexfeld reicht ueber den Rand hinaus, damit es sich verliert statt an
      einer Kante aufzuhoeren. Was darueber hinausragt, wird hier beschnitten. */
   overflow: hidden;
@@ -707,7 +896,14 @@ body {
 .start__panel {
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  /*
+   * `min-height: 0` ist die Bedingung dafuer, dass die Rasterzeile oben
+   * ueberhaupt begrenzen kann: ein Rasterfeld ist von Haus aus mindestens so
+   * hoch wie sein Inhalt, und ohne diese Zeile gewinnt der Inhalt gegen jedes
+   * `max-height` darueber.
+   */
+  min-height: 0;
+  gap: 0.9rem;
   padding: clamp(1.5rem, 4vw, 3rem);
   /* Oben so viel Luft, wie die Konto-Ecke hoch ist - sonst laeuft die
      Wortmarke im schmalen Fenster darunter hindurch. */
@@ -721,19 +917,38 @@ body {
   overflow-y: auto;
 }
 
-.start__brand {
-  /* Die Wortmarke traegt ihre eigene Groesse; der Kopf haelt nur den Abstand
-     zur Reiterreihe. */
-  display: block;
-}
-
 /*
  * Reiterreihe und Formular fallen von oben nach, in ihrer Lesereihenfolge -
  * dieselbe Rechnung wie die Konto-Ecke, damit hier nicht zwei Taktungen
  * nebeneinander laufen. Der Platz in der Reihe kommt als `--i` aus
  * `StartScreen.tsx`.
  */
-.start__ways,
+/*
+ * Die Ueberschrift je Weg - der Bau des Wartebereichs, eine Spalte weiter
+ * links.
+ *
+ * Hier stand die Reiterreihe. Die sagte, **welche** Wege es gibt, und der
+ * offene Reiter nebenbei, auf welchem man steht; gebraucht wird nur das
+ * Zweite, seit der Titel die Wege zeigt. Kleinlabel, darunter das eine grosse
+ * Wort - dieselbe Setzung wie „RAUMCODE / 9RDW" drueben, damit die zwei
+ * Bildschirme als eine Familie lesbar bleiben, ohne gleich auszusehen.
+ */
+.start__head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.start__heading {
+  margin: 0;
+  font-size: clamp(1.9rem, 3.4vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--parchment);
+}
+
+.start__head,
 .start__form {
   animation: enter-drop 300ms cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
   animation-delay: calc(320ms + var(--i, 0) * 65ms);
@@ -831,10 +1046,15 @@ body {
 }
 
 /* Eine Zeile je Sitz, mit dem Bauwerk in Spielerfarbe davor. */
+/*
+ * Eine Zeile je Sitz. Die Masse sind gegen den Sechserfall gerechnet: sechs
+ * Namenszeilen sind das, was den lokalen Bildschirm ueber das Fenster
+ * schiebt - bei vier passte er immer.
+ */
 .seats {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.3rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -849,7 +1069,7 @@ body {
 .seats input {
   flex: 1;
   min-width: 0;
-  padding: 0.5rem 0.7rem;
+  padding: 0.42rem 0.7rem;
   border: 1px solid rgb(233 225 207 / 18%);
   border-radius: 7px;
   background: rgb(11 31 42 / 60%);
@@ -932,38 +1152,29 @@ body {
   filter: drop-shadow(0 18px 40px rgb(0 0 0 / 45%));
 }
 
-.start__caption {
-  position: absolute;
-  right: clamp(1rem, 3vw, 2.5rem);
-  bottom: clamp(1rem, 3vw, 2rem);
-  text-align: right;
-  color: var(--on-sea-muted);
-  font-size: 0.78rem;
-}
-
-.start__caption b {
-  display: block;
-  color: var(--on-sea);
-  font-family: ui-monospace, 'Cascadia Mono', monospace;
-  font-size: 0.95rem;
-  letter-spacing: 0.04em;
+/*
+ * Ohne zweite Spalte hoert das Panel bei seiner eigenen Breite auf.
+ *
+ * `:has()` fragt nach dem, was wirklich da ist, statt eine Klasse zu setzen,
+ * die dasselbe noch einmal behauptet - eine Klasse und ein Kind, die
+ * auseinanderlaufen koennen, sind zwei Wahrheiten.
+ */
+.start:not(:has(.start__preview)) {
+  grid-template-columns: minmax(20rem, 34rem);
 }
 
 @media (max-width: 62rem) {
   .start {
     grid-template-columns: 1fr;
+    /* Untereinander passt es nicht mehr ins Fenster, und das ist in Ordnung -
+       die Rechnung „ohne Scrollen" gilt fuer das Querformat. */
+    max-height: none;
   }
 
   .start__preview {
     order: -1;
     min-height: 44vh;
     padding: 1rem;
-  }
-
-  .start__caption {
-    position: static;
-    margin-top: 0.5rem;
-    text-align: center;
   }
 }
 
@@ -1671,38 +1882,106 @@ body {
 
 /* --- Wartebereich --------------------------------------------------------- *
  *
- * Der Code ist das groesste Element der Anwendung - groesser als der Titel auf
- * dem Startbildschirm, und das mit Absicht: hier wird er vorgelesen. Weite
- * Sperrung, damit die vier Zeichen einzeln ankommen, und Tabellenziffern, damit
- * K7X2 und M8Y3 gleich breit sind.
+ * **Dieselbe Ordnung wie der Eingang: links das Bedienbare, rechts das Brett.**
+ * Der Startbildschirm beantwortet die Frage „welches Brett bekommen wir" mit
+ * dem Brett selbst; der Wartebereich hat sie bis hierher mit einer
+ * Zeichenkette beantwortet. „Neu wuerfeln" wuerfelte damit etwas, das niemand
+ * sieht - der Knopf war eine Handlung ohne Rueckmeldung. Jetzt steht dieselbe
+ * Vorschau daneben, aus demselben Seed und mit denselben Funktionen erzeugt.
  *
- * Alles andere ist bewusst still. Der Tisch traegt die eine auffaellige Idee:
- * ein freier Platz steht als gestrichelter Stein in der Farbe, die er bekommen
- * wird.
+ * **Und er passt ohne Scrollen - das ist eine Anforderung, keine Vorliebe.**
+ * Als eine Spalte war er rund 1300 Pixel hoch: Code, Link, Tisch und drei
+ * gleich schwere Einstellungskaesten untereinander, und darunter der einzige
+ * Knopf, der etwas bewirkt. In einem gewoehnlichen Fenster lag „Partie
+ * starten" unterhalb des Randes. Auf dem einen Bildschirm, auf dem es nichts
+ * zu tun gibt ausser warten, ist das der schlechteste Fehler von allen.
+ *
+ * Die Hebel, alle gemessen und nicht geschaetzt:
+ *
+ * 1. **Zwei Spalten im Panel** (`.lobby__body`) - links der Tisch, rechts die
+ *    Einstellungen. Sie stehen jetzt beide **innerhalb** der linken Haelfte,
+ *    weil rechts das Brett liegt; die linke Haelfte ist dafuer breiter
+ *    geworden (44rem statt 34).
+ * 2. **Eine Einstellungsliste statt drei Kaesten** (`.lobby__row`). Drei
+ *    Umrandungen, drei Polster und dreimal mittige Setzung sagen „drei gleich
+ *    wichtige Dinge"; es sind aber drei Zeilen einer Liste.
+ * 3. **Zwei Knoepfe nebeneinander** im Fuss statt untereinander.
+ *
+ * Der Code bleibt das groesste Element der Anwendung - er wird vorgelesen,
+ * weite Sperrung, Tabellenziffern -, nur nicht mehr ganz so gross: seine
+ * Obergrenze faellt von 7rem auf 4rem. Sieben Zentimeter Schrift auf einem
+ * Bildschirm, der dafuer scrollen muss, sind keine Groesse mehr, sondern ein
+ * Platzproblem - und in einer halben Breite erst recht.
+ *
+ * **Nachgemessen im Browser, im schlechtesten Fall:** sechs Plaetze, alle
+ * Einstellungen offen. Wer hier eine Zeile hinzufuegt, misst nach; die Zahl
+ * ist der ganze Zweck dieses Blocks.
  */
 
 .lobby {
-  display: flex;
-  flex-direction: column;
-  gap: 1.75rem;
-  align-items: center;
+  /* Traeger fuer die zwei Haelften - und fuer die Zahnradecke darueber. */
+  position: relative;
+  display: grid;
+  /*
+   * Dieselbe Rechnung wie `.start`, nur breiter: dort traegt die linke Spalte
+   * eine Wortmarke und ein Formular, hier zwei Unterspalten (Tisch und
+   * Einstellungen). Unter rund 40rem stehen sechs Farbknoepfe nicht mehr in
+   * zwei Zeilen, sondern in drei.
+   *
+   * **50rem und nicht 44** - die Spalte darf sich das nehmen, weil das Brett
+   * daneben nicht an der Breite haengt, sondern an der Hoehe: es ist
+   * annaehernd quadratisch (viewBox 9.84 zu 9.18) und stoesst laengst an
+   * `max-height` an, bevor ihm die Breite ausgeht. Was die linke Haelfte hier
+   * dazubekommt, nimmt sie dem Brett also nicht weg.
+   */
+  grid-template-columns: minmax(26rem, 50rem) 1fr;
   min-height: 100vh;
-  padding: clamp(1.5rem, 5vw, 4rem) 1.25rem;
+  overflow: hidden;
   background:
-    radial-gradient(120% 80% at 50% 0%, var(--sea-700) 0%, transparent 62%), var(--sea-900);
+    radial-gradient(120% 90% at 85% 15%, var(--sea-700) 0%, transparent 60%), var(--sea-900);
 }
 
+/*
+ * Die linke Haelfte: alles, was man anfassen kann.
+ *
+ * `overflow-y: auto` als Notausgang und nicht als Entwurf - der Bildschirm
+ * soll passen, aber wer die Schriftgroesse hochstellt, sprengt jede Rechnung,
+ * und abgeschnitten waere schlimmer als scrollbar (Regel 7). Dieselbe Zeile
+ * steht aus demselben Grund an `.start__panel`.
+ */
+.lobby__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.8rem, 2vh, 1.35rem);
+  justify-content: center;
+  padding: clamp(1.25rem, 3vh, 2.25rem) clamp(1.25rem, 3vw, 2.5rem);
+  /* Oben so viel Luft, wie das Zahnrad hoch ist - im schmalen Fenster steht
+     es sonst auf dem Raumcode. */
+  padding-top: 3.5rem;
+  overflow-y: auto;
+}
+
+/*
+ * Der Kopf steht mittig - in **seiner Spalte**.
+ *
+ * Das ist der Unterschied, der hier zaehlt: der Code sass frueher in der Mitte
+ * des Bildschirms, weil der Wartebereich eine Spalte war; seit rechts das Brett
+ * liegt, waere dieselbe Mitte irgendwo zwischen beiden Haelften und damit auf
+ * keiner. Mittig heisst ab jetzt: mittig ueber dem, was darunter steht.
+ */
 .lobby__head {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.35rem;
+  width: 100%;
   text-align: center;
 }
 
 .lobby__code {
   margin: 0;
-  font-size: clamp(3.5rem, 14vw, 7rem);
+  font-size: clamp(2.75rem, 6vw, 5rem);
   font-weight: 800;
   letter-spacing: 0.16em;
   /* Die Sperrung haengt rechts nach - der eingerueckte Ausgleich zentriert. */
@@ -1711,22 +1990,25 @@ body {
   color: var(--parchment);
 }
 
-.lobby__lead {
-  margin: 0;
-  max-width: 34ch;
-  color: var(--on-sea-muted);
-}
+/*
+ * Hier stand ein Vorspann: „Vorlesen oder den Link schicken - beides fuehrt an
+ * denselben Tisch." Er erklaerte den Code und das Feld darunter, und beide
+ * erklaeren sich selbst - vier grosse Zeichen auf Pergament und ein Link neben
+ * einem Knopf „Link kopieren". Ein Satz, der zwei Dinge beschreibt, die
+ * daneben stehen, ist keine Hilfe, sondern eine Zeile.
+ */
 
 .lobby__invite {
   display: flex;
   gap: 0.5rem;
-  width: min(100%, 34rem);
+  width: 100%;
+  margin-top: 0.35rem;
 }
 
 .lobby__invite input {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 0.55rem 0.7rem;
+  padding: 0.5rem 0.7rem;
   border: 1px solid rgb(233 225 207 / 18%);
   border-radius: 8px;
   background: rgb(0 0 0 / 22%);
@@ -1735,14 +2017,40 @@ body {
   font-size: 0.875rem;
 }
 
+/*
+ * Tisch und Einstellungen nebeneinander.
+ *
+ * `align-items: start` und nicht `stretch`: die Einstellungsliste soll nicht
+ * auf die Hoehe eines Sechser-Tisches gezogen werden, sonst steht in ihr eine
+ * Luecke, die nichts bedeutet.
+ */
+.lobby__body {
+  display: grid;
+  /*
+   * Der Tisch bekommt die breitere Spalte, und das ist gemessen: „Platz
+   * entfernen" und „Platz hinzufuegen" nebeneinander brauchen rund 290 Pixel,
+   * sonst rutscht der zweite Knopf in eine eigene Zeile - zwei Knoepfe, die
+   * dasselbe Paar sind, untereinander. Die Farbknoepfe daneben brechen ohnehin
+   * um; sie duerfen das, weil sechs Kacheln in zwei Zeilen immer noch sechs
+   * Kacheln sind.
+   */
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+  gap: clamp(0.7rem, 1.6vw, 1.15rem);
+  align-items: start;
+  width: 100%;
+}
+
 .lobby__table {
-  width: min(100%, 34rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
 }
 
 .lobby__seats {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.35rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1750,9 +2058,9 @@ body {
 
 .lobby__seat {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.7rem;
   align-items: center;
-  padding: 0.6rem 0.85rem;
+  padding: 0.55rem 0.85rem;
   border: 1px solid rgb(233 225 207 / 12%);
   border-radius: var(--radius);
   background: rgb(0 0 0 / 18%);
@@ -1768,13 +2076,17 @@ body {
 
 .lobby__name {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
   font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lobby__status {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--on-sea-muted);
 }
@@ -1793,27 +2105,94 @@ body {
  */
 .lobby__resize {
   display: flex;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
   justify-content: flex-end;
-  margin-top: 0.5rem;
+  margin-top: 0.15rem;
 }
 
-.lobby__setting {
+/* Die Einstellungen: ein Kasten, drei Zeilen. */
+.lobby__settings {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  align-items: center;
-  width: min(100%, 34rem);
-  padding: 0.9rem 1rem 1rem;
+  width: 100%;
+  padding: 0.15rem 1.05rem;
   border: 1px solid rgb(233 225 207 / 12%);
   border-radius: var(--radius);
   background: rgb(0 0 0 / 16%);
-  text-align: center;
+}
+
+/*
+ * Eine Zeile der Liste.
+ *
+ * Die Trennlinie steht als `border-top` an jeder ausser der ersten und nicht
+ * als `border-bottom` an allen ausser der letzten: die erste Zeile faellt
+ * weg, wenn man gar nicht am Tisch sitzt (Zuschauer), und eine Regel mit
+ * `:first-child` haette dann die falsche Zeile getroffen. `+` fragt nach dem
+ * Nachbarn und nicht nach der Stellung.
+ */
+.lobby__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: flex-start;
+  padding: 0.85rem 0;
+}
+
+.lobby__row + .lobby__row {
+  border-top: 1px solid rgb(233 225 207 / 10%);
+}
+
+/*
+ * Wert und Bedienung in einer Zeile.
+ *
+ * Was den Wert aendert, steht rechts aussen - das ist dieselbe Ordnung wie in
+ * jeder Einstellungsliste, und sie haelt die drei Zeilen bei verschiedenen
+ * Inhalten auf einer Kante. `> .button` und nicht `.button`, sonst faengt die
+ * Regel auch die zwei Knoepfe **in** `.lobby__resize` und schiebt sie
+ * auseinander.
+ */
+.lobby__value {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+.lobby__value > .button,
+.lobby__value > .lobby__resize {
+  margin-top: 0;
+  margin-left: auto;
+}
+
+/*
+ * Das Seedfeld - eintippbar fuer den Gastgeber, blosse Angabe fuer alle
+ * anderen.
+ *
+ * Es sieht aus wie der Seed daneben und nicht wie ein gewoehnliches
+ * Eingabefeld: gleiche Groesse, gleiche Sperrung, gleiche Schrift. Was man
+ * aendern darf, soll wie das aussehen, was dort steht - sonst liest man zwei
+ * verschiedene Dinge, wo eines gemeint ist. Der Rahmen sagt trotzdem, dass man
+ * hineinschreiben kann.
+ */
+.lobby__seedfield {
+  flex: 0 1 10rem;
+  min-width: 0;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid rgb(233 225 207 / 26%);
+  border-radius: 8px;
+  background: rgb(0 0 0 / 22%);
+  color: var(--parchment);
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .lobby__seed {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--parchment);
@@ -1829,7 +2208,7 @@ body {
  */
 .lobby__goal {
   margin: 0;
-  font-size: 2.1rem;
+  font-size: 2rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.02em;
@@ -1837,33 +2216,39 @@ body {
 }
 
 /*
- * Der eigene Kasten - Name und Farbe.
+ * Woher die Zehn kommt - ein Zusatz, kein Satz.
  *
- * Er sitzt zwischen Tisch und Bretteinstellungen, und das ist Absicht: was
- * einem selbst gehoert, steht naeher am eigenen Sitz als das, was fuer alle
- * gilt.
+ * Hier standen zwei: „Zehn wie in der Schachtel." bei zehn und „Zwischen 5 und
+ * 20 - zehn sind die Vorgabe." sonst. Beide erklaerten dieselbe Sache in zwei
+ * Formulierungen, und die Grenzen stehen ohnehin an den Knoepfen: wer bei 5
+ * angekommen ist, findet das Minus gesperrt vor. Uebrig bleibt die eine
+ * Auskunft, die man nicht sehen kann.
  */
+.lobby__origin {
+  color: var(--on-sea-muted);
+  font-size: 0.78rem;
+}
+
 .lobby__namefield {
-  width: min(100%, 14rem);
+  width: min(100%, 13rem);
 }
 
 .lobby__namefield input {
   width: 100%;
-  padding: 0.45rem 0.6rem;
+  padding: 0.4rem 0.6rem;
   border: 1px solid rgb(233 225 207 / 26%);
   border-radius: 8px;
   background: rgb(0 0 0 / 22%);
   color: var(--on-sea);
   font: inherit;
   font-weight: 650;
-  text-align: center;
 }
 
 /*
  * Die sechs Farben.
  *
- * Umbruchfaehige Reihe statt Raster: bei sechs Eintraegen und einem schmalen
- * Fenster wird daraus von selbst ein Block, ohne dass eine Spaltenzahl geraten
+ * Umbruchfaehige Reihe statt Raster: bei sechs Eintraegen und einer schmalen
+ * Spalte wird daraus von selbst ein Block, ohne dass eine Spaltenzahl geraten
  * werden muss.
  *
  * Belegt heisst gesperrt und blass - und der `title` sagt, bei wem die Farbe
@@ -1873,9 +2258,8 @@ body {
 .colors {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
-  justify-content: center;
-  margin: 0.2rem 0 0;
+  gap: 0.28rem;
+  margin: 0.1rem 0 0;
   padding: 0;
   list-style: none;
 }
@@ -1884,13 +2268,13 @@ body {
   display: flex;
   gap: 0.25rem;
   align-items: center;
-  padding: 0.25rem 0.5rem 0.25rem 0.3rem;
+  padding: 0.28rem 0.55rem 0.28rem 0.35rem;
   border: 1px solid rgb(233 225 207 / 18%);
   border-radius: 999px;
   background: transparent;
   color: var(--on-sea-muted);
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 650;
   cursor: pointer;
   transition:
@@ -1919,13 +2303,26 @@ body {
 }
 
 .colors__pick .piece--seat {
-  width: 1rem;
-  height: 1.1rem;
+  width: 1.05rem;
+  height: 1.15rem;
 }
 
+/*
+ * Der Fuss steht mittig unter seiner Spalte - dieselbe Achse wie der Code
+ * darueber. Ein Kopf in der Mitte und ein Fuss an der linken Kante waeren zwei
+ * Ordnungen in einer Spalte.
+ */
 .lobby__foot {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.lobby__actions {
+  display: flex;
   gap: 0.6rem;
   align-items: center;
 }
@@ -1934,6 +2331,68 @@ body {
   margin: 0;
   color: var(--on-sea-muted);
   font-size: 0.875rem;
+}
+
+/*
+ * Die rechte Haelfte: das Brett, auf dem gleich gespielt wird.
+ *
+ * Dieselben Regeln wie `.start__preview` - dasselbe Bauteil an derselben
+ * Stelle soll sich nicht an zwei Orten verschieden verhalten.
+ */
+.lobby__preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: clamp(0.75rem, 1.5vw, 1.5rem);
+  overflow: hidden;
+}
+
+/*
+ * **Das Brett haengt an der Hoehe und nicht an der Breite.** Es ist mit einer
+ * viewBox von 9.84 zu 9.18 annaehernd quadratisch; in einer Zelle, die deutlich
+ * breiter als hoch ist, entscheidet allein `max-height`, wie gross es wird -
+ * die Breite bleibt ungenutzt. Wer es groesser haben will, dreht deshalb hier
+ * und nicht an der Spaltenaufteilung.
+ *
+ * 94vh statt 82: der Wartebereich hat, anders als der Startbildschirm, keine
+ * Bildunterschrift unter dem Brett, die noch Platz braeuchte. Der Seed steht
+ * links in der Einstellungsliste.
+ */
+.lobby__preview .board {
+  width: 100%;
+  height: 100%;
+  max-height: 94vh;
+  filter: drop-shadow(0 18px 40px rgb(0 0 0 / 45%));
+}
+
+/*
+ * Im schmalen Fenster wieder eine Spalte, und das Brett zuerst.
+ *
+ * `order: -1` wie auf dem Startbildschirm: wer beitritt, sieht dann erst,
+ * worauf gespielt wird, und darunter, wer schon da ist. Hier darf der
+ * Bildschirm auch scrollen - die Rechnung „passt ohne Scrollen" gilt fuer das
+ * Querformat, in dem gespielt wird.
+ */
+@media (max-width: 62rem) {
+  .lobby {
+    grid-template-columns: 1fr;
+  }
+
+  .lobby__panel {
+    justify-content: flex-start;
+  }
+
+  .lobby__preview {
+    order: -1;
+    min-height: 40vh;
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 40rem) {
+  .lobby__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* --- Spielbildschirm ------------------------------------------------------ */
@@ -4142,7 +4601,7 @@ body {
  * | Gelaende  | Deckung | Daempfung | Ziel  | Alpha | Tinte     |
  * | --------- | ------- | --------- | ----- | ----- | --------- |
  * | forest    | 9.8 %   | 1.000     | 1.500 | 20 %  | Pergament |
- * | pasture   | 12.0 %  | 0.965     | 1.483 | 23 %  | Tiefsee   |
+ * | pasture   | 15.2 %  | 0.857     | 1.429 | 21 %  | Tiefsee   |
  * | mountains | 12.0 %  | 0.969     | 1.484 | 26 %  | Tiefsee   |
  * | desert    | 15.9 %  | 0.841     | 1.421 | 19 %  | Tiefsee   |
  * | fields    | 17.7 %  | 0.797     | 1.398 | 19 %  | Tiefsee   |
@@ -4151,7 +4610,17 @@ body {
  * Die Deckung ist gemessen und nicht geschaetzt: Pfadlaenge mal Strichbreite
  * (bei gefuellten Marken die Flaeche des abgetasteten Umrisses) gegen die
  * Kachelflaeche. **Wer eine Kachel aendert, aendert ihre Deckung** - und damit
- * gilt ihre Zeile nicht mehr. Sie steht deshalb hier und nicht nur im Kopf;
+ * gilt ihre Zeile nicht mehr.
+ *
+ * **Genau das ist der Weide passiert.** Die Schafe in ihrer Streulage
+ * (`board/terrain.tsx`) sind gefuellte Silhouetten und damit die dichteste
+ * Marke, die das Feld je getragen hat: von 12.0 auf 15.2 Prozent, gut ein
+ * Viertel mehr Tinte auf derselben Flaeche. Die Daempfung faellt daraufhin von
+ * 0.965 auf 0.857, das Ziel von 1.483 auf 1.429, und das Alpha von 23 auf 21
+ * Prozent (gerechnet 1.421 - zwischen 21 und 22 liegt das Ziel, und die
+ * leisere Seite ist bei einem Feld, auf dem jetzt mehr steht, die richtige).
+ * Wer hier 23 Prozent stehen liesse, haette die Weide zum lautesten Feld des
+ * Bretts gemacht, ohne eine Zeile darueber zu aendern. Sie steht deshalb hier und nicht nur im Kopf;
  * `board/terrain.test.tsx` haelt fest, dass jede Kachel ihre Klasse traegt,
  * damit wenigstens die Kopplung nicht still bricht.
  */
@@ -4164,7 +4633,7 @@ body {
 }
 
 .terrain-tile--pasture {
-  --terrain-ink: rgb(22 32 42 / 23%);
+  --terrain-ink: rgb(22 32 42 / 21%);
 }
 
 .terrain-tile--fields {
@@ -4223,9 +4692,64 @@ body {
   fill: var(--bad-ink);
 }
 
-.harbor circle {
+/*
+ * Die Hafenmuenze - heller Koerper, farbiger Rand.
+ *
+ * Derselbe Pergamentton wie der Zahlenchip, und aus demselben Grund: auf dem
+ * Brett heisst heller Koerper mit dunkler Tinte „hier steht eine Auskunft".
+ * Was der Hafen **ist**, sagt der Rand und das Motiv darin; was er **kostet**,
+ * sagen die Ziffern darunter.
+ *
+ * Der Selektor ist `.harbor__coin` und nicht mehr `.harbor circle` - seit im
+ * Anker des allgemeinen Hafens ein zweiter Kreis stecken kann, waere der alte
+ * Selektor ueber ein Motiv gelaufen und haette es cremefarben ausgefuellt.
+ * Eine Klasse trifft, was gemeint ist; ein Typ trifft, was zufaellig danach
+ * kommt.
+ */
+.harbor__coin {
   fill: #f6efdf;
   stroke-width: 0.055;
+}
+
+/*
+ * Das Motiv in der Muenze - dieselbe Zeichnung wie auf der Handkarte.
+ *
+ * `fill` steht hier und nicht am Pfad: die Motive kommen aus
+ * `panels/ResourceGlyph.tsx` und tragen dort keine eigene Farbe, sondern
+ * bekommen sie von ihrem Traeger. Etwas dunkler als auf der Karte (90 statt
+ * 82 Prozent), weil die Muenze klein ist und ein Motiv von zwanzig Pixeln
+ * weniger Deckung vertraegt als eines von fuenfzig.
+ */
+.harbor__glyph {
+  fill: rgb(22 32 42 / 90%);
+}
+
+/*
+ * Die Bruchkanten im Erz.
+ *
+ * **Zwei Klassen gegen eine, und das ist nachgezaehlt.** `.card__glyph-cut`
+ * streicht sie in Pergament - auf der dunkelgrauen Erzkarte richtig, auf der
+ * cremefarbenen Muenze unsichtbar. Diese Regel hier ist eine Klasse plus eine
+ * Klasse und schlaegt sie deshalb; ein `.harbor__glyph path` waere eine Klasse
+ * plus ein Typ und haette dasselbe Gewicht wie eine Klasse plus eine Klasse -
+ * bei Gleichstand gewinnt die spaetere, und darauf will sich in diesem Blatt
+ * niemand mehr verlassen.
+ */
+.harbor__glyph .card__glyph-cut {
+  stroke: rgb(246 239 223 / 75%);
+}
+
+/*
+ * Das Verhaeltnis unter dem Motiv.
+ *
+ * Es war ein `<text>` in 'Segoe UI Bold' und ist eine gezeichnete Form
+ * geworden (`Ratio` in `type/Numerals.tsx`) - dieselbe Umstellung, die die
+ * Chipzahl schon hinter sich hat, und aus demselben Grund: was in einer Zahl
+ * steht, darf nicht an den Metriken einer Schrift haengen, die auf einem
+ * fremden Rechner fehlen kann.
+ */
+.harbor__ratio {
+  fill: var(--ink-base);
 }
 
 /*
@@ -4240,17 +4764,9 @@ body {
   /* Seit sie ein Bogen sind, sind sie ein `path` - und ein Pfad ohne diese
      Zeile fuellt die Flaeche zwischen Sehne und Bogen aus. */
   fill: none;
-  stroke-width: 0.04;
+  stroke-width: 0.045;
   stroke-linecap: round;
-  opacity: 0.8;
-}
-
-.harbor text {
-  fill: #16202a;
-  font-size: 0.15px;
-  font-weight: 700;
-  text-anchor: middle;
-  dominant-baseline: central;
+  opacity: 0.85;
 }
 
 /*

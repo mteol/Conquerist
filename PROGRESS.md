@@ -5345,3 +5345,511 @@ nächste Playtest.
 - **Er hört nie von selbst auf.** Wer eine Minute überlegt, bekommt eine Minute
   Blinken. Nach einigen Zyklen ruhiger zu werden wäre ehrlicher — dann trägt
   aber die Dauer eine Bedeutung, die es im Spiel noch nicht gibt.
+
+## Schafe, Häfen und ein Wartebereich, der ins Fenster paßt (2026-08-25, `main`)
+
+Drei Dinge, alle drei im Browser nachgesehen — und das ist bei diesem Abschnitt
+der Punkt, denn die Oberfläche war laut dem eigenen Stand „durchgehend **nicht**
+im Browser nachgesehen worden". Der Dev-Server lief, Chrome war verbunden, und
+jede Zahl unten ist gemessen.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                     |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                               |
+| `pnpm test`         | grün — shared 638 / 37 Dateien, server 202 / 22, client **417** / 39         |
+| `pnpm build`        | grün — `index.js` 438.29 kB (gzip 129.67), `index.css` 48.93 kB (gzip 10.38) |
+| `pnpm format:check` | drei Warnungen, **keine davon aus dieser Arbeit** (siehe unten)              |
+
+Die drei Warnungen betreffen `public/mess.html` (unversioniert, bekannt),
+`screens/StartScreen.test.tsx` und `shared/src/rules/ruleset.test.ts`. Die
+beiden Testdateien stehen unverändert im Diff — `git status` führt sie nicht;
+sie waren auf `main` schon unformatiert und sind hier nur aufgefallen, weil
+dieser Abschnitt den Lauf zum ersten Mal seit einer Weile wieder abdruckt.
+
+Ein neuer Test (`LobbyScreen.test.tsx`, 21 statt 20): die gestrichenen
+Erklärsätze dürfen nicht wiederkommen.
+
+### Die Weide hat Schafe bekommen
+
+**Sie liegen in der Streulage und nicht in der Grundlage, und das ist eine
+Rechnung.** Eine Grundkachel der Weide mißt 0.53 × 0.45; ein Feld trägt rund
+vierzehn davon. Ein Schaf je Grundkachel wären vierzehn Tiere auf einem Feld —
+das ist keine Weide, sondern eine Tapete mit Schafen. Die Streukachel ist gut
+doppelt so groß, also rund sechseinhalb je Feld; mit Mutterschaf und Lamm je
+Kachel stehen etwa ein Dutzend Tiere in sechs Gruppen im Gras. Das Gras trägt
+die Fläche weiter allein, das Schaf ist die Ausnahme darauf — dieselbe Rolle,
+die die Streulage für den alten Baum und den Doppelgipfel schon spielt.
+
+**Gefüllt und nicht gestrichen, als einzige Marke der Weide.** Ein Umriß in
+Strichbreite 0.02 um einen Körper von 0.13 Höhe wäre zu einem Sechstel Kontur.
+Die Silhouette ist das, was ein Schaf auf diese Entfernung ausmacht — und damit
+ist es dieselbe Zeichnung wie auf der Wollkarte (`panels/ResourceGlyph.tsx`):
+dunkler Körper, runder Kopf, zwei Beine. Wer die Karte kennt, erkennt das Feld,
+das sie abwirft.
+
+**Das Tier grast, und das ist eine Entscheidung über Lesbarkeit.** Die erste
+Fassung stand mit waagerechtem Kopf neben dem Widerrist; im Browser vergrößert
+verschwand der Kopf darin, und übrig blieb ein Klumpen mit vier Beinen. Ein
+gesenkter Kopf hängt schräg unter der Rückenlinie und ist damit die einzige
+Kante der Figur, die weder waagerecht noch senkrecht läuft. Genau daran erkennt
+man auf achtzehn Pixel ein Tier und nicht bloß einen Fleck. Zwischenstand war
+außerdem ein zu langer, zu dünner Hals — das sah aus wie ein Lama; er ist kurz
+und der Kopf klobig geworden.
+
+**Und die Textur der Weide mußte deshalb leiser werden.** Die Schafe sind
+gefüllte Flächen und damit die dichteste Marke, die das Feld je getragen hat:
+die Deckung steigt von 12.0 auf **15.2 Prozent** (nachgerechnet mit derselben
+Methode wie die Tabelle in `index.css` — Pfadlänge mal Strichbreite, bei
+gefüllten Marken die Fläche des abgetasteten Umrisses, gegen die Kachelfläche).
+Nach der Dämpfungsregel `sqrt(11.2 / Deckung)` fällt die Dämpfung von 0.965 auf
+0.857, das Kontrastziel von 1.483 auf 1.429, und das Alpha von 23 auf **21
+Prozent** (gerechnet 1.421). Wer die 23 hätte stehen lassen, hätte die Weide
+zum lautesten Feld des Bretts gemacht, ohne eine Zeile darüber zu ändern.
+
+Die Rechenmethode ist vorher **gegen den Bestand geprüft** worden: mit denselben
+Formeln kommen für alle sechs Geländearten die Kontrastwerte heraus, die in der
+Tabelle als Ziel stehen (forest 1.501 gegen 1.500, hills 1.332 gegen 1.333,
+mountains 1.490 gegen 1.484 …). Die absoluten Deckungszahlen weichen ab, weil
+Überlappungen und Strichkappen anders gezählt wurden; für eine **Änderung** an
+einer Zeile zählt der Kontrast, und der stimmt auf zwei Stellen.
+
+### Die Häfen sind Münzen geworden
+
+**Der Befund: die Ringfarbe war der einzige Träger.** Ein cremefarbener Kreis,
+ein farbiger Ring, die Aufschrift „2:1" — welchen Hafen man vor sich hatte,
+sagte allein die Farbe. Das verstößt gegen Regel 7. Wer Grün und Gelb schlecht
+unterscheidet, sah neun gleiche Kreise; der ausgeschriebene Name stand nur im
+`title`, also erst nach einer Sekunde Zeigen und auf einem Tastbildschirm nie.
+
+**Jetzt trägt der Hafen dieselben zwei Träger wie die Handkarte:** die Farbe der
+Ressource **und** ihr Motiv. Das Motiv ist buchstäblich dasselbe —
+`RESOURCE_SHAPES` ist aus `panels/ResourceGlyph.tsx` exportiert, und Karte wie
+Hafen setzen denselben Pfad, die eine in ein eigenes `<svg>`, der andere in eine
+`<g>` mit Transformation. Zwei Zeichnungen desselben Dings wären zwei
+Gelegenheiten, sie verschieden zu machen.
+
+**Der Körper bleibt Pergament und wird nicht zur Geländefarbe.** Eine Münze in
+Waldgrün mit dunklem Motiv wäre die Karte selbst — ein zweites Stück
+Spielmaterial an einer Stelle, an der keines liegt. Auf dem Brett heißt heller
+Körper mit dunkler Tinte „hier steht eine Auskunft"; das ist die Sprache, die
+der Zahlenchip schon spricht.
+
+**Der 3:1-Hafen zeigt einen Anker.** Er nimmt jede Ware, hat also kein Motiv,
+das ihm gehörte, und ein leerer Kreis wäre die Auskunft „hier fehlt etwas". Was
+ihn auszeichnet, ist der Hafen selbst, also trägt er dessen Zeichen. Seine
+Ringfarbe ist die **Pergamentkante** und nicht mehr die Tiefsee-Tinte: ein
+dunkler Ring auf der dunklen See war im Browser schlicht nicht zu sehen —
+derselbe Befund wie bei den Straßen am Brettrand, nur hat ihn hier niemand
+gemeldet, weil der cremefarbene Körper darunter ja dastand.
+
+**Und die Anzeigeschrift hat ein Satzzeichen bekommen.** Das Verhältnis war ein
+`<text>` in 'Segoe UI Bold' — derselbe Bruch, den die Chipzahl schon einmal war.
+`Ratio` in `type/Numerals.tsx` setzt es jetzt aus den gezeichneten Ziffern, mit
+einem Doppelpunkt aus **zwei Quadraten der Stammbreite** und ohne Fase: bei
+einem Zeichen von 17 × 17 wäre eine Fase von 17 der ganze Punkt, aus dem Quadrat
+würde eine Raute, und eine Raute liest sich nicht als Doppelpunkt.
+
+Die Marke ist von 0.23 auf **0.27** gewachsen, damit Motiv und Ziffern
+nebeneinander Platz haben. `HARBOR_REACH` zieht mit (0.35 → 0.39): im Browser
+gemessen ragen die Hafengruppen **0.384** über die äußersten Feldecken hinaus.
+Die beiden Zahlen hängen aneinander, und das steht jetzt auch dort.
+
+### Der Wartebereich: links der Tisch, rechts das Brett
+
+**Er war rund 1300 Pixel hoch.** Code, Link, Tisch und drei gleich schwere
+Einstellungskästen untereinander, darunter der einzige Knopf, der etwas bewirkt
+— in einem gewöhnlichen Fenster lag „Partie starten" unterhalb des Randes. Auf
+der einzigen Fläche des Spiels, auf der es nichts zu tun gibt außer warten, war
+damit die eine Handlung, die es doch gibt, unsichtbar.
+
+**Er folgt jetzt derselben Ordnung wie der Eingang: links das Bedienbare, rechts
+das Brett.** Der Startbildschirm beantwortet die Frage „welches Brett bekommen
+wir" mit dem Brett selbst; der Wartebereich hat sie bis hierher mit einer
+Zeichenkette beantwortet. **„Neu würfeln" würfelte damit etwas, das niemand
+sieht** — der Knopf änderte sichtbar acht Zeichen und unsichtbar das ganze
+Spiel. Jetzt steht die Vorschau daneben, und sie ist nicht _wie_ das spätere
+Brett, sondern es: `generateScenario` ist rein und hängt nur an Blueprint und
+Seed (Regel 2), beide stehen im Raumstand, und erzeugt wird mit denselben
+Funktionen wie auf dem Startbildschirm. Zwei Wege zu einem Bild wären zwei
+Gelegenheiten, daß eines davon lügt. Im Browser nachgesehen: wer die Tischgröße
+von sechs auf drei stellt, sieht das Brett von `classic56` auf `classic34`
+wechseln.
+
+Innerhalb der linken Hälfte bleiben Tisch und Einstellungen nebeneinander; die
+Hälfte ist dafür breiter geworden (44rem statt 34). Dazu:
+
+1. **Eine Einstellungsliste statt drei Kästen** (`.lobby__row`). Drei
+   Umrandungen, drei Polster und dreimal mittige Setzung sagen „drei gleich
+   wichtige Dinge"; es sind aber drei Zeilen — Name, Brett, Ziel. Als Zeilen
+   brauchen sie ein Drittel der Höhe. Die Trennlinie steht als `border-top` an
+   jeder außer der ersten und nicht als `border-bottom` an allen außer der
+   letzten: die erste Zeile fällt weg, wenn man gar nicht am Tisch sitzt, und
+   eine Regel mit `:first-child` hätte dann die falsche getroffen.
+2. **Zwei Knöpfe nebeneinander** im Fuß statt untereinander. Der Rang steht in
+   der Farbe, nicht in der Reihenfolge.
+3. **Der Code ist kleiner geworden** — Obergrenze 4rem statt 7. Sieben
+   Zentimeter Schrift auf einem Bildschirm, der dafür scrollen muß, sind keine
+   Größe mehr, sondern ein Platzproblem, und in einer halben Breite erst recht.
+
+**Beide Hälften sind danach noch einmal gewachsen.** Die linke von 44rem auf
+**50rem**, das Brett von `max-height: 82vh` auf **94vh** — und das ist kein
+Nullsummenspiel, obwohl es so aussieht: das Brett hängt gar nicht an der Breite.
+Seine viewBox ist mit 9.84 zu 9.18 annähernd quadratisch, in einer Zelle, die
+deutlich breiter als hoch ist, entscheidet allein die Höhe, und die Breite blieb
+ungenutzt. Gemessen: das Brett ist von 781 × 729 auf **1072 × 836** gegangen,
+während die linke Spalte gleichzeitig 96 Pixel dazubekam. Ringsum bleiben 24
+Pixel links und rechts, 27 oben und unten — nichts ist beschnitten. Wer das
+Brett das nächste Mal größer haben will, dreht an `max-height` und nicht an der
+Spaltenaufteilung.
+
+**Und der Code steht mittig in seiner Spalte, nicht im Bildschirm.** Das ist der
+Unterschied, der hier zählt: er saß in der Mitte des Fensters, weil der
+Wartebereich eine Spalte war. Seit rechts das Brett liegt, wäre dieselbe Mitte
+irgendwo zwischen beiden Hälften und damit auf keiner. Kopf und Fuß stehen jetzt
+auf derselben Achse — ein Kopf in der Mitte und ein Fuß an der linken Kante
+wären zwei Ordnungen in einer Spalte.
+
+**Gemessen im Browser, schlechtester Fall:** sechs Plätze, alle Einstellungen
+offen — **693 Pixel** Panelinhalt bei 889 Pixel Fensterhöhe, kein Scrollbalken
+(`document.documentElement.scrollHeight > innerHeight` ist `false`). Auch die
+Spaltenaufteilung innerhalb des Panels ist gemessen und nicht geraten: „Platz
+entfernen" und „Platz hinzufügen" nebeneinander brauchen rund 290 Pixel, sonst
+rutscht der zweite in eine eigene Zeile — zwei Knöpfe, die dasselbe Paar sind,
+untereinander. Deshalb 1.08 zu 1 und nicht 1 zu 1.15. Die sechs Farbknöpfe
+brechen dafür in zwei Zeilen um; das dürfen sie, weil sechs Kacheln in zwei
+Zeilen immer noch sechs Kacheln sind.
+
+Unter 62rem wird wieder eine Spalte daraus, und das Brett steht oben
+(`order: -1`, wie auf dem Startbildschirm): wer beitritt, sieht dann erst,
+worauf gespielt wird, und darunter, wer schon da ist. Dort darf gescrollt
+werden — die Rechnung „paßt ohne Scrollen" gilt für das Querformat, in dem
+gespielt wird.
+
+**Was erklärt wurde, steht nicht mehr da.** Unter dem Seed stand „Gleicher Seed,
+gleiches Brett — bei euch und bei allen anderen", unter dem Ziel je nach Zahl
+„Zehn wie in der Schachtel" oder „Zwischen 5 und 20 — zehn sind die Vorgabe".
+Zwei Formulierungen für dieselbe Auskunft, und die Grenzen stehen ohnehin an den
+Knöpfen: wer bei 5 angekommen ist, findet das Minus gesperrt vor. Übrig bleibt
+**„10 sind das Original"** — das eine, was man nicht sehen kann. Der erste Satz
+ist außerdem doppelt gefallen: auf dem Startbildschirm stand hinter dem
+Brettnamen „— gleicher Seed, gleiches Brett", und das erklärte, was die Vorschau
+daneben **zeigt**. Eine Zusage neben ihrem eigenen Beweis ist eine Zeile zu
+viel — und seit der Wartebereich sein Brett hat, gilt derselbe Satz dort.
+
+**Zwei weitere Zeilen sind danach gefallen.** Unter dem Code stand „Vorlesen
+oder den Link schicken — beides führt an denselben Tisch": er erklärte den Code
+und das Feld darunter, und beide erklären sich selbst — vier große Zeichen auf
+Pergament und ein Link neben einem Knopf „Link kopieren". (Er war vorher noch
+ein Fall für sich: mit `max-width: 34ch` brach er auf zwei Zeilen um, mit 52ch
+waren es gemessen 403 Pixel und immer noch zu wenig. Eine Zeilenbreite in `ch`
+zu raten war hier überhaupt der falsche Griff — und jetzt erübrigt sie sich.)
+
+Im Fuß stand für den Gastgeber „Es fehlen noch 3 Mitspieler" — eine Zahl, die
+drei Zentimeter darüber schon als drei gestrichelte Plätze dasteht, und zwar
+besser: man sieht sie, ohne zu lesen. Der gesperrte Startknopf sagt dasselbe ein
+drittes Mal. Für alle **anderen** bleibt der Satz stehen, denn „Wartet auf Anna"
+sagt etwas, das nirgends sonst steht: wer starten muß. Wer der Gastgeber ist,
+ist der Sitzliste nicht anzusehen — und das bleibt als offener Punkt liegen.
+
+Der Test dazu ist mitgezogen: `LobbyScreen.test.tsx` prüfte „Es fehlt noch 1"
+und prüft jetzt die Sperre **und** den offenen Sitz. Dieselbe Auskunft an ihren
+zwei verbliebenen Orten.
+
+### Was offen bleibt
+
+- **Die restlichen Menüs sind nicht angefaßt.** Auf dem Startbildschirm stehen
+  die „Handkarten"-Optionen weiterhin als **native Radioknöpfe** — als einzige
+  Auswahl im ganzen Spiel, während Reiter und Tischgröße eigene Kacheln tragen.
+  Und die Hauptaktion sieht je Reiter anders aus: „Partie erstellen" ist gelb
+  (`button--go`), „Beitreten" und „Lokale Partie starten" sind gewöhnliche
+  Knöpfe. Beides ist derselbe Fehler — ein Bedienmuster, das an einer Stelle
+  etwas anderes bedeutet als an der anderen.
+- **Kein Test auf die Hafenmünze und den Doppelpunkt.** Daß das Motiv da ist,
+  daß das Verhältnis gezeichnet und nicht gesetzt ist, daß `.harbor__coin` den
+  alten Selektor `.harbor circle` ersetzt hat — nichts davon hält ein Test fest.
+  Der alte Selektor wäre inzwischen über den zweiten Kreis **im Anker** gelaufen
+  und hätte ihn cremefarben ausgefüllt; die Klasse behebt das, aber nur, solange
+  jemand daran denkt.
+- **Die Schafe sind nicht auf einem schmalen Gerät nachgesehen.** Bei
+  wesentlich kleinerem Brett fällt ein Tier unter die Grenze, ab der eine
+  Silhouette ein Fleck wird — dieselbe Grenze, an der die Tannen schon einmal
+  standen (6.8 Pixel). Gemessen ist nur der Querformat-Fall.
+- **Der einspaltige Wartebereich unter 62rem ist ungesehen.** Die Chrome-Ecke
+  ändert die Fenstergröße nicht zuverlässig; geprüft ist die Regel, nicht ihr
+  Ergebnis. Das betrifft auch das Brett, das dort nach oben rutscht.
+- **Wer der Gastgeber ist, steht nirgends.** Seit die Zeile „Es fehlen noch n
+  Mitspieler" gefallen ist, sagt dem Gastgeber nichts mehr, daß er es ist —
+  außer daß er als einziger den Startknopf sieht. Für die anderen steht es im
+  Satz „Wartet auf Anna". Der saubere Ort wäre die Sitzliste selbst; das kostet
+  aber eine Entscheidung darüber, was dann aus „verbunden" und „getrennt" wird,
+  und die gehört nicht in diesen Abschnitt.
+- **Die Vorschau im Wartebereich kennt die Sitzfarben nicht.** Sie bekommt
+  `defaultSeats(room.seatCount)` und nicht die Farben, die sich die Leute
+  ausgesucht haben. Solange nichts auf dem Brett steht, sieht man das nicht —
+  sobald jemand eine Vorschau mit Bauwerken zeigen wollte, wäre es falsch.
+
+### Nächste Etappe
+
+Die Menüs zu Ende: Auswahlkacheln statt nativer Radios auf dem Startbildschirm
+und eine einheitliche Hauptaktion je Reiter.
+
+## Der Titelbildschirm kommt zurück — und eine Animation, die nie lief (2026-08-25, `main`)
+
+Der Wartebereich hatte gerade sein Brett bekommen, und damit sahen Einrichtung
+und Wartebereich gleich aus: links ein Panel, rechts das Brett, zweimal derselbe
+Bau. **Ein Eingang, der aussieht wie die Fläche dahinter, ist kein Eingang.**
+Das Hauptmenü, das in `Aus einer laufenden Partie führte kein Weg heraus`
+(`7946b6a`) gestrichen worden war, ist wieder da — als `MenuScreen.tsx`, aus der
+Historie zurückgeholt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                             |
+| ------------------- | -------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                       |
+| `pnpm test`         | grün — shared 638 / 37 Dateien, server 202 / 22, client **427** / 40 |
+| `pnpm format:check` | zwei Warnungen (`public/mess.html`, `shared/rules/ruleset.test.ts`)  |
+
+`StartScreen.test.tsx` stand seit längerem in dieser Liste und steht nicht mehr
+drin: die Datei wurde für den Umbau ohnehin angefasst, und eine Datei, die man
+anfaßt, läßt man nicht unformatiert liegen. Zehn Tests kommen mit dem
+wiederhergestellten `MenuScreen.test.tsx` zurück (417 → 427).
+
+### Warum er zurückkommt, obwohl der Grund für seinen Wegfall stimmte
+
+Der Wegfall war richtig begründet: das Menü stellte eine Frage, und der
+Bildschirm dahinter wiederholte die Antwort als **Überschrift**. Zwei Flächen
+für eine Entscheidung.
+
+Genau diese Doppelung kommt nicht mit zurück. `StartScreen` trägt keine
+Wortmarke mehr — sie steht jetzt einmal auf dem Titel und ist dort der Inhalt
+statt der Kopfzeile eines Formulars. Was bleibt, ist die Reiterreihe, und die
+ist **kein Vortrag der Antwort, sondern das Bedienelement, mit dem man sie
+ändert**, ohne zurückzugehen. Dazu ein „‹ Zurück" über den Reitern: zurück ist
+keine vierte Wahl neben Online, Lokal und Beitreten, sondern eine Ebene darüber.
+
+**Der Einladungslink überspringt den Titel.** Wer ihm gefolgt ist, hat bereits
+entschieden; ihn vor eine Auswahl zu stellen, deren Antwort er mitgebracht hat,
+wäre wieder genau die Doppelung, wegen der der Titel einmal ging. `App.tsx`
+setzt den Weg deshalb aus `roomFromLocation()` vor.
+
+**Der Weg ist ein Anfangswert, keine Steuerung.** `initialWay` setzt den Reiter
+beim Aufschlagen und zählt zugleich als getroffene Entscheidung — sonst zöge der
+Sprung auf „Weiterspielen", der eintrifft, sobald `myRooms` da ist, den Reiter
+unter der Hand weg. Auf dem Titel steht „Weiterspielen (n)" ohnehin als eigener
+Eintrag. Danach gehört der Reiter dem Bildschirm; hielte ihn der Titel, hielte
+er einen Zustand, den er nicht mehr sieht.
+
+`App.tsx` hat damit wieder vier Zustände statt drei. Die zwei Eingangsfälle
+stehen in **einem** Zweig (`room === null`) mit einer Ternäre darin und nicht in
+zwei Zweigen nebeneinander: zwei getrennte `room === null`-Zweige sagen dem
+Compiler nichts über den dritten, und `room.started` weiter unten war prompt
+„possibly null".
+
+### Der Fund: `@keyframes enter-drop` gab es nicht
+
+Beim Wegfall des Hauptmenüs ist `menu-rise` zu `enter-rise` geworden und
+mitgezogen. `menu-drop` wurde zu `enter-drop` **umbenannt, aber nicht
+mitgenommen.** Seither stand an `.corner`, `.start__ways` und `.start__form` ein
+`animation: enter-drop 300ms …` auf einen Namen, den es im Blatt nicht gab — und
+eine Animation ohne Keyframes ist keine Animation, sondern nichts.
+
+**Die ganze Eingangschoreografie des Startbildschirms lief also zwei Etappen
+lang gar nicht**, und es ist niemandem aufgefallen, weil die Elemente ja
+dastanden. Das ist die Falle aus `CLAUDE.md` („Ein Kommentar, der eine Absicht
+beschreibt, ist kein Nachweis, daß sie im Blatt steht") in ihrer stillsten Form:
+der Kommentar daneben beschrieb die Absicht weiter richtig, und der Browser
+meldet einen unbekannten Animationsnamen nicht. Die Keyframes stehen jetzt im
+Menüblock und bedienen beide Bildschirme.
+
+**Wer eine Regel umbenennt, sucht nach ihrem alten Namen und nach ihrem neuen.**
+Ein `grep` auf `enter-drop` hätte drei Fundstellen gezeigt, alle drei
+Verwendungen und keine Definition — die Prüfung kostet eine Zeile.
+
+### Was dabei noch abfiel
+
+`.start__title` und `.start__brand` sind tote Regeln geworden und gefallen. Die
+Wortmarke selbst darf wieder so groß sein, wie sie einmal war: `max-width` geht
+von 34rem zurück auf `min(78vw, 40rem)`. Die 34rem waren die Breite der
+Panel-Spalte, in der sie zuletzt saß — mit `78vw` hätte `.start` mit seinem
+`overflow: hidden` sie auf einem breiten Fenster abgeschnitten. Jetzt sitzt sie
+wieder mittig auf einer freien Fläche und hat den Grund für die Einschränkung
+nicht mehr.
+
+### Was offen bleibt
+
+- **Der Titel und die Einrichtung teilen sich das Hexfeld.** Beide zeichnen es,
+  beide lassen die Aufprallwelle laufen — wer vom Titel weitergeht, sieht die
+  Choreografie ein zweites Mal. Das erklärt keinen Zustandswechsel mehr
+  (Regel 5), sondern begleitet ihn nur. Ein Übergang, der die Welle beim zweiten
+  Mal ausläßt, wäre die ehrlichere Lösung.
+- **Kein Test auf die Verdrahtung.** Daß `App.tsx` bei `way === null` den Titel
+  zeigt, bei gesetztem Weg die Einrichtung und beim Einladungslink direkt
+  „Beitreten", hält kein Test fest — geprüft ist es nur im Browser. Die beiden
+  Bildschirme haben ihre eigenen Tests; der Schalter dazwischen hat keinen.
+
+## Der Einrichtungsbildschirm fällt weg — jeder Weg führt direkt an seinen Ort (2026-08-25, `main`)
+
+Der Titelbildschirm war einen Tag alt, und dahinter stand weiter die Einrichtung
+mit ihrer Reiterreihe: Titel wählt den Weg, Einrichtung zeigt ihn noch einmal
+als Reiter, und **erst dahinter** kam der Bildschirm, auf dem etwas passiert.
+Zwei Klicks bis zur Sache, und der mittlere fragte nichts, was nicht auch später
+zu beantworten gewesen wäre.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                     |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                               |
+| `pnpm test`         | grün — shared 638 / 37 Dateien, server 202 / 22, client **422** / 40         |
+| `pnpm build`        | grün — `index.js` 439.52 kB (gzip 130.02), `index.css` 51.79 kB (gzip 10.82) |
+| `pnpm format:check` | zwei Warnungen (`public/mess.html`, `shared/rules/ruleset.test.ts`)          |
+
+Alle vier Wege sind im Browser durchgeklickt: Titel → online → Wartebereich
+(Raum QQTG entstand sofort), Titel → lokal, Titel → beitreten, und über
+„Beitreten" mit Code zurück in einen bestehenden Raum.
+
+### „Online" ist keine Frage mehr, sondern eine Handlung
+
+Die Einrichtung wollte für den Online-Weg drei Angaben: Tischgröße, Seed, Name.
+**Jede einzelne davon steht im Wartebereich noch einmal** — die Tischgröße als
+Platz hinzufügen/entfernen, der Name unter „Dein Platz", das Siegpunktziel
+sowieso. Ein Bildschirm, dessen ganzer Inhalt eine Fläche weiter ein zweites Mal
+steht, ist ein Zwischenhalt und keine Station.
+
+Der Raum entsteht deshalb sofort, mit gewürfeltem Seed und dem kleinsten Tisch.
+Das ist der Unterschied zwischen einer **Vorgabe** und einer **Frage**: wer
+nichts anfaßt, hat trotzdem eine gültige Partie, und wer etwas anderes will,
+findet es eine Zeile weiter. Der Name darf dabei leer bleiben — `identify`
+schickt ihn dann gar nicht hinaus, und der Server behält den, den er kennt
+(diese Vorsichtsmaßnahme stand schon da, für den Fall „geleerter Speicher").
+
+**Was nur die Einrichtung konnte, ist mitgezogen.** Dort ließ sich ein Seed
+**eintippen**, und das ist die einzige Art, ein bestimmtes Brett
+wiederzubekommen — „Neu würfeln" allein kann das nicht. Der Wartebereich hat
+jetzt ein Seedfeld statt einer Seedzeile, mit derselben Mechanik wie das
+Namensfeld daneben: der Wert gehört dem Feld, solange jemand tippt, und geht
+erst beim Verlassen hinaus. Ein `onChange`, das jeden Tastendruck schickt, wäre
+eine Nachricht je Buchstabe und ein neu gewürfeltes Brett je Zeichen. **Wer
+einen Bildschirm streicht, nimmt mit, was nur er konnte.**
+
+### Die drei übrigen Wege bekommen je einen eigenen Bildschirm
+
+Die Reiterreihe ist gefallen. Sie sagte zweierlei — **welche** Wege es gibt und
+auf **welchem** man steht —, und das Erste sagt jetzt der Titel. Übrig bleibt
+das Zweite, und dafür genügt eine Überschrift: Kleinlabel plus ein großes Wort,
+dieselbe Setzung wie „RAUMCODE / 9RDW" im Wartebereich, damit die Bildschirme
+als eine Familie lesbar bleiben, ohne gleich auszusehen.
+
+- **lokal** → „Partie starten / An einem Gerät", links Tischgröße, Seed, Namen
+  und Handkarten, rechts das Brett.
+- **beitreten** → „Partie beitreten / Raumcode", links Name und Code.
+- **weiterspielen** → „Weiterspielen / Deine Partien", links die Karten.
+
+**Ohne Brett fällt die zweite Spalte weg, nicht bloß ihr Inhalt.** Beitreten und
+Weiterspielen kennen keinen Seed und können kein Brett zeigen; bliebe die Spalte
+stehen, stünde das Panel in einem Drittel des Fensters und daneben zwei Drittel
+Nichts. `.start:not(:has(.start__preview))` fragt dabei nach dem, was wirklich da
+ist, statt eine Klasse zu setzen, die dasselbe noch einmal behauptet — eine
+Klasse und ein Kind, die auseinanderlaufen können, sind zwei Wahrheiten.
+
+**Ein Befund aus dem Browser:** auf dem Beitreten-Bildschirm stand unten rechts
+„Euer Brett zum Seed 2v4c305c" — unter einer leeren Fläche, über ein Brett, das
+niemand bekommt. Die Bildunterschrift stand außerhalb der Bedingung, die das
+Brett selbst gesteuert hat, und beschrieb damit den Seed eines Formulars, das
+gar nicht mehr sichtbar war. Eine Unterschrift ohne Bild beschreibt irgendetwas.
+
+**Der Weg zurück heißt „Zum Titel" und nicht „Zurück".** Auf dem Weg
+„Weiterspielen" steht auf jeder Karte „Zurück in die Partie" beziehungsweise
+„Zurück an den Tisch" — zwei Knöpfe mit demselben ersten Wort, die in
+entgegengesetzte Richtungen führen. Ein Wort bleibt durch den ganzen Ablauf
+gleich (Regel 8), und „zurück" gehört hier denen, die in eine Partie führen.
+
+### Was die Tests dabei gelernt haben
+
+`StartScreen.test.tsx` schaltete zwölfmal über die Reiter um (`aufDenWeg`). Das
+ging nicht mehr — und es soll auch nicht mehr gehen, denn ein Bildschirm zeigt
+jetzt genau einen Weg. Die Tests reichen den Weg deshalb als `initialWay` herein
+statt ihn zu klicken; fünf Tests, die ausschließlich das Umschalten prüften
+(Reiterreihenfolge, „immer nur einen Weg", der Sprung auf Weiterspielen und sein
+Gegenstück), sind gefallen — vier davon prüft `MenuScreen.test.tsx` inzwischen an
+der richtigen Stelle.
+
+Aus 28 wurden 23 Tests in dieser Datei, im Paket 427 → 422. **Eine sinkende
+Testzahl ist hier kein Verlust an Prüfung, sondern einer an Doppelung** — was
+zweimal geprüft wurde, weil es zweimal dastand, wird jetzt einmal geprüft.
+
+### Was offen bleibt
+
+- **„Weiterspielen" hängt am Sitz, nicht am Raum.** `roomsOf` liefert die Räume,
+  in denen man einen **Sitz** hat (`registry.ts`); wer Gastgeber ist, aber
+  gerade keinen Sitz belegt, sieht seinen eigenen Raum nicht in der Liste. Im
+  Browser beobachtet: nach einem Neustart des Entwicklungsservers zeigte der
+  Titel keinen Eintrag „Weiterspielen", obwohl Raum 9RDW mit demselben
+  Gastgeber in der Datenbank stand — der Sitz war weg, der Raum nicht. Über
+  „Partie beitreten" mit dem Code war er sofort wieder erreichbar, und der Sitz
+  wurde beim Beitreten prompt wieder geschrieben. **Nicht zu Ende diagnostiziert
+  und deshalb hier notiert statt behoben:** ob der Sitz beim Neustart verloren
+  geht oder schon vorher, ist nicht gemessen. Wer es angeht, fängt bei
+  `sqliteStore` und `registry.load` an.
+- **Vom Wartebereich führt kein Weg zum Titel außer „Tisch verlassen".** Das war
+  vorher genauso, fällt aber jetzt stärker auf: alle anderen Bildschirme haben
+  „Zum Titel", dieser hat einen Ausgang, der den Sitz freigibt.
+- **Die „Handkarten"-Optionen sind weiterhin native Radioknöpfe** — als einzige
+  Auswahl im Spiel ohne eigene Kachel. Steht seit zwei Abschnitten offen.
+- **Kein Test auf die Verdrahtung.** Daß der Titel bei „online" einen Raum
+  anlegt statt einen Bildschirm zu zeigen, hält kein Test fest; geprüft ist es
+  im Browser.
+
+## Nachtrag: die letzte Formularauswahl, die Bildunterschrift und der Sechserfall (2026-08-25, `main`)
+
+Drei kleine Sachen aus demselben Durchgang, alle drei im Browser nachgemessen.
+
+**Die „Handkarten"-Auswahl ist weg.** Sie war die letzte Stelle im Spiel, an der
+eine Auswahl wie ein Formular aussah: zwei nackte `<input type="radio">` unter
+lauter gezeichneten Kacheln — direkt über ihnen die Tischgröße als
+Sechseck-Kacheln, technisch dasselbe Bedienelement, optisch zwei Welten. Statt
+sie umzugestalten ist sie gefallen: **zugedeckt war ohnehin die Vorgabe, und sie
+ist dieselbe Regel, nach der online gespielt wird** — Handkarten sind geheim
+(Regel 4). Wer nebeneinander sitzt und sowieso alles sieht, drückt einmal mehr
+auf „Karten ansehen"; das ist ein Klick, wo vorher eine Frage vor der Partie
+stand. `LocalOptions` ist damit ganz gefallen — der Typ trug genau dieses eine
+Feld, und `App.tsx` sagt die Zusage jetzt als feste Zeile.
+
+**Die Bildunterschrift „Euer Brett zum Seed …" ist weg.** Sie stand unten rechts
+unter der Vorschau und wiederholte, was zwei Handbreit weiter links im Seedfeld
+steht — und im Wartebereich gibt es sie ohnehin nicht, dort steht der Seed in
+der Einstellungsliste. Eine Zeile, die eine andere Zeile auf demselben Bildschirm
+vorliest.
+
+**Bei sechs Spielern wird nicht mehr gescrollt.** Gemessen: das Panel stand auf
+**902 Pixel in einem 889 Pixel hohen Fenster** — dreizehn Pixel, für die die
+ganze Seite einen Rollbalken bekam. Zwei Ursachen, beide behoben:
+
+1. **Die Rasterzeile wuchs mit.** `.start` hatte `min-height: 100vh` und sonst
+   nichts; ein Rasterfeld ist von Haus aus mindestens so hoch wie sein Inhalt.
+   Jetzt begrenzt `max-height: 100vh` die Zeile, und `min-height: 0` am Panel
+   ist die Bedingung dafür, dass die Begrenzung überhaupt greifen darf. Das
+   `overflow-y: auto`, das dort seit jeher als Notausgang steht, fängt den Rest
+   ab, statt ihn nach außen durchzureichen.
+2. **Sechs Namenszeilen sind das, was den Ausschlag gibt** — bei vier paßte es
+   immer. Panelabstand 1.15rem → 0.9rem, Sitzabstand 0.4 → 0.3rem, Polster der
+   Namensfelder 0.5 → 0.42rem.
+
+Nachgemessen mit sechs Spielern: **870 Pixel Inhalt, 19 Pixel Luft**, kein
+Rollbalken an der Seite und keiner im Panel. Unter 62rem Breite bleibt
+`max-height` aus — untereinander paßt es nicht ins Fenster, und die Rechnung
+„ohne Scrollen" gilt für das Querformat.
+
+**Was das kostet, und warum es trotzdem richtig ist:** neunzehn Pixel sind
+knapp. In einem deutlich niedrigeren Fenster scrollt dann das **Panel** statt der
+Seite — das ist der Notausgang, der dort ohnehin vorgesehen war, und er ist die
+bessere von zwei schlechten Möglichkeiten (abgeschnitten wäre schlimmer,
+Regel 7). Wer hier eine Zeile hinzufügt, mißt nach.
+
+| Prüfung          | Ergebnis                                                 |
+| ---------------- | -------------------------------------------------------- |
+| `pnpm typecheck` | grün                                                     |
+| `pnpm test`      | grün — shared 638 / 37, server 202 / 22, client 422 / 40 |

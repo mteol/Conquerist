@@ -105,6 +105,106 @@ const DIGITS: readonly string[] = [
 ];
 
 /**
+ * Der Doppelpunkt - das einzige Satzzeichen des Systems.
+ *
+ * **Warum es ihn gibt.** Auf dem Brett steht ein Verhaeltnis: „2:1" und „3:1"
+ * am Hafen. Es ist eine Zahl im Sinne von Regel 3 - sie wird verglichen, sie
+ * ist der Inhalt, sie steht gross da -, und solange sie als `<text>` in
+ * 'Segoe UI Bold' gesetzt war, war sie derselbe Bruch, den die Chipzahl schon
+ * einmal war: gezeichnetes Gelaende, gezeichnete Ziffern, und dazwischen ein
+ * gesetztes Zeichen aus der Systemschrift.
+ *
+ * **Zwei Quadrate der Stammbreite, und keine Fase.** Das System schneidet
+ * Rundungen zu Schraegen ab - bei einem Zeichen von 17 mal 17 waere eine Fase
+ * von 17 aber der ganze Punkt: aus dem Quadrat wuerde eine Raute, und eine
+ * Raute liest sich nicht als Doppelpunkt, sondern als Zierrat. Die Fase ist
+ * eine Regel fuer Konturen, die lang genug sind, sie zu tragen.
+ *
+ * Sie sitzen symmetrisch um die optische Mitte (y = 50) statt auf der
+ * Grundlinie: dieser Doppelpunkt steht zwischen zwei Versalziffern und nicht
+ * in einer Zeile mit Gemeinen.
+ */
+const COLON = 'M0 24H17V41H0ZM0 59H17V76H0Z';
+
+/** Die Zeichenbreite des Doppelpunkts - Stammbreite, wie jeder Stamm. */
+const COLON_BODY = 17;
+
+/**
+ * Die Luft links und rechts vom Doppelpunkt.
+ *
+ * Groesser als die Nachbreite einer Ziffer (11), weil der Doppelpunkt schmal
+ * ist und sonst an der Ziffer klebt: 11 plus 11 um ein Zeichen von 17 ergibt
+ * optisch ein Wort, nicht ein Verhaeltnis.
+ */
+const COLON_SIDE = 22;
+
+export interface RatioProps {
+  /** Wie viele hergegeben werden. */
+  readonly left: number;
+  /** Wie viele man dafuer bekommt. */
+  readonly right: number;
+  readonly cx: number;
+  readonly cy: number;
+  readonly cap: number;
+  readonly fill?: string;
+  readonly className?: string;
+}
+
+/**
+ * Ein Verhaeltnis - „2:1" - aus denselben gezeichneten Ziffern.
+ *
+ * Eigene Komponente und nicht zwei `Numeral` nebeneinander: wo die zwei Zahlen
+ * stehen, ist eine Rechnung ueber Vorschuebe, und die gehoert dorthin, wo die
+ * Vorschuebe definiert sind. Wer sie am Aufrufort ausrechnet, rechnet sie beim
+ * naechsten Aufrufort noch einmal - und beim uebernaechsten anders.
+ *
+ * Es gilt dieselbe Grenze wie fuer `Numeral`: Anzeigeschrift, kein Fliesstext.
+ * Der ausgeschriebene Satz („2:1 Erz") bleibt Text und steht im `title`.
+ */
+export function Ratio({ left, right, cx, cy, cap, fill, className }: RatioProps): JSX.Element {
+  const unit = cap / CAP_HEIGHT;
+  const leftWidth = numeralWidth(left);
+  const colonAt = leftWidth + COLON_SIDE;
+  const rightAt = colonAt + COLON_BODY + COLON_SIDE;
+  const width = rightAt + numeralWidth(right);
+
+  return (
+    <g
+      className={className ? `numeral ${className}` : 'numeral'}
+      transform={`translate(${cx - (width * unit) / 2} ${cy - cap / 2}) scale(${unit})`}
+      style={fill ? ({ fill } as CSSProperties) : undefined}
+      pointerEvents="none"
+      aria-hidden="true"
+    >
+      {digitsOf(left).map((digit, index) => (
+        <path
+          key={`left-${index}`}
+          data-digit={digit}
+          d={DIGITS[Number(digit)]}
+          fillRule="evenodd"
+          transform={index === 0 ? undefined : `translate(${index * ADVANCE} 0)`}
+        />
+      ))}
+      <path data-digit=":" d={COLON} transform={`translate(${colonAt} 0)`} />
+      {digitsOf(right).map((digit, index) => (
+        <path
+          key={`right-${index}`}
+          data-digit={digit}
+          d={DIGITS[Number(digit)]}
+          fillRule="evenodd"
+          transform={`translate(${rightAt + index * ADVANCE} 0)`}
+        />
+      ))}
+    </g>
+  );
+}
+
+/** Die Ziffern einer Zahl, als Zeichen. */
+function digitsOf(value: number): string[] {
+  return Math.trunc(Math.abs(value)).toString().split('');
+}
+
+/**
  * Wie breit eine Zahl im Raster ist.
  *
  * Vorschuebe bis zum letzten Zeichen, dann dessen Zeichenbreite - die

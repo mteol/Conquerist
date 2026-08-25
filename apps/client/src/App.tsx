@@ -6,7 +6,9 @@ import { AccountDialog } from './dialogs/AccountDialog';
 import { GameScreen } from './screens/GameScreen';
 import { SettingsButton } from './screens/SettingsButton';
 import { LobbyScreen } from './screens/LobbyScreen';
-import { StartScreen, type LocalOptions } from './screens/StartScreen';
+import { MenuScreen } from './screens/MenuScreen';
+import { StartScreen, randomSeed, type Way } from './screens/StartScreen';
+import { MIN_SEATS } from './seats';
 import { useLocalGame } from './game/useLocalGame';
 import { useOnlineGame } from './game/useOnlineGame';
 import { useSettledRoll } from './game/useSettledRoll';
@@ -24,16 +26,25 @@ import { loadName, roomFromLocation } from './net/session';
  * Kein Router. Die einzige Adresse, die jemand teilt, ist der Einladungslink,
  * und der traegt seinen Raum in `?raum=`. Dafuer ist eine Bibliothek zu viel.
  *
- * **Drei Zustaende, nicht vier.** Bis hierher stand ein Hauptmenue vor dem
- * Startbildschirm und mit ihm ein vierter Zustand hier oben - welcher Weg
- * gewaehlt wurde. Der Weg ist keine Auskunft ueber die Anwendung, sondern eine
- * Einstellung auf einem einzigen Bildschirm; seit sie dort als Reiter steht,
- * gibt es sie hier nicht mehr.
+ * **Der Titelbildschirm ist zurueck, und damit der vierte Zustand.** Er war
+ * gestrichen worden, weil er genau eine Frage stellte - welcher Weg - und der
+ * Bildschirm dahinter sie als Ueberschrift noch einmal vortrug. Seither hat der
+ * Wartebereich sein Brett bekommen, und damit sahen Einrichtung und
+ * Wartebereich gleich aus: links ein Panel, rechts das Brett. Ein Eingang, der
+ * aussieht wie die Flaeche dahinter, ist kein Eingang.
+ *
+ * Die alte Doppelung kommt nicht mit zurueck: die Einrichtung traegt keine
+ * Ueberschrift mehr, die den gewaehlten Weg wiederholt. Ihre Reiterreihe ist
+ * kein Vortrag der Antwort, sondern das Bedienelement, mit dem man sie aendert,
+ * ohne zurueckzugehen.
+ *
+ * `way === null` heisst Titel, sonst Einrichtung. Der Zustand steht hier und
+ * nicht im `StartScreen`, weil er entscheidet, **welcher Bildschirm** gilt -
+ * und das ist genau die Frage, die diese Datei beantwortet.
  */
 interface LocalSession {
   readonly game: GameState;
   readonly seats: readonly Seat[];
-  readonly options: LocalOptions;
 }
 
 export function App(): JSX.Element {
@@ -49,7 +60,7 @@ export function App(): JSX.Element {
   return (
     <AudioProvider>
       {local === null ? (
-        <Online onStartLocal={(game, seats, options) => setLocal({ game, seats, options })} />
+        <Online onStartLocal={(game, seats) => setLocal({ game, seats })} />
       ) : (
         <Local session={local} onLeave={() => setLocal(null)} />
       )}
@@ -90,7 +101,17 @@ function Local({
       landing={game.landing}
       onAct={game.act}
       onDismissError={game.dismissError}
-      concealBetweenTurns={session.options.concealBetweenTurns}
+      /*
+       * Am geteilten Geraet ist die Hand immer zugedeckt.
+       *
+       * Es war einmal eine Wahl vor der Partie (`LocalOptions`), und sie ist
+       * gefallen: zugedeckt war ohnehin die Vorgabe, und sie ist dieselbe
+       * Regel, nach der online gespielt wird - Handkarten sind geheim
+       * (Regel 4). Wer nebeneinander sitzt und sowieso alles sieht, drueckt
+       * einmal mehr auf „Karten ansehen"; das ist ein Klick, wo vorher eine
+       * Frage vor der Partie stand.
+       */
+      concealBetweenTurns
       onLeave={onLeave}
     />
   );
@@ -99,7 +120,7 @@ function Local({
 function Online({
   onStartLocal,
 }: {
-  readonly onStartLocal: (game: GameState, seats: readonly Seat[], options: LocalOptions) => void;
+  readonly onStartLocal: (game: GameState, seats: readonly Seat[]) => void;
 }): JSX.Element {
   const online = useOnlineGame();
   /*
@@ -123,6 +144,16 @@ function Online({
    */
   const [account, setAccount] = useState<'register' | 'login' | null>(null);
   const [accountProblem, setAccountProblem] = useState<string | null>(null);
+
+  /*
+   * Welcher Weg gewaehlt ist - `null` heisst: der Titel steht noch.
+   *
+   * **Ein Einladungslink ueberspringt den Titel.** Wer ihm gefolgt ist, hat
+   * bereits entschieden; ihn vor eine Auswahl zu stellen, deren Antwort er
+   * schon mitgebracht hat, waere genau die Doppelung, wegen der der Titel
+   * einmal gestrichen wurde.
+   */
+  const [way, setWay] = useState<Way | null>(() => (roomFromLocation() === null ? null : 'join'));
 
   const openAccount = (mode: 'register' | 'login'): void => {
     setAccountProblem(null);
@@ -169,39 +200,80 @@ function Online({
   let screen: JSX.Element;
 
   if (room === null) {
-    screen = (
-      <StartScreen
-        onStartLocal={onStartLocal}
-        onCreateRoom={(seatCount, seed, name) => {
-          void online.createRoom(seatCount, seed, name);
-        }}
-        onJoinRoom={(code, name) => {
-          void online.joinRoom(code, name);
-        }}
-        initialCode={roomFromLocation()}
-        initialName={loadName() ?? ''}
-        problem={online.state.lastError}
-        myRooms={online.myRooms}
-        onResume={(code) => {
-          // Kein eigener Einstiegsweg: `room.join` erkennt einen bekannten Sitz
-          // seit Etappe 4 wieder. Ein zweiter waere ein zweiter Weg fuer
-          // dieselbe Sache.
-          void online.joinRoom(code, loadName() ?? '');
-        }}
-        onAbandon={(code) => {
-          void online.abandonRoom(code);
-        }}
-        onDelete={(code) => {
-          void online.deleteRoom(code);
-        }}
-        identity={online.identity}
-        onRegister={() => openAccount('register')}
-        onLogin={() => openAccount('login')}
-        onLogout={() => {
-          void online.logout();
-        }}
-      />
-    );
+    /*
+     * Der Eingang, in zwei Schritten: erst der Titel, dann die
+     * Einrichtung. Ein Zweig und nicht zwei, damit der Fall darunter
+     * nachweislich einen Raum hat - zwei getrennte `room === null`-Zweige
+     * sagen dem Compiler nichts ueber den dritten.
+     */
+    screen =
+      way === null ? (
+        <MenuScreen
+          onChoose={(choice) => {
+            /*
+             * **„Online" ist kein Weg zu einem Bildschirm, sondern eine
+             * Handlung.** Dazwischen stand bis hierher die Einrichtung: drei
+             * Angaben - Tischgroesse, Seed, Name -, und jede einzelne davon
+             * laesst sich im Wartebereich auch machen. Ein Bildschirm, dessen
+             * ganzer Inhalt eine Flaeche weiter noch einmal steht, ist ein
+             * Zwischenhalt und keine Station.
+             *
+             * Der Raum entsteht deshalb sofort, mit gewuerfeltem Seed und dem
+             * kleinsten Tisch. Beides ist im Wartebereich eine Zeile weit
+             * entfernt, und wer nichts anfasst, hat trotzdem eine gueltige
+             * Partie - das ist der Unterschied zwischen einer Vorgabe und
+             * einer Frage.
+             *
+             * Der Name darf leer sein: `identify` schickt ihn dann gar nicht
+             * hinaus, und der Server behaelt den, den er kennt. Umbenennen
+             * kann man sich im Wartebereich.
+             */
+            if (choice === 'online') {
+              void online.createRoom(MIN_SEATS, randomSeed(), loadName() ?? '');
+              return;
+            }
+            setWay(choice);
+          }}
+          openGames={online.myRooms.length}
+          identity={online.identity}
+          onRegister={() => openAccount('register')}
+          onLogin={() => openAccount('login')}
+          onLogout={() => {
+            void online.logout();
+          }}
+        />
+      ) : (
+        <StartScreen
+          initialWay={way}
+          onBack={() => setWay(null)}
+          onStartLocal={onStartLocal}
+          onJoinRoom={(code, name) => {
+            void online.joinRoom(code, name);
+          }}
+          initialCode={roomFromLocation()}
+          initialName={loadName() ?? ''}
+          problem={online.state.lastError}
+          myRooms={online.myRooms}
+          onResume={(code) => {
+            // Kein eigener Einstiegsweg: `room.join` erkennt einen bekannten Sitz
+            // seit Etappe 4 wieder. Ein zweiter waere ein zweiter Weg fuer
+            // dieselbe Sache.
+            void online.joinRoom(code, loadName() ?? '');
+          }}
+          onAbandon={(code) => {
+            void online.abandonRoom(code);
+          }}
+          onDelete={(code) => {
+            void online.deleteRoom(code);
+          }}
+          identity={online.identity}
+          onRegister={() => openAccount('register')}
+          onLogin={() => openAccount('login')}
+          onLogout={() => {
+            void online.logout();
+          }}
+        />
+      );
   } else if (!room.started || view === null) {
     screen = (
       <LobbyScreen
