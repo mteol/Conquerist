@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { RESOURCE_IDS, type ResourceId } from '@conquerist/shared';
+import { RESOURCE_IDS, type CardId } from '@conquerist/shared';
 import { cardAmounts } from '@conquerist/shared';
 import { render, screen, userEvent } from '../test/dom';
 import { RESOURCE_LABELS } from '../game/labels';
@@ -28,7 +28,9 @@ const player: PlayerRow = {
 describe('DiscardDialog', () => {
   it('bestaetigt erst, wenn genau die geforderte Zahl gewaehlt ist', async () => {
     const onConfirm = vi.fn();
-    render(<DiscardDialog player={player} required={4} onConfirm={onConfirm} />);
+    render(
+      <DiscardDialog player={player} cards={RESOURCE_IDS} required={4} onConfirm={onConfirm} />,
+    );
 
     expect(screen.getByRole('button', { name: /Abwerfen/ })).toHaveProperty('disabled', true);
 
@@ -46,7 +48,7 @@ describe('DiscardDialog', () => {
   });
 
   it('laesst nicht mehr waehlen, als auf der Hand liegt', async () => {
-    render(<DiscardDialog player={player} required={4} onConfirm={vi.fn()} />);
+    render(<DiscardDialog player={player} cards={RESOURCE_IDS} required={4} onConfirm={vi.fn()} />);
 
     await userEvent.click(screen.getByLabelText('Korn mehr'));
     await userEvent.click(screen.getByLabelText('Korn mehr'));
@@ -64,7 +66,7 @@ describe('DiscardDialog', () => {
    * Luege wie ein dauerhaft gesperrter Siegpunkt-Knopf, nur andersherum.
    */
   it('sperrt die Schritte, die nichts bewirken koennen', () => {
-    render(<DiscardDialog player={player} required={4} onConfirm={vi.fn()} />);
+    render(<DiscardDialog player={player} cards={RESOURCE_IDS} required={4} onConfirm={vi.fn()} />);
 
     // Erz liegt gar nicht auf der Hand.
     expect(screen.getByLabelText('Erz mehr')).toHaveProperty('disabled', true);
@@ -75,7 +77,7 @@ describe('DiscardDialog', () => {
   });
 
   it('macht alle Schritte tot, sobald die geforderte Zahl beisammen ist', async () => {
-    render(<DiscardDialog player={player} required={4} onConfirm={vi.fn()} />);
+    render(<DiscardDialog player={player} cards={RESOURCE_IDS} required={4} onConfirm={vi.fn()} />);
 
     for (const label of ['Lehm mehr', 'Lehm mehr', 'Lehm mehr', 'Holz mehr']) {
       await userEvent.click(screen.getByLabelText(label));
@@ -93,11 +95,12 @@ describe('DiscardDialog', () => {
 describe('TradeDialog', () => {
   it('zeigt den abgeleiteten Kurs und schickt nur die Absicht', async () => {
     const onConfirm = vi.fn();
-    const rateFor = (give: ResourceId): number => (give === 'brick' ? 2 : 4);
+    const rateFor = (give: CardId): number => (give === 'brick' ? 2 : 4);
 
     render(
       <TradeDialog
         player={player}
+        cards={RESOURCE_IDS}
         rateFor={rateFor}
         canTrade={(give, receive) => give !== receive}
         canOffer={false}
@@ -130,6 +133,7 @@ describe('TradeDialog', () => {
     render(
       <TradeDialog
         player={player}
+        cards={RESOURCE_IDS}
         rateFor={() => 4}
         canTrade={() => true}
         canOffer={false}
@@ -168,6 +172,7 @@ describe('TradeDialog', () => {
     render(
       <TradeDialog
         player={player}
+        cards={RESOURCE_IDS}
         rateFor={() => 4}
         canTrade={() => true}
         canOffer={false}
@@ -187,6 +192,7 @@ describe('TradeDialog', () => {
     render(
       <TradeDialog
         player={player}
+        cards={RESOURCE_IDS}
         rateFor={() => 4}
         canTrade={() => true}
         canOffer={false}
@@ -309,6 +315,7 @@ describe('AccountDialog', () => {
 describe('TradeDialog, Reiter Spieler', () => {
   const props = {
     player,
+    cards: RESOURCE_IDS,
     rateFor: () => 4,
     canTrade: () => true,
     onConfirm: vi.fn(),

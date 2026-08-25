@@ -1,7 +1,7 @@
 import type { CSSProperties, JSX } from 'react';
-import { RESOURCE_IDS, type CardAmounts } from '@conquerist/shared';
-import { RESOURCE_COLORS, RESOURCE_LABELS } from '../game/labels';
-import { ResourceGlyph } from './ResourceGlyph';
+import { CARD_IDS, isCommodity, type CardAmounts, type CardId } from '@conquerist/shared';
+import { CARD_COLORS, CARD_LABELS } from '../game/labels';
+import { CardGlyph } from './CardGlyph';
 
 /**
  * Die eigene Hand, unten links.
@@ -19,6 +19,12 @@ import { ResourceGlyph } from './ResourceGlyph';
  * Farbe und Motiv tragen dieselbe Aussage doppelt: die Kartenfarbe ist die des
  * Gelaendes vom Brett, das Motiv zeigt, was darauf waechst. Wer Farben schlecht
  * unterscheidet, liest das Motiv; wer schnell schaut, die Farbe.
+ *
+ * **Handelswaren stehen zwischen den Rohstoffen und sehen anders aus.** Sie
+ * haben die Farbe ihres Gelaendes - Papier kommt aus dem Wald -, aber einen
+ * hellen Koerper mit farbigem Rand. Holz und Papier liegen gleichzeitig auf
+ * der Hand, und vor dem Abwerfen zaehlt man sie unter Zeitdruck: zwei Karten
+ * in derselben Farbe und derselben Flaeche waeren im Vorbeisehen eine.
  */
 export interface HandPanelProps {
   /** `null` heisst: fremde Hand. Dann gibt es hier nichts zu zeigen. */
@@ -40,9 +46,9 @@ export function HandPanel({
 }: HandPanelProps): JSX.Element | null {
   if (resources === null) return null;
 
-  const stacks = RESOURCE_IDS.map((resource) => ({
-    resource,
-    amount: resources[resource] ?? 0,
+  const stacks = CARD_IDS.map((card) => ({
+    card,
+    amount: resources[card] ?? 0,
   })).filter((stack) => stack.amount > 0);
 
   return (
@@ -72,9 +78,9 @@ export function HandPanel({
         <p className="hand__empty">Keine Karten auf der Hand.</p>
       ) : (
         <ol className="hand__stacks">
-          {stacks.map(({ resource, amount }) => (
-            <li key={resource}>
-              <Stack resource={resource} amount={amount} />
+          {stacks.map(({ card, amount }) => (
+            <li key={card}>
+              <Stack card={card} amount={amount} />
             </li>
           ))}
         </ol>
@@ -100,28 +106,50 @@ export function HandPanel({
  * nur `--i`, die Lage im Stapel; **was** damit geschieht, entscheidet
  * `.card__behind` in `index.css`.
  */
-function Stack({
-  resource,
-  amount,
-}: {
-  readonly resource: (typeof RESOURCE_IDS)[number];
-  readonly amount: number;
-}): JSX.Element {
+function Stack({ card, amount }: { readonly card: CardId; readonly amount: number }): JSX.Element {
   const depth = Math.min(amount, 4);
+  const ware = isCommodity(card);
 
   return (
-    <div className="card" data-testid={`stack-${resource}`} title={RESOURCE_LABELS[resource]}>
+    <div
+      className={ware ? 'card card--ware' : 'card'}
+      data-testid={`stack-${card}`}
+      title={CARD_LABELS[card]}
+    >
       {Array.from({ length: depth - 1 }, (_unused, index) => (
         <span
           key={index}
           className="card__behind"
           aria-hidden="true"
-          style={{ background: RESOURCE_COLORS[resource], '--i': index + 1 } as CSSProperties}
+          /*
+           * Bei der Handelsware **kein** Hintergrund von hier: sie kommt aus
+           * dem Blatt (`.card--ware .card__behind`). Beides zu setzen hiesse,
+           * die Regel mit `!important` gegen den Inline-Stil durchzudruecken -
+           * und ein Blatt, das gegen sein eigenes Bauteil kaempft, ist die
+           * Falle aus `CLAUDE.md` in der zweiten Richtung.
+           */
+          style={
+            ware
+              ? ({ '--i': index + 1 } as CSSProperties)
+              : ({ background: CARD_COLORS[card], '--i': index + 1 } as CSSProperties)
+          }
         />
       ))}
 
-      <span className="card__face" style={{ background: RESOURCE_COLORS[resource] }}>
-        <ResourceGlyph resource={resource} />
+      {/*
+       * Bei der Handelsware faerbt die Gelaendefarbe den Rand, bei einem
+       * Rohstoff die Flaeche. Beides per `style`: eine Regel im Blatt kann die
+       * Farbe nicht kennen.
+       */}
+      <span
+        className="card__face"
+        style={
+          ware
+            ? ({ '--ware-edge': CARD_COLORS[card] } as CSSProperties)
+            : { background: CARD_COLORS[card] }
+        }
+      >
+        <CardGlyph card={card} />
       </span>
 
       <span className="card__count" aria-hidden="true">
@@ -135,7 +163,7 @@ function Stack({
        * Zeile, die dem Brett an Hoehe abging. Fuer Vorlesewerkzeuge steht er
        * hier weiter, zusammen mit der Menge; sichtbar bleibt er im `title`.
        */}
-      <span className="visually-hidden">{`${amount} ${RESOURCE_LABELS[resource]}`}</span>
+      <span className="visually-hidden">{`${amount} ${CARD_LABELS[card]}`}</span>
     </div>
   );
 }

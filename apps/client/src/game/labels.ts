@@ -1,8 +1,12 @@
 import {
+  CARD_LABELS,
+  COMMODITY_LABELS,
   RESOURCE_LABELS,
   TERRAIN_LABELS,
   harborLabel,
   resourceList,
+  type CardId,
+  type CommodityId,
   type ResourceId,
   type TerrainId,
 } from '@conquerist/shared';
@@ -16,7 +20,14 @@ import {
  * uebereinstimmen, und dort haben sie ihren zweiten Ort. Wer eine aendert,
  * aendert beide.
  */
-export { RESOURCE_LABELS, TERRAIN_LABELS, harborLabel, resourceList };
+export {
+  CARD_LABELS,
+  COMMODITY_LABELS,
+  RESOURCE_LABELS,
+  TERRAIN_LABELS,
+  harborLabel,
+  resourceList,
+};
 
 /** Gelaendefarben - kraeftig genug, dass die Zahlenchips darauf lesbar bleiben. */
 export const TERRAIN_COLORS: Readonly<Record<TerrainId, string>> = {
@@ -40,4 +51,24 @@ export const RESOURCE_COLORS: Readonly<Record<ResourceId, string>> = {
   wool: TERRAIN_COLORS.pasture,
   grain: TERRAIN_COLORS.fields,
   ore: TERRAIN_COLORS.mountains,
+};
+
+/**
+ * Die Farbe einer Handelsware ist die des Gelaendes, aus dem sie kommt.
+ *
+ * Sie traegt sie aber als **Rand** und nicht als Flaeche - siehe
+ * `ResourceCard`. Zwei Karten mit derselben Farbe und derselben Flaeche waeren
+ * im Vorbeisehen dieselbe Karte, und man haelt Holz und Papier gleichzeitig
+ * auf der Hand.
+ */
+export const COMMODITY_COLORS: Readonly<Record<CommodityId, string>> = {
+  paper: TERRAIN_COLORS.forest,
+  cloth: TERRAIN_COLORS.pasture,
+  coin: TERRAIN_COLORS.mountains,
+};
+
+/** Die Farbe zu jeder Kartensorte - Rohstoff wie Handelsware. */
+export const CARD_COLORS: Readonly<Record<CardId, string>> = {
+  ...RESOURCE_COLORS,
+  ...COMMODITY_COLORS,
 };

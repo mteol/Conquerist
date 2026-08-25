@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
-import { EMPTY_CARDS, RESOURCE_IDS, type CardAmounts, type ResourceId } from '@conquerist/shared';
-import { RESOURCE_LABELS } from '../game/labels';
+import { CARD_IDS, EMPTY_CARDS, type CardAmounts, type CardId } from '@conquerist/shared';
+import { CARD_LABELS } from '../game/labels';
 import { ResourceCard } from '../panels/ResourceCard';
 
 /**
@@ -21,6 +21,8 @@ import { ResourceCard } from '../panels/ResourceCard';
 export interface TradeAmountsProps {
   /** Die eigene Hand - Obergrenze fuer das, was man weggibt. */
   readonly owned: CardAmounts;
+  /** Welche Kartensorten an diesem Tisch liegen - aus dem Regelwerk. */
+  readonly cards: readonly CardId[];
   readonly give: CardAmounts;
   readonly want: CardAmounts;
   readonly onGive: (next: CardAmounts) => void;
@@ -31,7 +33,7 @@ export interface TradeAmountsProps {
 export const NO_AMOUNTS: CardAmounts = { ...EMPTY_CARDS };
 
 export function totalOf(amounts: CardAmounts): number {
-  return RESOURCE_IDS.reduce((sum, resource) => sum + (amounts[resource] ?? 0), 0);
+  return CARD_IDS.reduce((sum, card) => sum + (amounts[card] ?? 0), 0);
 }
 
 /**
@@ -43,11 +45,12 @@ export function totalOf(amounts: CardAmounts): number {
 export function isTradeShapeValid(give: CardAmounts, want: CardAmounts): boolean {
   if (totalOf(give) === 0 || totalOf(want) === 0) return false;
 
-  return !RESOURCE_IDS.some((resource) => (give[resource] ?? 0) > 0 && (want[resource] ?? 0) > 0);
+  return !CARD_IDS.some((card) => (give[card] ?? 0) > 0 && (want[card] ?? 0) > 0);
 }
 
 export function TradeAmounts({
   owned,
+  cards,
   give,
   want,
   onGive,
@@ -64,7 +67,7 @@ export function TradeAmounts({
    */
   const step = (
     amounts: CardAmounts,
-    resource: ResourceId,
+    resource: CardId,
     delta: number,
     max: number,
   ): CardAmounts | null => {
@@ -77,15 +80,15 @@ export function TradeAmounts({
     <div className="trade">
       <fieldset className="cards">
         <legend>Du gibst</legend>
-        {RESOURCE_IDS.map((resource) => {
+        {cards.map((resource) => {
           const held = owned[resource] ?? 0;
           return (
             <div key={resource} className="cards__item">
-              <ResourceCard resource={resource} held={held} />
+              <ResourceCard card={resource} held={held} />
               <div className="cards__stepper">
                 <button
                   type="button"
-                  aria-label={`${RESOURCE_LABELS[resource]} weniger anbieten`}
+                  aria-label={`${CARD_LABELS[resource]} weniger anbieten`}
                   data-sound="card"
                   disabled={step(give, resource, -1, held) === null}
                   onClick={() => {
@@ -98,7 +101,7 @@ export function TradeAmounts({
                 <span data-testid={`give-${resource}`}>{give[resource] ?? 0}</span>
                 <button
                   type="button"
-                  aria-label={`${RESOURCE_LABELS[resource]} mehr anbieten`}
+                  aria-label={`${CARD_LABELS[resource]} mehr anbieten`}
                   data-sound="card"
                   disabled={step(give, resource, 1, held) === null}
                   onClick={() => {
@@ -116,18 +119,18 @@ export function TradeAmounts({
 
       <fieldset className="cards">
         <legend>Du möchtest</legend>
-        {RESOURCE_IDS.map((resource) => (
+        {cards.map((resource) => (
           <div key={resource} className="cards__item">
             {/*
              * `held={null}` haelt die Zeile leer, statt sie wegzulassen: was
              * man verlangt, hat man ja gerade nicht - aber ohne die Zeile
              * waeren die zwei Spalten verschieden hoch.
              */}
-            <ResourceCard resource={resource} held={null} />
+            <ResourceCard card={resource} held={null} />
             <div className="cards__stepper">
               <button
                 type="button"
-                aria-label={`${RESOURCE_LABELS[resource]} weniger verlangen`}
+                aria-label={`${CARD_LABELS[resource]} weniger verlangen`}
                 data-sound="card"
                 disabled={step(want, resource, -1, Number.MAX_SAFE_INTEGER) === null}
                 onClick={() => {
@@ -141,7 +144,7 @@ export function TradeAmounts({
               <span data-testid={`want-${resource}`}>{want[resource] ?? 0}</span>
               <button
                 type="button"
-                aria-label={`${RESOURCE_LABELS[resource]} mehr verlangen`}
+                aria-label={`${CARD_LABELS[resource]} mehr verlangen`}
                 data-sound="card"
                 onClick={() => {
                   const next = step(want, resource, 1, Number.MAX_SAFE_INTEGER);

@@ -1,10 +1,10 @@
-import type { JSX } from 'react';
-import { RESOURCE_IDS, type CardAmounts, type ResourceId } from '@conquerist/shared';
-import { RESOURCE_COLORS, RESOURCE_LABELS } from '../game/labels';
-import { ResourceGlyph } from './ResourceGlyph';
+import type { CSSProperties, JSX } from 'react';
+import { CARD_IDS, isCommodity, type CardAmounts, type CardId } from '@conquerist/shared';
+import { CARD_COLORS, CARD_LABELS } from '../game/labels';
+import { CardGlyph } from './CardGlyph';
 
 /**
- * Ein Rohstoff als Karte - Gelaendefarbe, Motiv, Name.
+ * Eine Kartensorte als Karte - Gelaendefarbe, Motiv, Name.
  *
  * **Es gab ihn fuenfmal.** Auf der Hand als Stapel, im Kauffenster von
  * „Erfindung" als Farbplatte, im Bankhandel als Karte - und im Abwurffenster,
@@ -24,9 +24,19 @@ import { ResourceGlyph } from './ResourceGlyph';
  * Farbe und Motiv tragen dieselbe Aussage doppelt (Designregel 7): wer Farben
  * schlecht unterscheidet, liest das Motiv, wer schnell schaut, die Farbe - und
  * der Name steht ohnehin dabei.
+ *
+ * **Die Handelsware ist dieselbe Karte in anderer Ausfuehrung**, nicht eine
+ * zweite Komponente. Ein Rohstoff ist ganzflaechig gelaendefarben; eine
+ * Handelsware hat einen Pergamentkoerper mit gelaendefarbenem **Rand**. Papier
+ * kommt aus dem Wald, aber Holz und Papier duerfen nicht gleich aussehen - man
+ * haelt beide gleichzeitig auf der Hand und waehlt unter Zeitdruck aus.
+ * Gleiche Farbe, andere Flaeche heisst "vom selben Land, andere Art von Ware".
+ *
+ * Zwei Komponenten waeren zwei Gelegenheiten auseinanderzulaufen - genau die
+ * Begruendung, die oben schon fuer die eine Karte steht.
  */
 export interface ResourceCardProps {
-  readonly resource: ResourceId;
+  readonly card: CardId;
   /**
    * Was unter dem Namen steht.
    *
@@ -42,15 +52,27 @@ export interface ResourceCardProps {
   readonly count?: number;
 }
 
-export function ResourceCard({ resource, held, count }: ResourceCardProps): JSX.Element {
+export function ResourceCard({ card, held, count }: ResourceCardProps): JSX.Element {
+  const ware = isCommodity(card);
+
   return (
     <span
-      className="rescard"
-      style={{ background: RESOURCE_COLORS[resource] }}
-      title={RESOURCE_LABELS[resource]}
+      className={ware ? 'rescard rescard--ware' : 'rescard'}
+      /*
+       * Bei der Handelsware faerbt die Gelaendefarbe den Rand, bei einem
+       * Rohstoff die Flaeche. Beides per `style`, weil eine Variable im Blatt
+       * die Farbe nicht kennen kann - und eine CSS-Regel schlaegt ein
+       * gleichnamiges Attribut (die Falle aus `CLAUDE.md`).
+       */
+      style={
+        ware
+          ? ({ '--ware-edge': CARD_COLORS[card] } as CSSProperties)
+          : { background: CARD_COLORS[card] }
+      }
+      title={CARD_LABELS[card]}
     >
-      <ResourceGlyph resource={resource} />
-      <span className="rescard__name">{RESOURCE_LABELS[resource]}</span>
+      <CardGlyph card={card} />
+      <span className="rescard__name">{CARD_LABELS[card]}</span>
 
       {held === undefined ? null : (
         /*
@@ -87,9 +109,15 @@ export function ResourceCard({ resource, held, count }: ResourceCardProps): JSX.
  * nichts.
  */
 export function ResourceRow({ amounts }: { readonly amounts: CardAmounts }): JSX.Element {
-  const posten = RESOURCE_IDS.map((resource) => ({
-    resource,
-    amount: amounts[resource] ?? 0,
+  /*
+   * Ueber alle Kartensorten und nicht nur ueber die Rohstoffe: ein Angebot
+   * darf Handelswaren enthalten. In einer Basispartie steht trotzdem nie eine
+   * dabei, weil ihre Menge dort null ist - und was null ist, faellt hier
+   * ohnehin heraus.
+   */
+  const posten = CARD_IDS.map((card) => ({
+    card,
+    amount: amounts[card] ?? 0,
   })).filter((entry) => entry.amount > 0);
 
   // Kommt vor: ein Gegenangebot, das nur nimmt oder nur gibt, weist der
@@ -98,8 +126,8 @@ export function ResourceRow({ amounts }: { readonly amounts: CardAmounts }): JSX
 
   return (
     <span className="rescards">
-      {posten.map(({ resource, amount }) => (
-        <ResourceCard key={resource} resource={resource} count={amount} />
+      {posten.map(({ card, amount }) => (
+        <ResourceCard key={card} card={card} count={amount} />
       ))}
     </span>
   );

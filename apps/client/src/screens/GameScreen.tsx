@@ -7,7 +7,7 @@ import {
   type PlayerId,
   type PlayerView,
   type CardAmounts,
-  type ResourceId,
+  type CardId,
   type Roll,
 } from '@conquerist/shared';
 import { BoardSvg, type Place } from '../board/BoardSvg';
@@ -703,6 +703,7 @@ export function GameScreen({
         <DiscardDialog
           key={view.you}
           player={you}
+          cards={view.rules.cards}
           required={mustDiscard}
           onConfirm={(resources: CardAmounts) => {
             onAct({ type: 'discard', player: view.you, resources });
@@ -719,8 +720,9 @@ export function GameScreen({
       {tradeOpen && you !== undefined ? (
         <TradeDialog
           player={you}
-          rateFor={(give: ResourceId) => tradeRateFor(view, view.you, give)}
-          canTrade={(give: ResourceId, receive: ResourceId) =>
+          cards={view.rules.cards}
+          rateFor={(give: CardId) => tradeRateFor(view, view.you, give)}
+          canTrade={(give: CardId, receive: CardId) =>
             targets.trades.some(
               (action) =>
                 action.type === 'tradeWithBank' &&

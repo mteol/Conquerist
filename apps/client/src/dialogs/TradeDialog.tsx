@@ -1,6 +1,6 @@
 import { useState, type JSX } from 'react';
-import { EMPTY_CARDS, RESOURCE_IDS, type CardAmounts, type ResourceId } from '@conquerist/shared';
-import { RESOURCE_LABELS } from '../game/labels';
+import { EMPTY_CARDS, type CardAmounts, type CardId } from '@conquerist/shared';
+import { CARD_LABELS } from '../game/labels';
 import type { PlayerRow } from '../game/view';
 import { ResourceCard } from '../panels/ResourceCard';
 import { CloseButton } from './CloseButton';
@@ -21,12 +21,14 @@ import { NO_AMOUNTS, TradeAmounts, isTradeShapeValid } from './TradeAmounts';
  */
 export interface TradeDialogProps {
   readonly player: PlayerRow;
-  readonly rateFor: (give: ResourceId) => number;
-  readonly canTrade: (give: ResourceId, receive: ResourceId) => boolean;
+  /** Welche Kartensorten an diesem Tisch liegen - aus dem Regelwerk. */
+  readonly cards: readonly CardId[];
+  readonly rateFor: (give: CardId) => number;
+  readonly canTrade: (give: CardId, receive: CardId) => boolean;
   /** Ob der Spieler jetzt ueberhaupt ein Angebot machen duerfte. */
   readonly canOffer: boolean;
   readonly onOffer: (give: CardAmounts, want: CardAmounts) => void;
-  readonly onConfirm: (give: ResourceId, receive: ResourceId) => void;
+  readonly onConfirm: (give: CardId, receive: CardId) => void;
   readonly onClose: () => void;
 }
 
@@ -34,6 +36,7 @@ type Tab = 'bank' | 'player';
 
 export function TradeDialog({
   player,
+  cards,
   rateFor,
   canTrade,
   canOffer,
@@ -42,8 +45,8 @@ export function TradeDialog({
   onClose,
 }: TradeDialogProps): JSX.Element {
   const [tab, setTab] = useState<Tab>('bank');
-  const [give, setGive] = useState<ResourceId | null>(null);
-  const [receive, setReceive] = useState<ResourceId | null>(null);
+  const [give, setGive] = useState<CardId | null>(null);
+  const [receive, setReceive] = useState<CardId | null>(null);
   const [offerGive, setOfferGive] = useState<CardAmounts>(NO_AMOUNTS);
   const [offerWant, setOfferWant] = useState<CardAmounts>(NO_AMOUNTS);
 
@@ -87,7 +90,7 @@ export function TradeDialog({
 
             <fieldset className="cards">
               <legend>Du gibst ab</legend>
-              {RESOURCE_IDS.map((resource) => (
+              {cards.map((resource) => (
                 <Choice
                   key={resource}
                   resource={resource}
@@ -112,7 +115,7 @@ export function TradeDialog({
 
             <fieldset className="cards">
               <legend>Du bekommst</legend>
-              {RESOURCE_IDS.map((resource) => (
+              {cards.map((resource) => (
                 <Choice
                   key={resource}
                   resource={resource}
@@ -144,6 +147,7 @@ export function TradeDialog({
 
             <TradeAmounts
               owned={player.resources ?? EMPTY_CARDS}
+              cards={cards}
               give={offerGive}
               want={offerWant}
               onGive={setOfferGive}
@@ -197,7 +201,7 @@ function Choice({
   checked,
   onPick,
 }: {
-  readonly resource: ResourceId;
+  readonly resource: CardId;
   readonly group: 'give' | 'receive';
   readonly action: 'abgeben' | 'bekommen';
   /** Wieviele davon auf der Hand liegen - `null`, wo das nichts zur Sache tut. */
@@ -214,12 +218,12 @@ function Choice({
         type="radio"
         name={group}
         className="visually-hidden"
-        aria-label={`${RESOURCE_LABELS[resource]} ${action}`}
+        aria-label={`${CARD_LABELS[resource]} ${action}`}
         checked={checked}
         onChange={onPick}
       />
 
-      <ResourceCard resource={resource} held={held} />
+      <ResourceCard card={resource} held={held} />
     </label>
   );
 }

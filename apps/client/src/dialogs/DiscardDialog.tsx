@@ -1,6 +1,6 @@
 import { useState, type JSX } from 'react';
-import { EMPTY_CARDS, RESOURCE_IDS, type CardAmounts, type ResourceId } from '@conquerist/shared';
-import { RESOURCE_LABELS } from '../game/labels';
+import { EMPTY_CARDS, type CardAmounts, type CardId } from '@conquerist/shared';
+import { CARD_LABELS } from '../game/labels';
 import { ResourceCard } from '../panels/ResourceCard';
 import type { PlayerRow } from '../game/view';
 
@@ -18,14 +18,28 @@ import type { PlayerRow } from '../game/view';
  */
 export interface DiscardDialogProps {
   readonly player: PlayerRow;
+  /**
+   * Welche Kartensorten an diesem Tisch liegen.
+   *
+   * Kommt aus dem Regelwerk und nicht aus einer festen Liste: Handelswaren
+   * zaehlen beim Abwerfen mit, und an einem Basistisch gibt es sie nicht. Drei
+   * Karten zu zeigen, von denen man nie eine haelt, waere eine Auswahl ins
+   * Leere.
+   */
+  readonly cards: readonly CardId[];
   readonly required: number;
   readonly onConfirm: (resources: CardAmounts) => void;
 }
 
-export function DiscardDialog({ player, required, onConfirm }: DiscardDialogProps): JSX.Element {
+export function DiscardDialog({
+  player,
+  cards,
+  required,
+  onConfirm,
+}: DiscardDialogProps): JSX.Element {
   const [chosen, setChosen] = useState<CardAmounts>({ ...EMPTY_CARDS });
   const held = player.resources ?? EMPTY_CARDS;
-  const total = RESOURCE_IDS.reduce((sum, resource) => sum + (chosen[resource] ?? 0), 0);
+  const total = cards.reduce((sum, card) => sum + (chosen[card] ?? 0), 0);
 
   /**
    * Ob dieser Schritt ueberhaupt etwas taete.
@@ -38,7 +52,7 @@ export function DiscardDialog({ player, required, onConfirm }: DiscardDialogProp
    * Damit Knopfzustand und Wirkung nicht auseinanderlaufen koennen, fragen
    * beide dieselbe Funktion.
    */
-  const canStep = (resource: ResourceId, delta: number): boolean => {
+  const canStep = (resource: CardId, delta: number): boolean => {
     const next = (chosen[resource] ?? 0) + delta;
     if (next < 0 || next > (held[resource] ?? 0)) return false;
     // Nach oben ist auch die geforderte Zahl eine Grenze: wer vier von vier
@@ -46,7 +60,7 @@ export function DiscardDialog({ player, required, onConfirm }: DiscardDialogProp
     return !(delta > 0 && total >= required);
   };
 
-  const change = (resource: ResourceId, delta: number): void => {
+  const change = (resource: CardId, delta: number): void => {
     if (!canStep(resource, delta)) return;
     setChosen((current) => ({ ...current, [resource]: (current[resource] ?? 0) + delta }));
   };
@@ -62,13 +76,13 @@ export function DiscardDialog({ player, required, onConfirm }: DiscardDialogProp
         </p>
 
         <div className="cards">
-          {RESOURCE_IDS.map((resource) => (
+          {cards.map((resource) => (
             <div key={resource} className="cards__item">
-              <ResourceCard resource={resource} held={held[resource] ?? 0} />
+              <ResourceCard card={resource} held={held[resource] ?? 0} />
               <div className="cards__stepper">
                 <button
                   type="button"
-                  aria-label={`${RESOURCE_LABELS[resource]} weniger`}
+                  aria-label={`${CARD_LABELS[resource]} weniger`}
                   data-sound="card"
                   disabled={!canStep(resource, -1)}
                   onClick={() => change(resource, -1)}
@@ -78,7 +92,7 @@ export function DiscardDialog({ player, required, onConfirm }: DiscardDialogProp
                 <span data-testid={`chosen-${resource}`}>{chosen[resource] ?? 0}</span>
                 <button
                   type="button"
-                  aria-label={`${RESOURCE_LABELS[resource]} mehr`}
+                  aria-label={`${CARD_LABELS[resource]} mehr`}
                   data-sound="card"
                   disabled={!canStep(resource, 1)}
                   onClick={() => change(resource, 1)}

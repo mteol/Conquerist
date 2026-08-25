@@ -53,7 +53,7 @@ export function ResourcePickDialog({
               aria-label={RESOURCE_LABELS[resource]}
               onClick={() => setPicks((current) => [...current, resource])}
             >
-              <ResourceCard resource={resource} />
+              <ResourceCard card={resource} />
             </button>
           ))}
         </div>

@@ -347,6 +347,7 @@ export function TradeOfferDialog({
 
                 <TradeAmounts
                   owned={me?.resources ?? EMPTY_CARDS}
+                  cards={view.rules.cards}
                   give={counterGive}
                   want={counterWant}
                   onGive={setCounterGive}

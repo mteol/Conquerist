@@ -1417,6 +1417,40 @@ body {
 }
 
 /*
+ * Die Handelsware: heller Koerper, gelaendefarbener Rand.
+ *
+ * Papier kommt aus dem Wald, Tuch von der Weide, Muenzen aus dem Gebirge - die
+ * Farbe ist dieselbe wie beim Rohstoff daneben, und genau deshalb darf die
+ * Flaeche es nicht sein. Man haelt Holz und Papier gleichzeitig auf der Hand
+ * und zaehlt sie vor dem Abwerfen unter Zeitdruck; zwei Karten in derselben
+ * Farbe und derselben Flaeche waeren im Vorbeisehen eine.
+ *
+ * Der Rand ist doppelt so breit wie der Kontur, sonst geht die Farbe neben dem
+ * dunklen Kontur unter. `--ware-edge` setzt die Komponente per `style` - eine
+ * Regel im Blatt kann die Farbe der Sorte nicht kennen.
+ */
+.card--ware .card__face,
+.rescard--ware {
+  border-color: var(--ware-edge);
+  border-width: 3px;
+  background: var(--parchment);
+}
+
+/*
+ * Auch die angedeuteten Karten dahinter tragen den hellen Koerper - sonst
+ * lugte unter einer Pergamentkarte ein gelaendefarbener Streifen hervor und
+ * saehe aus wie eine fremde Karte im Stapel.
+ *
+ * Ohne `!important`, und das ist Absicht: die Komponente setzt fuer eine
+ * Handelsware gar keinen Hintergrund, damit diese Regel greifen kann. Ein
+ * Blatt, das gegen den eigenen Inline-Stil kaempfen muss, hat den Fehler
+ * woanders.
+ */
+.card--ware .card__behind {
+  background: var(--parchment-2);
+}
+
+/*
  * Die oberste Karte hebt sich mit an - sonst faechert der Stapel hinter einer
  * Karte auf, die liegen bleibt, und das sieht aus, als rutsche etwas weg.
  * Der Schatten geht dabei von `--lift` auf `--lift-raised`: ohne ihn ist die
