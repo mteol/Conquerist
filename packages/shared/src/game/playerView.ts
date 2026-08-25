@@ -11,7 +11,7 @@ import { PhaseSchema } from './phase.js';
 import { PlayerIdSchema } from './player.js';
 import { countCards } from './cards.js';
 import { publicVictoryPointsOf, victoryPointsOf } from './scoring.js';
-import { BuildingSchema } from './state.js';
+import { BarbarianStateSchema, BuildingSchema } from './state.js';
 import type { GameState } from './state.js';
 
 /**
@@ -69,6 +69,12 @@ export const PlayerViewSchema = z.object({
   buildings: z.record(z.string(), BuildingSchema),
   roads: z.record(z.string(), PlayerIdSchema),
   robber: z.string(),
+  /**
+   * Das Barbarenschiff. **Oeffentlich** - es steht fuer alle sichtbar am
+   * Brettrand, und wie nah die Gefahr ist, ist keine Frage der Geheimhaltung,
+   * sondern die Spannung der ganzen Erweiterung.
+   */
+  barbarians: BarbarianStateSchema.nullable().default(null),
   bank: CardAmountsSchema,
   longestRoad: z.object({
     holder: PlayerIdSchema.nullable(),
@@ -180,6 +186,7 @@ export function playerViewOf(
     buildings: state.buildings,
     roads: state.roads,
     robber: state.robber,
+    barbarians: state.barbarians,
     bank: state.bank,
     longestRoad: state.longestRoad,
     largestArmy: state.largestArmy,

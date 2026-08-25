@@ -3,6 +3,7 @@ import { CLASSIC_34 } from '../scenario/blueprints/classic34.js';
 import { generateScenario } from '../scenario/generator.js';
 import { CLASSIC_RULES } from '../rules/ruleset.js';
 import { seatColorAt } from '../seats.js';
+import { gameWithCities, testGame } from './fixtures.js';
 import { createGame, setupPlayer } from './setup.js';
 import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
@@ -201,5 +202,28 @@ describe('canOfferTrade in der Sicht', () => {
     // Nach der Gruendung hat jeder Karten - der am Zug darf anbieten.
     expect(playerViewOf(state, current, seats, 0).canOfferTrade).toBe(state.phase.kind === 'main');
     expect(playerViewOf(state, other, seats, 0).canOfferTrade).toBe(false);
+  });
+});
+
+describe('das Barbarenschiff in der Sicht', () => {
+  it('steht offen da - jeder sieht, wie nah die Gefahr ist', () => {
+    const view = playerViewOf(gameWithCities(), 'p1', seats, 1);
+
+    expect(view.barbarians).toEqual({ position: 0, attacks: 0 });
+  });
+
+  it('fehlt an einem Tisch ohne Erweiterung', () => {
+    expect(playerViewOf(testGame(), 'p1', seats, 1).barbarians).toBeNull();
+  });
+
+  /*
+   * Eine Sicht aus einer Partie von vor der Erweiterung kennt das Feld nicht.
+   * Ohne Vorgabe scheiterte sie am Schema - dieselbe Falle wie beim RuleSet.
+   */
+  it('ergaenzt sich in einer gespeicherten Sicht ohne dieses Feld', () => {
+    const view = playerViewOf(testGame(), 'p1', seats, 1) as Record<string, unknown>;
+    delete view['barbarians'];
+
+    expect(PlayerViewSchema.parse(view).barbarians).toBeNull();
   });
 });
