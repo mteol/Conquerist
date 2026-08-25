@@ -5306,3 +5306,121 @@ body {
   }
 }
 
+/*
+ * Die Stapeluebersicht.
+ *
+ * Ein Knopf in der Leiste, und darueber ein Blatt, das aufgeht. Das Blatt liegt
+ * absolut ueber der Leiste und nicht in ihr: `tray__controls` ist ein Streifen
+ * mit fester Breite, und eine Liste mit sechs Zeilen darin haette den Stapel
+ * und die Bauteile daneben zusammengeschoben, sobald jemand nachsieht. Was eine
+ * Auskunft ist, soll das Bedienbare nicht verruecken.
+ *
+ * Nach oben, weil die Leiste unten sitzt - nach unten aufgehend stuende es
+ * ausserhalb des Fensters.
+ */
+.supply {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.supply__toggle {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: none;
+  color: var(--on-sea-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.supply__toggle:hover,
+.supply__toggle:focus-visible,
+.supply__toggle--open {
+  color: var(--on-sea);
+}
+
+.supply__mark {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+.supply__sheet {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.4rem);
+  z-index: 2;
+  width: 13.5rem;
+  padding: 0.5rem 0.6rem;
+  /* Dieselbe Oberflaeche wie das Verlaufsblatt - es ist dieselbe Sorte Auskunft. */
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--radius);
+  background: var(--parchment);
+  box-shadow: var(--shadow);
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
+  color: var(--ink);
+  font-size: 0.75rem;
+}
+
+.supply__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Vier Spalten: Zeichen, Name, Zahlen, Balken. Der Name darf schrumpfen, die
+ * Zahlen nie - eine abgeschnittene Restmenge waere schlimmer als ein
+ * abgeschnittenes Wort.
+ */
+.supply__row {
+  display: grid;
+  grid-template-columns: 1rem 1fr auto;
+  gap: 0.2rem 0.4rem;
+  align-items: center;
+}
+
+.supply__name {
+  overflow: hidden;
+  color: var(--ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.supply__count {
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.supply__count strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Der Balken laeuft unter allen drei Spalten durch - er gehoert der Zeile. */
+.supply__bar {
+  grid-column: 1 / -1;
+  height: 0.15rem;
+  border-radius: 0.1rem;
+  background: var(--parchment-edge);
+}
+
+.supply__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+  transition: width 200ms ease;
+}
+
