@@ -298,6 +298,34 @@ describe('Startbildschirm', () => {
     expect(onAbandon).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Tisch verlassen' })).toBeDefined();
   });
+
+  /**
+   * Der Vorrat gehoert zur Tischgroesse, nicht zum Brett.
+   *
+   * Der Bildschirm reicht seine Vorschau als fertigen Spielstand an
+   * `onStartLocal` weiter - was hier an Karten drinsteht, ist das, womit am
+   * Kuechentisch gespielt wird. Bis hierher bekam auch der Sechsertisch den
+   * Stapel der Viererpartie.
+   */
+  it('gibt der lokalen Sechserpartie den Vorrat ihrer Tischgroesse', async () => {
+    const onStartLocal = vi.fn();
+    render(
+      <StartScreen onStartLocal={onStartLocal} onCreateRoom={vi.fn()} onJoinRoom={vi.fn()} />,
+    );
+    await aufDenWeg('Partie starten — lokal');
+
+    await userEvent.click(screen.getByLabelText('6 Spieler'));
+    await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
+
+    expect(onStartLocal).toHaveBeenCalled();
+    const state = onStartLocal.mock.calls[0]![0] as {
+      bank: Record<string, number>;
+      deck: readonly unknown[];
+    };
+    expect(state.bank.brick).toBe(24);
+    expect(state.deck.length).toBe(34);
+  });
+
 });
 
 describe('Der Eingang', () => {

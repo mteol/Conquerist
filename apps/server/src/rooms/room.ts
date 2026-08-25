@@ -1,7 +1,7 @@
 import {
   CLASSIC_34,
   CLASSIC_56,
-  CLASSIC_RULES,
+  rulesFor,
   MAX_VICTORY_POINT_GOAL,
   MIN_VICTORY_POINT_GOAL,
   SEAT_COLORS,
@@ -424,7 +424,7 @@ export function startGame(room: Room, byUserId: string): RoomResult {
      * ueberlebt: das Regelwerk gehoert zur Partie, nicht zum Programm.
      */
     scenario,
-    { ...CLASSIC_RULES, victoryPointGoal: room.victoryPointGoal },
+    { ...rulesFor(room.seatCount), victoryPointGoal: room.victoryPointGoal },
     room.seats.map((seat) => seat.userId),
     room.seed,
   );

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { DevelopmentDeckSchema } from '../game/development.js';
+import { CLASSIC_56 } from '../scenario/blueprints/classic56.js';
 import { ResourceIdSchema } from '../scenario/terrain.js';
 import { CLASSIC_DICE, DiceSpecSchema } from './dice.js';
 
@@ -172,3 +173,46 @@ export const CLASSIC_RULES: RuleSet = {
   dice: CLASSIC_DICE,
   robberRoll: 7,
 };
+
+/**
+ * Das Regelwerk fuer fuenf und sechs Spieler.
+ *
+ * Die Erweiterung ruehrt am Spiel genau zwei Zahlenreihen an: mehr Rohstoffe in
+ * der Bank und ein groesserer Entwicklungsstapel. Sie muss es auch - an einem
+ * Tisch mit sechs Haenden ist der Vorrat der Viererpartie vor der Halbzeit leer,
+ * und vierzehn Ritter sind fuer sechs Heere zu wenig.
+ *
+ * Als Spread ueber `CLASSIC_RULES` und nicht als zweite volle Tabelle: was hier
+ * nicht ausdruecklich steht, soll auch nicht abweichen. Baukosten, Teilevorrat,
+ * Handkartenlimit und Wuerfel sind am grossen Tisch dieselben, und ein Test
+ * bewacht genau diese Gleichheit.
+ */
+export const CLASSIC_RULES_56: RuleSet = {
+  ...CLASSIC_RULES,
+
+  resourceBank: { brick: 24, lumber: 24, wool: 24, grain: 24, ore: 24 },
+
+  developmentDeck: {
+    knight: 20,
+    victoryPoint: 5,
+    roadBuilding: 3,
+    yearOfPlenty: 3,
+    monopoly: 3,
+  },
+};
+
+/**
+ * Welches Regelwerk eine Tischgroesse traegt.
+ *
+ * Das Gegenstueck zu `blueprintFor`, das dieselbe Frage fuers Brett
+ * beantwortet - und aus demselben Grund eine Funktion und keine Zahl am
+ * Aufrufort: es gibt zwei Stellen, die eine Partie starten (der Raum auf dem
+ * Server und der Hotseat im Client), und zwei Ableitungen liefen frueher oder
+ * spaeter auseinander.
+ *
+ * Die Grenze steht nicht als `5` im Code, sondern kommt aus dem Blueprint, der
+ * sie ohnehin fuers Brett nennt. Damit gibt es sie einmal.
+ */
+export function rulesFor(seatCount: number): RuleSet {
+  return seatCount >= CLASSIC_56.minPlayers ? CLASSIC_RULES_56 : CLASSIC_RULES;
+}

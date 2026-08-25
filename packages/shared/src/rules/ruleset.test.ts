@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { RESOURCE_IDS } from '../scenario/terrain.js';
-import { BUILDABLE_IDS, CLASSIC_RULES, PIECE_IDS, RuleSetSchema } from './ruleset.js';
+import {
+  BUILDABLE_IDS,
+  CLASSIC_RULES,
+  CLASSIC_RULES_56,
+  PIECE_IDS,
+  RuleSetSchema,
+  rulesFor,
+} from './ruleset.js';
 
 /**
  * Kopiert das Basisregelwerk, damit ein Test es gefahrlos verbiegen kann.
@@ -144,5 +151,52 @@ describe('RuleSetSchema', () => {
     (broken['resourceBank'] as Record<string, number>)['ore'] = -1;
 
     expect(RuleSetSchema.safeParse(broken).success).toBe(false);
+  });
+});
+
+/**
+ * Das Regelwerk der Fuenf- und Sechserpartie.
+ *
+ * Die Erweiterung aendert am Spiel genau zwei Zahlenreihen: den Bankvorrat und
+ * den Entwicklungsstapel. Alles andere gleich zu lassen ist keine Sparsamkeit,
+ * sondern die Regel - wer am grossen Tisch billiger baute, spielte ein anderes
+ * Spiel. Der letzte Test hier bewacht genau das.
+ */
+describe('CLASSIC_RULES_56', () => {
+  it('besteht das eigene Schema', () => {
+    expect(RuleSetSchema.safeParse(CLASSIC_RULES_56).success).toBe(true);
+  });
+
+  it('haelt 24 Karten je Rohstoff vor', () => {
+    for (const resource of RESOURCE_IDS) {
+      expect(CLASSIC_RULES_56.resourceBank[resource]).toBe(24);
+    }
+  });
+
+  it('traegt 34 Entwicklungskarten', () => {
+    const total = Object.values(CLASSIC_RULES_56.developmentDeck).reduce(
+      (sum, count) => sum + count,
+      0,
+    );
+    expect(total).toBe(34);
+    expect(CLASSIC_RULES_56.developmentDeck.knight).toBe(20);
+  });
+
+  it('weicht vom Basisregelwerk nur in Vorrat und Stapel ab', () => {
+    const base = { ...CLASSIC_RULES, resourceBank: null, developmentDeck: null };
+    const large = { ...CLASSIC_RULES_56, resourceBank: null, developmentDeck: null };
+    expect(large).toEqual(base);
+  });
+});
+
+describe('rulesFor', () => {
+  it('gibt kleinen Tischen das Basisregelwerk', () => {
+    expect(rulesFor(3)).toBe(CLASSIC_RULES);
+    expect(rulesFor(4)).toBe(CLASSIC_RULES);
+  });
+
+  it('gibt grossen Tischen den groesseren Vorrat', () => {
+    expect(rulesFor(5)).toBe(CLASSIC_RULES_56);
+    expect(rulesFor(6)).toBe(CLASSIC_RULES_56);
   });
 });

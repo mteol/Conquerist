@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type JSX } fr
 import {
   CLASSIC_34,
   CLASSIC_56,
-  CLASSIC_RULES,
   createGame,
   generateScenario,
   type GameState,
   type RoomSummary,
+  rulesFor,
   type ScenarioBlueprint,
 } from '@conquerist/shared';
 import { MAX_SEATS, MIN_SEATS, SEAT_COLORS, defaultSeats, type Seat } from '../seats';
@@ -239,7 +239,7 @@ export function StartScreen({
       const scenario = generateScenario(blueprint, seed);
       return createGame(
         scenario,
-        CLASSIC_RULES,
+        rulesFor(seats.length),
         seats.map((entry) => entry.id),
         seed,
       );
