@@ -58,9 +58,29 @@ describe('DiceTray', () => {
     const dice = screen.getByTestId('dice');
     expect(dice).toHaveProperty('disabled', false);
     expect(dice.getAttribute('aria-label')).toBe('Würfeln');
-    // Dasselbe noch einmal sichtbar - das Atmen faellt bei reduzierter
+    // Dasselbe noch einmal sichtbar - der Schlag faellt bei reduzierter
     // Bewegung weg, dieses Wort nicht.
     expect(screen.getByText('Würfeln')).toBeDefined();
+  });
+
+  /*
+   * Der Schlag ist laut geworden, und laute Bewegung muss genau da aufhoeren,
+   * wo sie nichts mehr sagt. `canRoll` gilt waehrend des Fluges weiter - der
+   * Ruf darf trotzdem nicht weiterblinken, waehrend die Kuben schon fallen.
+   *
+   * Gepruef wird die Klasse und nicht die Animation: jsdom sieht keine
+   * Keyframes. Sie ist aber das Einzige, woran die Bewegung haengt, und damit
+   * die einzige Stelle, an der sich der Fehler ueberhaupt fangen laesst.
+   */
+  it('blinkt nur, solange der Ruf gilt', () => {
+    const waiting = render(tray({ canRoll: true }));
+    expect(waiting.container.querySelector('.dice__call--waiting')).not.toBeNull();
+
+    const idle = render(tray({ canRoll: false }));
+    expect(idle.container.querySelector('.dice__call--waiting')).toBeNull();
+
+    const flying = render(tray({ canRoll: true, landing: [{ die: 'first', value: 4 }] }));
+    expect(flying.container.querySelector('.dice__call--waiting')).toBeNull();
   });
 
   it('nimmt keinen Klick an, wenn der Zug nicht erlaubt ist', async () => {

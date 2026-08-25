@@ -3265,6 +3265,16 @@ body {
   align-items: flex-end;
   --ink: var(--on-sea);
   --ink-muted: var(--on-sea-muted);
+
+  /*
+   * `--accent` (also `--fields`) in Kanaelen statt als Farbe.
+   *
+   * Ein Schein ist nichts als Alpha - er muss von 0 auf sichtbar und zurueck,
+   * und aus `var(--accent)` laesst sich kein Alpha herausdrehen. Die Kanaele
+   * stehen deshalb einmal hier und nicht dreimal in den Keyframes; wer das
+   * Akzentgelb in `:root` aendert, aendert diese Zeile mit.
+   */
+  --glow: 224 179 74;
 }
 
 /*
@@ -3323,9 +3333,9 @@ body {
  * Wer werfen darf, sieht es an drei Dingen - und keines davon ist ein Rahmen.
  *
  * Der Unterschied war einmal ein heller Schleier, dann ein Pergamentkoerper mit
- * Kontaktschatten. Beides ist weg; uebrig bleiben das Atmen der Wuerfel, das
+ * Kontaktschatten. Beides ist weg; uebrig bleiben der Schlag der Wuerfel, das
  * Wort „Wuerfeln" darunter und der Zeiger. Das Wort ist dabei der Traeger, der
- * ohne Bewegung auskommt: bei `prefers-reduced-motion` steht das Atmen still,
+ * ohne Bewegung auskommt: bei `prefers-reduced-motion` steht der Schlag still,
  * und dann darf die Auskunft nicht mit ihm verschwinden.
  *
  * **Die zwei Zeilen mit `--ink` sind hier gefallen** - sie stellten die Tinte
@@ -3396,28 +3406,107 @@ body {
 /*
  * Zwei Bewegungen, und jede erklaert einen Zustandswechsel (Regel 5).
  *
- * Das Atmen haengt genau an „du musst werfen" und hoert auf, sobald das nicht
+ * Der Schlag haengt genau an „du musst werfen" und hoert auf, sobald das nicht
  * mehr gilt. Das Fallen zeigt, dass ein neuer Wurf liegt; es laeuft an, weil
  * die Klasse dazukommt, und ist nach einem Zug wieder weg.
+ *
+ * **Aus dem Atmen ist ein Schlag geworden, und das ist kein Aufdrehen.** Ein
+ * gleichmaessiges Auf und Ab um sieben Prozent ist am Rand des Blickfelds
+ * schlicht nicht da - es hat keinen Anfang, an dem das Auge haengenbleibt, und
+ * die Wuerfel liegen in der aeussersten Ecke. Was auffaellt, ist ein Anschlag:
+ * schnell hinauf, langsamer zurueck, ein kleinerer Nachschlag, dann eine
+ * Pause, die laenger ist als beide Schlaege zusammen. Zwei Herzschlaege und
+ * Stille - deshalb sitzen die Marken bei 11 und 36 Prozent und nicht bei 50,
+ * und deshalb ist die zweite Haelfte des Zyklus leer.
+ *
+ * Dazu der Schein in `--glow`: die Wuerfel liegen auf der Tiefsee, und ein
+ * warmes Licht darauf sieht man auch dann, wenn man gerade das Brett
+ * anschaut. Er kommt und geht mit dem Schlag, statt zu stehen - ein stehender
+ * Schein waere ein Rahmen, und Rahmen sind hier zweimal gefallen.
  *
  * Beide enden in ihrer Ruhelage. Das ist bei `prefers-reduced-motion` der
  * ganze Punkt: die globale Regel oben schaltet Animationen auf einen
  * Augenblick, sie stehen dann sofort an ihrem Ende - und das muss der normale
- * Wuerfel sein, nicht ein aufgeblasener oder halb gedrehter.
+ * Wuerfel ohne Schein sein, nicht ein aufgeblasener oder halb gedrehter.
+ * Deshalb steht die Ruhelage bei 0 **und** bei 100 Prozent im Blatt.
  */
 @keyframes dice-breathe {
-  0%,
-  100% {
+  0% {
     transform: scale(1);
+    filter: drop-shadow(0 0 0 rgb(var(--glow) / 0%));
   }
 
-  50% {
-    transform: scale(1.07);
+  11% {
+    transform: scale(1.17);
+    filter: drop-shadow(0 0 18px rgb(var(--glow) / 78%));
+  }
+
+  25% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 5px rgb(var(--glow) / 20%));
+  }
+
+  36% {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 12px rgb(var(--glow) / 48%));
+  }
+
+  52%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 rgb(var(--glow) / 0%));
   }
 }
 
-.dice--waiting .dice__faces {
-  animation: dice-breathe 1.6s ease-in-out infinite;
+/*
+ * `:not(--flying)`, und das ist keine Vorsicht.
+ *
+ * `dice--waiting` haengt an `canRoll`, und die Klickkarte gilt waehrend des
+ * Fluges weiter - die Schale blieb also die ganze Zeit „wartend". Solange das
+ * Atmen ein Prozent Groesse war, sah man es nicht; ein Schlag mit Schein
+ * skaliert und beleuchtet die Perspektive, durch die die Kuben gerade fliegen.
+ * Wer eine Bewegung lauter macht, muss zuerst nachsehen, wo sie ueberall
+ * laeuft.
+ */
+.dice--waiting .dice__faces:not(.dice__faces--flying) {
+  animation: dice-breathe 1.5s cubic-bezier(0.34, 0.7, 0.28, 1) infinite;
+}
+
+/*
+ * Der Ruf blinkt mit - im selben Takt und aus demselben Grund.
+ *
+ * Das Wort ist der Traeger, der ohne Bewegung auskommt; sichtbar war es
+ * trotzdem nur als graue Kleinschrift unter den Wuerfeln. Es traegt jetzt das
+ * Akzentgelb - damit steht die Auskunft auch bei `prefers-reduced-motion`
+ * praesent da, wo die Animation auf einen Augenblick zusammenfaellt und in
+ * ihrer Ruhelage stehenbleibt.
+ *
+ * Derselbe Takt wie die Wuerfel, und das ist der Punkt: zwei Dinge, die
+ * verschieden schnell blinken, sind zwei Aufforderungen.
+ */
+.dice__call--waiting {
+  color: var(--accent);
+  animation: dice-call-blink 1.5s cubic-bezier(0.34, 0.7, 0.28, 1) infinite;
+}
+
+@keyframes dice-call-blink {
+  0%,
+  52%,
+  100% {
+    opacity: 0.72;
+  }
+
+  11% {
+    opacity: 1;
+  }
+
+  25% {
+    opacity: 0.78;
+  }
+
+  36% {
+    opacity: 0.95;
+  }
 }
 
 @keyframes dice-fall {
@@ -5216,3 +5305,4 @@ body {
     display: flex;
   }
 }
+

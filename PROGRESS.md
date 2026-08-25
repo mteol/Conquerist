@@ -5267,3 +5267,81 @@ kein Layout.
   Antwort, ist aber eine zweite Bedeutung im selben Zeichen.
 - **Der Verlauf hat keine Suche.** Bei zweihundert Zeilen ist die Wegmarke die
   Krücke; wer nach „Räuber" sucht, scrollt.
+
+## Der Würfel schlägt jetzt an (2026-08-24, `main`)
+
+Aus dem Playtest, in einem Satz: **„man merkt nicht, daß man dran ist."**
+
+### Sieben Prozent sind am Bildrand nicht da
+
+Die Aufforderung zum Werfen war ein Atmen — `scale(1)` bis `scale(1.07)`, eine
+Sinuswelle über 1,6 Sekunden. Auf einem Standbild nebeneinandergelegt sieht man
+den Unterschied; im Spiel sieht man ihn nicht, und das hat zwei Gründe, die sich
+addieren. Die Würfel liegen in der äußersten unteren rechten Ecke, also im
+peripheren Sehen — und das ist für Kontrast- und Formänderungen fast blind,
+während es auf Bewegung mit **Anschlag** stark anspricht. Eine Sinuswelle hat
+aber keinen Anschlag: sie ist an jeder Stelle ungefähr gleich schnell und hat
+damit keinen Anfang, an dem das Auge hängenbleibt.
+
+Deshalb ist aus dem Atmen ein **Schlag** geworden — nicht lauter dasselbe,
+sondern eine andere Bewegung: schnell hinauf auf `scale(1.17)`, langsamer
+zurück, ein kleinerer Nachschlag auf `1.1`, und dann eine Pause, die länger ist
+als beide Schläge zusammen. Zwei Herzschläge und Stille. Die Marken sitzen bei
+11 % und 36 % statt bei 50 %, und die zweite Hälfte des Zyklus ist leer; genau
+diese Leere macht den nächsten Anschlag wieder zu einem Anschlag. Etwas, das
+ununterbrochen wackelt, wird nach zehn Sekunden Tapete.
+
+**Dazu ein Schein statt eines Rahmens.** Die Würfel liegen auf der Tiefsee, und
+ein warmes Licht darauf sieht man auch dann, wenn man gerade das Brett anschaut
+— Helligkeit trägt in der Peripherie weiter als Form. Er kommt und geht mit dem
+Schlag (`drop-shadow` von 0 auf 18 px und zurück) und steht nie: ein stehender
+Schein wäre ein Rahmen, und Rahmen sind an dieser Stelle schon zweimal gefallen
+(erst der helle Schleier, dann der Pergamentkörper).
+
+Der Ruf „Würfeln" darunter blinkt im **selben Takt** mit und trägt jetzt das
+Akzentgelb statt grauer Kleinschrift. Zwei Dinge, die verschieden schnell
+blinken, sind zwei Aufforderungen. Er bleibt der Träger, der ohne Bewegung
+auskommt: bei `prefers-reduced-motion` steht der Schlag still, die Farbe nicht.
+
+### Was beim Lautermachen aufgefallen ist
+
+`dice--waiting` hängt an `canRoll`, und die Klickkarte gilt **während des
+Fluges weiter** — die Schale war also die ganze Flugzeit über „wartend", und die
+Animation lief auf genau dem Element, das als Perspektive für die fliegenden
+Kuben dient. Bei einem Prozent Größe sah das niemand. Ein Schlag mit Schein
+hätte den Raum, durch den die Würfel gerade fliegen, im Takt skaliert und
+beleuchtet.
+
+Der Selektor heißt jetzt `.dice--waiting .dice__faces:not(.dice__faces--flying)`.
+Der Befund ist allgemeiner als die Zeile: **wer eine Bewegung lauter macht, muß
+zuerst nachsehen, wo sie überall läuft.** Eine leise Animation am falschen Ort
+ist ein Fehler, den man nicht meldet, weil man ihn nicht sieht.
+
+Die Glanzfarbe steht als `--glow: 224 179 74` an `.dice-tray` — ein Schein ist
+nichts als Alpha, und aus `var(--accent)` läßt sich keins herausdrehen. Einmal
+an der Hülle statt dreimal in den Keyframes.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                   |
+| `pnpm test`         | grün — shared 626 / 36 Dateien, server 197 / 20, client 401 / 37 |
+| `pnpm format:check` | grün (bis auf `public/mess.html`, unversioniert und älter)       |
+
+Ein neuer Test: der Ruf trägt `dice__call--waiting` genau dann, wenn man werfen
+darf und nichts fliegt. Geprüft ist die Klasse, nicht die Animation — jsdom
+sieht keine Keyframes, aber die Klasse ist das Einzige, woran die Bewegung
+hängt, und damit die einzige Stelle, an der sich der Flug-Fehler oben überhaupt
+fangen ließe. **Im Browser nicht nachgemessen**, die Chrome-Erweiterung ist
+weiterhin nicht verbunden; wie laut der Schlag tatsächlich ist, entscheidet der
+nächste Playtest.
+
+### Was offen bleibt
+
+- **Der Schlag hat keinen Ton.** Die Aufforderung ist rein visuell; wer
+  weggeschaut hat, merkt weiterhin nichts. Ein Klang wäre der stärkere Träger,
+  ist aber eine Entscheidung über die Tonspur und nicht über die Würfel.
+- **Er hört nie von selbst auf.** Wer eine Minute überlegt, bekommt eine Minute
+  Blinken. Nach einigen Zyklen ruhiger zu werden wäre ehrlicher — dann trägt
+  aber die Dauer eine Bedeutung, die es im Spiel noch nicht gibt.

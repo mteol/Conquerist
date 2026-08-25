@@ -15,7 +15,7 @@ import { NumeralText } from '../type/Numerals';
  * eine Sache sind eine Erklaerung zu viel.
  *
  * Zur Bewegung (Regel 5 in CLAUDE.md): jede der drei Animationen erklaert einen
- * Zustandswechsel. Das Atmen ist an „du musst werfen" gebunden und hoert in dem
+ * Zustandswechsel. Der Schlag ist an „du musst werfen" gebunden und hoert in dem
  * Augenblick auf, in dem das nicht mehr gilt; der Wurf zeigt, dass gerade
  * gewuerfelt wird; das Fallen zeigt, dass ein neuer Wurf liegt. Bei
  * `prefers-reduced-motion` steht alles sofort still - deshalb traegt die
@@ -129,7 +129,10 @@ export function DiceTray({
        * Steht immer da, auch leer: sonst waechst die Ablage um eine Zeile, sobald
        * man am Zug ist, und schiebt Hand und Knoepfe darunter weg.
        */}
-      <span className="dice__call" aria-hidden="true">
+      <span
+        className={canRoll && !flying ? 'dice__call dice__call--waiting' : 'dice__call'}
+        aria-hidden="true"
+      >
         {canRoll && !flying ? 'Würfeln' : ''}
       </span>
     </div>
