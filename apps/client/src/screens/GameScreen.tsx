@@ -4,6 +4,7 @@ import {
   tradeRateFor,
   type DevelopmentCardId,
   type EdgeId,
+  type VertexId,
   type GameAction,
   type PlayerId,
   type PlayerView,
@@ -13,6 +14,7 @@ import {
 } from '@conquerist/shared';
 import { BoardSvg, type Place } from '../board/BoardSvg';
 import { BarbarianTrack } from '../panels/BarbarianTrack';
+import { KnightPanel, type KnightMode } from '../panels/KnightPanel';
 import { EMPTY_TARGETS, buildKindOf, targetsFrom, type BuildableKind } from '../game/targets';
 import { awardsHeldBy, openAwards } from '../game/awards';
 import { discardCountForView, gameViewOf, type PlayerRow } from '../game/view';
@@ -151,6 +153,21 @@ const BUILD_HINTS: Readonly<Record<BuildableKind, string>> = {
   knight: 'Ritter bauen: freie Kreuzung am eigenen Straßennetz wählen',
 };
 
+/**
+ * Dieselbe Auskunft für die vier Rittermodi.
+ *
+ * `moveTo` ist der zweite Schritt des Versetzens und steht deshalb daneben und
+ * nicht in einer zweiten Tabelle: es ist derselbe Modus in seiner zweiten
+ * Hälfte.
+ */
+const KNIGHT_HINTS: Readonly<Record<KnightMode | 'moveTo', string>> = {
+  activate: 'Aktivieren: eigenen Ritter ohne Helm wählen',
+  upgrade: 'Aufwerten: eigenen Ritter wählen',
+  move: 'Versetzen: eigenen Ritter wählen',
+  moveTo: 'Versetzen: Zielkreuzung wählen',
+  chase: 'Räuber vertreiben: eigenen Ritter am Räuberfeld wählen',
+};
+
 export function GameScreen({
   view,
   actions,
@@ -189,7 +206,38 @@ export function GameScreen({
    * ergab sich aus dem Ort. Bei drei Bauteilen gleichzeitig ist das ein Raten
    * mit Ansage. `null` heisst: das Brett ist ruhig.
    */
-  const [buildMode, setBuildMode] = useState<BuildableKind | null>(null);
+  const [buildMode, setBuildModeRaw] = useState<BuildableKind | null>(null);
+  /**
+   * Welcher Rittermodus laeuft - dasselbe Zwei-Schritt-Muster wie beim Bauen.
+   *
+   * Erst die Frage ("was tun"), dann die Stelle. Vier Knoepfe an einer Figur
+   * von zwanzig Pixeln waeren vier Trefferflaechen unter Fingergroesse.
+   */
+  const [knightMode, setKnightModeRaw] = useState<KnightMode | null>(null);
+  /**
+   * Welcher Ritter versetzt wird - der erste von zwei Klicks.
+   *
+   * `null` heisst: es leuchten noch die Ritter, nicht ihre Ziele.
+   */
+  const [movingFrom, setMovingFrom] = useState<VertexId | null>(null);
+
+  /*
+   * Bauwahl und Rittermodus schliessen einander aus. Zwei gleichzeitig
+   * leuchtende Absichten waeren genau das Raten, gegen das der zweite Schritt
+   * eingefuehrt wurde.
+   */
+  const setBuildMode = useCallback((kind: BuildableKind | null) => {
+    setBuildModeRaw(kind);
+    setKnightModeRaw(null);
+    setMovingFrom(null);
+  }, []);
+
+  const setKnightMode = useCallback((mode: KnightMode | null) => {
+    setKnightModeRaw(mode);
+    setBuildModeRaw(null);
+    setMovingFrom(null);
+  }, []);
+
   const [revealed, setRevealed] = useState(!concealBetweenTurns);
 
   /*
@@ -239,8 +287,11 @@ export function GameScreen({
     setPicking(null);
     // Auch die Bauwahl: nach dem Bauen ist sie erledigt, und nach einem fremden
     // Zug stimmt sie vielleicht nicht mehr - was eben noch ging, kann jetzt am
-    // Vorrat oder am Nachbarn scheitern.
-    setBuildMode(null);
+    // Vorrat oder am Nachbarn scheitern. Fuer den Rittermodus gilt derselbe
+    // Satz woertlich, und der halbfertige Ritterzug faellt mit ihm.
+    setBuildModeRaw(null);
+    setKnightModeRaw(null);
+    setMovingFrom(null);
   }, [view.version]);
 
   const targets = useMemo(() => targetsFrom(actions), [actions]);
@@ -287,6 +338,40 @@ export function GameScreen({
       };
     }
 
+    /*
+     * Ein vertriebener Ritter sucht seinen Platz - **ohne Modus**. Das ist
+     * keine Wahl, sondern eine Pflicht, genau wie beim Raeuber: ein Knopf
+     * davor waere ein Schritt, der nichts entscheidet.
+     */
+    if (targets.displace.size > 0) {
+      return { ...EMPTY_TARGETS, vertices: new Map(targets.displace) };
+    }
+
+    /*
+     * Die Ritterzuege liegen in eigenen Karten (siehe `targets.ts`), also
+     * werden sie hier eingesetzt und nicht gefiltert. Beim Versetzen leuchten
+     * erst die Ritter, nach dem ersten Klick nur noch deren Ziele.
+     */
+    if (knightMode !== null) {
+      const map =
+        knightMode === 'activate'
+          ? targets.activate
+          : knightMode === 'upgrade'
+            ? targets.upgrade
+            : knightMode === 'chase'
+              ? targets.chase
+              : movingFrom === null
+                ? new Map([...targets.moves].map(([from, to]) => [from, [...to.values()][0]!]))
+                : (targets.moves.get(movingFrom) ?? new Map());
+
+      return { ...EMPTY_TARGETS, vertices: new Map(map) };
+    }
+
+    if (buildMode === 'knight' || buildMode === 'wall') {
+      const map = buildMode === 'knight' ? targets.knightBuild : targets.wallBuild;
+      return { ...EMPTY_TARGETS, vertices: new Map(map) };
+    }
+
     const shown = (action: GameAction): boolean => {
       const kind = buildKindOf(action);
       return kind === null || kind === buildMode;
@@ -297,11 +382,57 @@ export function GameScreen({
       vertices: new Map([...targets.vertices].filter(([, action]) => shown(action))),
       edges: new Map([...targets.edges].filter(([, action]) => shown(action))),
     };
-  }, [targets, buildMode, buildingRoads, view.roadBuildingTargets, view.you]);
+  }, [
+    targets,
+    buildMode,
+    knightMode,
+    movingFrom,
+    buildingRoads,
+    view.roadBuildingTargets,
+    view.you,
+  ]);
 
   const commit = useCallback(
     (place: Place) => {
       if (place.kind === 'vertex') {
+        // Der Vertriebene zuerst: solange er steht, gibt es nichts anderes.
+        const dodge = targets.displace.get(place.id);
+        if (dodge !== undefined) {
+          onAct(dodge);
+          return;
+        }
+
+        if (knightMode === 'move') {
+          if (movingFrom === null) {
+            // Erster Klick: den Ritter merken, das Brett zeigt danach seine Ziele.
+            if (targets.moves.has(place.id)) setMovingFrom(place.id);
+            return;
+          }
+          const move = targets.moves.get(movingFrom)?.get(place.id);
+          if (move !== undefined) onAct(move);
+          return;
+        }
+
+        if (knightMode !== null) {
+          const map =
+            knightMode === 'activate'
+              ? targets.activate
+              : knightMode === 'upgrade'
+                ? targets.upgrade
+                : targets.chase;
+          const knightAction = map.get(place.id);
+          if (knightAction !== undefined) onAct(knightAction);
+          return;
+        }
+
+        if (buildMode === 'knight' || buildMode === 'wall') {
+          const build = (buildMode === 'knight' ? targets.knightBuild : targets.wallBuild).get(
+            place.id,
+          );
+          if (build !== undefined) onAct(build);
+          return;
+        }
+
         const action = targets.vertices.get(place.id);
         if (action !== undefined) onAct(action);
         return;
@@ -340,7 +471,16 @@ export function GameScreen({
       if (options.length === 1) onAct(options[0]!);
       else if (options.length > 1) setRobberHex(place.id);
     },
-    [targets, onAct, buildingRoads, view.you, view.roadBuildingTargets],
+    [
+      targets,
+      onAct,
+      buildingRoads,
+      buildMode,
+      knightMode,
+      movingFrom,
+      view.you,
+      view.roadBuildingTargets,
+    ],
   );
 
   /*
@@ -536,15 +676,15 @@ export function GameScreen({
          * liegen; frueher erklaerte die Bewegung nicht mehr den Wechsel, sondern
          * kaeme ihm hinterher.
          *
-         * `defenders={null}`: es gibt noch keine Ritter, und eine Null, die
-         * niemals steigen kann, sagt "gerade nicht" ueber etwas, das nie geht.
-         * Die Zahl kommt in Etappe 10b dazu.
+         * `defenders` kommt aus der Sicht und wird nicht hier gerechnet: gegen
+         * die Barbaren zaehlt eine einzige Zahl, und zwei Rechnungen fuer
+         * denselben Vergleich liefen auseinander.
          */}
         <BarbarianTrack
           barbarians={view.barbarians}
           track={view.rules.barbarianTrack}
           strength={barbarianStrength(view)}
-          defenders={null}
+          defenders={view.defenders}
         />
       </div>
 
@@ -689,6 +829,18 @@ export function GameScreen({
             buildMode={buildMode}
             onBuildMode={setBuildMode}
             onDismissError={onDismissError}
+          />
+
+          {/*
+           * Die Ritterleiste steht neben der Bauleiste, nicht darin: die eine
+           * fragt "was baue ich", die andere "was tue ich mit dem, was steht".
+           * An einem Basistisch erscheint sie gar nicht.
+           */}
+          <KnightPanel
+            targets={targets}
+            costs={view.rules.buildCosts}
+            mode={knightMode}
+            onMode={setKnightMode}
           />
 
           {/*
@@ -864,6 +1016,32 @@ export function GameScreen({
         <div className="mode" role="status" data-testid="build-mode">
           <span>{BUILD_HINTS[buildMode]}</span>
           <button type="button" className="button button--ghost" onClick={() => setBuildMode(null)}>
+            Abbrechen
+          </button>
+        </div>
+      )}
+
+      {/*
+       * Dieselbe Leiste fuer die Ritter. Der Vertriebene bekommt sie **ohne**
+       * Abbruch: er muss gesetzt werden, und ein Knopf, der eine Pflicht
+       * wegklickt, waere eine Sackgasse.
+       */}
+      {targets.displace.size > 0 ? (
+        <div className="mode" role="status" data-testid="displace-mode">
+          <span>Wohin weicht dein Ritter aus?</span>
+        </div>
+      ) : knightMode === null ? null : (
+        <div className="mode" role="status" data-testid="knight-mode">
+          <span>
+            {knightMode === 'move' && movingFrom !== null
+              ? KNIGHT_HINTS.moveTo
+              : KNIGHT_HINTS[knightMode]}
+          </span>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => setKnightMode(null)}
+          >
             Abbrechen
           </button>
         </div>

@@ -29,11 +29,12 @@ export interface BarbarianTrackProps {
   /** Die Stärke des Heeres: jede Stadt auf dem Brett. */
   readonly strength: number;
   /**
-   * Die Stärke der Ritter Catans - `null`, solange es keine gibt.
+   * Die Stärke der Ritter Catans - `null`, wenn es an diesem Tisch keine gibt.
    *
    * Eine Null, die niemals steigen kann, ist dasselbe wie ein Knopf, der nie
-   * angeht: sie sagt „gerade nicht" über etwas, das nie geht. Bis die Ritter
-   * da sind, steht die Zahl deshalb nicht da.
+   * angeht: sie sagt „gerade nicht" über etwas, das nie geht. Eine Null, die
+   * steigen **kann**, ist dagegen die Auskunft, um die es geht - seit 10b
+   * steht sie deshalb da, sobald der Tisch Ritter kennt.
    */
   readonly defenders: number | null;
 }
@@ -86,6 +87,17 @@ export function BarbarianTrack({
         </span>
       </div>
 
+      {/*
+       * Die beiden Zahlen stehen **gegeneinander**, und die Leiste sagt, wer
+       * vorn liegt. Das ist die Gewichtung, die 10a bewußt vertagt hat: sie
+       * entsteht erst mit dem Vergleich, und vorher gab es nur eine Zahl.
+       *
+       * Gleichstand zählt als „hält" — so entscheidet die Regel, und eine
+       * Anzeige, die dabei „unterlegen" sagte, wäre schlicht falsch.
+       *
+       * **Farbe trägt nicht allein** (Designregel 7): unter der Ritterzahl
+       * steht das Wort, das dasselbe sagt.
+       */}
       <p className="barbarians__strength">
         <span className="barbarians__side" aria-label={`Barbaren: ${strength}`}>
           <span className="barbarians__word">Barbaren</span>
@@ -93,9 +105,21 @@ export function BarbarianTrack({
         </span>
 
         {defenders === null ? null : (
-          <span className="barbarians__side" aria-label={`Ritter: ${defenders}`}>
+          <span
+            className={
+              defenders >= strength
+                ? 'barbarians__side barbarians__side--holding'
+                : 'barbarians__side barbarians__side--losing'
+            }
+            data-testid="barbarian-defenders"
+            data-standing={defenders >= strength ? 'holding' : 'losing'}
+            aria-label={`Ritter: ${defenders}, ${defenders >= strength ? 'hält' : 'unterlegen'}`}
+          >
             <span className="barbarians__word">Ritter</span>
             <NumeralText value={defenders} className="barbarians__figure" />
+            <span className="barbarians__standing" aria-hidden="true">
+              {defenders >= strength ? 'hält' : 'unterlegen'}
+            </span>
           </span>
         )}
       </p>

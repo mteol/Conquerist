@@ -1,4 +1,5 @@
 import {
+  handLimitOf,
   setupPlayerIndex,
   yieldTotal,
   type DiceSpec,
@@ -231,10 +232,15 @@ function phaseTextOf(view: PlayerView): string {
  * `cardCount` und `rules`, und das genuegt. Ein Test haelt fest, dass beide
  * dasselbe sagen - hier entsteht zum ersten Mal eine Rechnung im Client, die
  * es auch in `shared` gibt.
+ *
+ * **Das Limit ist seit den Stadtmauern keine Konstante mehr**, und deshalb
+ * kommt es aus `handLimitOf` und nicht aus `rules.handLimitBeforeDiscard`. Die
+ * Sicht traegt `buildings` und `rules` und genuegt damit der `HandLimitSource` -
+ * dieselbe Funktion, nicht dieselbe Rechnung ein zweites Mal.
  */
 export function discardCountForView(view: PlayerView, player: PlayerId): number {
   const held = view.players.find((entry) => entry.id === player)?.cardCount ?? 0;
-  return held > view.rules.handLimitBeforeDiscard ? Math.floor(held / 2) : 0;
+  return held > handLimitOf(view, player) ? Math.floor(held / 2) : 0;
 }
 
 export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {

@@ -2,9 +2,11 @@
 import type { JSX } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  CITIES_RULES,
   CLASSIC_34,
   CLASSIC_RULES,
   createGame,
+  edgeVertices,
   generateScenario,
   legalActions,
   reduce,
@@ -732,5 +734,170 @@ describe('Der Endstand', () => {
 
     await userEvent.click(screen.getByTestId('over-reopen'));
     expect(screen.getByTestId('over-winner')).toBeDefined();
+  });
+});
+
+/**
+ * Städte & Ritter am Bildschirm.
+ *
+ * Dieselbe Zwei-Schritt-Bedienung wie beim Bauen, nur mit einer zweiten Leiste:
+ * erst die Frage („was tun"), dann die Stelle auf dem Brett.
+ */
+describe('GameScreen mit Rittern', () => {
+  const citiesSeats = defaultSeats(3);
+  const citiesStart = afterOpening(
+    createGame(
+      scenario,
+      CITIES_RULES,
+      citiesSeats.map((seat) => seat.id),
+      'ritter-probe',
+    ),
+  );
+
+  function CitiesGame({ state }: { readonly state: GameState }): JSX.Element {
+    const game = useLocalGame(state, citiesSeats);
+
+    return (
+      <GameScreen
+        view={game.view}
+        actions={game.actions}
+        log={game.log}
+        error={game.error}
+        onAct={game.act}
+        onDismissError={game.dismissError}
+        onLeave={vi.fn()}
+      />
+    );
+  }
+
+  /** Hauptphase an einem Städte-&-Ritter-Tisch, p1 mit Karten für alles. */
+  function citiesMainPhase(overrides: Partial<GameState> = {}): GameState {
+    let state = citiesStart;
+    while (state.phase.kind === 'setup') {
+      const result = reduce(state, legalActions(state, setupPlayer(state)!)[0]!);
+      if (!result.ok) throw new Error(result.error.message);
+      state = result.state;
+    }
+
+    return {
+      ...state,
+      phase: { kind: 'main' },
+      currentPlayerIndex: 0,
+      players: state.players.map((player, index) =>
+        index === 0
+          ? {
+              ...player,
+              resources: cardAmounts({ brick: 4, lumber: 4, wool: 4, grain: 4, ore: 4 }),
+            }
+          : player,
+      ),
+      ...overrides,
+    };
+  }
+
+  const litVertices = (): string[] =>
+    screen
+      .getAllByTestId(/^vertex-/)
+      .filter((node) => node.dataset['target'] === 'true')
+      .map((node) => node.dataset['testid'] ?? node.getAttribute('data-testid') ?? '');
+
+  it('zeigt beim Ritterbau die Ritterstellen und nicht die Siedlungsstellen', async () => {
+    const state = citiesMainPhase();
+    render(<CitiesGame state={state} />);
+
+    await userEvent.click(screen.getByTestId('build-knight'));
+
+    // `afterOpening` sortiert die Spieler um - wer am Zug ist, steht im
+    // Zustand und heisst nicht zwingend p1.
+    const me = state.players[state.currentPlayerIndex]!.id;
+    const knightSpots = new Set(
+      legalActions(state, me)
+        .filter((action) => action.type === 'buildKnight')
+        .map((action) => `vertex-${(action as { vertex: string }).vertex}`),
+    );
+
+    expect(knightSpots.size).toBeGreaterThan(0);
+    expect(new Set(litVertices())).toEqual(knightSpots);
+    expect(screen.getByTestId('build-mode').textContent).toContain('Ritter bauen');
+  });
+
+  it('zeigt beim Versetzen erst die Ritter und danach deren Ziele', async () => {
+    const knightOf = (owner: string) => ({
+      owner,
+      level: 1 as const,
+      active: true,
+      activatedOnTurn: 1,
+      upgradedThisTurn: false,
+    });
+
+    // Ein handlungsbereiter Ritter braucht eine eigene Strasse an seinem Knoten
+    // - die Gruendung hat p1 genau eine gelegt.
+    const state = citiesMainPhase({ turn: 3 });
+    const me = state.players[state.currentPlayerIndex]!.id;
+    const own = Object.entries(state.roads).find(([, owner]) => owner === me)![0];
+    const vertex = edgeVertices(own)[0]!;
+
+    const withKnight: GameState = {
+      ...state,
+      buildings: Object.fromEntries(
+        Object.entries(state.buildings).filter(([at]) => at !== vertex),
+      ),
+      knights: { [vertex]: knightOf(me) },
+    };
+
+    render(<CitiesGame state={withKnight} />);
+
+    await userEvent.click(screen.getByTestId('knight-move'));
+    expect(litVertices()).toEqual([`vertex-${vertex}`]);
+    expect(screen.getByTestId('knight-mode').textContent).toContain('eigenen Ritter wählen');
+
+    tapVertex(document.body, vertex);
+
+    expect(screen.getByTestId('knight-mode').textContent).toContain('Zielkreuzung wählen');
+    expect(litVertices()).not.toContain(`vertex-${vertex}`);
+    expect(litVertices().length).toBeGreaterThan(0);
+  });
+
+  it('laesst in displacePending nur die Ausweichkreuzungen leuchten', () => {
+    const state = citiesMainPhase();
+    const me = state.players[state.currentPlayerIndex]!.id;
+    const own = Object.entries(state.roads).find(([, owner]) => owner === me)![0];
+    const from = edgeVertices(own)[0]!;
+
+    const displacing: GameState = {
+      ...state,
+      buildings: {},
+      knights: {},
+      phase: {
+        kind: 'displacePending',
+        owner: me,
+        level: 1,
+        active: false,
+        activatedOnTurn: null,
+        from,
+      },
+    };
+
+    render(<CitiesGame state={displacing} />);
+
+    expect(screen.getByTestId('displace-mode').textContent).toContain('Wohin weicht dein Ritter');
+    expect(screen.queryByTestId('knight-mode')).toBeNull();
+    expect(litVertices().length).toBeGreaterThan(0);
+    expect(litVertices()).not.toContain(`vertex-${from}`);
+  });
+
+  it('zeigt an einem Basistisch genau drei Bauteile und keine Ritterleiste', () => {
+    render(<LocalGameFrom state={richMainPhase()} />);
+
+    expect(screen.queryByTestId('build-wall')).toBeNull();
+    expect(screen.queryByTestId('build-knight')).toBeNull();
+    expect(screen.queryByTestId('knight-activate')).toBeNull();
+  });
+
+  it('stellt die Ritterleiste an einem Staedte-&-Ritter-Tisch hin', () => {
+    render(<CitiesGame state={citiesMainPhase()} />);
+
+    expect(screen.queryByTestId('build-wall')).not.toBeNull();
+    expect(screen.queryByTestId('knight-activate')).not.toBeNull();
   });
 });

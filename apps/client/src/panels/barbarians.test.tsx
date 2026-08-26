@@ -75,7 +75,7 @@ describe('BarbarianTrack', () => {
     expect(screen.queryByLabelText(/^Ritter/)).toBeNull();
   });
 
-  it('zeigt sie, sobald es eine gibt', () => {
+  it('zeigt sie, sobald es eine gibt - und sagt dazu, wie es steht', () => {
     render(
       <BarbarianTrack
         barbarians={{ position: 0, attacks: 0 }}
@@ -85,7 +85,39 @@ describe('BarbarianTrack', () => {
       />,
     );
 
-    expect(screen.getByLabelText('Ritter: 2')).toBeDefined();
+    expect(screen.getByLabelText('Ritter: 2, unterlegen')).toBeDefined();
+    expect(screen.getByTestId('barbarian-defenders').dataset['standing']).toBe('losing');
+  });
+
+  /*
+   * Gleichstand gewinnt die Verteidigung - so entscheidet die Regel, und eine
+   * Anzeige, die dabei "unterlegen" sagte, waere schlicht falsch.
+   */
+  it('nennt den Gleichstand ein Halten', () => {
+    render(
+      <BarbarianTrack
+        barbarians={{ position: 0, attacks: 0 }}
+        track={7}
+        strength={2}
+        defenders={2}
+      />,
+    );
+
+    expect(screen.getByTestId('barbarian-defenders').dataset['standing']).toBe('holding');
+  });
+
+  /* Designregel 7: die Farbe traegt nicht allein - das Wort steht daneben. */
+  it('schreibt den Stand als Wort und nicht nur als Farbe', () => {
+    render(
+      <BarbarianTrack
+        barbarians={{ position: 0, attacks: 0 }}
+        track={7}
+        strength={1}
+        defenders={4}
+      />,
+    );
+
+    expect(screen.getByTestId('barbarian-defenders').textContent).toContain('hält');
   });
 
   it('sagt die Naehe der Gefahr auch als Satz', () => {
