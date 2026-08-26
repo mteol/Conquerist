@@ -265,6 +265,35 @@ describe('barbarianOutcome - die Barbaren gewinnen', () => {
     const expected = [ADJACENT_VERTEX, tie].sort()[0]!;
     expect(barbarianOutcome(state).losses).toEqual([{ player: 'p1', vertex: expected }]);
   });
+
+  it('nimmt keine Metropole', () => {
+    const state = landed({
+      buildings: { [RICH]: city('p1'), [POOR]: { ...city('p1'), metropolis: 'trade' } },
+      knights: {},
+    });
+
+    expect(barbarianOutcome(state).losses).toEqual([{ player: 'p1', vertex: RICH }]);
+  });
+
+  it('verschont, wer nur Metropolen hat', () => {
+    const state = landed({
+      buildings: { [POOR]: { ...city('p1'), metropolis: 'trade' } },
+      knights: {},
+    });
+
+    expect(barbarianOutcome(state).won).toBe(false);
+    expect(barbarianOutcome(state).losses).toEqual([]);
+  });
+
+  it('zaehlt die Metropole trotzdem zur Staerke der Barbaren', () => {
+    // Sie ist eine Stadt auf dem Brett - geschuetzt heisst nicht unsichtbar.
+    const state = landed({
+      buildings: { [POOR]: { ...city('p1'), metropolis: 'trade' } },
+      knights: {},
+    });
+
+    expect(barbarianStrength(state)).toBe(1);
+  });
 });
 
 describe('applyBarbarianAttack', () => {

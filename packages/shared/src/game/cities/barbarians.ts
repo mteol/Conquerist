@@ -133,7 +133,15 @@ export interface BarbarianOutcome {
 /** Welche Stadt dieser Spieler hergibt - ohne Mauer zuerst, dann die aermste. */
 function cityToLose(state: GameState, player: PlayerId): VertexId | null {
   const cities = Object.entries(state.buildings)
-    .filter(([, building]) => building.owner === player && building.kind === 'city')
+    .filter(
+      ([, building]) =>
+        building.owner === player &&
+        building.kind === 'city' &&
+        building.metropolis === null /* Metropolen sind geschuetzt - sie zaehlen zwar
+           zur Staerke der Barbaren (unsichtbar sind sie nicht), koennen aber nicht
+           genommen werden. Wer nur Metropolen hat, faellt als Kandidat aus und wird
+           dann nicht getroffen, genau wie der Spieler ohne Stadt. */,
+    )
     .map(([vertex, building]) => ({ vertex, wall: building.wall }));
 
   if (cities.length === 0) return null;
