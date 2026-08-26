@@ -1,6 +1,7 @@
 import type { VertexId } from '../geometry/index.js';
 import type { CardAmounts } from '../rules/index.js';
 import {
+  RESOURCE_IDS,
   terrainCommodity,
   terrainYield,
   type CardId,
@@ -8,8 +9,9 @@ import {
   type TerrainId,
 } from '../scenario/index.js';
 import { boardOf } from './board.js';
+import { hasAqueduct } from './cities/tracks.js';
 import type { PlayerId } from './player.js';
-import { EMPTY_CARDS, addCards, subtractCards } from './cards.js';
+import { EMPTY_CARDS, addCards, countCards, subtractCards } from './cards.js';
 import type { BuildingKind, GameState } from './state.js';
 
 /**
@@ -195,6 +197,56 @@ export function grantSetupYield(state: GameState, player: PlayerId, vertex: Vert
       .reduce((sum, claim) => sum + claim.amount, 0);
 
     if (alreadyClaimed < available) claims.push({ player, card: resource, amount: 1 });
+  }
+
+  return payOut(state, claims);
+}
+
+/**
+ * Wer beim Wurf leer ausging und das Aquaedukt hat, nimmt einen Rohstoff.
+ *
+ * `pick` ist die Wahl des Spielers - in 10c trifft sie der Zustand, siehe
+ * Kommentar. Gibt denselben Zustand zurueck, wenn niemand betroffen ist.
+ *
+ * **Bewusste Abweichung von der Anleitung:** die Originalregel laesst den
+ * Spieler waehlen. Eine Wahl waere eine Phase, und diese Phase laege mitten
+ * im Wurf - dieselbe Ueberlegung, mit der 10b die Staedtewahl beim Ueberfall
+ * entschieden hat. Genommen wird deshalb nach einer festen Regel: der
+ * Rohstoff, von dem die Bank am meisten hat, bei Gleichstand der in
+ * `RESOURCE_IDS` zuerst genannte. Soll die Wahl spaeter doch kommen, ist ein
+ * `aqueductPending` in der Phase der richtige Ort dafuer - dieselbe Bauform
+ * wie `discardPending`.
+ */
+export function grantAqueduct(state: GameState, before: GameState): GameState {
+  const claims: Claim[] = [];
+
+  /*
+   * Die Bank wird beim Zuteilen mitgefuehrt: bekaeme sonst ein zweiter
+   * Spieler denselben knappen Rohstoff wie der erste, gaebe `payOut` mehr
+   * aus, als die Bank hat, und `subtractCards` wuerfe. Die Reihenfolge der
+   * Spieler entscheidet damit, wer bei einem Gleichstand zuerst greift - eine
+   * feste, nachvollziehbare Regel statt eines stillen Fehlers.
+   */
+  let remainingBank = state.bank;
+
+  for (const player of state.players) {
+    if (!hasAqueduct(player)) continue;
+
+    const beforePlayer = before.players.find((entry) => entry.id === player.id);
+    if (beforePlayer === undefined) continue;
+    if (countCards(player.resources) > countCards(beforePlayer.resources)) continue;
+
+    // Der Rohstoff, von dem die Bank am meisten hat - bei Gleichstand der in
+    // `RESOURCE_IDS` zuerst genannte.
+    let best: ResourceId | null = null;
+    for (const resource of RESOURCE_IDS) {
+      if (remainingBank[resource] <= 0) continue;
+      if (best === null || remainingBank[resource] > remainingBank[best]) best = resource;
+    }
+    if (best === null) continue;
+
+    claims.push({ player: player.id, card: best, amount: 1 });
+    remainingBank = { ...remainingBank, [best]: remainingBank[best] - 1 };
   }
 
   return payOut(state, claims);

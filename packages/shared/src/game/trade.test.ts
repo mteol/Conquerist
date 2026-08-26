@@ -7,6 +7,7 @@ import {
   CENTER_VERTEX,
   HARBOR2_ORE_VERTEX,
   HARBOR3_VERTEX,
+  gameWithCities,
   giving,
   hand,
   testGame,
@@ -16,6 +17,16 @@ import type { GameState } from './state.js';
 
 function resourcesOf(state: GameState, id: string) {
   return state.players.find((player) => player.id === id)!.resources;
+}
+
+/** Dieselbe Partie, aber mit der Gilde (Handel Stufe 3) beim genannten Spieler. */
+function withGuild(state: GameState, id: string): GameState {
+  return {
+    ...state,
+    players: state.players.map((player) =>
+      player.id === id ? { ...player, improvements: { ...player.improvements, trade: 3 } } : player,
+    ),
+  };
 }
 
 /** p1 siedelt an dem angegebenen Knoten und hat die genannten Karten. */
@@ -232,5 +243,29 @@ describe('Handel mit Handelswaren', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe(RuleViolationCode.INSUFFICIENT_RESOURCES);
+  });
+});
+
+describe('Die Gilde', () => {
+  it('tauscht Handelswaren 2:1', () => {
+    const state = withGuild(gameWithCities(), 'p1');
+    expect(tradeRateFor(state, 'p1', 'cloth')).toBe(2);
+  });
+
+  it('laesst den Kurs fuer Rohstoffe unberuehrt', () => {
+    const state = withGuild(gameWithCities(), 'p1');
+    expect(tradeRateFor(state, 'p1', 'brick')).toBe(4);
+  });
+
+  it('gilt nur fuer den, der sie gebaut hat', () => {
+    const state = withGuild(gameWithCities(), 'p1');
+    expect(tradeRateFor(state, 'p2', 'cloth')).toBe(4);
+  });
+
+  it('schlaegt einen 3:1-Hafen, aber nicht einen 2:1-Hafen', () => {
+    // Der Hafen bleibt der bessere Kurs, wo er besser ist - `tradeRateFor`
+    // nimmt weiterhin das Beste, was dieser Spieler erreicht.
+    const state = withGuild(gameWithCities(), 'p1');
+    expect(tradeRateFor(state, 'p1', 'paper')).toBe(2);
   });
 });

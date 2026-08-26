@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CardAmountsSchema, RuleSetSchema } from '../rules/index.js';
 import { ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { Seat } from '../seats.js';
+import { TrackIdSchema } from './cities/tracks.js';
 import { DevelopmentCardIdSchema, DevelopmentCardSchema } from './development.js';
 import { RollSchema } from './dice.js';
 import { playableDevelopmentCards, roadBuildingTargets } from './legal.js';
@@ -58,6 +59,14 @@ export const PlayerInViewSchema = z.object({
   defenderPoints: z.number().int().min(0).default(0),
   piecesLeft: z.record(z.string(), z.number().int().min(0)),
   victoryPoints: z.number().int().min(0),
+  /**
+   * Erreichte Ausbaustufe je Bereich, 0 bis 5. **Oeffentlich** - die
+   * Ausbaustufen liegen am Tisch offen sichtbar, es ist keine geheime
+   * Information wie die Handkarten. `tradeRateFor` in `trade.ts` braucht das
+   * Feld: die Gilde (Handel 3) steht beim Spieler, und ohne dieses Feld
+   * koennte der Client seinen eigenen Kurs nicht mehr ausrechnen.
+   */
+  improvements: z.partialRecord(TrackIdSchema, z.number().int().min(0).max(5)).default({}),
 });
 
 export type PlayerInView = z.infer<typeof PlayerInViewSchema>;
@@ -193,6 +202,7 @@ export function playerViewOf(
         playedKnights: player.playedKnights,
         defenderPoints: player.defenderPoints,
         piecesLeft: player.piecesLeft,
+        improvements: player.improvements,
         /*
          * Bei sich selbst die volle Zahl, bei den anderen nur die oeffentliche -
          * bis die Partie vorbei ist, siehe `settled` oben.

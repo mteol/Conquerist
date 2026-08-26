@@ -6,6 +6,17 @@ import { EMPTY_CARDS } from '../cards.js';
 import type { PlayerState } from '../player.js';
 
 /**
+ * Was `levelOf`, `hasAqueduct`, `hasGuild` und `hasFortress` wirklich lesen -
+ * mehr fordern sie nicht.
+ *
+ * Ein struktureller Mindesttyp statt `PlayerState`, damit auch die
+ * Spielerliste einer `PlayerView` durchgeht: `HarborSource.players` in
+ * `trade.ts` braucht `hasGuild` sowohl fuer `PlayerState[]` als auch fuer die
+ * oeffentliche Sicht, und beide tragen dieselben `improvements`.
+ */
+export type TrackLevelSource = Pick<PlayerState, 'improvements'>;
+
+/**
  * Die drei Bereiche des Stadtausbaus - ihre Stufen, Preise und Zusatznutzen.
  *
  * Jeder Bereich hat fuenf Stufen, jede Stufe kostet Handelswaren ihrer
@@ -147,19 +158,19 @@ export function progressThreshold(level: number): number {
  * Liest `improvements[track] ?? 0`: ein nicht begonnener Bereich braucht
  * keine Null im Zustand; was fehlt, ist null.
  */
-export function levelOf(player: PlayerState, track: TrackId): number {
+export function levelOf(player: TrackLevelSource, track: TrackId): number {
   return player.improvements[track] ?? 0;
 }
 
-export function hasAqueduct(player: PlayerState): boolean {
+export function hasAqueduct(player: TrackLevelSource): boolean {
   return levelOf(player, 'science') >= AQUEDUCT_LEVEL;
 }
 
-export function hasGuild(player: PlayerState): boolean {
+export function hasGuild(player: TrackLevelSource): boolean {
   return levelOf(player, 'trade') >= GUILD_LEVEL;
 }
 
 /** Ob dieser Spieler Starke zu Maechtigen Rittern aufwerten darf. */
-export function hasFortress(player: PlayerState): boolean {
+export function hasFortress(player: TrackLevelSource): boolean {
   return levelOf(player, 'politics') >= FORTRESS_LEVEL;
 }

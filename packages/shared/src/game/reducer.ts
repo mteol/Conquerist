@@ -29,7 +29,7 @@ import {
   applyPlayRoadBuilding,
   applyPlayYearOfPlenty,
 } from './developmentRules.js';
-import { distributeYield } from './yield.js';
+import { distributeYield, grantAqueduct } from './yield.js';
 import { resolveEvent } from './cities/turn.js';
 import { applyActivateKnight, applyBuildKnight, applyUpgradeKnight } from './cities/knights.js';
 import {
@@ -145,7 +145,14 @@ function rollDice(state: GameState): ReduceResult {
   const afterEvent = resolveEvent(rolled, roll);
 
   if (total !== state.rules.robberRoll) {
-    return ok({ ...distributeYield(afterEvent, total), phase: { kind: 'main' } });
+    /*
+     * Aquaedukt: wer bei diesem Wurf leer ausging und die Ausbaustufe hat,
+     * nimmt einen Rohstoff. Nicht auf dem Sieben-Pfad darunter - eine Sieben
+     * ruft den Raeuber und verteilt keinen Ertrag, an dem "leer ausgegangen"
+     * ueberhaupt etwas bedeuten wuerde.
+     */
+    const distributed = distributeYield(afterEvent, total);
+    return ok({ ...grantAqueduct(distributed, afterEvent), phase: { kind: 'main' } });
   }
 
   const pending = playersMustDiscard(afterEvent);

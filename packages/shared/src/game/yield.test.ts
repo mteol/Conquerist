@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { EMPTY_CARDS, countCards } from './cards.js';
+import type { CardAmounts } from '../rules/index.js';
 import { CENTER_VERTEX, gameWithCities, giving, hand, testGame } from './fixtures.js';
 import type { GameState } from './state.js';
-import { distributeYield, grantSetupYield } from './yield.js';
+import { distributeYield, grantAqueduct, grantSetupYield } from './yield.js';
 
 /**
  * Zwei Knoten am Huegelfeld `1,-1` (Chip 6, Lehm), die einander *nicht*
@@ -251,5 +253,52 @@ describe('Handelswaren am Stadtertrag', () => {
     const nachher = grantSetupYield(state, 'p1', CENTER_VERTEX);
 
     expect(resourcesOf(nachher, 'p1')).toEqual(hand({ brick: 1, lumber: 1 }));
+  });
+});
+
+/** Derselbe Zustand, aber mit dieser Ausbaustufe in der Wissenschaft. */
+function withScience(state: GameState, id: string, level: number): GameState {
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === id ? { ...p, improvements: { ...p.improvements, science: level } } : p,
+    ),
+  };
+}
+
+/** Die Hand eines Spielers - kurz, weil jeder Test sie vergleicht. */
+function handOf(state: GameState, id: string): CardAmounts {
+  return state.players.find((p) => p.id === id)!.resources;
+}
+
+/** `base` ohne Ertrag, `gained` mit einer Karte mehr fuer p1. */
+const base = gameWithCities();
+const gained = giving(base, 'p1', { brick: 1 });
+
+describe('Das Aquaedukt', () => {
+  it('gibt einen Rohstoff, wer beim Wurf leer ausging', () => {
+    // p1 hat Wissenschaft 3 und liegt an keinem Feld mit dieser Zahl.
+    const after = grantAqueduct(withScience(base, 'p1', 3), base);
+    expect(countCards(handOf(after, 'p1'))).toBe(countCards(handOf(base, 'p1')) + 1);
+  });
+
+  it('gibt nichts, wer etwas bekommen hat', () => {
+    const after = grantAqueduct(withScience(gained, 'p1', 3), base);
+    expect(handOf(after, 'p1')).toEqual(handOf(gained, 'p1'));
+  });
+
+  it('gibt nichts ohne Wissenschaft drei', () => {
+    const after = grantAqueduct(withScience(base, 'p1', 2), base);
+    expect(handOf(after, 'p1')).toEqual(handOf(base, 'p1'));
+  });
+
+  it('nimmt den Rohstoff aus der Bank', () => {
+    const after = grantAqueduct(withScience(base, 'p1', 3), base);
+    expect(countCards(after.bank)).toBe(countCards(base.bank) - 1);
+  });
+
+  it('gibt nichts, wenn die Bank keinen Rohstoff mehr hat', () => {
+    const leer = { ...withScience(base, 'p1', 3), bank: EMPTY_CARDS };
+    expect(handOf(grantAqueduct(leer, base), 'p1')).toEqual(handOf(leer, 'p1'));
   });
 });

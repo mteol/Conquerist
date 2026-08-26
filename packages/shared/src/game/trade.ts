@@ -1,8 +1,9 @@
 import type { CardAmounts } from '../rules/index.js';
-import type { CardId } from '../scenario/index.js';
+import { isCommodity, type CardId } from '../scenario/index.js';
 import { boardOf } from './board.js';
+import { hasGuild, type TrackLevelSource } from './cities/tracks.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
-import type { PlayerId } from './player.js';
+import type { PlayerId, PlayerState } from './player.js';
 import { EMPTY_CARDS, addCards, canAfford, subtractCards } from './cards.js';
 import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './state.js';
 
@@ -21,17 +22,28 @@ import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './s
 /** Der Standardkurs ohne Hafen. */
 const DEFAULT_RATE = 4;
 
+/** Der Kurs der Gilde fuer Handelswaren - eine 2 mit Namen. */
+const GUILD_RATE = 2;
+
 /**
  * Was `tradeRateFor` wirklich braucht.
  *
- * Nur Brett und Belegung - keine Handkarten, kein Zufall. Deshalb ein eigener
- * Typ statt `GameState`: so kann auch eine `PlayerView` den Kurs ausrechnen,
- * und die Oberflaeche muss ihn nicht vom Server erfragen. Es ist keine Regel,
- * die hier zweimal ausgelegt wird - es ist dieselbe Funktion.
+ * Nur Brett, Belegung und die Ausbaustufen der Spieler - keine Handkarten,
+ * kein Zufall. Deshalb ein eigener Typ statt `GameState`: so kann auch eine
+ * `PlayerView` den Kurs ausrechnen, und die Oberflaeche muss ihn nicht vom
+ * Server erfragen. Es ist keine Regel, die hier zweimal ausgelegt wird - es
+ * ist dieselbe Funktion.
+ *
+ * `players` traegt seit der Gilde nur, was `hasGuild` liest (`TrackLevelSource`)
+ * und `id`, um den Spieler zu finden - nicht `readonly PlayerState[]`. So
+ * geht sowohl `GameState['players']` als auch die Spielerliste einer
+ * `PlayerView` durch, ohne dass eine der beiden Seiten mehr vortaeuschen
+ * muesste, als sie hat.
  */
 export interface HarborSource {
   readonly scenario: GameState['scenario'];
   readonly buildings: GameState['buildings'];
+  readonly players: readonly (Pick<PlayerState, 'id'> & TrackLevelSource)[];
 }
 
 /**
@@ -62,6 +74,21 @@ export function tradeRateFor(state: HarborSource, player: PlayerId, give: CardId
       if (harbor.ratio === 2 && harbor.resource !== give) continue;
       if (harbor.ratio < best) best = harbor.ratio;
     }
+  }
+
+  /*
+   * Die Gilde: zwei gleiche **Handelswaren** gegen eine beliebige Karte. Sie
+   * steht beim Spieler und nicht am Brett - deshalb traegt `HarborSource` seit
+   * dieser Etappe die Spielerliste mit. Rohstoffe beruehrt sie nicht: der Kurs
+   * fuer Lehm bleibt, was der beste Hafen hergibt.
+   *
+   * Sie tritt gegen die Haefen an und gewinnt nur, wo sie besser ist - dieselbe
+   * `Math.min`-Logik wie zwischen zwei Haefen. Ein eigener Zweig "Gilde schlaegt
+   * alles" waere falsch: ein 2:1-Hafen auf Papier ist genauso gut.
+   */
+  const owner = state.players.find((entry) => entry.id === player);
+  if (owner !== undefined && isCommodity(give) && hasGuild(owner) && GUILD_RATE < best) {
+    best = GUILD_RATE;
   }
 
   return best;

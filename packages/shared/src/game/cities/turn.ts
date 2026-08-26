@@ -15,6 +15,12 @@ import { eventFaceOf } from './event.js';
  *
  * Die drei Stadttore werden weiterhin gelesen und tun nichts - die
  * Fortschrittskarten kommen in 10d.
+ *
+ * Der vierte Schritt aus Spec 5.4 - Aquaedukt: wer leer ausging, nimmt einen
+ * Rohstoff - haengt **nicht** hier, sondern in `reducer.ts` an `rollDice`,
+ * direkt nach `distributeYield`. `resolveEvent` bleibt unberuehrt: das
+ * Aquaedukt haengt am Ertrag und nicht am Ereignis, und `grantAqueduct` wird
+ * nicht auf dem Sieben-Pfad gerufen.
  */
 export function resolveEvent(state: GameState, roll: Roll): GameState {
   const face = eventFaceOf(roll);
