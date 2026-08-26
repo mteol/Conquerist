@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { CITIES_RULES, CLASSIC_RULES, type CardAmounts } from '../rules/index.js';
-import { CLASSIC_34, RESOURCE_IDS, generateScenario } from '../scenario/index.js';
+import { CLASSIC_34, RESOURCE_IDS, generateScenario, isCommodity } from '../scenario/index.js';
 import type { GameAction } from './actions.js';
 import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
@@ -10,6 +10,7 @@ import { EMPTY_CARDS, countCards } from './cards.js';
 import { discardCountFor } from './robber.js';
 import { victoryPointsOf } from './scoring.js';
 import { robberIsFree } from './cities/barbarians.js';
+import { METROPOLIS_LEVEL, TRACK_IDS, levelOf } from './cities/tracks.js';
 import { giving, hand, testGame } from './fixtures.js';
 import { createGame } from './setup.js';
 import type { GameState } from './state.js';
@@ -438,6 +439,180 @@ describe('Eine Partie bis zur Kueste', () => {
     expect(chips).toBeLessThanOrEqual(state.players.length);
     expect(cities).toBeGreaterThanOrEqual(0);
     expect(cities).toBeLessThanOrEqual(CITIES_RULES.pieceStock.city * state.players.length);
+  });
+
+  it('haelt den Kartenbestand ueber die ganze Strecke', () => {
+    expect(totalCards(state)).toBe(totalCards(initial));
+  });
+});
+
+/**
+ * Eine Partie nach Staedte-&-Ritter-Regeln bis zur ersten Metropole.
+ *
+ * Dieselbe stumpfe Strategie wie in den beiden Partien oben, um `improveCity`
+ * erweitert - mit zwei Anpassungen, ohne die diese Partie nie ankaeme:
+ *
+ *  - `improveCity` steht weit vorn in der Prioritaet, sonst baut der Treiber
+ *    lieber Strassen und der Ausbau kommt nie an die Reihe.
+ *  - Der Bankhandel waehlt gezielt: der Ausbau kostet Handelswaren (cloth,
+ *    coin, paper), und ein Handel, der zum Beispiel Lehm gegen Erz tauscht,
+ *    bringt die Metropole keinen Schritt naeher. `options.find` auf den
+ *    erstbesten `tradeWithBank`-Zug waere hier die falsche Wahl - die
+ *    Schleife liefe ins Limit, ohne dass je eine Metropole steht, und die
+ *    Invarianten unten behaupteten nichts mehr.
+ *
+ * Der Test haengt **nicht** an einer bestimmten Wurffolge: die Wuerfe kommen
+ * aus dem Seed, geprueft werden die Invarianten **nach** der ersten
+ * Metropole, nicht ihr Weg dorthin.
+ */
+describe('Eine Partie bis zur ersten Metropole', () => {
+  const METROPOLIS_PRIORITY: readonly GameAction['type'][] = [
+    'placeSetupSettlement',
+    'placeSetupRoad',
+    'rollDice',
+    'moveRobber',
+    'placeDisplacedKnight',
+    'buildCity',
+    // Weit vorn, wie im Auftrag verlangt: sonst baut der Treiber lieber
+    // Strassen, und der Ausbau kommt nie an die Reihe.
+    'improveCity',
+    'buildSettlement',
+    'buildKnight',
+    'activateKnight',
+    'upgradeKnight',
+    'moveKnight',
+    'buildWall',
+    'buildRoad',
+    'tradeWithBank',
+    'endTurn',
+  ];
+
+  /**
+   * Bevorzugt einen Bankhandel, der eine Handelsware einbringt - der Ausbau
+   * kostet cloth, coin oder paper, und ein Rohstoff-gegen-Rohstoff-Handel
+   * bringt dafuer nichts. Gibt es keinen solchen Handel (z.B. weil die Bank
+   * gerade keine Handelswaren mehr hat), faellt die Wahl auf den erstbesten -
+   * besser ein Zug, der nicht hilft, als gar keiner.
+   */
+  function chooseBankTrade(
+    options: readonly GameAction[],
+  ): Extract<GameAction, { type: 'tradeWithBank' }> | undefined {
+    const trades = options.filter(
+      (action): action is Extract<GameAction, { type: 'tradeWithBank' }> =>
+        action.type === 'tradeWithBank',
+    );
+
+    return trades.find((trade) => isCommodity(trade.receive)) ?? trades[0];
+  }
+
+  function chooseMetropolisAction(state: GameState, player: string): GameAction | null {
+    if (state.phase.kind === 'discardPending') {
+      return { type: 'discard', player, resources: chooseDiscard(state, player) };
+    }
+
+    const options = legalActions(state, player);
+    for (const type of METROPOLIS_PRIORITY) {
+      if (type === 'tradeWithBank') {
+        const trade = chooseBankTrade(options);
+        if (trade !== undefined) return trade;
+        continue;
+      }
+
+      const match = options.find((action) => action.type === type);
+      if (match !== undefined) return match;
+    }
+
+    return null;
+  }
+
+  function metropolisActor(state: GameState): string | null {
+    // Den Vertriebenen setzt sein Besitzer um, nicht der Spieler am Zug.
+    if (state.phase.kind === 'displacePending') return state.phase.owner;
+    return nextActor(state);
+  }
+
+  /** Das Gebaeude, das den ersten Aufsatz traegt - `null`, solange es keins gibt. */
+  function metropolisBuilding(current: GameState): GameState['buildings'][string] | null {
+    return (
+      Object.values(current.buildings).find((building) => building.metropolis !== null) ?? null
+    );
+  }
+
+  const initial = createGame(SCENARIO, CITIES_RULES, PLAYERS, 'metropole-seed');
+
+  let state = initial;
+  let steps = 0;
+  const LIMIT = 20_000;
+
+  while (metropolisBuilding(state) === null && state.phase.kind !== 'finished') {
+    if (steps >= LIMIT) break;
+
+    const actor = metropolisActor(state);
+    if (actor === null) break;
+
+    const action = chooseMetropolisAction(state, actor);
+    if (action === null) break;
+
+    const result = reduce(state, action);
+    if (!result.ok) {
+      throw new Error(
+        `Zug ${steps} (${action.type}, ${actor}) abgelehnt: ${result.error.code} - ${result.error.message}`,
+      );
+    }
+
+    expect(totalCards(result.state)).toBe(totalCards(initial));
+
+    state = result.state;
+    steps += 1;
+  }
+
+  /*
+   * Diese Behauptung kommt zuerst und traegt alle folgenden: ohne eine
+   * wirklich erreichte Metropole waeren "hoechstens ein Aufsatz je Bereich"
+   * und die uebrigen Invarianten unten auch bei null Metropolen wahr - und
+   * behaupteten damit gar nichts.
+   */
+  it('erreicht die erste Metropole, ohne ins Limit zu laufen', () => {
+    expect(steps).toBeLessThan(LIMIT);
+    expect(metropolisBuilding(state)).not.toBeNull();
+  });
+
+  it('traegt je Bereich hoechstens einen Aufsatz', () => {
+    for (const track of TRACK_IDS) {
+      const holders = Object.values(state.buildings).filter(
+        (building) => building.metropolis === track,
+      );
+      expect(holders.length).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('steht beim Halter auf Stufe 4 oder hoeher im erreichten Bereich', () => {
+    const building = metropolisBuilding(state);
+    expect(building).not.toBeNull();
+    if (building === null) return;
+
+    const track = building.metropolis;
+    expect(track).not.toBeNull();
+    if (track === null) return;
+
+    const holder = state.players.find((player) => player.id === building.owner);
+    expect(holder).toBeDefined();
+    if (holder === undefined) return;
+
+    expect(levelOf(holder, track)).toBeGreaterThanOrEqual(METROPOLIS_LEVEL);
+  });
+
+  it('gibt dem Halter die vier Siegpunkte aus Stadt und Aufsatz', () => {
+    const building = metropolisBuilding(state);
+    expect(building).not.toBeNull();
+    if (building === null) return;
+
+    expect(building.kind).toBe('city');
+
+    // Zwei Stadt- plus zwei Aufsatzpunkte - beide sind in `victoryPointsOf`
+    // enthalten, zusammen mit allem anderen, was der Halter sonst noch hat.
+    const expectedMinimum = CITIES_RULES.victoryPoints.city + CITIES_RULES.victoryPoints.metropolis;
+    expect(victoryPointsOf(state, building.owner)).toBeGreaterThanOrEqual(expectedMinimum);
   });
 
   it('haelt den Kartenbestand ueber die ganze Strecke', () => {
