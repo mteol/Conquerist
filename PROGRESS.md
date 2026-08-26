@@ -6185,3 +6185,196 @@ keine lokale Städte-&-Ritter-Partie zu starten war.
 aufwerten, versetzen, vertreiben, den Räuber vertreiben. Die Fahrstrecke bis zu
 Ende, der Kampf mit allen Sonderfällen, die Retter-Chips, die Stadtmauern und
 die Räubersperre.
+
+---
+
+## Etappe 10b — Ritter und Barbaren (2026-08-26, `etappe-10-staedte-und-ritter`)
+
+Vierzehn Commits von `1a161f2` (Bauteile und Zustand) bis `1e53766` (Bedienung). Der
+Plan steht in `docs/superpowers/plans/2026-08-26-etappe-10b-ritter-und-barbaren.md`, der
+Entwurf für alle fünf Teiletappen in
+`docs/superpowers/specs/2026-08-25-staedte-und-ritter-design.md`.
+
+Was jetzt geht: Ritterfiguren auf Kreuzungen — bauen, aktivieren, aufwerten, versetzen,
+vertreiben, ausweichen, den Räuber verjagen. Stadtmauern samt erweitertem
+Handkartenlimit. Die Fahrstrecke bis zur Küste, der Barbarenüberfall mit Retter-Chips
+und Städteverlust, und die Räubersperre bis zum ersten Überfall.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                 |
+| ------------------- | -------------------------------------------------------- |
+| `pnpm typecheck`    | grün                                                     |
+| `pnpm test`         | grün — shared 883 / 47, server 211 / 22, client 482 / 45 |
+| `pnpm build`        | grün, Client-Bundle 471 kB (139 kB gzip), CSS 57.2 kB    |
+| `pnpm format:check` | grün                                                     |
+
+Vorher: 703 / 211 / 459. Neu also 180 Tests in `shared`, keiner im Server, 23 im Client.
+Der Server hat keine bekommen, und das ist die Antwort auf eine Frage, die man beim
+Lesen stellt: die Erweiterung fügt keine Nachricht und keinen Handler hinzu. Sieben neue
+Zugarten reisen als `game.act` durch dasselbe Rohr wie alle anderen, weil das Protokoll
+seit Etappe 4 die Aktion validiert und nicht ihre Art aufzählt.
+
+### Getroffene Entscheidungen
+
+**Ritter stehen im `GameState`, nicht beim Spieler.** Die Belegung des Bretts steht
+einmal in `buildings`, `roads` und `knights` und nirgends sonst. Ein zweiter Ort, an dem
+ein Spieler seine Figuren führt, wäre eine zweite Wahrheit darüber, wer wo steht — und
+die erste Vertreibung, bei der eine Figur den Besitzer nicht wechselt, sondern den Ort,
+hätte beide auseinanderlaufen lassen.
+
+**`activatedOnTurn` ist eine Zahl und kein Flag „darf handeln".** Gezählt wird in
+`state.turn`, also in vollen Runden; weil jeder je Runde einmal handelt, heißt
+`activatedOnTurn < state.turn` genau „ab dem nächsten eigenen Zug". Ein abgeleiteter
+Wert, den man speichert, ist ein Wert, den man nachzuziehen vergißt — und der Fehler
+sähe aus wie ein Ritter, der zweimal im selben Zug handelt.
+
+**Je Ritterstufe ein eigener Vorrat** (`knight1` bis `knight3`), und Aufwerten verschiebt
+zwischen ihnen. Das ist keine Buchhaltung um ihrer selbst willen: in der Schachtel liegen
+je Person zwei Figuren jeder Stufe, und „wer schon zwei Starke stehen hat, kann nicht
+aufwerten" ist eine Regel, die man ohne getrennte Vorräte nicht prüfen kann.
+
+**`moveKnight` deckt das Vertreiben mit ab.** Ist das Ziel frei, ist es ein Versetzen;
+steht dort ein schwächerer fremder Ritter, ist es ein Vertreiben. Zwei Zugarten für
+denselben Zug — ein Ritter zieht auf eine Kreuzung — wären zwei Regelauslegungen darüber,
+wohin er ziehen darf, und die erste Abweichung fände niemand.
+
+**`pieceStock` und `piecesLeft` füllen auf, was fehlt.** Beide sind `z.partialRecord` mit
+auffüllendem `.transform`. Der Grund ist derselbe wie bei `cardAmounts` in 10a und hätte
+denselben Preis gehabt: seit Etappe 6 liegt der Startzustand jeder Partie als JSON in der
+Datenbank, dort stehen drei Bauteile, und seit dieser Etappe gibt es sieben. Ein neuer
+Pflichtschlüssel hätte beim nächsten Serverstart jede laufende Partie am Schema scheitern
+lassen.
+
+**`improvements` ist das einzige Stück 10c, das schon dasteht.** An der Festung (Politik,
+Stufe 3) hängt die dritte Ritterstufe. Ohne das Feld müßte 10b sie fest verneinen und 10c
+eine Verneinung wieder aufmachen — ein Zustand, in dem eine Regel zwischendurch lügt.
+
+**`handLimitOf` steht an einem Ort und rechnet für beide Seiten.** Es nimmt eine Quelle
+(`buildings` plus zwei Regelwerte) statt eines `GameState`, und damit rechnet der Browser
+mit derselben Funktion wie der Server. Mauern stehen offen am Brett; zwei Rechnungen für
+dieselbe Zahl liefen auseinander, und die Stelle, an der es auffiele, wäre ein Abwurf.
+
+**Die Datei mit dem Limit darf nicht zurückgreifen.** `robber.ts` zieht sein Limit aus
+`cities/walls.ts`, also zieht `walls.ts` nichts aus `robber.ts` — und bezahlt deshalb von
+Hand statt über `payFor` aus `build.ts`. Ein Ladezirkel wäre der Preis für drei
+gesparte Zeilen.
+
+**Im Client bekommen die Ritterzüge eigene Zielkarten.** Auf einer freien Kreuzung am
+eigenen Straßennetz sind eine Siedlung **und** ein Ritter zugleich möglich. Die
+`claim`-Sperre in `targetsFrom` gegen doppelte Belegung ist richtig und soll bleiben —
+zwei Bauwerke auf einem Knoten wären ein Widerspruch in den Regeln. Zwei verschiedene
+Zugarten am selben Ort sind keiner, sie brauchen nur zwei Karten.
+
+**Die Stärke eines Ritters steht in Fahnenspitzen und nicht in seiner Größe.** So
+unterscheidet das Spiel selbst, und es ist derselbe Grund, aus dem die Stadt kein
+größerer Punkt ist: Größe liest man nur im Vergleich, Spitzen kann man zählen. Aktiv und
+passiv unterscheidet ein Helm und keine Deckkraft — ein halbdurchsichtiger Ritter läse
+sich als „gesperrt", nicht als „ruht", und ein ruhender Ritter ist nicht gesperrt, ihm
+fehlt nur sein Getreide.
+
+**Die Mauer liegt vor der Stadt und nicht darunter.** Im Spiel ist sie ein Sockel, aber
+die Stadtsilhouette endet bei y 7 und darunter liegt genau eine Einheit — ein Sockel wäre
+ein Strich gewesen. Vor der Stadt gezeichnet nimmt das Zinnenband ihr das untere Drittel
+und läßt Dach und Giebel stehen, und genau so sieht eine ummauerte Stadt aus.
+
+**Die Ritterleiste fragt „was tun", das Brett antwortet „wo".** Dasselbe
+Zwei-Schritt-Muster wie beim Bauen, und aus demselben Grund: eine Figur ist auf dem Brett
+rund zwanzig Pixel groß, vier Knöpfe daran wären vier Trefferflächen unter Fingergröße,
+und drei davon wären fast immer gesperrt. An einem Basistisch erscheint die Leiste **gar
+nicht** — nicht grau, sondern weg, weil vier Knöpfe, die nie angehen, „gerade nicht" über
+etwas sagen, das dort nie geht.
+
+**Die Barbarenleiste stellt jetzt zwei Zahlen gegeneinander.** Das ist die Gewichtung,
+die 10a bewußt vertagt hat: sie entsteht erst mit dem Vergleich, und vorher gab es nur
+eine Zahl. Gleichstand zählt als „hält", weil die Regel so entscheidet. Die Farbe trägt
+dabei nicht allein (Designregel 7) — unter der Ritterzahl steht das Wort, das dasselbe
+sagt.
+
+**Zwei kurze Tabellen statt einer Grammatik.** `KNIGHT_LABELS` nennt die drei Stufen im
+Nominativ, `KNIGHT_LABELS_DATIVE` dieselben drei im Dativ („wertet ihn zum **Starken**
+Ritter auf"). Die zweite aus der ersten abzuleiten wäre eine Endungsregel für starke
+Adjektive — richtig für genau diese drei Wörter und falsch beim vierten.
+
+### Bewußte Abweichungen von Spec und Regelwerk
+
+Diese drei stehen wörtlich so schon im Kopf des Plans und gehören hierher, damit sie beim
+nächsten Lesen eine Entscheidung sind und kein Fehler.
+
+1. **`defenderPending` kommt nicht in 10b, sondern in 10d.** Bei Gleichstand nach einem
+   gewonnenen Barbarenkampf zieht laut Regel jeder Beteiligte eine Fortschrittskarte
+   seiner Wahl. In 10b gibt es keine Fortschrittsstapel. Eine Phase, die auf eine Wahl
+   zwischen drei Stapeln wartet, die es nicht gibt, hielte den Tisch für nichts an. Bei
+   Gleichstand passiert deshalb in 10b **nichts** — kein Chip, keine Karte.
+2. **Welche Stadt die Barbaren nehmen, entscheidet das Spiel und nicht der Spieler.** Die
+   Regel läßt die Wahl. Eine Wahl wäre eine Phase, und diese Phase läge **mitten im
+   Würfelwurf**: der Überfall wird vor den Erträgen abgehandelt, also müßte die
+   angehaltene Ertragsphase samt Wurfsumme in der Phase mitgeführt und danach fortgesetzt
+   werden. Das ist der Umbau des Wurfs für einen Fall, der je Partie höchstens zweimal
+   eintritt. Genommen wird deshalb nach einer festen Regel, die dieselbe Wahl trifft, die
+   ein Mensch träfe: **zuerst eine Stadt ohne Mauer**, darunter die mit dem **geringsten
+   Ertragswert** (Summe der Augenwahrscheinlichkeit der angrenzenden Zahlenchips), bei
+   Gleichstand die mit der kleineren Knoten-Id. Ein `cityLossPending` bleibt als offener
+   Punkt vermerkt.
+3. **Die Variante „mehr Taktik"** (jeder entscheidet, wie viele Ritter er einsetzt) ist
+   wie in der Spec nicht vorgesehen. Alle aktivierten Ritter kämpfen, alle werden danach
+   deaktiviert.
+
+### Abweichungen vom Plan
+
+**Aufgabe 2 war beim Aufsetzen dieser Etappe implementiert, aber ohne ihre Tests.**
+`state.test.ts` gab es nicht; die Prüfungen aus Schritt 1 der Aufgabe sind nachgeholt
+worden und liefen sofort grün, weil sie bestehenden Code prüfen. Kein roter Lauf also,
+und das ist ein Mangel dieser sechs Tests — was sie festhalten, haben sie nicht selbst
+erzwungen.
+
+**Aufgabe 11 (Verlaufssätze) ist mit Aufgabe 10 zusammengefallen, soweit der Compiler es
+verlangte.** `describeAction` schaltet erschöpfend über alle Zugarten; die sieben neuen
+Zweige mußten im selben Commit stehen wie die Zugarten selbst, sonst hätte der Baum nicht
+übersetzt. `describeAttack`, `playerView` und die Etiketten sind in ihrem eigenen Commit
+geblieben.
+
+**`legal.ts` hat in Aufgabe 6 einen leeren `displacePending`-Zweig bekommen** und in
+Aufgabe 10 seinen richtigen. Der leere trug seinen Grund als Kommentar: die Zugart, die
+er hätte aufzählen sollen, gab es zu diesem Zeitpunkt nicht, und eine Aufzählung von
+Zügen, die niemand schicken kann, wäre eine Auskunft ins Leere gewesen.
+
+**Die Testfixture `testGame` leitet Vorrat und Bank jetzt aus dem Regelwerk ab**, das ihr
+mitgegeben wird. Vorher standen dort fest die Werte des Basisspiels, und damit saß an
+jedem Städte-&-Ritter-Tisch niemand vor Ritterfiguren: jeder Ritterbau schlug mit
+`NO_PIECES_LEFT` fehl, ohne daß der Test danach gefragt hätte. Aufgefallen ist es an elf
+Testfehlern in Aufgabe 4, die alle dasselbe sagten.
+
+### Offene Punkte
+
+- **Der Durchgang im Browser (Aufgabe 16) hat nicht stattgefunden.** Die
+  Chrome-Erweiterung war in dieser Sitzung nicht verbunden. Geprüft sind Typen, Tests,
+  Build und Format — nicht das Bild, und diese Etappe bringt mehr neue Fläche als 10a,
+  wo derselbe Durchgang vier Befunde geliefert hat, die kein Test gefunden hat. Was
+  nachzusehen ist, steht als Liste in Aufgabe 16 des Plans; besonders: der `scale`-Faktor
+  `0.0225` am Ritter ist **gesetzt und nicht gemessen**, zwei Ritter auf benachbarten
+  Kreuzungen stehen näher beieinander als je zwei Bauwerke (für sie gilt keine
+  Abstandsregel), und die Bauleiste trägt jetzt fünf Bauteile statt drei.
+- **Ein `cityLossPending` fehlt** — siehe Abweichung 2. Wer die Wahl haben will, braucht
+  einen Wurf, der sich anhalten und fortsetzen läßt.
+- **Ritter- und Ausweichzüge sind unbefristet.** `deadlineOf` kennt sie nicht; wer in
+  `displacePending` weggeht, hält den Tisch an, bis jemand den Raum verläßt. Dieselbe
+  Lücke, die der Handel in Etappe 8 mit einer Frist geschlossen hat — und dieselbe Stelle
+  wäre die Antwort.
+- **Die Variante „mehr Taktik" fehlt** — siehe Abweichung 3.
+- **Die drei Stadttore des Ereigniswürfels werden weiterhin gelesen und tun nichts.** Die
+  Fortschrittskarten kommen in 10d.
+- **Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen.** Sie
+  stehen seit Etappe 8 offen, und die Ritterleiste ist seit dieser Etappe eine zweite
+  Reihe in derselben Ecke.
+- Die offenen Punkte aus Etappe 9 (Volume, HTTPS, Sicherung, Drossel im Wartebereich)
+  gelten unverändert weiter.
+
+### Nächste Etappe
+
+**Zuerst der Browser-Durchgang aus Aufgabe 16** — er gehört zu dieser Etappe und ist das
+einzige, was von ihr fehlt.
+
+Danach **10c — Stadtausbau und Metropolen.** Die drei Bereiche (Handel, Politik,
+Wissenschaft), die fünf Stufen je Bereich, die Metropolen und was sie schützen. Das Feld
+`improvements` steht dafür schon im Zustand.
