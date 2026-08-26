@@ -16,6 +16,7 @@ import {
   improvementCost,
   levelOf,
   progressThreshold,
+  stepInAccusative,
   stepName,
   stepWithArticle,
 } from './tracks.js';
@@ -49,6 +50,18 @@ describe('Die drei Bereiche', () => {
 
   it('wirft fuer eine Stufe, die es nicht gibt', () => {
     expect(() => stepName('trade', 6)).toThrow(RangeError);
+  });
+
+  it('beugt den maskulinen Artikel im Akkusativ, laesst feminin und neutral stehen', () => {
+    // "der Markt" und "der Rat Catans" sind die einzigen zwei maskulinen
+    // Namen unter den fuenfzehn Stufen - beide muessen zu "den" werden.
+    expect(stepInAccusative('trade', 1)).toBe('den Markt');
+    expect(stepInAccusative('politics', 5)).toBe('den Rat Catans');
+
+    // Feminin und neutral bleiben unveraendert - Nominativ und Akkusativ
+    // sehen dort gleich aus.
+    expect(stepInAccusative('trade', 3)).toBe('die Gilde');
+    expect(stepInAccusative('science', 4)).toBe('das Theater');
   });
 
   it('setzen Festung und Metropole auf die Stufen, an denen sie haengen', () => {

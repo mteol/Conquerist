@@ -308,10 +308,10 @@ describe('Verlaufssaetze fuer Staedte & Ritter', () => {
     );
   });
 
-  it('meldet den Stadtausbau mit dem Namen der erreichten Stufe', () => {
+  it('meldet den Stadtausbau mit dem Namen der erreichten Stufe - im Akkusativ', () => {
     const state = giving(withRoads(), 'p1', hand({ cloth: 1 }));
     expect(sentenceFor(state, { type: 'improveCity', player: 'p1', track: 'trade' })).toBe(
-      'p1 baut der Markt',
+      'p1 baut den Markt',
     );
   });
 

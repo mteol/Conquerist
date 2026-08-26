@@ -147,6 +147,36 @@ export function stepWithArticle(track: TrackId, level: number): string {
   return `${step.article} ${step.name}`;
 }
 
+/**
+ * Der bestimmte Artikel im Akkusativ - "der" wird zu "den", "die" und "das"
+ * bleiben stehen.
+ *
+ * Eine vollstaendige Tabelle mit drei Zeilen und keine abgeleitete Regel:
+ * dieselbe Kur wie bei `KNIGHT_LABELS_DATIVE` in `labels.ts`, nur kuerzer,
+ * weil der bestimmte Artikel im Deutschen nur drei Nominativformen kennt und
+ * die Abbildung auf den Akkusativ damit abschliessend ist.
+ */
+const ACCUSATIVE_ARTICLE: Readonly<Record<TrackStep['article'], string>> = {
+  der: 'den',
+  die: 'die',
+  das: 'das',
+};
+
+/**
+ * Dieselbe Stufe im Akkusativ: "den Markt", "die Gilde", "das Theater".
+ *
+ * `stepWithArticle` liefert den Nominativ - richtig als Subjekt ("... bringt
+ * den Aufsatz", "... steht schon"). Der Verlaufssatz braucht dagegen ein
+ * Akkusativobjekt ("X baut den Markt"): bei femininen und neutralen Namen
+ * sehen beide Formen gleich aus, bei den beiden maskulinen ("der Markt",
+ * "der Rat Catans") nicht. Das Tableau liest nur den blossen Namen
+ * (`stepName`) und braucht keinen von beiden.
+ */
+export function stepInAccusative(track: TrackId, level: number): string {
+  const step = stepAt(track, level);
+  return `${ACCUSATIVE_ARTICLE[step.article]} ${step.name}`;
+}
+
 /** Ab welcher roten Augenzahl abwaerts eine Fortschrittskarte faellt: Stufe + 1. */
 export function progressThreshold(level: number): number {
   return level + 1;

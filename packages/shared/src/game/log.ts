@@ -8,7 +8,7 @@ import {
 } from './labels.js';
 import { barbarianStrength } from './cities/barbarians.js';
 import { catanStrength } from './cities/knights.js';
-import { stepWithArticle } from './cities/tracks.js';
+import { stepInAccusative } from './cities/tracks.js';
 import type { GameAction } from './actions.js';
 import { yieldTotal } from './dice.js';
 import type { PlayerId } from './player.js';
@@ -202,7 +202,7 @@ function describeAction(
       const built =
         level === undefined
           ? `${who} baut eine Ausbaustufe`
-          : `${who} baut ${stepWithArticle(action.track, level)}`;
+          : `${who} baut ${stepInAccusative(action.track, level)}`;
       return action.metropolisAt === undefined ? built : `${built} und setzt darauf die Metropole`;
     }
 
