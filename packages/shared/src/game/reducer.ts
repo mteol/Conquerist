@@ -31,6 +31,13 @@ import {
 } from './developmentRules.js';
 import { distributeYield } from './yield.js';
 import { resolveEvent } from './cities/turn.js';
+import { applyActivateKnight, applyBuildKnight, applyUpgradeKnight } from './cities/knights.js';
+import {
+  applyChaseRobber,
+  applyMoveKnight,
+  applyPlaceDisplacedKnight,
+} from './cities/knightActions.js';
+import { applyBuildWall } from './cities/walls.js';
 
 /**
  * Der Reducer: `(state, action) => newState`, rein und ohne Seiteneffekte.
@@ -64,8 +71,20 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
     'playYearOfPlenty',
     'playMonopoly',
     'offerTrade',
+    'buildWall',
+    'buildKnight',
+    'activateKnight',
+    'upgradeKnight',
+    'moveKnight',
+    'chaseRobber',
     'endTurn',
   ],
+  /*
+   * Ein vertriebener Ritter sucht seinen Platz, und **nur** das geht jetzt.
+   * Der Tisch steht still, weil der Angreifer sonst weiterbaute, waehrend der
+   * Getroffene noch ueberlegt.
+   */
+  displacePending: ['placeDisplacedKnight'],
   tradePending: [
     'respondTrade',
     'counterTrade',
@@ -87,6 +106,9 @@ function actorFor(state: GameState): PlayerId | null {
   // Wie beim Abwerfen handeln mehrere: der Anbieter und seine Mitspieler. Wer
   // genau was darf, prueft `playerTrade.ts`.
   if (state.phase.kind === 'tradePending') return null;
+  // Den Vertriebenen setzt sein **Besitzer** um und nicht der Angreifer -
+  // deshalb ein ausdruecklicher Zweig und nicht der Spieler am Zug.
+  if (state.phase.kind === 'displacePending') return state.phase.owner;
   return state.players[state.currentPlayerIndex]?.id ?? null;
 }
 
@@ -145,6 +167,18 @@ function endTurn(state: GameState): ReduceResult {
     // Die Sperre gilt je Zug, nicht je Runde: der Naechste darf wieder eine
     // Karte spielen.
     developmentPlayed: false,
+    /*
+     * Ein Ritter steigt je Zug nur einmal. Zurueckgesetzt wird ueber **alle**
+     * Ritter und nicht nur die des Spielers am Zug: aufwerten kann ohnehin nur
+     * er, und eine Schleife ueber alle ist eine Bedingung weniger, die falsch
+     * sein kann.
+     */
+    knights: Object.fromEntries(
+      Object.entries(state.knights).map(([vertex, knight]) => [
+        vertex,
+        knight.upgradedThisTurn ? { ...knight, upgradedThisTurn: false } : knight,
+      ]),
+    ),
   });
 }
 
@@ -229,6 +263,20 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
       return applyBuildSettlement(state, action.player, action.vertex);
     case 'buildCity':
       return applyBuildCity(state, action.player, action.vertex);
+    case 'buildWall':
+      return applyBuildWall(state, action.player, action.vertex);
+    case 'buildKnight':
+      return applyBuildKnight(state, action.player, action.vertex);
+    case 'activateKnight':
+      return applyActivateKnight(state, action.player, action.vertex);
+    case 'upgradeKnight':
+      return applyUpgradeKnight(state, action.player, action.vertex);
+    case 'moveKnight':
+      return applyMoveKnight(state, action.player, action.from, action.to);
+    case 'chaseRobber':
+      return applyChaseRobber(state, action.player, action.vertex);
+    case 'placeDisplacedKnight':
+      return applyPlaceDisplacedKnight(state, action.player, action.vertex);
     case 'tradeWithBank':
       return applyTradeWithBank(state, action.player, action.give, action.receive);
     case 'buyDevelopmentCard':

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { CLASSIC_RULES } from '../rules/index.js';
-import { CENTER_VERTEX, FAR_VERTEX, testGame } from './fixtures.js';
-import { hasWon, victoryPointsOf } from './scoring.js';
+import { CENTER_VERTEX, FAR_VERTEX, gameWithCities, testGame } from './fixtures.js';
+import { hasWon, publicVictoryPointsOf, victoryPointsOf } from './scoring.js';
+import type { GameState } from './state.js';
 
 describe('victoryPointsOf', () => {
   it('zaehlt ohne Bauwerke null', () => {
@@ -100,5 +101,35 @@ describe('hasWon', () => {
     });
 
     expect(hasWon(state, 'p1')).toBe(true);
+  });
+});
+
+describe('Retter-Chips zaehlen mit', () => {
+  function withChips(count: number): GameState {
+    const base = gameWithCities();
+    return {
+      ...base,
+      players: base.players.map((player) =>
+        player.id === 'p1' ? { ...player, defenderPoints: count } : player,
+      ),
+    };
+  }
+
+  it('zaehlt jeden Chip einen Punkt', () => {
+    // Die Stadt aus `gameWithCities` bringt zwei, jeder Chip einen dazu.
+    expect(victoryPointsOf(withChips(0), 'p1')).toBe(2);
+    expect(victoryPointsOf(withChips(2), 'p1')).toBe(4);
+  });
+
+  it('zaehlt sie oeffentlich - sie liegen offen vor dem Spieler', () => {
+    expect(publicVictoryPointsOf(withChips(2), 'p1')).toBe(4);
+  });
+
+  it('bringt an einem Basistisch nichts, weil es dort keine Chips gibt', () => {
+    const basis = testGame({
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } },
+    });
+    expect(basis.rules.victoryPoints.defender).toBe(0);
+    expect(publicVictoryPointsOf(basis, 'p1')).toBe(2);
   });
 });

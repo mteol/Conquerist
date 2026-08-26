@@ -5,7 +5,16 @@ import { CLASSIC_RULES } from '../rules/index.js';
 import type { GameAction } from './actions.js';
 import { yieldTotal } from './dice.js';
 import { RuleViolationCode } from './errors.js';
-import { CENTER_EDGE, CENTER_VERTEX, FAR_VERTEX, giving, hand, testGame } from './fixtures.js';
+import {
+  CENTER_EDGE,
+  CENTER_VERTEX,
+  FAR_VERTEX,
+  gameWithCities,
+  giving,
+  hand,
+  testGame,
+} from './fixtures.js';
+import { recomputeLongestRoad } from './roads.js';
 import { reduce } from './reducer.js';
 import type { GameState } from './state.js';
 
@@ -398,5 +407,129 @@ describe('der Ritter vor dem Wurf', () => {
     expect(moved.ok).toBe(true);
     if (!moved.ok) return;
     expect(moved.state.phase).toEqual({ kind: 'main' });
+  });
+});
+
+/**
+ * Staedte & Ritter im Reducer: Phasen, Handelnder, Nacharbeit.
+ */
+describe('Die Ritterzuege im Reducer', () => {
+  const CHAIN = ['e:0,0|1,-1', 'e:0,-1|0,0', 'e:-1,0|0,0', 'e:-1,1|0,0'];
+  const CORNERS = [
+    'v:0,0|1,-1|1,0',
+    'v:0,-1|0,0|1,-1',
+    'v:-1,0|0,-1|0,0',
+    'v:-1,0|-1,1|0,0',
+    'v:-1,1|0,0|0,1',
+  ];
+
+  function ready(owner: string, level: 1 | 2 | 3 = 1) {
+    return { owner, level, active: true, activatedOnTurn: 1, upgradedThisTurn: false };
+  }
+
+  it('weist buildKnight vor dem Wurf ab', () => {
+    const state = gameWithCities({ phase: { kind: 'rollPending' } });
+    const result = reduce(state, { type: 'buildKnight', player: 'p1', vertex: CORNERS[0]! });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe(RuleViolationCode.WRONG_PHASE);
+  });
+
+  it('laesst den Besitzer den Vertriebenen setzen, auch wenn er nicht am Zug ist', () => {
+    const state = gameWithCities({
+      roads: Object.fromEntries(CHAIN.map((edge) => [edge, 'p2'])),
+      buildings: {},
+      knights: {},
+      phase: {
+        kind: 'displacePending',
+        owner: 'p2',
+        level: 1,
+        active: false,
+        activatedOnTurn: null,
+        from: CORNERS[0]!,
+      },
+    });
+
+    expect(state.players[state.currentPlayerIndex]?.id).toBe('p1');
+
+    const result = reduce(state, {
+      type: 'placeDisplacedKnight',
+      player: 'p2',
+      vertex: CORNERS[2]!,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.knights[CORNERS[2]!]?.owner).toBe('p2');
+    expect(result.state.phase.kind).toBe('main');
+  });
+
+  it('weist jemand anderen als den Besitzer ab', () => {
+    const state = gameWithCities({
+      roads: Object.fromEntries(CHAIN.map((edge) => [edge, 'p2'])),
+      buildings: {},
+      knights: {},
+      phase: {
+        kind: 'displacePending',
+        owner: 'p2',
+        level: 1,
+        active: false,
+        activatedOnTurn: null,
+        from: CORNERS[0]!,
+      },
+    });
+
+    const result = reduce(state, {
+      type: 'placeDisplacedKnight',
+      player: 'p1',
+      vertex: CORNERS[2]!,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe(RuleViolationCode.NOT_YOUR_TURN);
+  });
+
+  it('setzt beim Zugende upgradedThisTurn aller Ritter zurueck', () => {
+    const state = gameWithCities({
+      knights: {
+        [CORNERS[0]!]: { ...ready('p1', 2), upgradedThisTurn: true },
+        [CORNERS[4]!]: { ...ready('p2', 2), upgradedThisTurn: true },
+      },
+    });
+
+    const result = reduce(state, { type: 'endTurn', player: 'p1' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    for (const knight of Object.values(result.state.knights)) {
+      expect(knight.upgradedThisTurn).toBe(false);
+    }
+  });
+
+  it('rechnet die Laengste Handelsstrasse nach einem gesetzten Ritter neu', () => {
+    // p2 haelt eine Fuenferstrasse und damit den Titel; p1 setzt seinen Ritter
+    // mitten hinein und nimmt ihn ihm ab.
+    const RING = [...CHAIN, 'e:0,0|0,1'];
+    const base = gameWithCities({
+      buildings: {},
+      roads: {
+        ...Object.fromEntries(RING.map((edge) => [edge, 'p2'])),
+        // p1 braucht eine eigene Strasse an der Kreuzung, auf die er stellt.
+        'e:-1,0|0,-1': 'p1',
+      },
+      knights: {},
+    });
+
+    const withTitle = recomputeLongestRoad(base);
+    expect(withTitle.longestRoad.holder).toBe('p2');
+
+    const armed = giving(withTitle, 'p1', hand({ wool: 1, ore: 1 }));
+    const result = reduce(armed, { type: 'buildKnight', player: 'p1', vertex: CORNERS[2]! });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.longestRoad.holder).toBeNull();
   });
 });

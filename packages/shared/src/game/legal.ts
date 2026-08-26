@@ -21,6 +21,10 @@ import {
   canPlayDevelopmentCard,
 } from './developmentRules.js';
 import { DEVELOPMENT_CARD_IDS, type DevelopmentCardId } from './development.js';
+import { canActivateKnight, canBuildKnight, canUpgradeKnight } from './cities/knights.js';
+import { canChaseRobber, canMoveKnight, displacementTargets } from './cities/knightActions.js';
+import { reachableVertices } from './cities/knightMoves.js';
+import { canBuildWall } from './cities/walls.js';
 
 /**
  * Was dieser Spieler gerade tun darf.
@@ -148,14 +152,15 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
       return actions;
     }
 
-    case 'displacePending':
-      /*
-       * AUFGABE 10: hier stehen die Ausweichkreuzungen des Vertriebenen. Die
-       * Zugart `placeDisplacedKnight` gibt es noch nicht - sie entsteht mit
-       * dem Protokoll, und eine Aufzaehlung von Zuegen, die niemand schicken
-       * kann, waere eine Auskunft ins Leere.
-       */
-      return [];
+    case 'displacePending': {
+      // Nur der Besitzer setzt um, und nur auf freie Kreuzungen seines Netzes.
+      if (state.phase.owner !== player) return [];
+
+      for (const vertex of displacementTargets(state, player, state.phase.from)) {
+        actions.push({ type: 'placeDisplacedKnight', player, vertex });
+      }
+      return actions;
+    }
 
     case 'main': {
       if (state.players[state.currentPlayerIndex]?.id !== player) return [];
@@ -171,6 +176,37 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
         }
         if (canBuildCity(state, player, vertex) === null) {
           actions.push({ type: 'buildCity', player, vertex });
+        }
+        if (canBuildWall(state, player, vertex) === null) {
+          actions.push({ type: 'buildWall', player, vertex });
+        }
+        if (canBuildKnight(state, player, vertex) === null) {
+          actions.push({ type: 'buildKnight', player, vertex });
+        }
+        if (canActivateKnight(state, player, vertex) === null) {
+          actions.push({ type: 'activateKnight', player, vertex });
+        }
+        if (canUpgradeKnight(state, player, vertex) === null) {
+          actions.push({ type: 'upgradeKnight', player, vertex });
+        }
+        if (canChaseRobber(state, player, vertex) === null) {
+          actions.push({ type: 'chaseRobber', player, vertex });
+        }
+      }
+
+      /*
+       * Das Versetzen geht **je eigenem Ritter** ueber seine erreichbaren
+       * Kreuzungen und nicht ueber alle Knoten des Bretts: sonst liefe
+       * `canMoveKnight` je Aufruf rund tausendmal, und die Wegsuche darin
+       * jedesmal von vorn.
+       */
+      for (const [from, knight] of Object.entries(state.knights)) {
+        if (knight.owner !== player) continue;
+
+        for (const to of reachableVertices(state, player, from)) {
+          if (canMoveKnight(state, player, from, to) === null) {
+            actions.push({ type: 'moveKnight', player, from, to });
+          }
         }
       }
       /*

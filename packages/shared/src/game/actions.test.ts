@@ -75,3 +75,34 @@ describe('GameActionTypeSchema', () => {
     expect(GameActionTypeSchema.safeParse('buildCastle').success).toBe(false);
   });
 });
+
+describe('Die Zuege aus Staedte & Ritter', () => {
+  const knightActions = [
+    { type: 'buildWall', player: 'p1', vertex: 'v:0,0|1,-1|1,0' },
+    { type: 'buildKnight', player: 'p1', vertex: 'v:0,0|1,-1|1,0' },
+    { type: 'activateKnight', player: 'p1', vertex: 'v:0,0|1,-1|1,0' },
+    { type: 'upgradeKnight', player: 'p1', vertex: 'v:0,0|1,-1|1,0' },
+    { type: 'moveKnight', player: 'p1', from: 'v:0,0|1,-1|1,0', to: 'v:0,0|0,1|1,0' },
+    { type: 'chaseRobber', player: 'p1', vertex: 'v:0,0|1,-1|1,0' },
+    { type: 'placeDisplacedKnight', player: 'p2', vertex: 'v:0,0|0,1|1,0' },
+  ] as const;
+
+  it('parsen alle sieben', () => {
+    for (const action of knightActions) {
+      expect(GameActionSchema.parse(action)).toEqual(action);
+    }
+  });
+
+  it('stehen alle sieben in GAME_ACTION_TYPES', () => {
+    for (const action of knightActions) {
+      expect(GAME_ACTION_TYPES).toContain(action.type);
+      expect(GameActionTypeSchema.parse(action.type)).toBe(action.type);
+    }
+  });
+
+  it('verlangen beim Versetzen Herkunft und Ziel', () => {
+    expect(() =>
+      GameActionSchema.parse({ type: 'moveKnight', player: 'p1', from: 'v:0,0|1,-1|1,0' }),
+    ).toThrow();
+  });
+});

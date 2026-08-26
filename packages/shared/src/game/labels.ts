@@ -7,6 +7,7 @@ import {
   type ResourceId,
   type TerrainId,
 } from '../scenario/terrain.js';
+import type { KnightLevel } from './state.js';
 
 /**
  * Die deutschen Woerter zu den Ids.
@@ -62,6 +63,19 @@ export function harborLabel(harbor: HarborDefinition): string {
     ? `${harbor.ratio}:1 beliebig`
     : `${harbor.ratio}:1 ${RESOURCE_LABELS[harbor.resource]}`;
 }
+
+/**
+ * Wie die drei Ritterstufen heissen.
+ *
+ * Ueber den Zahlenwert und nicht ueber einen eigenen Namenstyp: die Stufe
+ * **ist** die Staerke, und ein zweiter Schluessel waere eine zweite Wahrheit
+ * darueber, wie stark ein Starker Ritter ist.
+ */
+export const KNIGHT_LABELS: Readonly<Record<KnightLevel, string>> = {
+  1: 'Einfacher Ritter',
+  2: 'Starker Ritter',
+  3: 'Mächtiger Ritter',
+};
 
 /** Zaehlt eine Kartenmenge auf; leer bleibt nicht leer, sondern wird benannt. */
 export function resourceList(amounts: CardAmounts): string {

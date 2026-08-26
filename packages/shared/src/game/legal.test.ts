@@ -9,6 +9,7 @@ import {
   NEXT_EDGE,
   TEST_PLAYERS,
   TEST_SCENARIO,
+  gameWithCities,
   giving,
   hand,
   testGame,
@@ -306,5 +307,122 @@ describe('Karten vor dem Wurf', () => {
 
   it('bietet dem Mitspieler vor dem Wurf nichts an', () => {
     expect(legalActions(withKnight(), 'p2')).toEqual([]);
+  });
+});
+
+/**
+ * Staedte & Ritter in der Aktionsliste.
+ *
+ * Geprueft wird beides: dass die Zuege dastehen, sobald sie gehen, und dass
+ * `reduce` jeden davon annimmt - sonst gaebe es wieder zwei Auslegungen.
+ */
+describe('legalActions an einem Staedte-&-Ritter-Tisch', () => {
+  const CHAIN = ['e:0,0|1,-1', 'e:0,-1|0,0', 'e:-1,0|0,0'];
+  const CORNERS = [
+    'v:0,0|1,-1|1,0',
+    'v:0,-1|0,0|1,-1',
+    'v:-1,0|0,-1|0,0',
+    'v:-1,0|-1,1|0,0',
+  ];
+
+  function typesFor(state: GameState, player: string): Set<string> {
+    return new Set(legalActions(state, player).map((action) => action.type));
+  }
+
+  it('bietet den Ritterbau an, sobald Strasse und Karten da sind', () => {
+    const state = giving(
+      gameWithCities({ roads: Object.fromEntries(CHAIN.map((edge) => [edge, 'p1'])) }),
+      'p1',
+      hand({ wool: 1, ore: 1 }),
+    );
+
+    expect(typesFor(state, 'p1').has('buildKnight')).toBe(true);
+    expectAllAccepted(state, 'p1');
+  });
+
+  it('bietet die Stadtmauer an, sobald der Lehm da ist', () => {
+    const state = giving(gameWithCities(), 'p1', hand({ brick: 2 }));
+
+    expect(typesFor(state, 'p1').has('buildWall')).toBe(true);
+    expectAllAccepted(state, 'p1');
+  });
+
+  it('bietet Aktivieren und Aufwerten an einem stehenden Ritter an', () => {
+    const passive = {
+      owner: 'p1',
+      level: 1 as const,
+      active: false,
+      activatedOnTurn: null,
+      upgradedThisTurn: false,
+    };
+    const state = giving(
+      gameWithCities({ knights: { [CORNERS[3]!]: passive } }),
+      'p1',
+      hand({ grain: 1, wool: 1, ore: 1 }),
+    );
+
+    const types = typesFor(state, 'p1');
+    expect(types.has('activateKnight')).toBe(true);
+    expect(types.has('upgradeKnight')).toBe(true);
+    expectAllAccepted(state, 'p1');
+  });
+
+  it('bietet Versetzen und Raeuberjagd an einem handlungsbereiten Ritter an', () => {
+    const ready = {
+      owner: 'p1',
+      level: 1 as const,
+      active: true,
+      activatedOnTurn: 1,
+      upgradedThisTurn: false,
+    };
+    const state = gameWithCities({
+      buildings: {},
+      roads: Object.fromEntries(CHAIN.map((edge) => [edge, 'p1'])),
+      knights: { [CORNERS[0]!]: ready },
+      barbarians: { position: 0, attacks: 1 },
+      robber: '0,0',
+      turn: 2,
+    });
+
+    const types = typesFor(state, 'p1');
+    expect(types.has('moveKnight')).toBe(true);
+    expect(types.has('chaseRobber')).toBe(true);
+    expectAllAccepted(state, 'p1');
+  });
+
+  it('nennt an einem Basistisch keinen einzigen davon', () => {
+    const state = giving(
+      testGame({
+        buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } },
+        roads: Object.fromEntries(CHAIN.map((edge) => [edge, 'p1'])),
+      }),
+      'p1',
+      hand({ brick: 4, lumber: 4, wool: 4, ore: 4, grain: 4 }),
+    );
+
+    const types = typesFor(state, 'p1');
+    for (const type of ['buildKnight', 'buildWall', 'activateKnight', 'upgradeKnight', 'moveKnight', 'chaseRobber']) {
+      expect(types.has(type)).toBe(false);
+    }
+  });
+
+  it('nennt in displacePending nur das Ausweichen, und nur fuer den Besitzer', () => {
+    const state = gameWithCities({
+      buildings: {},
+      roads: Object.fromEntries(CHAIN.map((edge) => [edge, 'p2'])),
+      knights: {},
+      phase: {
+        kind: 'displacePending',
+        owner: 'p2',
+        level: 1,
+        active: false,
+        activatedOnTurn: null,
+        from: CORNERS[0]!,
+      },
+    });
+
+    expect(typesFor(state, 'p2')).toEqual(new Set(['placeDisplacedKnight']));
+    expect(legalActions(state, 'p1')).toEqual([]);
+    expectAllAccepted(state, 'p2');
   });
 });

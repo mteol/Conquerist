@@ -166,6 +166,37 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   /** Rueckkehr waehrend desselben Angebots. **Nur vom Server.** */
   z.object({ ...Base, type: z.literal('rejoinTrade') }),
 
+  /*
+   * Staedte & Ritter. Alle sieben tragen einen Knoten oder zwei - eine
+   * Ritterfigur steht auf einer Kreuzung wie eine Siedlung, und das Versetzen
+   * nennt Herkunft und Ziel, weil ein Spieler mehrere Ritter haben kann.
+   */
+  /** Eine Stadtmauer unter die eigene Stadt legen. */
+  z.object({ ...Base, type: z.literal('buildWall'), vertex: z.string() }),
+  /** Einen Einfachen Ritter aufstellen - passiv, ohne Helm. */
+  z.object({ ...Base, type: z.literal('buildKnight'), vertex: z.string() }),
+  /** Ihm den Helm aufsetzen. Handeln darf er ab dem naechsten Zug. */
+  z.object({ ...Base, type: z.literal('activateKnight'), vertex: z.string() }),
+  /** Ihn eine Stufe steigen lassen. */
+  z.object({ ...Base, type: z.literal('upgradeKnight'), vertex: z.string() }),
+  /**
+   * Ihn versetzen - und dabei einen schwaecheren fremden Ritter vertreiben.
+   *
+   * **Eine Aktion und nicht zwei.** Ob es ein Zug oder ein Angriff wird,
+   * entscheidet, was auf `to` steht; zwei Zugarten waeren zwei Auslegungen
+   * derselben Frage, wohin ein Ritter ziehen darf.
+   */
+  z.object({ ...Base, type: z.literal('moveKnight'), from: z.string(), to: z.string() }),
+  /**
+   * Den Raeuber vom Nachbarfeld verjagen.
+   *
+   * Ohne Zielfeld und ohne Opfer - das kommt wie beim Ritterkarten-Zug als
+   * eigener `moveRobber`, sobald die Phase auf `robberPending` steht.
+   */
+  z.object({ ...Base, type: z.literal('chaseRobber'), vertex: z.string() }),
+  /** Den eigenen vertriebenen Ritter neu setzen. */
+  z.object({ ...Base, type: z.literal('placeDisplacedKnight'), vertex: z.string() }),
+
   z.object({ ...Base, type: z.literal('endTurn') }),
 ]);
 
@@ -210,6 +241,13 @@ export const GAME_ACTION_TYPES = [
   'timeout',
   'dropFromTrade',
   'rejoinTrade',
+  'buildWall',
+  'buildKnight',
+  'activateKnight',
+  'upgradeKnight',
+  'moveKnight',
+  'chaseRobber',
+  'placeDisplacedKnight',
   'endTurn',
 ] as const satisfies readonly GameActionType[];
 

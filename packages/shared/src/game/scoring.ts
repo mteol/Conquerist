@@ -34,6 +34,15 @@ export function publicVictoryPointsOf(state: GameState, player: PlayerId): numbe
   if (state.longestRoad.holder === player) points += values.longestRoad;
   if (state.largestArmy.holder === player) points += values.largestArmy;
 
+  /*
+   * Die Siegpunkt-Chips "Retter Catans" liegen offen vor dem Spieler - deshalb
+   * **hier** und nicht erst in `victoryPointsOf`. Wer sie nicht mitzaehlt,
+   * kann den Punktestand am Tisch nicht nachrechnen. An einem Basistisch ist
+   * `defenderPoints` null und `values.defender` ebenfalls.
+   */
+  const hand = state.players.find((entry) => entry.id === player);
+  points += (hand?.defenderPoints ?? 0) * values.defender;
+
   return points;
 }
 

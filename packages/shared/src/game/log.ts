@@ -1,5 +1,7 @@
 import type { Seat } from '../seats.js';
-import { CARD_LABELS, RESOURCE_LABELS, resourceList } from './labels.js';
+import { CARD_LABELS, KNIGHT_LABELS, RESOURCE_LABELS, resourceList } from './labels.js';
+import { barbarianStrength } from './cities/barbarians.js';
+import { catanStrength } from './cities/knights.js';
 import type { GameAction } from './actions.js';
 import { yieldTotal } from './dice.js';
 import type { PlayerId } from './player.js';
@@ -77,9 +79,14 @@ function describeAction(
         return `Auftakt: ${who} würfelt ${augen}`;
       }
 
+      const attack = describeAttack(before, after, nameOf);
       const gains = describeGains(before, after, nameOf);
       const total = yieldTotal(after.rules.dice, roll);
-      return `${who} würfelt ${total}${gains === '' ? '' : ` - ${gains}`}`;
+
+      // Der Ueberfall steht vor den Ertraegen, weil er ihnen vorausgeht - eine
+      // gefallene Stadt schuettet im selben Wurf nichts mehr aus.
+      const tail = [attack, gains === '' ? null : gains].filter((part) => part !== null);
+      return `${who} würfelt ${total}${tail.length === 0 ? '' : ` - ${tail.join(' - ')}`}`;
     }
 
     case 'discard':
@@ -139,9 +146,89 @@ function describeAction(
     case 'rejoinTrade':
       return `${who} ist zurück und kann noch antworten`;
 
+    case 'buildWall':
+      return `${who} baut eine Stadtmauer`;
+    case 'buildKnight':
+      return `${who} baut einen Ritter`;
+    case 'activateKnight':
+      return `${who} setzt einem Ritter den Helm auf`;
+    case 'upgradeKnight': {
+      // Die neue Stufe steht **nachher** - vorher waere es die alte, und der
+      // Satz soll sagen, was daraus geworden ist.
+      const level = after.knights[action.vertex]?.level;
+      return level === undefined
+        ? `${who} wertet einen Ritter auf`
+        : `${who} wertet einen Ritter zum ${KNIGHT_LABELS[level]} auf`;
+    }
+    case 'moveKnight': {
+      /*
+       * Ob versetzt oder vertrieben wurde, entscheidet der **Uebergang** und
+       * nicht die Absicht: stand am Ziel vorher ein fremder Ritter, war es ein
+       * Angriff. Dieselbe Haltung wie im Kopf dieser Datei.
+       */
+      const displaced = before.knights[action.to];
+      return displaced === undefined || displaced.owner === action.player
+        ? `${who} versetzt einen Ritter`
+        : `${who} vertreibt ${nameOf(displaced.owner)}s Ritter`;
+    }
+    case 'chaseRobber':
+      return `${who} schickt einen Ritter hinter dem Räuber her`;
+    case 'placeDisplacedKnight':
+      return `${who} weicht mit seinem Ritter aus`;
+
     case 'endTurn':
       return `${who} beendet den Zug`;
   }
+}
+
+/**
+ * Was der Barbarenueberfall gebracht hat - `null`, wenn keiner stattfand.
+ *
+ * **Aus dem Uebergang gelesen und nicht aus einem Ereignis**: dieselbe
+ * Begruendung, die im Kopf dieser Datei steht. Dass ein Ueberfall war, sagt der
+ * gestiegene `attacks`-Zaehler; wie er ausging, sagen die Chips und die
+ * verschwundenen Staedte.
+ */
+function describeAttack(
+  before: GameState,
+  after: GameState,
+  nameOf: (id: PlayerId) => string,
+): string | null {
+  const then = before.barbarians;
+  const now = after.barbarians;
+  if (then === null || now === null || now.attacks === then.attacks) return null;
+
+  const barbarians = barbarianStrength(before);
+  const defenders = catanStrength(before);
+
+  const saved = after.players.find((player, index) => {
+    const previous = before.players[index];
+    return previous !== undefined && player.defenderPoints > previous.defenderPoints;
+  });
+
+  const lost = after.players
+    .filter((player, index) => {
+      const previous = before.players[index];
+      return previous !== undefined && cityCount(after, player.id) < cityCount(before, player.id);
+    })
+    .map((player) => nameOf(player.id));
+
+  const score = `(${defenders} gegen ${barbarians})`;
+
+  if (defenders >= barbarians) {
+    const held = `die Barbaren landen, die Ritter halten ${score}`;
+    return saved === undefined ? held : `${held} - ${nameOf(saved.id)} wird Retter Catans`;
+  }
+
+  const beaten = `die Barbaren siegen ${score}`;
+  return lost.length === 0 ? beaten : `${beaten} - ${lost.join(' und ')} verliert eine Stadt`;
+}
+
+/** Wie viele Staedte dieser Spieler gerade haelt. */
+function cityCount(state: GameState, player: PlayerId): number {
+  return Object.values(state.buildings).filter(
+    (building) => building.owner === player && building.kind === 'city',
+  ).length;
 }
 
 /** Wer beim Wurf wie viele Karten bekommen hat - aus dem Unterschied gelesen. */

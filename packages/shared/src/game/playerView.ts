@@ -11,7 +11,8 @@ import { PhaseSchema } from './phase.js';
 import { PlayerIdSchema } from './player.js';
 import { countCards } from './cards.js';
 import { publicVictoryPointsOf, victoryPointsOf } from './scoring.js';
-import { BarbarianStateSchema, BuildingSchema } from './state.js';
+import { catanStrength } from './cities/knights.js';
+import { BarbarianStateSchema, BuildingSchema, KnightSchema } from './state.js';
 import type { GameState } from './state.js';
 
 /**
@@ -49,6 +50,12 @@ export const PlayerInViewSchema = z.object({
   developmentCount: z.number().int().min(0),
   /** Ausgespielte Ritter. Oeffentlich - sie liegen offen. */
   playedKnights: z.number().int().min(0),
+  /**
+   * Siegpunkt-Chips "Retter Catans". **Oeffentlich** - sie liegen offen vor
+   * dem Spieler, und wer sie nicht sieht, kann den Punktestand am Tisch nicht
+   * nachrechnen.
+   */
+  defenderPoints: z.number().int().min(0).default(0),
   piecesLeft: z.record(z.string(), z.number().int().min(0)),
   victoryPoints: z.number().int().min(0),
 });
@@ -68,6 +75,11 @@ export const PlayerViewSchema = z.object({
   phase: PhaseSchema,
   buildings: z.record(z.string(), BuildingSchema),
   roads: z.record(z.string(), PlayerIdSchema),
+  /**
+   * Wer wo steht. **Oeffentlich** - Ritterfiguren stehen sichtbar auf dem
+   * Brett, genau wie Siedlungen und Staedte.
+   */
+  knights: z.record(z.string(), KnightSchema).default({}),
   robber: z.string(),
   /**
    * Das Barbarenschiff. **Oeffentlich** - es steht fuer alle sichtbar am
@@ -75,6 +87,15 @@ export const PlayerViewSchema = z.object({
    * sondern die Spannung der ganzen Erweiterung.
    */
   barbarians: BarbarianStateSchema.nullable().default(null),
+  /**
+   * Die Staerke der Ritter Catans - ueber **alle** Spieler zusammen.
+   *
+   * Mitgeschickt und nicht im Browser gerechnet, obwohl `knights` daneben
+   * steht: gegen die Barbaren zaehlt eine einzige Zahl, und sie steht in der
+   * Barbarenleiste neben der Staerke des Heeres. Zwei Rechnungen fuer denselben
+   * Vergleich liefen auseinander.
+   */
+  defenders: z.number().int().min(0).default(0),
   bank: CardAmountsSchema,
   longestRoad: z.object({
     holder: PlayerIdSchema.nullable(),
@@ -170,6 +191,7 @@ export function playerViewOf(
         developmentCards: player.id === viewer ? player.developmentCards : null,
         developmentCount: player.developmentCards.length,
         playedKnights: player.playedKnights,
+        defenderPoints: player.defenderPoints,
         piecesLeft: player.piecesLeft,
         /*
          * Bei sich selbst die volle Zahl, bei den anderen nur die oeffentliche -
@@ -185,8 +207,10 @@ export function playerViewOf(
     phase: state.phase,
     buildings: state.buildings,
     roads: state.roads,
+    knights: state.knights,
     robber: state.robber,
     barbarians: state.barbarians,
+    defenders: catanStrength(state),
     bank: state.bank,
     longestRoad: state.longestRoad,
     largestArmy: state.largestArmy,
