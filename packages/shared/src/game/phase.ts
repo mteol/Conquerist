@@ -16,6 +16,9 @@ import { TradeOfferSchema, TradeResponseSchema } from './tradeOffer.js';
  *                              │          (Angebot liegt, Zug steht still)
  *                              ▼
  *                       robberPending ──► main
+ *
+ * main ──► displacePending ──► main
+ * (ein Ritter wurde vertrieben und sucht seinen Platz)
  * ```
  *
  * Ohne diese Phasen muesste der Reducer bei jeder eingehenden Aktion neu
@@ -81,6 +84,30 @@ export const PhaseSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('robberPending'),
     resume: z.enum(['main', 'rollPending']),
+  }),
+  /**
+   * Ein vertriebener Ritter sucht seinen neuen Platz.
+   *
+   * Umgesetzt wird er von **seinem Besitzer** und nicht vom Angreifer -
+   * deshalb haelt die Phase, wem er gehoert, und `actorFor` gibt genau ihn
+   * zurueck. Sein Zustand reist mit: Stufe und Helm bleiben, nur der Ort
+   * wechselt.
+   *
+   * `from` ist die Kreuzung, von der er vertrieben wurde. Sie steht hier, weil
+   * die Ausweichkreuzung in seinem eigenen Netz liegen muss - gerechnet von
+   * dort, wo er stand, und nicht von irgendwo.
+   *
+   * Gibt es keinen Platz, oeffnet die Phase gar nicht erst: der Ritter kommt
+   * vom Brett. Eine Phase, die auf eine Wahl ohne Moeglichkeiten wartet, haelt
+   * den Tisch fuer nichts an.
+   */
+  z.object({
+    kind: z.literal('displacePending'),
+    owner: PlayerIdSchema,
+    level: z.number().int().min(1).max(3),
+    active: z.boolean(),
+    activatedOnTurn: z.number().int().min(0).nullable(),
+    from: z.string(),
   }),
   /** Bauen, handeln, Zug beenden. */
   z.object({ kind: z.literal('main') }),

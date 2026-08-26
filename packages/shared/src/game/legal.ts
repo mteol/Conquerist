@@ -148,6 +148,15 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
       return actions;
     }
 
+    case 'displacePending':
+      /*
+       * AUFGABE 10: hier stehen die Ausweichkreuzungen des Vertriebenen. Die
+       * Zugart `placeDisplacedKnight` gibt es noch nicht - sie entsteht mit
+       * dem Protokoll, und eine Aufzaehlung von Zuegen, die niemand schicken
+       * kann, waere eine Auskunft ins Leere.
+       */
+      return [];
+
     case 'main': {
       if (state.players[state.currentPlayerIndex]?.id !== player) return [];
 

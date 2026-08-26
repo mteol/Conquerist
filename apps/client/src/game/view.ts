@@ -211,6 +211,10 @@ function phaseTextOf(view: PlayerView): string {
       return `Sieben: ${view.phase.pending.map((id) => nameOf(id)).join(' und ')} muss abwerfen`;
     case 'robberPending':
       return `${currentName()} versetzt den Räuber`;
+    case 'displacePending':
+      // Nicht der Angreifer setzt ihn um, sondern sein Besitzer - deshalb
+      // steht hier `owner` und nicht `currentName()`.
+      return `${nameOf(view.phase.owner)} setzt seinen vertriebenen Ritter neu`;
     case 'main':
       return `${currentName()} ist am Zug`;
     case 'tradePending':

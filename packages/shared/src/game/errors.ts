@@ -53,8 +53,21 @@ export const RuleViolationCode = {
   /** Je Zug steigt ein Ritter nur einmal. */
   KNIGHT_ALREADY_UPGRADED: 'KNIGHT_ALREADY_UPGRADED',
 
+  /** Dorthin fuehrt kein eigener Weg. */
+  KNIGHT_UNREACHABLE: 'KNIGHT_UNREACHABLE',
+  /** Dort steht etwas, das sich nicht vertreiben laesst. */
+  KNIGHT_TARGET_TAKEN: 'KNIGHT_TARGET_TAKEN',
+  /** Der fremde Ritter dort ist mindestens ebenso stark. */
+  KNIGHT_TOO_WEAK: 'KNIGHT_TOO_WEAK',
+  /** Dieser Spieler setzt gerade keinen vertriebenen Ritter. */
+  NOT_DISPLACING: 'NOT_DISPLACING',
+
   /** Der Raeuber steht schon auf diesem Feld. */
   ROBBER_SAME_HEX: 'ROBBER_SAME_HEX',
+  /** Der Raeuber steht an keinem der drei Felder dieser Kreuzung. */
+  ROBBER_NOT_ADJACENT: 'ROBBER_NOT_ADJACENT',
+  /** Der Raeuber bleibt bis zum ersten Barbarenueberfall stehen. */
+  ROBBER_LOCKED: 'ROBBER_LOCKED',
   /** Das Opfer hat am Raeuberfeld nichts gebaut oder keine Karten. */
   INVALID_VICTIM: 'INVALID_VICTIM',
   /** Es gaebe ein Opfer, aber es wurde keines benannt. */
