@@ -1,5 +1,5 @@
 import type { Seat } from '../seats.js';
-import { CARD_LABELS, KNIGHT_LABELS, RESOURCE_LABELS, resourceList } from './labels.js';
+import { CARD_LABELS, KNIGHT_LABELS_DATIVE, RESOURCE_LABELS, resourceList } from './labels.js';
 import { barbarianStrength } from './cities/barbarians.js';
 import { catanStrength } from './cities/knights.js';
 import type { GameAction } from './actions.js';
@@ -158,7 +158,7 @@ function describeAction(
       const level = after.knights[action.vertex]?.level;
       return level === undefined
         ? `${who} wertet einen Ritter auf`
-        : `${who} wertet einen Ritter zum ${KNIGHT_LABELS[level]} auf`;
+        : `${who} wertet einen Ritter zum ${KNIGHT_LABELS_DATIVE[level]} auf`;
     }
     case 'moveKnight': {
       /*

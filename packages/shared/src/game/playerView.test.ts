@@ -227,3 +227,42 @@ describe('das Barbarenschiff in der Sicht', () => {
     expect(PlayerViewSchema.parse(view).barbarians).toBeNull();
   });
 });
+
+describe('Ritter in der Sicht', () => {
+  const A = 'v:0,0|1,-1|1,0';
+  const B = 'v:0,0|0,1|1,0';
+
+  function knight(owner: string, level: 1 | 2 | 3, active: boolean) {
+    return { owner, level, active, activatedOnTurn: active ? 1 : null, upgradedThisTurn: false };
+  }
+
+  const board = gameWithCities({
+    knights: { [A]: knight('p1', 3, true), [B]: knight('p2', 2, false) },
+  });
+
+  it('traegt die Ritter unveraendert weiter - sie stehen offen auf dem Brett', () => {
+    const view = playerViewOf(board, 'p2', seats, 1);
+    expect(view.knights).toEqual(board.knights);
+  });
+
+  it('nennt die Staerke der Ritter Catans ueber alle Spieler', () => {
+    // Nur der aktivierte Dreier zaehlt, der passive Zweier nicht.
+    expect(playerViewOf(board, 'p1', seats, 1).defenders).toBe(3);
+  });
+
+  it('zeigt die Retter-Chips bei jedem Spieler und nicht nur beim Empfaenger', () => {
+    const withChips: GameState = {
+      ...board,
+      players: board.players.map((player) =>
+        player.id === 'p3' ? { ...player, defenderPoints: 2 } : player,
+      ),
+    };
+
+    const view = playerViewOf(withChips, 'p1', seats, 1);
+    expect(view.players.find((player) => player.id === 'p3')?.defenderPoints).toBe(2);
+  });
+
+  it('geht durch das eigene Schema', () => {
+    expect(() => PlayerViewSchema.parse(playerViewOf(board, 'p1', seats, 1))).not.toThrow();
+  });
+});

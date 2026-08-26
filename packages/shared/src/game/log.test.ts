@@ -8,7 +8,9 @@ import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
 import { describeTransition } from './log.js';
 import { yieldTotal } from './dice.js';
-import { afterOpening, CENTER_VERTEX, giving, hand, testGame } from './fixtures.js';
+import { afterOpening, CENTER_VERTEX, gameWithCities, giving, hand, testGame } from './fixtures.js';
+import { CITIES_RULES } from '../rules/cities.js';
+import { createRng } from '../random/index.js';
 import type { GameAction } from './actions.js';
 import type { GameState } from './state.js';
 
@@ -184,5 +186,192 @@ describe('der Verlaufssatz im Auftakt', () => {
     // Entweder ist entschieden oder es wird gestochen - der Satz muss beides
     // sagen koennen, sonst steht am Ende einer Runde nur eine nackte Zahl.
     expect(text).toMatch(/beginnt|Stechen/);
+  });
+});
+
+/**
+ * Die Ritter im Verlauf.
+ *
+ * `describeTransition` liest aus dem Uebergang und nicht aus der Absicht -
+ * deshalb bekommt jeder Fall einen echten Vorher- und einen echten
+ * Nachher-Zustand, gebaut mit denselben `apply…`-Funktionen wie im Spiel.
+ */
+describe('Verlaufssaetze fuer Staedte & Ritter', () => {
+  const CHAIN = ['e:0,0|1,-1', 'e:0,-1|0,0', 'e:-1,0|0,0'];
+  const CORNERS = ['v:0,0|1,-1|1,0', 'v:0,-1|0,0|1,-1', 'v:-1,0|0,-1|0,0', 'v:-1,0|-1,1|0,0'];
+
+  function knight(owner: string, level: 1 | 2 | 3, active: boolean, turn = 1) {
+    return {
+      owner,
+      level,
+      active,
+      activatedOnTurn: active ? turn : null,
+      upgradedThisTurn: false,
+    };
+  }
+
+  /** Der Satz zu einem Zug, gefahren durch den echten Reducer. */
+  function sentenceFor(state: GameState, action: GameAction): string {
+    const result = reduce(state, action);
+    if (!result.ok) throw new Error(`${action.type}: ${result.error.message}`);
+    return describeTransition(state, action, result.state, testSeats);
+  }
+
+  const withRoads = (extra: Partial<GameState> = {}): GameState =>
+    gameWithCities({ roads: Object.fromEntries(CHAIN.map((edge) => [edge, 'p1'])), ...extra });
+
+  it('meldet den Ritterbau', () => {
+    const state = giving(withRoads(), 'p1', hand({ wool: 1, ore: 1 }));
+    expect(sentenceFor(state, { type: 'buildKnight', player: 'p1', vertex: CORNERS[3]! })).toBe(
+      'p1 baut einen Ritter',
+    );
+  });
+
+  it('meldet die Stadtmauer', () => {
+    const state = giving(withRoads(), 'p1', hand({ brick: 2 }));
+    expect(sentenceFor(state, { type: 'buildWall', player: 'p1', vertex: CENTER_VERTEX })).toBe(
+      'p1 baut eine Stadtmauer',
+    );
+  });
+
+  it('meldet den Helm', () => {
+    const state = giving(
+      withRoads({ knights: { [CORNERS[3]!]: knight('p1', 1, false) } }),
+      'p1',
+      hand({ grain: 1 }),
+    );
+    expect(sentenceFor(state, { type: 'activateKnight', player: 'p1', vertex: CORNERS[3]! })).toBe(
+      'p1 setzt einem Ritter den Helm auf',
+    );
+  });
+
+  it('meldet die neue Stufe beim Aufwerten', () => {
+    const state = giving(
+      withRoads({ knights: { [CORNERS[3]!]: knight('p1', 1, false) } }),
+      'p1',
+      hand({ wool: 1, ore: 1 }),
+    );
+    expect(sentenceFor(state, { type: 'upgradeKnight', player: 'p1', vertex: CORNERS[3]! })).toBe(
+      'p1 wertet einen Ritter zum Starken Ritter auf',
+    );
+  });
+
+  it('meldet das Versetzen', () => {
+    const state = withRoads({
+      buildings: {},
+      knights: { [CORNERS[0]!]: knight('p1', 1, true) },
+      turn: 2,
+    });
+    const move = { type: 'moveKnight', player: 'p1', from: CORNERS[0]!, to: CORNERS[2]! } as const;
+    expect(sentenceFor(state, move)).toBe('p1 versetzt einen Ritter');
+  });
+
+  it('meldet das Vertreiben mit dem Namen des Getroffenen', () => {
+    const state = withRoads({
+      buildings: {},
+      knights: { [CORNERS[0]!]: knight('p1', 2, true), [CORNERS[2]!]: knight('p2', 1, false) },
+      turn: 2,
+    });
+    const move = { type: 'moveKnight', player: 'p1', from: CORNERS[0]!, to: CORNERS[2]! } as const;
+    expect(sentenceFor(state, move)).toBe('p1 vertreibt p2s Ritter');
+  });
+
+  it('meldet das Ausweichen', () => {
+    const state = gameWithCities({
+      buildings: {},
+      roads: Object.fromEntries(CHAIN.map((edge) => [edge, 'p2'])),
+      knights: {},
+      phase: {
+        kind: 'displacePending',
+        owner: 'p2',
+        level: 1,
+        active: false,
+        activatedOnTurn: null,
+        from: CORNERS[0]!,
+      },
+    });
+    const place = { type: 'placeDisplacedKnight', player: 'p2', vertex: CORNERS[2]! } as const;
+    expect(sentenceFor(state, place)).toBe('p2 weicht mit seinem Ritter aus');
+  });
+
+  it('meldet die Raeuberjagd', () => {
+    const state = withRoads({
+      knights: { [CORNERS[0]!]: knight('p1', 1, true) },
+      barbarians: { position: 0, attacks: 1 },
+      robber: '0,0',
+      turn: 2,
+    });
+    expect(sentenceFor(state, { type: 'chaseRobber', player: 'p1', vertex: CORNERS[0]! })).toBe(
+      'p1 schickt einen Ritter hinter dem Räuber her',
+    );
+  });
+});
+
+/**
+ * Der Ueberfall haengt am Wurfsatz.
+ *
+ * Der Wurf entsteht aus dem Zufallszustand, also wird ein Seed gesucht, bei dem
+ * eine Schiffsseite faellt - der Rest des Satzes folgt aus dem Uebergang.
+ */
+describe('Der Ueberfall im Verlauf', () => {
+  function landingSentence(state: GameState): string | null {
+    for (let seed = 0; seed < 200; seed += 1) {
+      const ready: GameState = {
+        ...state,
+        phase: { kind: 'rollPending' },
+        rng: createRng(`ueberfall-${seed}`),
+      };
+      const action = { type: 'rollDice', player: 'p1' } as const;
+      const result = reduce(ready, action);
+      if (!result.ok) continue;
+
+      const face = result.state.lastRoll?.find((entry) => entry.die === 'event')?.value ?? 6;
+      if (face > 3) continue;
+
+      return describeTransition(ready, action, result.state, testSeats);
+    }
+    return null;
+  }
+
+  /** Ein Feld vor der Kueste - der naechste Schiffswurf laesst sie landen. */
+  const AT_COAST = { position: CITIES_RULES.barbarianTrack - 1, attacks: 0 };
+
+  it('erzaehlt, dass die Ritter gehalten haben, und nennt den Retter', () => {
+    const state = gameWithCities({
+      barbarians: AT_COAST,
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } },
+      knights: {
+        'v:-1,0|-1,1|0,0': {
+          owner: 'p2',
+          level: 2,
+          active: true,
+          activatedOnTurn: 1,
+          upgradedThisTurn: false,
+        },
+      },
+      turn: 2,
+    });
+
+    const sentence = landingSentence(state);
+    expect(sentence).not.toBeNull();
+    expect(sentence).toContain('die Barbaren landen, die Ritter halten (2 gegen 1)');
+    expect(sentence).toContain('p2 wird Retter Catans');
+  });
+
+  it('erzaehlt, dass die Barbaren gesiegt haben, und wer eine Stadt verliert', () => {
+    const state = gameWithCities({
+      barbarians: AT_COAST,
+      buildings: {
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false },
+        'v:0,-1|0,0|1,-1': { owner: 'p1', kind: 'city', wall: false },
+      },
+      knights: {},
+      turn: 2,
+    });
+
+    const sentence = landingSentence(state);
+    expect(sentence).not.toBeNull();
+    expect(sentence).toContain('die Barbaren siegen (0 gegen 2)');
+    expect(sentence).toContain('p1 verliert eine Stadt');
   });
 });

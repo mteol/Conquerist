@@ -77,6 +77,20 @@ export const KNIGHT_LABELS: Readonly<Record<KnightLevel, string>> = {
   3: 'Mächtiger Ritter',
 };
 
+/**
+ * Dieselben drei Namen im Dativ: "wertet ihn zum **Starken** Ritter auf".
+ *
+ * Ausgeschrieben und nicht aus `KNIGHT_LABELS` abgeleitet. Die Ableitung waere
+ * eine Endungsregel fuer starke Adjektive - richtig fuer genau diese drei
+ * Woerter und falsch beim vierten. Zwei kurze Tabellen nebeneinander sind
+ * lesbar; eine Grammatik im Code ist es nicht.
+ */
+export const KNIGHT_LABELS_DATIVE: Readonly<Record<KnightLevel, string>> = {
+  1: 'Einfachen Ritter',
+  2: 'Starken Ritter',
+  3: 'Mächtigen Ritter',
+};
+
 /** Zaehlt eine Kartenmenge auf; leer bleibt nicht leer, sondern wird benannt. */
 export function resourceList(amounts: CardAmounts): string {
   /*

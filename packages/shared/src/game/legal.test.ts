@@ -318,12 +318,7 @@ describe('Karten vor dem Wurf', () => {
  */
 describe('legalActions an einem Staedte-&-Ritter-Tisch', () => {
   const CHAIN = ['e:0,0|1,-1', 'e:0,-1|0,0', 'e:-1,0|0,0'];
-  const CORNERS = [
-    'v:0,0|1,-1|1,0',
-    'v:0,-1|0,0|1,-1',
-    'v:-1,0|0,-1|0,0',
-    'v:-1,0|-1,1|0,0',
-  ];
+  const CORNERS = ['v:0,0|1,-1|1,0', 'v:0,-1|0,0|1,-1', 'v:-1,0|0,-1|0,0', 'v:-1,0|-1,1|0,0'];
 
   function typesFor(state: GameState, player: string): Set<string> {
     return new Set(legalActions(state, player).map((action) => action.type));
@@ -401,7 +396,14 @@ describe('legalActions an einem Staedte-&-Ritter-Tisch', () => {
     );
 
     const types = typesFor(state, 'p1');
-    for (const type of ['buildKnight', 'buildWall', 'activateKnight', 'upgradeKnight', 'moveKnight', 'chaseRobber']) {
+    for (const type of [
+      'buildKnight',
+      'buildWall',
+      'activateKnight',
+      'upgradeKnight',
+      'moveKnight',
+      'chaseRobber',
+    ]) {
       expect(types.has(type)).toBe(false);
     }
   });
