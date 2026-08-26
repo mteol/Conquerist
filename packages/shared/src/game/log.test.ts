@@ -330,7 +330,36 @@ describe('Verlaufssaetze fuer Staedte & Ritter', () => {
         track: 'trade',
         metropolisAt: CENTER_VERTEX,
       }),
-    ).toBe('p1 baut die Bank und setzt darauf die Metropole');
+    ).toBe('p1 baut die Bank und setzt eine Metropole');
+  });
+
+  it('meldet die Wegnahme, wenn der Aufsatz vorher einem anderen Spieler gehoerte', () => {
+    // p2 haelt den Aufsatz schon, aber selbst noch nicht auf der Hoechststufe -
+    // das ist die einzige Art, wie eine Metropole den Besitzer wechselt.
+    const OTHER_CITY = 'v:0,-1|0,0|1,-1';
+    const withHolder: GameState = {
+      ...withRoads({
+        buildings: {
+          [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: null },
+          [OTHER_CITY]: { owner: 'p2', kind: 'city', wall: false, metropolis: 'trade' },
+        },
+      }),
+      players: withRoads().players.map((player) => {
+        if (player.id === 'p1') return { ...player, improvements: { trade: 4 } };
+        if (player.id === 'p2') return { ...player, improvements: { trade: 4 } };
+        return player;
+      }),
+    };
+    const state = giving(withHolder, 'p1', hand({ cloth: 5 }));
+
+    expect(
+      sentenceFor(state, {
+        type: 'improveCity',
+        player: 'p1',
+        track: 'trade',
+        metropolisAt: CENTER_VERTEX,
+      }),
+    ).toBe('p1 baut das Handelszentrum und nimmt p2 die Metropole ab');
   });
 });
 

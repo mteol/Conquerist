@@ -193,6 +193,32 @@ describe('PlayerView', () => {
   });
 });
 
+describe('Ausbaustufen in der Sicht', () => {
+  it('traegt improvements bei jedem Spieler, nicht nur beim Empfaenger', () => {
+    const state = afterSetup();
+    const withLevels: GameState = {
+      ...state,
+      players: state.players.map((player) => {
+        if (player.id === 'p1') return { ...player, improvements: { trade: 2 } };
+        if (player.id === 'p2') return { ...player, improvements: { science: 4 } };
+        return player;
+      }),
+    };
+
+    // p2 bekommt seine eigene Sicht - trotzdem stehen p1s Stufen mit drin.
+    // Wer die Tableaus der anderen nicht sieht, sieht die Metropole nicht
+    // kommen.
+    const view = playerViewOf(withLevels, 'p2', seats, 1);
+
+    expect(view.players.find((player) => player.id === 'p2')?.improvements).toEqual({
+      science: 4,
+    });
+    expect(view.players.find((player) => player.id === 'p1')?.improvements).toEqual({
+      trade: 2,
+    });
+  });
+});
+
 describe('canOfferTrade in der Sicht', () => {
   it('steht beim Spieler am Zug mit Karten, bei den anderen nicht', () => {
     const state = afterSetup();

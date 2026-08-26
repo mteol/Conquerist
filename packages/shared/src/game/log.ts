@@ -7,6 +7,7 @@ import {
   resourceList,
 } from './labels.js';
 import { barbarianStrength } from './cities/barbarians.js';
+import { metropolisHolder } from './cities/improvements.js';
 import { catanStrength } from './cities/knights.js';
 import { stepInAccusative } from './cities/tracks.js';
 import type { GameAction } from './actions.js';
@@ -203,7 +204,18 @@ function describeAction(
         level === undefined
           ? `${who} baut eine Ausbaustufe`
           : `${who} baut ${stepInAccusative(action.track, level)}`;
-      return action.metropolisAt === undefined ? built : `${built} und setzt darauf die Metropole`;
+      if (action.metropolisAt === undefined) return built;
+
+      /*
+       * Ob der Aufsatz neu kommt oder abgenommen wird, entscheidet der
+       * **Uebergang** und nicht die Absicht des Zuges: hielt vorher schon ein
+       * anderer Spieler den Aufsatz dieses Bereichs, war es eine Wegnahme -
+       * dieselbe Haltung wie bei moveKnight oben.
+       */
+      const previousHolder = metropolisHolder(before, action.track);
+      return previousHolder === null
+        ? `${built} und setzt eine Metropole`
+        : `${built} und nimmt ${nameOf(previousHolder)} die Metropole ab`;
     }
 
     case 'endTurn':
