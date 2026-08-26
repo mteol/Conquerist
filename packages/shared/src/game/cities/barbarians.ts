@@ -1,3 +1,6 @@
+import type { VertexId } from '../../geometry/index.js';
+import { boardOf } from '../board.js';
+import type { PlayerId, PlayerState } from '../player.js';
 import type { GameState } from '../state.js';
 
 /**
@@ -7,11 +10,15 @@ import type { GameState } from '../state.js';
  * Ereigniswuerfel rueckt es eines weiter. Auf dem letzten Feld landet es, und
  * dann entscheidet sich, ob die Ritter Catans stark genug waren.
  *
- * **In Etappe 10a landet es nicht.** Der Kampf braucht Ritter, und die kommen
- * in 10b. Ein Ueberfall ohne sie waere kein Spielereignis, sondern ein Abriss:
- * die Staerke der Verteidigung ist ohne Ritter immer null, also verloere alle
- * sieben Schiffswuerfe jeder Staedtebesitzer eine Stadt. Das Schiff haelt
- * deshalb ein Feld vor der Kueste an - eine Zeile, die in 10b faellt.
+ * **Die Wartelinie aus 10a ist gefallen.** Dort hielt das Schiff ein Feld vor
+ * der Kueste an, weil es noch keine Ritter gab: die Verteidigung waere immer
+ * null gewesen, und alle sieben Schiffswuerfe haette jeder Staedtebesitzer
+ * eine Stadt verloren. Seit 10b gibt es Ritter, und das Schiff faehrt durch.
+ *
+ * Der Ausgang wird in zwei Schritten behandelt: `barbarianOutcome` **rechnet**
+ * ihn, `applyBarbarianAttack` **wendet ihn an**. Getrennt, weil die Oberflaeche
+ * denselben Vergleich anzeigt (die Barbarenleiste) und weil ein Test einen
+ * Ausgang pruefen kann, ohne einen halben Zug zu bauen.
  */
 
 /**
@@ -61,16 +68,206 @@ export function hasLanded(state: GameState): boolean {
 export function advanceShip(state: GameState): GameState {
   if (state.barbarians === null) return state;
 
-  /*
-   * ETAPPE 10a: das Schiff haelt ein Feld vor der Kueste an.
-   *
-   * Diese Grenze faellt in 10b, sobald es Ritter gibt. Sie steht hier und
-   * nicht als Auslassung beim Aufrufer, damit sie beim Aufraeumen an einer
-   * Stelle zu finden ist - und damit die Fahrstrecke am Bildschirm schon jetzt
-   * das Richtige zeigt, statt still zu bleiben.
-   */
-  const waitingLine = state.rules.barbarianTrack - 1;
-  const position = Math.min(state.barbarians.position + 1, waitingLine);
+  const position = Math.min(state.barbarians.position + 1, state.rules.barbarianTrack);
 
   return { ...state, barbarians: { ...state.barbarians, position } };
+}
+
+/**
+ * Wie viel jeder Spieler zur Verteidigung beigetragen hat.
+ *
+ * Jeder Spieler steht darin, auch mit null - die Auswertung fragt nach dem
+ * **niedrigsten** Beitrag unter den Betroffenen, und wer fehlte, waere kein
+ * Niedrigster, sondern gar keiner.
+ */
+export function defenseContributions(state: GameState): ReadonlyMap<PlayerId, number> {
+  const shares = new Map<PlayerId, number>(state.players.map((player) => [player.id, 0]));
+
+  for (const knight of Object.values(state.knights)) {
+    if (!knight.active) continue;
+    shares.set(knight.owner, (shares.get(knight.owner) ?? 0) + knight.level);
+  }
+
+  return shares;
+}
+
+/**
+ * Der Ertragswert eines Siedlungsplatzes: die Summe der Augenwahrscheinlichkeit
+ * seiner Zahlenchips, `6 - |7 - n|`.
+ *
+ * Gebraucht wird er fuer die Frage, **welche** Stadt die Barbaren nehmen. Die
+ * Anleitung laesst dem Spieler die Wahl; hier trifft sie eine feste Regel, und
+ * zwar dieselbe Wahl, die ein Mensch traefe - man gibt die Stadt her, die am
+ * wenigsten liefert. Eine Regel statt einer Phase, weil diese Phase mitten im
+ * Wurf laege: der Ueberfall wird vor den Ertraegen abgehandelt, also muesste
+ * die angehaltene Ertragsphase samt Wurfsumme mitgefuehrt und danach
+ * fortgesetzt werden - der Umbau des Wurfs fuer einen Fall, der je Partie
+ * hoechstens zweimal eintritt.
+ *
+ * Wueste und Felder ohne Zahl zaehlen null.
+ */
+export function cityValueAt(state: GameState, vertex: VertexId): number {
+  const board = boardOf(state.scenario);
+  let value = 0;
+
+  for (const hex of board.topology.vertexHexes.get(vertex) ?? []) {
+    const chip = board.hexes.get(hex)?.chip;
+    if (chip === undefined) continue;
+    value += 6 - Math.abs(7 - chip);
+  }
+
+  return value;
+}
+
+/** Der Ausgang eines Ueberfalls, gerechnet ohne ihn anzuwenden. */
+export interface BarbarianOutcome {
+  readonly barbarians: number;
+  readonly defenders: number;
+  readonly won: boolean;
+  /** Wer den Retter-Chip bekommt. `null` bei Gleichstand oder Niederlage. */
+  readonly savior: PlayerId | null;
+  /** Wessen Stadt faellt, und welche. Leer, wenn die Ritter gewonnen haben. */
+  readonly losses: readonly { readonly player: PlayerId; readonly vertex: VertexId }[];
+}
+
+/** Welche Stadt dieser Spieler hergibt - ohne Mauer zuerst, dann die aermste. */
+function cityToLose(state: GameState, player: PlayerId): VertexId | null {
+  const cities = Object.entries(state.buildings)
+    .filter(([, building]) => building.owner === player && building.kind === 'city')
+    .map(([vertex, building]) => ({ vertex, wall: building.wall }));
+
+  if (cities.length === 0) return null;
+
+  const unwalled = cities.filter((entry) => !entry.wall);
+  const candidates = unwalled.length > 0 ? unwalled : cities;
+
+  return candidates.reduce((worst, entry) => {
+    const value = cityValueAt(state, entry.vertex);
+    const best = cityValueAt(state, worst.vertex);
+    if (value !== best) return value < best ? entry : worst;
+    // Gleicher Ertragswert: die kleinere Knoten-Id, damit dieselbe Partie
+    // zweimal gleich ausgeht.
+    return entry.vertex < worst.vertex ? entry : worst;
+  }).vertex;
+}
+
+/**
+ * Rechnet den Ausgang des Ueberfalls.
+ *
+ * **Gleichstand gewinnt die Verteidigung** - so steht es in der Anleitung, und
+ * es ist der Grund, warum die letzte Ritterstufe sich lohnt.
+ */
+export function barbarianOutcome(state: GameState): BarbarianOutcome {
+  const barbarians = barbarianStrength(state);
+  const shares = defenseContributions(state);
+  const defenders = [...shares.values()].reduce((sum, share) => sum + share, 0);
+
+  if (defenders >= barbarians) {
+    const best = Math.max(...shares.values());
+    const leaders = [...shares.entries()]
+      .filter(([, share]) => share === best)
+      .map(([player]) => player);
+
+    /*
+     * Der Chip geht nur an einen **alleinigen** Hoechstbeitragenden, und nur
+     * wenn ueberhaupt jemand etwas beigetragen hat. Bei Gleichstand zoegen die
+     * Beteiligten laut Regel je eine Fortschrittskarte - die gibt es erst in
+     * 10d, und deshalb geschieht hier bei Gleichstand nichts.
+     */
+    const savior = best > 0 && leaders.length === 1 ? leaders[0]! : null;
+
+    return { barbarians, defenders, won: true, savior, losses: [] };
+  }
+
+  // Betroffen ist nur, wer eine Stadt hat - wer bloss Siedlungen haelt, hat
+  // den Barbaren nichts zu nehmen.
+  const affected = state.players
+    .map((player) => ({ id: player.id, city: cityToLose(state, player.id) }))
+    .filter((entry): entry is { id: PlayerId; city: VertexId } => entry.city !== null);
+
+  if (affected.length === 0) {
+    return { barbarians, defenders, won: false, savior: null, losses: [] };
+  }
+
+  const lowest = Math.min(...affected.map((entry) => shares.get(entry.id) ?? 0));
+
+  return {
+    barbarians,
+    defenders,
+    won: false,
+    savior: null,
+    losses: affected
+      .filter((entry) => (shares.get(entry.id) ?? 0) === lowest)
+      .map((entry) => ({ player: entry.id, vertex: entry.city })),
+  };
+}
+
+/** Nimmt einem Spieler eine Stadt und gibt die Bauteile zurueck. */
+function demote(player: PlayerState, wall: boolean): PlayerState {
+  /*
+   * Der Siedlungsvorrat kann leer sein: wer alle fuenf verbaut hat, bekommt
+   * keine sechste. Die zurueckgestufte Stadt steht trotzdem als Siedlung da -
+   * die Regel sagt, er muesse sie erst wieder ausbauen, ehe er anderswo eine
+   * Stadt baut, und genau das faellt aus einem Vorrat von null von selbst.
+   */
+  const settlement = Math.max(0, player.piecesLeft.settlement - 1);
+
+  return {
+    ...player,
+    piecesLeft: {
+      ...player.piecesLeft,
+      city: player.piecesLeft.city + 1,
+      settlement,
+      wall: player.piecesLeft.wall + (wall ? 1 : 0),
+    },
+  };
+}
+
+/**
+ * Wendet den Ueberfall an: Chip oder Staedteverluste, dann alle Ritter passiv
+ * und das Schiff zurueck auf den Anfang.
+ *
+ * Kein `ReduceResult` - das ist kein Zug, den jemand macht, sondern eine
+ * Folge des Wuerfelns. Abgelehnt werden kann hier nichts.
+ */
+export function applyBarbarianAttack(state: GameState): GameState {
+  const outcome = barbarianOutcome(state);
+
+  const lostBy = new Map(outcome.losses.map((loss) => [loss.player, loss.vertex]));
+
+  const buildings = { ...state.buildings };
+  for (const loss of outcome.losses) {
+    const building = buildings[loss.vertex]!;
+    // Die Mauer geht mit der Stadt - sie gehoerte diesem Bauwerk.
+    buildings[loss.vertex] = { owner: building.owner, kind: 'settlement', wall: false };
+  }
+
+  const players = state.players.map((player) => {
+    if (player.id === outcome.savior) {
+      return { ...player, defenderPoints: player.defenderPoints + 1 };
+    }
+
+    const vertex = lostBy.get(player.id);
+    if (vertex === undefined) return player;
+
+    return demote(player, state.buildings[vertex]?.wall === true);
+  });
+
+  // Alle aktivierten Ritter aller Spieler werden passiv - der Kampf hat sie
+  // verbraucht, unabhaengig vom Ausgang.
+  const knights = Object.fromEntries(
+    Object.entries(state.knights).map(([vertex, knight]) => [
+      vertex,
+      { ...knight, active: false, activatedOnTurn: null },
+    ]),
+  );
+
+  return {
+    ...state,
+    buildings,
+    players,
+    knights,
+    barbarians:
+      state.barbarians === null ? null : { position: 0, attacks: state.barbarians.attacks + 1 },
+  };
 }

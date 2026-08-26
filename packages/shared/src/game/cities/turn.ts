@@ -1,19 +1,20 @@
 import type { Roll } from '../dice.js';
 import type { GameState } from '../state.js';
-import { advanceShip } from './barbarians.js';
+import { advanceShip, applyBarbarianAttack, hasLanded } from './barbarians.js';
 import { eventFaceOf } from './event.js';
 
 /**
  * Was ein Wurf ausloest, bevor die Ertraege fallen.
  *
  * Die Reihenfolge stammt aus der Anleitung und ist nicht beliebig: erst das
- * Ereignis, dann der Ertrag. Daran haengt ab 10b, dass in der Runde des ersten
+ * Ereignis, dann der Ertrag. Daran haengt, dass in der Runde des ersten
  * Ueberfalls eine gewuerfelte Sieben den Raeuber schon bewegen darf - der
- * Angriff kommt davor. Und daran haengt, dass eine Stadt, die die Barbaren
- * gerade genommen haben, im selben Wurf nichts mehr ausschuettet.
+ * Angriff kommt davor und gibt ihn frei. Und daran haengt, dass eine Stadt,
+ * die die Barbaren gerade genommen haben, im selben Wurf nichts mehr
+ * ausschuettet. Seit 10b gilt beides wirklich; in 10a stand es als Vorgriff da.
  *
- * In dieser Etappe hat nur die Schiffsseite eine Wirkung. Die drei Stadttore
- * werden gelesen und tun nichts - die Fortschrittskarten kommen in 10d.
+ * Die drei Stadttore werden weiterhin gelesen und tun nichts - die
+ * Fortschrittskarten kommen in 10d.
  */
 export function resolveEvent(state: GameState, roll: Roll): GameState {
   const face = eventFaceOf(roll);
@@ -25,5 +26,13 @@ export function resolveEvent(state: GameState, roll: Roll): GameState {
    */
   if (face === null) return state;
 
-  return face === 'ship' ? advanceShip(state) : state;
+  if (face !== 'ship') return state;
+
+  /*
+   * Erst fahren, dann pruefen: gelandet ist das Schiff genau in dem Wurf, der
+   * es auf das letzte Feld bringt, und der Ueberfall gehoert in denselben Wurf.
+   * `applyBarbarianAttack` setzt es danach auf Feld null zurueck.
+   */
+  const sailed = advanceShip(state);
+  return hasLanded(sailed) ? applyBarbarianAttack(sailed) : sailed;
 }

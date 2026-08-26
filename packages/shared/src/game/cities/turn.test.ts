@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { CITIES_RULES } from '../../rules/index.js';
 import type { Roll } from '../dice.js';
 import { gameWithCities, testGame } from '../fixtures.js';
 import { reduce } from '../reducer.js';
@@ -23,6 +24,29 @@ describe('resolveEvent', () => {
     for (const seite of [4, 5, 6]) {
       expect(resolveEvent(gameWithCities(), wurf(3, 4, seite)).barbarians?.position).toBe(0);
     }
+  });
+
+  it('laesst landen und wertet aus, wenn das Schiff vor der Kueste steht', () => {
+    const state = gameWithCities({
+      barbarians: { position: CITIES_RULES.barbarianTrack - 1, attacks: 0 },
+      buildings: {},
+      knights: {},
+    });
+
+    const after = resolveEvent(state, wurf(3, 4, 1));
+
+    // Der Ueberfall ist abgehandelt: das Schiff steht wieder am Anfang, und
+    // der Zaehler ist um eins gestiegen.
+    expect(after.barbarians).toEqual({ position: 0, attacks: 1 });
+  });
+
+  it('laesst ein Stadttor das Schiff auch vor der Kueste in Ruhe', () => {
+    const state = gameWithCities({
+      barbarians: { position: CITIES_RULES.barbarianTrack - 1, attacks: 0 },
+    });
+
+    const after = resolveEvent(state, wurf(3, 4, 5));
+    expect(after.barbarians).toEqual({ position: CITIES_RULES.barbarianTrack - 1, attacks: 0 });
   });
 
   /* Ohne Ereigniswuerfel im Wurf ist es derselbe Zustand, nicht eine Kopie. */
