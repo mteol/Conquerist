@@ -8,6 +8,7 @@ import {
 } from './labels.js';
 import { barbarianStrength } from './cities/barbarians.js';
 import { catanStrength } from './cities/knights.js';
+import { stepWithArticle } from './cities/tracks.js';
 import type { GameAction } from './actions.js';
 import { yieldTotal } from './dice.js';
 import type { PlayerId } from './player.js';
@@ -191,6 +192,19 @@ function describeAction(
       return `${who} schickt einen Ritter hinter dem Räuber her`;
     case 'placeDisplacedKnight':
       return `${who} weicht mit seinem Ritter aus`;
+
+    case 'improveCity': {
+      // Die neue Stufe steht **nachher** - dieselbe Begruendung wie bei
+      // upgradeKnight oben.
+      const level = after.players.find((entry) => entry.id === action.player)?.improvements[
+        action.track
+      ];
+      const built =
+        level === undefined
+          ? `${who} baut eine Ausbaustufe`
+          : `${who} baut ${stepWithArticle(action.track, level)}`;
+      return action.metropolisAt === undefined ? built : `${built} und setzt darauf die Metropole`;
+    }
 
     case 'endTurn':
       return `${who} beendet den Zug`;

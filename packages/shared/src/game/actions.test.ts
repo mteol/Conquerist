@@ -106,3 +106,31 @@ describe('Die Zuege aus Staedte & Ritter', () => {
     ).toThrow();
   });
 });
+
+describe('Die Zugart des Stadtausbaus', () => {
+  it('parst improveCity ohne Aufsatz', () => {
+    const action = { type: 'improveCity', player: 'p1', track: 'trade' } as const;
+    expect(GameActionSchema.parse(action)).toEqual(action);
+  });
+
+  it('parst improveCity mit Aufsatz', () => {
+    const action = {
+      type: 'improveCity',
+      player: 'p1',
+      track: 'trade',
+      metropolisAt: 'v:0,0|1,-1|1,0',
+    } as const;
+    expect(GameActionSchema.parse(action)).toEqual(action);
+  });
+
+  it('steht in GAME_ACTION_TYPES', () => {
+    expect(GAME_ACTION_TYPES).toContain('improveCity');
+    expect(GameActionTypeSchema.parse('improveCity')).toBe('improveCity');
+  });
+
+  it('weist einen erfundenen Bereich ab', () => {
+    expect(() =>
+      GameActionSchema.parse({ type: 'improveCity', player: 'p1', track: 'magic' }),
+    ).toThrow();
+  });
+});

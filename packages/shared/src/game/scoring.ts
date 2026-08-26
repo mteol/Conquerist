@@ -29,6 +29,9 @@ export function publicVictoryPointsOf(state: GameState, player: PlayerId): numbe
   for (const building of Object.values(state.buildings)) {
     if (building.owner !== player) continue;
     points += building.kind === 'city' ? values.city : values.settlement;
+    // Oeffentlich, weil der Aufsatz auf dem Brett steht - zusaetzlich zu den
+    // zwei Punkten der Stadt, die die Zeile darueber schon zaehlt.
+    if (building.metropolis !== null) points += values.metropolis;
   }
 
   if (state.longestRoad.holder === player) points += values.longestRoad;

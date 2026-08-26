@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { CardAmountsSchema } from '../rules/index.js';
 import { CardIdSchema, ResourceIdSchema } from '../scenario/index.js';
+import { TrackIdSchema } from './cities/tracks.js';
 import { PlayerIdSchema } from './player.js';
 
 /**
@@ -197,6 +198,19 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   /** Den eigenen vertriebenen Ritter neu setzen. */
   z.object({ ...Base, type: z.literal('placeDisplacedKnight'), vertex: z.string() }),
 
+  /** Eine Stufe im Stadtausbau steigen: Handel, Politik oder Wissenschaft. */
+  z.object({
+    ...Base,
+    type: z.literal('improveCity'),
+    track: TrackIdSchema,
+    /**
+     * Wohin der Aufsatz kommt - **nur**, wenn dieser Ausbau ihn einbringt.
+     * `canImproveCity` weist beides ab: das Fehlen, wo er faellig ist, und die
+     * Angabe, wo keiner kommt.
+     */
+    metropolisAt: z.string().optional(),
+  }),
+
   z.object({ ...Base, type: z.literal('endTurn') }),
 ]);
 
@@ -248,6 +262,7 @@ export const GAME_ACTION_TYPES = [
   'moveKnight',
   'chaseRobber',
   'placeDisplacedKnight',
+  'improveCity',
   'endTurn',
 ] as const satisfies readonly GameActionType[];
 

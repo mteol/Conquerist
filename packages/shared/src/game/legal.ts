@@ -25,6 +25,8 @@ import { canActivateKnight, canBuildKnight, canUpgradeKnight } from './cities/kn
 import { canChaseRobber, canMoveKnight, displacementTargets } from './cities/knightActions.js';
 import { reachableVertices } from './cities/knightMoves.js';
 import { canBuildWall } from './cities/walls.js';
+import { canImproveCity, claimsMetropolis } from './cities/improvements.js';
+import { TRACK_IDS } from './cities/tracks.js';
 
 /**
  * Was dieser Spieler gerade tun darf.
@@ -238,6 +240,25 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
        * Reducer. Damit die Oberflaeche die Karten ueberhaupt anbieten kann,
        * sagt `playableDevelopmentCards`, welche jetzt gingen.
        */
+
+      for (const track of TRACK_IDS) {
+        if (!claimsMetropolis(state, player, track)) {
+          if (canImproveCity(state, player, track) === null) {
+            actions.push({ type: 'improveCity', player, track });
+          }
+          continue;
+        }
+        /*
+         * Bringt der Ausbau den Aufsatz, ist die Stadt Teil des Zuges - also ein
+         * Zug je moeglicher Stadt. Sonst stuende in der Liste ein Zug, den `reduce`
+         * ablehnt, und die zwei Auslegungen liefen auseinander.
+         */
+        for (const [vertex] of Object.entries(state.buildings)) {
+          if (canImproveCity(state, player, track, vertex) === null) {
+            actions.push({ type: 'improveCity', player, track, metropolisAt: vertex });
+          }
+        }
+      }
 
       actions.push({ type: 'endTurn', player });
       return actions;

@@ -38,6 +38,7 @@ import {
   applyPlaceDisplacedKnight,
 } from './cities/knightActions.js';
 import { applyBuildWall } from './cities/walls.js';
+import { applyImproveCity } from './cities/improvements.js';
 
 /**
  * Der Reducer: `(state, action) => newState`, rein und ohne Seiteneffekte.
@@ -77,6 +78,7 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
     'upgradeKnight',
     'moveKnight',
     'chaseRobber',
+    'improveCity',
     'endTurn',
   ],
   /*
@@ -284,6 +286,8 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
       return applyChaseRobber(state, action.player, action.vertex);
     case 'placeDisplacedKnight':
       return applyPlaceDisplacedKnight(state, action.player, action.vertex);
+    case 'improveCity':
+      return applyImproveCity(state, action.player, action.track, action.metropolisAt);
     case 'tradeWithBank':
       return applyTradeWithBank(state, action.player, action.give, action.receive);
     case 'buyDevelopmentCard':

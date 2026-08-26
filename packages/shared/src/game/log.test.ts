@@ -307,6 +307,31 @@ describe('Verlaufssaetze fuer Staedte & Ritter', () => {
       'p1 schickt einen Ritter hinter dem Räuber her',
     );
   });
+
+  it('meldet den Stadtausbau mit dem Namen der erreichten Stufe', () => {
+    const state = giving(withRoads(), 'p1', hand({ cloth: 1 }));
+    expect(sentenceFor(state, { type: 'improveCity', player: 'p1', track: 'trade' })).toBe(
+      'p1 baut der Markt',
+    );
+  });
+
+  it('meldet die Metropole, wenn dieser Ausbau sie einbringt', () => {
+    const withLevel: GameState = {
+      ...withRoads(),
+      players: withRoads().players.map((player) =>
+        player.id === 'p1' ? { ...player, improvements: { trade: 3 } } : player,
+      ),
+    };
+    const state = giving(withLevel, 'p1', hand({ cloth: 4 }));
+    expect(
+      sentenceFor(state, {
+        type: 'improveCity',
+        player: 'p1',
+        track: 'trade',
+        metropolisAt: CENTER_VERTEX,
+      }),
+    ).toBe('p1 baut die Bank und setzt darauf die Metropole');
+  });
 });
 
 /**

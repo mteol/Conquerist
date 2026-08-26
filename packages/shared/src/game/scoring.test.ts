@@ -137,3 +137,24 @@ describe('Retter-Chips zaehlen mit', () => {
     expect(publicVictoryPointsOf(basis, 'p1')).toBe(2);
   });
 });
+
+describe('Die Metropole zaehlt mit', () => {
+  it('zaehlt vier Punkte - zwei fuer die Stadt, zwei fuer den Aufsatz - und zaehlt oeffentlich', () => {
+    const state = gameWithCities({
+      buildings: {
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: 'trade' },
+      },
+    });
+
+    expect(state.rules.victoryPoints.metropolis).toBe(2);
+    expect(victoryPointsOf(state, 'p1')).toBe(4);
+    expect(publicVictoryPointsOf(state, 'p1')).toBe(4);
+  });
+
+  it('bringt keinen Zusatzpunkt ohne Aufsatz', () => {
+    const state = gameWithCities();
+
+    expect(victoryPointsOf(state, 'p1')).toBe(2);
+    expect(publicVictoryPointsOf(state, 'p1')).toBe(2);
+  });
+});

@@ -393,6 +393,60 @@ describe('legalActions an einem Staedte-&-Ritter-Tisch', () => {
     expectAllAccepted(state, 'p1');
   });
 
+  function withImprovementLevel(
+    state: GameState,
+    id: string,
+    levels: Partial<Record<'trade' | 'politics' | 'science', number>>,
+  ): GameState {
+    return {
+      ...state,
+      players: state.players.map((player) =>
+        player.id === id ? { ...player, improvements: levels } : player,
+      ),
+    };
+  }
+
+  it('nennt in main hoechstens einen improveCity je Bereich', () => {
+    // Nur Tuch ist da - Politik und Wissenschaft bleiben unbezahlbar, Handel
+    // bringt bei Stufe 1 noch keinen Aufsatz, also genau ein Zug.
+    const state = giving(gameWithCities(), 'p1', hand({ cloth: 1 }));
+
+    const improvements = legalActions(state, 'p1').filter(
+      (action) => action.type === 'improveCity',
+    );
+    expect(improvements).toEqual([{ type: 'improveCity', player: 'p1', track: 'trade' }]);
+    expectAllAccepted(state, 'p1');
+  });
+
+  it('nennt bei faelligem Aufsatz einen improveCity je freier eigener Stadt', () => {
+    const state = giving(
+      withImprovementLevel(
+        gameWithCities({
+          buildings: {
+            [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: null },
+            [CORNERS[1]!]: { owner: 'p1', kind: 'city', wall: false, metropolis: null },
+          },
+        }),
+        'p1',
+        { trade: 3 },
+      ),
+      'p1',
+      hand({ cloth: 4 }),
+    );
+
+    const improvements = legalActions(state, 'p1').filter(
+      (action) => action.type === 'improveCity' && action.track === 'trade',
+    );
+    expect(improvements).toEqual(
+      expect.arrayContaining([
+        { type: 'improveCity', player: 'p1', track: 'trade', metropolisAt: CENTER_VERTEX },
+        { type: 'improveCity', player: 'p1', track: 'trade', metropolisAt: CORNERS[1] },
+      ]),
+    );
+    expect(improvements).toHaveLength(2);
+    expectAllAccepted(state, 'p1');
+  });
+
   it('nennt an einem Basistisch keinen einzigen davon', () => {
     const state = giving(
       testGame({
@@ -413,6 +467,7 @@ describe('legalActions an einem Staedte-&-Ritter-Tisch', () => {
       'upgradeKnight',
       'moveKnight',
       'chaseRobber',
+      'improveCity',
     ]) {
       expect(types.has(type)).toBe(false);
     }
