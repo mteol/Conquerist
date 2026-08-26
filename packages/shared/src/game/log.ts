@@ -1,11 +1,18 @@
 import type { Seat } from '../seats.js';
-import { CARD_LABELS, KNIGHT_LABELS_DATIVE, RESOURCE_LABELS, resourceList } from './labels.js';
+import {
+  CARD_LABELS,
+  KNIGHT_LABELS_DATIVE,
+  RESOURCE_LABELS,
+  nameList,
+  resourceList,
+} from './labels.js';
 import { barbarianStrength } from './cities/barbarians.js';
 import { catanStrength } from './cities/knights.js';
 import type { GameAction } from './actions.js';
 import { yieldTotal } from './dice.js';
 import type { PlayerId } from './player.js';
 import { countCards } from './cards.js';
+import { setupBuildingKind } from './setup.js';
 import type { GameState } from './state.js';
 
 /**
@@ -55,7 +62,16 @@ function describeAction(
 
   switch (action.type) {
     case 'placeSetupSettlement':
-      return `${who} setzt die Gründungssiedlung`;
+      /*
+       * Was gesetzt wird, haengt am Tisch: in Staedte & Ritter ist die zweite
+       * Setzung eine **Stadt**. Der Satz sagte trotzdem "Gruendungssiedlung",
+       * waehrend auf dem Brett eine Stadt stand - gefunden im Browser.
+       * Gefragt wird `setupBuildingKind`, damit es genau eine Auslegung gibt.
+       */
+      return before.phase.kind === 'setup' &&
+        setupBuildingKind(before, before.phase.placement) === 'city'
+        ? `${who} setzt die Gründungsstadt`
+        : `${who} setzt die Gründungssiedlung`;
     case 'placeSetupRoad':
       return `${who} setzt die Gründungsstraße`;
 
@@ -221,7 +237,11 @@ function describeAttack(
   }
 
   const beaten = `die Barbaren siegen ${score}`;
-  return lost.length === 0 ? beaten : `${beaten} - ${lost.join(' und ')} verliert eine Stadt`;
+  if (lost.length === 0) return beaten;
+
+  // Das Verb folgt der Anzahl: einer verliert, mehrere verlieren.
+  const verb = lost.length === 1 ? 'verliert' : 'verlieren';
+  return `${beaten} - ${nameList(lost)} ${verb} eine Stadt`;
 }
 
 /** Wie viele Staedte dieser Spieler gerade haelt. */

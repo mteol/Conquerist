@@ -107,8 +107,19 @@ function deckAndRng(rules: RuleSet, seed: string): { deck: DevelopmentCardId[]; 
  * falsch: wer eine Variante baut, die Handelswaren kennt und anders heisst,
  * bekaeme die falsche Gruendung. Gefragt wird nach dem, was die Regel
  * ausmacht.
+ *
+ * Nimmt eine **Quelle** und keinen `GameState`: der Browser stellt dieselbe
+ * Frage, um den Bauknopf zu beschriften, und hat nur eine `PlayerView`. Zwei
+ * Auslegungen davon, was die zweite Setzung ist, waeren genau der Fehler, den
+ * ein Durchgang im Browser gefunden hat - dort stand "Siedlung" am Knopf und
+ * eine Stadt auf dem Brett.
  */
-export function setupBuildingKind(state: GameState, placement: number): BuildingKind {
+export interface SetupKindSource {
+  readonly players: readonly unknown[];
+  readonly rules: Pick<RuleSet, 'barbarianTrack'>;
+}
+
+export function setupBuildingKind(state: SetupKindSource, placement: number): BuildingKind {
   const secondRound = placement >= state.players.length;
   return secondRound && state.rules.barbarianTrack > 0 ? 'city' : 'settlement';
 }

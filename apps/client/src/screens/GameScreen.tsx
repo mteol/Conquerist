@@ -15,7 +15,13 @@ import {
 import { BoardSvg, type Place } from '../board/BoardSvg';
 import { BarbarianTrack } from '../panels/BarbarianTrack';
 import { KnightPanel, type KnightMode } from '../panels/KnightPanel';
-import { EMPTY_TARGETS, buildKindOf, targetsFrom, type BuildableKind } from '../game/targets';
+import {
+  EMPTY_TARGETS,
+  buildKindOf,
+  setupKindOf,
+  targetsFrom,
+  type BuildableKind,
+} from '../game/targets';
 import { awardsHeldBy, openAwards } from '../game/awards';
 import { discardCountForView, gameViewOf, type PlayerRow } from '../game/view';
 import { ActionPanel } from '../panels/ActionPanel';
@@ -152,6 +158,31 @@ const BUILD_HINTS: Readonly<Record<BuildableKind, string>> = {
   wall: 'Stadtmauer bauen: eigene Stadt auf dem Brett wählen',
   knight: 'Ritter bauen: freie Kreuzung am eigenen Straßennetz wählen',
 };
+
+/**
+ * Dieselbe Auskunft für die Gründung.
+ *
+ * Sie braucht eigene Sätze, weil dort **keine** der üblichen Bedingungen gilt:
+ * die Gründungsstadt steht auf einem freien Knoten und nicht auf einer eigenen
+ * Siedlung, und die Gründungsstraße hängt an der eben gesetzten Siedlung.
+ * Ohne sie sagte der Hinweis „eigene Siedlung wählen“, während das Brett
+ * lauter freie Knoten anbot.
+ */
+function setupHint(kind: BuildableKind, setting: BuildableKind): string {
+  /*
+   * Auch der Straßensatz folgt dem, was eben gesetzt wurde: in der zweiten
+   * Runde steht dort eine **Stadt**, und „an der eben gesetzten Siedlung“ wäre
+   * derselbe Fehler eine Ebene tiefer.
+   */
+  if (kind === 'road') {
+    return setting === 'city'
+      ? 'Gründung: Straße an der eben gesetzten Stadt wählen'
+      : 'Gründung: Straße an der eben gesetzten Siedlung wählen';
+  }
+  return kind === 'city'
+    ? 'Gründung: Knoten für die Stadt wählen'
+    : 'Gründung: Knoten für die Siedlung wählen';
+}
 
 /**
  * Dieselbe Auskunft für die vier Rittermodi.
@@ -294,7 +325,13 @@ export function GameScreen({
     setMovingFrom(null);
   }, [view.version]);
 
-  const targets = useMemo(() => targetsFrom(actions), [actions]);
+  /*
+   * Welches Bauteil die Gruendung setzt, entscheidet der Tisch: in Staedte &
+   * Ritter ist die zweite Setzung eine Stadt. Ohne diese Auskunft stand
+   * "Siedlung" am Knopf, waehrend auf dem Brett eine Stadt entstand.
+   */
+  const setupKind = useMemo(() => setupKindOf(view), [view]);
+  const targets = useMemo(() => targetsFrom(actions, setupKind), [actions, setupKind]);
 
   /**
    * Der Preis einer Entwicklungskarte - `undefined`, wenn dieser Tisch keine
@@ -373,7 +410,7 @@ export function GameScreen({
     }
 
     const shown = (action: GameAction): boolean => {
-      const kind = buildKindOf(action);
+      const kind = buildKindOf(action, setupKind);
       return kind === null || kind === buildMode;
     };
 
@@ -387,6 +424,7 @@ export function GameScreen({
     buildMode,
     knightMode,
     movingFrom,
+    setupKind,
     buildingRoads,
     view.roadBuildingTargets,
     view.you,
@@ -1014,7 +1052,9 @@ export function GameScreen({
        */}
       {buildMode === null || buildingRoads !== null ? null : (
         <div className="mode" role="status" data-testid="build-mode">
-          <span>{BUILD_HINTS[buildMode]}</span>
+          <span>
+            {view.phase.kind === 'setup' ? setupHint(buildMode, setupKind) : BUILD_HINTS[buildMode]}
+          </span>
           <button type="button" className="button button--ghost" onClick={() => setBuildMode(null)}>
             Abbrechen
           </button>

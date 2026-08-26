@@ -1,5 +1,6 @@
 import {
   legalActions,
+  setupBuildingKind,
   type EdgeId,
   type GameAction,
   type GameState,
@@ -120,12 +121,24 @@ export const EMPTY_TARGETS: ActionTargets = {
  * genau der Knopf bedienbar, der dort an der Reihe ist - erst die Siedlung,
  * dann die Strasse.
  */
-export function buildKindOf(action: GameAction): BuildableKind | null {
+export function buildKindOf(
+  action: GameAction,
+  setupKind: BuildableKind = 'settlement',
+): BuildableKind | null {
   switch (action.type) {
     case 'placeSetupRoad':
     case 'buildRoad':
       return 'road';
+    /*
+     * **Die Gruendungssetzung ist nicht immer eine Siedlung.** In Staedte &
+     * Ritter setzt die zweite Runde eine **Stadt**, und der Knopf sagte
+     * trotzdem "Siedlung", waehrend auf dem Brett eine Stadt entstand -
+     * gefunden im Browser-Durchgang zu 10b. Was es wirklich ist, weiss die
+     * Aktion nicht; es steht in `setupBuildingKind` aus `shared` und kommt
+     * hier als Auskunft herein.
+     */
     case 'placeSetupSettlement':
+      return setupKind;
     case 'buildSettlement':
       return 'settlement';
     case 'buildCity':
@@ -149,7 +162,10 @@ export function buildKindOf(action: GameAction): BuildableKind | null {
  * seit Etappe 4 nicht mehr hat. Lokal wie entfernt landet danach dieselbe
  * Sortierung in denselben Bildschirmen.
  */
-export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
+export function targetsFrom(
+  actions: readonly GameAction[],
+  setupKind: BuildableKind = 'settlement',
+): ActionTargets {
   const vertices = new Map<VertexId, GameAction>();
   const edges = new Map<EdgeId, GameAction>();
   const hexes = new Map<HexId, GameAction[]>();
@@ -181,7 +197,7 @@ export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
   };
 
   for (const action of actions) {
-    const kind = buildKindOf(action);
+    const kind = buildKindOf(action, setupKind);
     if (kind !== null) buildable[kind] += 1;
 
     switch (action.type) {
@@ -295,5 +311,22 @@ export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
  * Funktion, dieselben Regeln, nur ohne Netz.
  */
 export function actionTargets(state: GameState, player: PlayerId): ActionTargets {
-  return targetsFrom(legalActions(state, player));
+  return targetsFrom(legalActions(state, player), setupKindOf(state));
+}
+
+/**
+ * Welches Bauteil die Gruendung gerade setzt - `settlement`, wo nicht gegruendet
+ * wird.
+ *
+ * Eine Zeile Uebersetzung zwischen `shared` und der Klickkarte, damit beide
+ * Aufrufer (lokal und online) dieselbe Frage gleich stellen.
+ */
+export function setupKindOf(source: {
+  readonly phase: GameState['phase'];
+  readonly players: readonly unknown[];
+  readonly rules: GameState['rules'];
+}): BuildableKind {
+  return source.phase.kind === 'setup'
+    ? setupBuildingKind(source, source.phase.placement)
+    : 'settlement';
 }

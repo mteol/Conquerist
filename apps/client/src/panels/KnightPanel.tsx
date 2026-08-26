@@ -47,10 +47,16 @@ const KNIGHT_LABELS: Readonly<Record<KnightMode, string>> = {
  * Ein gesperrter Knopf sagt sonst nur „nein" und nie, woran es liegt - und
  * genau dort ist die Auskunft am meisten wert (dieselbe Überlegung wie beim
  * Preis an der Bauleiste).
+ *
+ * **Jeder Satz nennt beide Gründe, und das ist eine Korrektur.** „Aufwerten:
+ * kein Ritter kann gerade steigen" stand im Browser vor einem Ritter, der sehr
+ * wohl steigen konnte — es fehlten die Karten. Ein gesperrter Knopf, der den
+ * falschen Grund nennt, ist schlimmer als einer, der gar keinen nennt: er
+ * schickt den Spieler auf die falsche Suche.
  */
 const KNIGHT_EMPTY: Readonly<Record<KnightMode, string>> = {
   activate: 'Aktivieren: kein Ritter ohne Helm, oder das Getreide fehlt',
-  upgrade: 'Aufwerten: kein Ritter kann gerade steigen',
+  upgrade: 'Aufwerten: kein Ritter kann steigen, oder Wolle und Erz fehlen',
   move: 'Versetzen: kein Ritter ist handlungsbereit',
   chase: 'Räuber vertreiben: kein Ritter steht am Räuberfeld',
 };

@@ -3,7 +3,7 @@ import { CLASSIC_34 } from '../scenario/blueprints/classic34.js';
 import { generateScenario } from '../scenario/generator.js';
 import { CLASSIC_RULES } from '../rules/ruleset.js';
 import { seatColorAt, type Seat } from '../seats.js';
-import { createGame, setupPlayer } from './setup.js';
+import { createGame, setupBuildingKind, setupPlayer } from './setup.js';
 import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
 import { describeTransition } from './log.js';
@@ -373,5 +373,121 @@ describe('Der Ueberfall im Verlauf', () => {
     expect(sentence).not.toBeNull();
     expect(sentence).toContain('die Barbaren siegen (0 gegen 2)');
     expect(sentence).toContain('p1 verliert eine Stadt');
+  });
+});
+
+/**
+ * Was der Durchgang im Browser gefunden hat.
+ *
+ * Jeder dieser Tests hält einen Befund fest, den kein bestehender Test
+ * gesehen hat — und der Kommentar sagt, wie er im Bild aussah.
+ */
+describe('Befunde aus dem Browser-Durchgang', () => {
+  const RICH = 'v:0,-1|0,0|1,-1';
+  const POOR = 'v:-1,1|0,0|0,1';
+
+  function city(owner: string) {
+    return { owner, kind: 'city' as const, wall: false };
+  }
+
+  /* Am Bildschirm stand: „Spieler 1 und Spieler 2 und Spieler 3 verliert eine
+   * Stadt" - zweimal falsch, in der Aufzählung und im Verb. */
+  it('zaehlt mehrere Verlierer mit Komma auf und beugt das Verb', () => {
+    const landed: GameState = gameWithCities({
+      barbarians: { position: CITIES_RULES.barbarianTrack - 1, attacks: 0 },
+      buildings: { [CENTER_VERTEX]: city('p1'), [RICH]: city('p2'), [POOR]: city('p3') },
+      knights: {},
+      turn: 2,
+      phase: { kind: 'rollPending' },
+    });
+
+    for (let seed = 0; seed < 200; seed += 1) {
+      const ready: GameState = { ...landed, rng: createRng(`browser-${seed}`) };
+      const action = { type: 'rollDice', player: 'p1' } as const;
+      const result = reduce(ready, action);
+      if (!result.ok) continue;
+      const face = result.state.lastRoll?.find((e) => e.die === 'event')?.value ?? 6;
+      if (face > 3) continue;
+
+      const sentence = describeTransition(ready, action, result.state, testSeats);
+      expect(sentence).toContain('p1, p2 und p3 verlieren eine Stadt');
+      expect(sentence).not.toContain('und p2 und');
+      return;
+    }
+    throw new Error('kein Wurf mit Schiffsseite gefunden');
+  });
+
+  it('beugt das Verb fuer einen einzelnen Verlierer weiter richtig', () => {
+    const landed: GameState = gameWithCities({
+      barbarians: { position: CITIES_RULES.barbarianTrack - 1, attacks: 0 },
+      buildings: { [CENTER_VERTEX]: city('p1'), [RICH]: city('p1') },
+      knights: {},
+      turn: 2,
+      phase: { kind: 'rollPending' },
+    });
+
+    for (let seed = 0; seed < 200; seed += 1) {
+      const ready: GameState = { ...landed, rng: createRng(`einzeln-${seed}`) };
+      const action = { type: 'rollDice', player: 'p1' } as const;
+      const result = reduce(ready, action);
+      if (!result.ok) continue;
+      const face = result.state.lastRoll?.find((e) => e.die === 'event')?.value ?? 6;
+      if (face > 3) continue;
+
+      expect(describeTransition(ready, action, result.state, testSeats)).toContain(
+        'p1 verliert eine Stadt',
+      );
+      return;
+    }
+    throw new Error('kein Wurf mit Schiffsseite gefunden');
+  });
+
+  /* Im Verlauf stand „setzt die Gründungssiedlung", auf dem Brett stand eine
+   * Stadt - die zweite Setzung ist in Städte & Ritter eine Stadt. */
+  it('nennt die zweite Gruendungssetzung eine Stadt', () => {
+    const table = gameWithCities({
+      buildings: {},
+      roads: {},
+      knights: {},
+      phase: { kind: 'setup', placement: 3, settlement: null },
+    });
+
+    expect(setupBuildingKind(table, 3)).toBe('city');
+
+    const actor = setupPlayer(table)!;
+    const vertex = legalActions(table, actor).find((a) => a.type === 'placeSetupSettlement')!;
+    const result = reduce(table, vertex);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(describeTransition(table, vertex, result.state, testSeats)).toContain(
+      'setzt die Gründungsstadt',
+    );
+  });
+
+  it('nennt die erste Setzung weiterhin eine Siedlung', () => {
+    const table = gameWithCities({
+      buildings: {},
+      roads: {},
+      knights: {},
+      phase: { kind: 'setup', placement: 0, settlement: null },
+    });
+
+    expect(setupBuildingKind(table, 0)).toBe('settlement');
+
+    const actor = setupPlayer(table)!;
+    const first = legalActions(table, actor).find((a) => a.type === 'placeSetupSettlement')!;
+    const result = reduce(table, first);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(describeTransition(table, first, result.state, testSeats)).toContain(
+      'setzt die Gründungssiedlung',
+    );
+  });
+
+  it('nennt sie an einem Basistisch auch in der zweiten Runde eine Siedlung', () => {
+    const basis = testGame({ phase: { kind: 'setup', placement: 3, settlement: null } });
+    expect(setupBuildingKind(basis, 3)).toBe('settlement');
   });
 });

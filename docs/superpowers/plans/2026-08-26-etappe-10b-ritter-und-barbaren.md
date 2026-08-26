@@ -1534,11 +1534,11 @@ git commit -m "Erst was, dann wo - auch fuer Ritter"
 gefunden hat — Überlappungen, eine nie greifende CSS-Regel, ein Knopf, der „gerade nicht"
 über etwas sagte, das nie ging. Diese Etappe bringt mehr neue Fläche als 10a.
 
-- [ ] **Schritt 1: Bauen und starten**
+- [x] **Schritt 1: Bauen und starten**
 
 `pnpm build`, danach den Server starten und eine lokale Städte-&-Ritter-Partie öffnen.
 
-- [ ] **Schritt 2: Durchsehen und messen**
+- [x] **Schritt 2: Durchsehen und messen**
 
 Nachzusehen, jedes mit einer **gemessenen** Zahl statt einer Einschätzung:
 
@@ -1562,12 +1562,12 @@ Nachzusehen, jedes mit einer **gemessenen** Zahl statt einer Einschätzung:
 10. Die zwei Viewport-Breakpoints (`26rem`, `62rem`) — sie sind seit Etappe 8 offen und
     sollen es nach dieser Etappe nicht immer noch sein.
 
-- [ ] **Schritt 3: Befunde beheben und die Zahl dazu notieren**
+- [x] **Schritt 3: Befunde beheben und die Zahl dazu notieren**
 
 Jeder Befund wird an seiner **Ursache** behoben, nicht an seiner Fundstelle
 (`CLAUDE.md`), und mit der Messung davor und danach in `PROGRESS.md` festgehalten.
 
-- [ ] **Schritt 4: Commit**
+- [x] **Schritt 4: Commit**
 
 ```bash
 git add -A

@@ -15,7 +15,14 @@ import type { ScenarioBlueprint } from '../generator.js';
  */
 export const CLASSIC_34: ScenarioBlueprint = {
   id: 'classic34',
-  name: 'Basisspiel (3-4 Spieler)',
+  /*
+   * Der Name benennt das **Brett** und nicht das Regelwerk. Er hiess einmal
+   * "Basisspiel (3-4 Spieler)" und stand am Startbildschirm direkt unter der
+   * Regelwerkswahl - wer dort "Staedte & Ritter" gewaehlt hatte, las eine
+   * Zeile tiefer "Basisspiel". Ein Wort, zwei Bedeutungen; gefunden im
+   * Browser-Durchgang zu 10b.
+   */
+  name: 'Standardbrett (3-4 Spieler)',
   rows: [3, 4, 5, 4, 3],
   minPlayers: 3,
   maxPlayers: 4,

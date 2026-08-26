@@ -6205,11 +6205,13 @@ und Städteverlust, und die Räubersperre bis zum ersten Überfall.
 | Prüfung             | Ergebnis                                                 |
 | ------------------- | -------------------------------------------------------- |
 | `pnpm typecheck`    | grün                                                     |
-| `pnpm test`         | grün — shared 883 / 47, server 211 / 22, client 482 / 45 |
-| `pnpm build`        | grün, Client-Bundle 471 kB (139 kB gzip), CSS 57.2 kB    |
+| `pnpm test`         | grün — shared 894 / 48, server 211 / 22, client 485 / 45 |
+| `pnpm build`        | grün, Client-Bundle 472 kB (139 kB gzip), CSS 57.5 kB    |
 | `pnpm format:check` | grün                                                     |
 
-Vorher: 703 / 211 / 459. Neu also 180 Tests in `shared`, keiner im Server, 23 im Client.
+Vorher: 703 / 211 / 459. Neu also 191 Tests in `shared`, keiner im Server, 26 im Client.
+Elf davon sind erst nach dem Durchgang im Browser dazugekommen — sie halten Befunde fest,
+die kein Test gesehen hatte.
 Der Server hat keine bekommen, und das ist die Antwort auf eine Frage, die man beim
 Lesen stellt: die Erweiterung fügt keine Nachricht und keinen Handler hinzu. Sieben neue
 Zugarten reisen als `game.act` durch dasselbe Rohr wie alle anderen, weil das Protokoll
@@ -6320,6 +6322,131 @@ nächsten Lesen eine Entscheidung sind und kein Fehler.
    wie in der Spec nicht vorgesehen. Alle aktivierten Ritter kämpfen, alle werden danach
    deaktiviert.
 
+### Der Durchgang im Browser — elf Befunde, alle gemessen
+
+Der Durchgang, der in der ersten Sitzung ausgefallen war, ist nachgeholt: Chrome
+verbunden, lokale Städte-&-Ritter-Partie über den ausgelieferten Build. Er hat elf
+Befunde geliefert, von denen **kein einziger** durch einen Test gefallen wäre.
+
+Vorweg eine Meßnotiz, die zweimal Zeit gekostet hat: die Screenshots der Erweiterung sind
+1568 px breit, das Fenster war 1920 px — Klicks nach Bildkoordinaten landen 24 % daneben.
+Gearbeitet wird deshalb über Element-Referenzen und gemessene Rechtecke, nicht über
+abgelesene Pixel. Der erste Fehlklick sah wie ein Produktfehler aus („die Regelwerkswahl
+greift nicht") und war keiner.
+
+**1. Unter der Regelwerkswahl stand „Basisspiel", auch bei Städte & Ritter.** Die Zeile
+zeigt den Namen des **Brett-Bauplans**, und der hieß `'Basisspiel (3-4 Spieler)'` — ein
+Wort mit zwei Bedeutungen, drei Zeilen unter dem Schalter, an dem man gerade die andere
+gewählt hat. Behoben an der Ursache: die Baupläne benennen jetzt das Brett
+(`Standardbrett (3-4 Spieler)`, `Großes Brett (5-6 Spieler)`), und „Basisspiel" heißt im
+ganzen Produkt genau eine Sache.
+
+**2. Die zweite Gründungssetzung sagte „Siedlung" und setzte eine Stadt.** An zwei
+Stellen: der Bauknopf hieß „Siedlung" (weil die Aktion `placeSetupSettlement` heißt), und
+der Verlauf meldete „setzt die Gründungssiedlung". Eine Ursache: niemand fragte, **was**
+diese Setzung an diesem Tisch ist. `setupBuildingKind` wußte es längst — sie nimmt jetzt
+eine Quelle statt eines `GameState`, damit der Browser dieselbe Funktion fragen kann
+(dieselbe Bauform wie `handLimitOf`). Nachgemessen: Runde 1 dreimal `build-settlement`,
+Runde 2 dreimal `build-city`, Hinweis „Gründung: Knoten für die Stadt wählen".
+
+Mitgefallen ist der Straßensatz eine Ebene tiefer: „an der eben gesetzten Siedlung" stand
+auch dort, wo eine Stadt steht.
+
+**3. „Spieler 1 und Spieler 2 und Spieler 3 verliert eine Stadt".** Zweimal falsch in
+einem Satz — die Aufzählung und das Verb. Dieselbe `join(' und ')`-Zeile stand ein
+zweites Mal in `view.ts` („A und B und C muss abwerfen"). Beide gehen jetzt über
+`nameList` in `shared/game/labels.ts`, und das Verb folgt der Anzahl.
+
+**4. Der Ritter ist nicht kleiner als eine Siedlung.** Der Kommentar am `scale`-Faktor
+behauptete es und begründete es mit der fehlenden Abstandsregel. Gemessen: Ritter
+31,0 × 31,8 px, Siedlung 30,5 × 35,6 px — gleich breit. Der kleinere Faktor wird davon
+aufgewogen, daß die Figur samt Fahne im Pfadraum breiter ist als ein Haus. Auch der Grund
+trägt nicht: eine Bretteinheit sind gemessen 94,2 px, zwischen zwei Rittern auf
+benachbarten Kreuzungen bleiben 63 px. **Die Zahl bleibt, der Satz daneben ist
+korrigiert** — hier stand eine Behauptung, die niemand nachgerechnet hatte.
+
+**5. Zwei Sprachen für „gesperrt", zehn Pixel auseinander.** Der gesperrte Bauknopf trug
+`cursor: not-allowed`, der gesperrte Ritterknopf `cursor: default`. Jetzt beide
+`not-allowed`. Die Deckkraft bleibt unterschiedlich (Bauteil 1, Rittermodus 0,42) und das
+mit Grund: das Bauteil ist Spielmaterial und sagt seine Sperre über die graue Zahl und
+den fehlenden Schatten, der Modus ist ein Knopf.
+
+**6. Die Ritterknöpfe waren 32,2 px groß.** Diese Leiste gibt es, weil vier Knöpfe an
+einer Ritterfigur von zwanzig Pixeln vier Trefferflächen **unter Fingergröße** wären —
+und dann standen dort selbst 32,2 px, wo 44 nötig sind. Die Begründung der Leiste
+widersprach ihrer Ausführung. Nachgemessen: 44,0 × 44,0 px.
+
+**7. „Aufwerten: kein Ritter kann gerade steigen" nannte den falschen Grund.** Im Browser
+stand der Satz vor einem Ritter, der sehr wohl steigen konnte — es fehlten Wolle und Erz.
+Ein gesperrter Knopf, der den falschen Grund nennt, ist schlimmer als einer, der keinen
+nennt: er schickt auf die falsche Suche. Der Nachbarknopf machte es längst richtig
+(„kein Ritter ohne Helm, **oder das Getreide fehlt**"). Nachgemessen: „Aufwerten: kein
+Ritter kann steigen, oder Wolle und Erz fehlen".
+
+**8. Die Fahnenspitzen verschmolzen — und das trifft die tragende Entscheidung der
+Etappe.** Die Stärke steht in Spitzen und nicht in der Größe, weil man Spitzen **zählen**
+kann. Gemessen standen sie 1,7 px auseinander und trugen eine Kontur von 2,4 px: zwei
+benachbarte Spitzen berührten sich mit ihren Rändern, drei wären ein Balken gewesen. Die
+Zusage war nicht eingelöst.
+
+Behoben an beiden Ursachen: die Teilung im Pfad wächst (Höhe 2,6 → 2,0, Teilung
+3,4 → 3,6), und die Spitzen bekommen eine eigene, dünnere Kontur (1,15 → 0,55). An einem
+echten Ritter der Stufe 2 nachgemessen: Lücke **2,21 px** gegen eine Kontur von 0,76 px —
+die Ränder berühren sich nicht mehr. Auf die Vollbild-Einheit umgerechnet sind das
+3,4 px Lücke statt 1,7.
+
+**9. Unter 26 rem lief die Bedienung aus dem Fenster.** Bei 396 px Fensterbreite gemessen:
+die Bauleiste war 340,7 px breit, begann bei x 205 und endete bei **546** — 150 px hinter
+dem Rand. Die Ritterleiste darunter lag mit 400–546 **vollständig** außerhalb. Einen
+Rollbalken gab es nicht (`.game` hat `overflow: hidden`), abgeschnitten war es trotzdem.
+
+Mit drei Bauteilen fiel das nicht auf; seit dieser Etappe sind es fünf, und die
+Ritterleiste ist ganz neu. Die Ursache sind zwei Zeilen: `.build` hatte `flex-wrap:
+nowrap`, und `.tray__controls` durfte als Flex-Item nicht unter seine Inhaltsbreite
+schrumpfen (`min-width` steht dort auf `auto`). Beides gehört zusammen — `flex-wrap`
+allein bricht nichts. Nachgemessen bei 400 px: Bauleiste rechts **393,6**, Ritterleiste
+rechts 393,6, beides im Fenster, kein Rollbalken.
+
+**Damit ist der Punkt zu, der seit Etappe 8 als „die zwei Viewport-Breakpoints sind
+ungesehen" dastand.** Bei 636 px paßt ohnehin alles (Bauleiste 340,7 px, rechtsbündig).
+
+**10. Der Stand in der Barbarenleiste verfehlte den Kontrast.** Gegen die Tiefsee
+gemessen: `--ok` 3,67:1, `--bad` 3,09:1 — und der Stand steht in 9,28 px, also kleinem
+Text, der 4,5:1 braucht. Der Kommentar im Blatt behauptete, die drei Farben seien „für
+die dunkle Fläche gemischt"; als **Fläche** stimmt das (`.seat__gain` trägt helle Schrift
+darauf und verlöre sie, wenn man sie aufhellt), als **Schrift** nicht. Deshalb ein drittes
+Tripel neben dem für Pergament: `--ok-on-sea` (#4fa86d) und `--bad-on-sea` (#e0705e),
+nachgemessen 4,96:1 und 4,61:1.
+
+**11. Der Mauersockel ist gemessen und in Ordnung.** Kein Befund, aber Punkt 3 der Liste:
+die Mauer ist 29,9 × 9,6 px an einer Stadt von 26,9 × 22,4 px, deckt **36 %** der
+Stadthöhe und ragt beidseitig 1,5 px hinaus. Dach und Giebel bleiben stehen, die Zinnen
+sind als Zacken erkennbar — genau das, was der Kopfkommentar von `WALL_PATH` verspricht.
+
+### Was der Durchgang bestätigt hat
+
+Die Räubersperre greift: nach einer Sieben ging es ohne `robberPending` weiter, im
+Verlauf steht „Spieler 2 würfelt 7" und direkt danach der Abwurf. Nach dem ersten
+Überfall ist der Räuber frei („Spieler 2 versetzt den Räuber"). Der Überfall selbst läuft
+und wird erzählt. Die Gründung setzt Siedlung **und** Stadt (3 + 3 auf dem Brett). Der
+Handelsdialog trägt acht Sorten in zwei Reihen, die Handelswaren mit geländefarbenem Rand
+— die 10a-Korrektur hält. Der Bauleistenmodus geht mit dem zweiten Druck wieder aus, und
+ohne Modus leuchtet nichts. Ein Basistisch zeigt weiterhin genau drei Bauteile und **keine**
+Ritterleiste. Das Handkartenlimit stimmt: 12 Karten ohne Mauer, 6 abzuwerfen.
+
+### Ein Fund außerhalb dieser Etappe
+
+Der Abwurfdialog sperrt sein **Minus**, wenn der gewählte Wert über dem eigenen Vorrat
+liegt: `canStep` prüft `next > held` in beide Richtungen. Wer je in diesen Zustand käme,
+säße fest — der Dialog stand auf „Abwerfen (40/4)", und jeder einzelne Knopf war grau.
+
+**Erreicht hat ihn ein Treiber, der vierzig Klicks in einen Frame legte**, und das kann
+ein Mensch nicht: die Prüfung liest `chosen` aus dem Render-Scope, also sahen alle vierzig
+Klicks denselben Anfangszustand. Über die Bedienung ist der Zustand nicht erreichbar, und
+deshalb bleibt der Code, wie er ist — die Etappe wächst nicht um einen Umbau ohne
+beobachtbaren Nutzen. Drei Tests in `dialogs.test.tsx` halten fest, daß der Rückweg offen
+bleibt, auch wenn die geforderte Zahl erreicht ist.
+
 ### Abweichungen vom Plan
 
 **Aufgabe 2 war beim Aufsetzen dieser Etappe implementiert, aber ohne ihre Tests.**
@@ -6347,14 +6474,15 @@ Testfehlern in Aufgabe 4, die alle dasselbe sagten.
 
 ### Offene Punkte
 
-- **Der Durchgang im Browser (Aufgabe 16) hat nicht stattgefunden.** Die
-  Chrome-Erweiterung war in dieser Sitzung nicht verbunden. Geprüft sind Typen, Tests,
-  Build und Format — nicht das Bild, und diese Etappe bringt mehr neue Fläche als 10a,
-  wo derselbe Durchgang vier Befunde geliefert hat, die kein Test gefunden hat. Was
-  nachzusehen ist, steht als Liste in Aufgabe 16 des Plans; besonders: der `scale`-Faktor
-  `0.0225` am Ritter ist **gesetzt und nicht gemessen**, zwei Ritter auf benachbarten
-  Kreuzungen stehen näher beieinander als je zwei Bauwerke (für sie gilt keine
-  Abstandsregel), und die Bauleiste trägt jetzt fünf Bauteile statt drei.
+- **Ein Mächtiger Ritter ist in 10b nicht zu sehen.** Stufe 3 verlangt die Festung
+  (Politik 3), und die gibt es erst in 10c. Gemessen sind deshalb eine und zwei
+  Fahnenspitzen; daß auch die dritte einzeln steht, folgt aus derselben Teilung im Pfad,
+  ist aber nicht am Bild geprüft.
+- **Die Ritterleiste ist an einem schmalen Fenster zwei Reihen hoch** (gemessen 93,6 px
+  bei 400 px Fensterbreite), die Bauleiste drei (217,7 px). Zusammen liegen sie über dem
+  Brett, wie es die Ecken-Ablage seit Etappe 8 vorsieht. Ob das auf einem Handy im
+  Querformat noch trägt, ist eine Frage an den nächsten Playtest und nicht an eine
+  Messung.
 - **Ein `cityLossPending` fehlt** — siehe Abweichung 2. Wer die Wahl haben will, braucht
   einen Wurf, der sich anhalten und fortsetzen läßt.
 - **Ritter- und Ausweichzüge sind unbefristet.** `deadlineOf` kennt sie nicht; wer in
@@ -6364,17 +6492,13 @@ Testfehlern in Aufgabe 4, die alle dasselbe sagten.
 - **Die Variante „mehr Taktik" fehlt** — siehe Abweichung 3.
 - **Die drei Stadttore des Ereigniswürfels werden weiterhin gelesen und tun nichts.** Die
   Fortschrittskarten kommen in 10d.
-- **Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen.** Sie
-  stehen seit Etappe 8 offen, und die Ritterleiste ist seit dieser Etappe eine zweite
-  Reihe in derselben Ecke.
+- Die zwei Viewport-Breakpoints sind **nicht** mehr offen: sie sind in diesem Durchgang
+  gemessen worden (Befund 9), und der Fehler, den sie verdeckt haben, ist behoben.
 - Die offenen Punkte aus Etappe 9 (Volume, HTTPS, Sicherung, Drossel im Wartebereich)
   gelten unverändert weiter.
 
 ### Nächste Etappe
 
-**Zuerst der Browser-Durchgang aus Aufgabe 16** — er gehört zu dieser Etappe und ist das
-einzige, was von ihr fehlt.
-
-Danach **10c — Stadtausbau und Metropolen.** Die drei Bereiche (Handel, Politik,
+**10c — Stadtausbau und Metropolen.** Die drei Bereiche (Handel, Politik,
 Wissenschaft), die fünf Stufen je Bereich, die Metropolen und was sie schützen. Das Feld
 `improvements` steht dafür schon im Zustand.

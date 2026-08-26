@@ -57,11 +57,21 @@ export const KNIGHT_MAST_PATH = 'M 3 7 L 3 -8';
  * zwei ein Starker, drei ein Mächtiger Ritter. Sie hängen deshalb an der Stufe
  * und nicht an einer eigenen Zahl — zwei Wahrheiten über dieselbe Stärke wären
  * eine zu viel.
+ *
+ * **Die Teilung ist nachgemessen und war einmal zu eng.** Sie standen mit
+ * 2,6 Einheiten Höhe und 0,8 Einheiten Lücke da; im Browser gemessen ergab
+ * das bei einer Bretteinheit von 94,2 px eine Lücke von **1,7 px** — gegen
+ * eine Kontur von 2,4 px. Zwei benachbarte Spitzen berührten sich also mit
+ * ihren Rändern, und drei davon wären ein Balken gewesen. Damit wäre genau
+ * die Zusage gebrochen, für die es sie gibt: daß man sie **zählt**.
+ *
+ * Jetzt 2,0 hoch bei 3,6 Teilung, also 1,6 Einheiten Lücke. Die Kontur der
+ * Spitzen ist im Blatt eigens dünner (siehe `.knight__pennant`).
  */
 export const KNIGHT_PENNANTS: readonly string[] = [
-  'M 3.4 -8 L 7.6 -6.7 L 3.4 -5.4 Z',
-  'M 3.4 -4.6 L 7.6 -3.3 L 3.4 -2 Z',
-  'M 3.4 -1.2 L 7.6 0.1 L 3.4 1.4 Z',
+  'M 3.4 -8 L 7.6 -7 L 3.4 -6 Z',
+  'M 3.4 -4.4 L 7.6 -3.4 L 3.4 -2.4 Z',
+  'M 3.4 -0.8 L 7.6 0.2 L 3.4 1.2 Z',
 ];
 
 /**

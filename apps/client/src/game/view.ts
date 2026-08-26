@@ -1,5 +1,6 @@
 import {
   handLimitOf,
+  nameList,
   setupPlayerIndex,
   yieldTotal,
   type DiceSpec,
@@ -208,8 +209,12 @@ function phaseTextOf(view: PlayerView): string {
         : `Gründung: ${nameOf(setupPlayerOf(view))} setzt die zugehörige Straße`;
     case 'rollPending':
       return `${currentName()} muss würfeln`;
-    case 'discardPending':
-      return `Sieben: ${view.phase.pending.map((id) => nameOf(id)).join(' und ')} muss abwerfen`;
+    case 'discardPending': {
+      // Dasselbe wie im Verlauf: die Aufzaehlung mit Komma, das Verb nach der
+      // Anzahl. "A und B und C muss abwerfen" war beides falsch.
+      const owing = view.phase.pending.map((id) => nameOf(id));
+      return `Sieben: ${nameList(owing)} ${owing.length === 1 ? 'muss' : 'müssen'} abwerfen`;
+    }
     case 'robberPending':
       return `${currentName()} versetzt den Räuber`;
     case 'displacePending':

@@ -91,6 +91,21 @@ export const KNIGHT_LABELS_DATIVE: Readonly<Record<KnightLevel, string>> = {
   3: 'Mächtigen Ritter',
 };
 
+/**
+ * Zaehlt Namen auf, wie man es spricht: "A", "A und B", "A, B und C".
+ *
+ * Sie steht hier und nicht an ihren zwei Fundstellen, weil beide denselben
+ * Satz falsch gebaut haben - `join(' und ')` ergibt "A und B und C", und das
+ * liest sich wie eine Aufzaehlung, die jemand vergessen hat zu Ende zu
+ * schreiben. Wer die Anzahl braucht, um ein Verb zu beugen, fragt die Liste
+ * und nicht diesen Text.
+ */
+export function nameList(names: readonly string[]): string {
+  if (names.length === 0) return 'niemand';
+  if (names.length === 1) return names[0]!;
+  return `${names.slice(0, -1).join(', ')} und ${names[names.length - 1]!}`;
+}
+
 /** Zaehlt eine Kartenmenge auf; leer bleibt nicht leer, sondern wird benannt. */
 export function resourceList(amounts: CardAmounts): string {
   /*

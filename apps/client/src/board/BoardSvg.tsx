@@ -141,10 +141,17 @@ const BUILDING_SCALE: Readonly<Record<'settlement' | 'city' | 'knight', number>>
   settlement: 0.027,
   city: 0.0245,
   /*
-   * Ritter etwas kleiner als eine Siedlung: fuer sie gilt keine Abstandsregel,
-   * sie stehen also dichter beieinander als jedes Bauwerk - und einer davon
-   * kann direkt neben einer eigenen Stadt stehen. Der Faktor ist im Browser
-   * nachgemessen (Aufgabe 16 der Etappe).
+   * **Der Ritter ist nicht kleiner als eine Siedlung, und das ist in Ordnung.**
+   *
+   * Hier stand, er sei "etwas kleiner", weil fuer ihn keine Abstandsregel
+   * gilt. Im Browser gemessen ist er mit 31,0 x 31,8 px genauso breit wie eine
+   * Siedlung (30,5 x 35,6 px): der kleinere Faktor wird davon aufgewogen, dass
+   * die Figur samt Fahne im Pfadraum breiter ist als ein Haus.
+   *
+   * Der Grund fuer "kleiner" traegt ausserdem nicht. Nachgerechnet aus
+   * derselben Messung: eine Bretteinheit sind 94,2 px, benachbarte Kreuzungen
+   * liegen also 94,2 px auseinander, und zwischen zwei Rittern bleiben 63 px.
+   * Nichts ueberlappt. Die Zahl bleibt deshalb stehen - der Satz daneben nicht.
    */
   knight: 0.0225,
 };

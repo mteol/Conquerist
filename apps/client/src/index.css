@@ -83,6 +83,21 @@
   --warn-ink: #a8741a;
   --bad-ink: #a52a1e;
 
+  /*
+   * Und dieselben Bedeutungen noch einmal als **Schrift auf der Tiefsee**.
+   *
+   * Der Kommentar darueber sagte, `--ok` und `--bad` seien fuer die dunkle
+   * Flaeche gemischt. Als *Flaeche* stimmt das - `.seat__gain` traegt helle
+   * Schrift auf `--ok`, und heller gemischt verloere die ihren Halt. Als
+   * *Schrift* stimmt es nicht: im Browser gegen den Tiefsee-Grund gemessen
+   * kamen `--ok` auf 3,67:1 und `--bad` auf 3,09:1, und der Stand in der
+   * Barbarenleiste steht in 9,28 px - kleiner Text, der 4,5:1 braucht.
+   *
+   * Nachgemessen: 4,96:1 und 4,61:1.
+   */
+  --ok-on-sea: #4fa86d;
+  --bad-on-sea: #e0705e;
+
   --radius: 10px;
   --shadow: 0 12px 32px rgb(0 0 0 / 35%);
 
@@ -2994,11 +3009,11 @@ body {
  * eine von `.barbarians__figure` darueber.
  */
 .barbarians__side--holding .barbarians__figure {
-  fill: var(--ok);
+  fill: var(--ok-on-sea);
 }
 
 .barbarians__side--losing .barbarians__figure {
-  fill: var(--bad);
+  fill: var(--bad-on-sea);
 }
 
 .barbarians__standing {
@@ -3009,11 +3024,11 @@ body {
 }
 
 .barbarians__side--holding .barbarians__standing {
-  color: var(--ok);
+  color: var(--ok-on-sea);
 }
 
 .barbarians__side--losing .barbarians__standing {
-  color: var(--bad);
+  color: var(--bad-on-sea);
 }
 
 /* Am schmalen Fenster kuerzer, damit die Leiste nicht in die Topline laeuft. */
@@ -3257,6 +3272,13 @@ body {
   gap: 0.5rem;
   align-items: flex-end;
   justify-content: flex-end;
+  /*
+   * Ohne dies darf die Ecke nicht unter ihre Inhaltsbreite schrumpfen
+   * (`min-width` steht bei Flex-Items auf `auto`), und die Bauleiste darin
+   * schiebt sie ueber den Fensterrand: bei 396 px gemessen endete sie bei
+   * x 546. Zusammen mit `flex-wrap` an `.build` bricht sie statt dessen um.
+   */
+  min-width: 0;
 }
 
 /*
@@ -3687,15 +3709,26 @@ body {
 .knights {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.35rem;
   margin-top: 0.5rem;
 }
 
+/*
+ * **44 px, und das ist keine runde Zahl aus Gewohnheit.**
+ *
+ * Diese Leiste gibt es, weil vier Knoepfe an einer Ritterfigur von zwanzig
+ * Pixeln vier Trefferflaechen unter Fingergroesse waeren. Mit 2 rem Kantenlaenge
+ * (gemessen 32,2 px) waeren es hier genau dieselben zu kleinen Flaechen - die
+ * Begruendung der Leiste haette ihrer eigenen Ausfuehrung widersprochen.
+ */
 .knights__pick {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.32rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.4rem;
   border: 1px solid var(--parchment-edge);
   border-radius: var(--radius);
   background: var(--parchment);
@@ -3711,7 +3744,12 @@ body {
 .knights__pick:disabled {
   opacity: 0.42;
   box-shadow: none;
-  cursor: default;
+  /*
+   * `not-allowed` wie an der Bauleiste daneben. Gemessen standen dort
+   * `cursor: not-allowed` und hier `default` - zwei Sprachen fuer dieselbe
+   * Aussage, in derselben Bildschirmecke, zehn Pixel auseinander.
+   */
+  cursor: not-allowed;
 }
 
 .knights__pick--active {
@@ -3723,8 +3761,8 @@ body {
 
 .knights__mark {
   display: block;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.35rem;
+  height: 1.35rem;
 }
 
 /*
@@ -3782,8 +3820,25 @@ body {
   padding-bottom: 0.15rem;
 }
 
+/*
+ * **Sie bricht um, statt aus dem Fenster zu laufen.**
+ *
+ * Mit drei Bauteilen fiel es nicht auf; seit Staedte & Ritter sind es fuenf.
+ * Im Browser bei 396 px Fensterbreite gemessen: die Leiste war 340,7 px breit
+ * und begann bei x 205 - sie endete bei **546**, also 150 px hinter dem Rand,
+ * und die Ritterleiste darunter lag mit 400-546 vollstaendig ausserhalb. Einen
+ * Rollbalken gab es nicht (`.game` hat `overflow: hidden`), abgeschnitten war
+ * es trotzdem.
+ *
+ * `flex-wrap` allein genuegt nicht: als Flex-Item darf `.tray__controls` nicht
+ * unter seine Inhaltsbreite schrumpfen, solange `min-width` auf `auto` steht.
+ * Das `min-width: 0` dafuer steht oben bei `.tray__controls` - beides gehoert
+ * zusammen, sonst bricht nichts.
+ */
 .build {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.7rem;
   margin-bottom: 0.5rem;
 }
@@ -5639,10 +5694,23 @@ body {
  * Kontur im Pfadmass (derselbe Grund wie bei `.vertex__building`) und der
  * Helm, der die einzige Form mit eigener Farbe ist.
  */
-.knight__body,
-.knight__pennant {
+.knight__body {
   stroke: #16202a;
   stroke-width: 1.15;
+  stroke-linejoin: round;
+}
+
+/*
+ * **Die Spitzen tragen eine eigene, duennere Kontur.**
+ *
+ * Mit den 1.15 des Rumpfs waren es im Browser 2,4 px Rand bei 1,7 px Lücke
+ * zwischen zwei Spitzen - sie berührten sich, und drei davon wären ein Balken
+ * gewesen. Eine Silhouette, die man zählen soll, darf ihre Zwischenräume nicht
+ * an den Rand verlieren. Die Teilung im Pfad ist mitgewachsen (`shapes.ts`).
+ */
+.knight__pennant {
+  stroke: #16202a;
+  stroke-width: 0.55;
   stroke-linejoin: round;
 }
 

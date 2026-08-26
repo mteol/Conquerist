@@ -382,3 +382,52 @@ describe('TradeDialog, Reiter Spieler', () => {
     expect(screen.getByTestId('give-ore').textContent).toBe('0');
   });
 });
+
+/**
+ * Der Weg zurueck darf nie gesperrt sein.
+ *
+ * Im Browser-Durchgang zu 10b stand der Abwurfdialog auf „Abwerfen (40/4)",
+ * und **jeder** Knopf war grau - auch das Minus unter der Vierzig. Die Ursache:
+ * `canStep` prueft `next > held` in beide Richtungen, und damit sperrt sie
+ * genau den Weg aus einem zu hohen Wert heraus. Der Dialog war eine Sackgasse.
+ *
+ * Erreicht hat ihn ein Treiber, der vierzig Klicks in einen Frame legte - ein
+ * Mensch schafft das nicht. Die Regel bleibt trotzdem falsch: eine Pruefung,
+ * die das Verlassen eines ungueltigen Zustands verbietet, ist keine Grenze,
+ * sondern eine Falle.
+ */
+describe('DiscardDialog, der Weg zurueck', () => {
+  it('laesst herunterzaehlen, auch wenn der Wert ueber dem Vorrat steht', async () => {
+    render(<DiscardDialog player={player} cards={RESOURCE_IDS} required={4} onConfirm={vi.fn()} />);
+
+    // Korn gibt es genau einmal - eins geht, ein zweites nicht.
+    await userEvent.click(screen.getByLabelText('Korn mehr'));
+    expect(screen.getByTestId('chosen-grain').textContent).toBe('1');
+    expect(screen.getByLabelText('Korn mehr')).toHaveProperty('disabled', true);
+
+    // Und der Rueckweg steht offen.
+    expect(screen.getByLabelText('Korn weniger')).toHaveProperty('disabled', false);
+    await userEvent.click(screen.getByLabelText('Korn weniger'));
+    expect(screen.getByTestId('chosen-grain').textContent).toBe('0');
+  });
+
+  it('sperrt das Minus erst bei null', async () => {
+    render(<DiscardDialog player={player} cards={RESOURCE_IDS} required={4} onConfirm={vi.fn()} />);
+
+    expect(screen.getByLabelText('Lehm weniger')).toHaveProperty('disabled', true);
+    await userEvent.click(screen.getByLabelText('Lehm mehr'));
+    expect(screen.getByLabelText('Lehm weniger')).toHaveProperty('disabled', false);
+  });
+
+  it('haelt den Rueckweg offen, wenn die geforderte Zahl erreicht ist', async () => {
+    render(<DiscardDialog player={player} cards={RESOURCE_IDS} required={4} onConfirm={vi.fn()} />);
+
+    for (const label of ['Lehm mehr', 'Lehm mehr', 'Lehm mehr', 'Holz mehr']) {
+      await userEvent.click(screen.getByLabelText(label));
+    }
+
+    // Voll: nach oben ist zu, nach unten offen.
+    expect(screen.getByLabelText('Holz mehr')).toHaveProperty('disabled', true);
+    expect(screen.getByLabelText('Lehm weniger')).toHaveProperty('disabled', false);
+  });
+});
