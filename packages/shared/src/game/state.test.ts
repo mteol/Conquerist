@@ -62,3 +62,20 @@ describe('Stadtmauer am Gebaeude', () => {
     expect(parsed.wall).toBe(true);
   });
 });
+
+describe('Metropole am Gebaeude', () => {
+  it('fehlt in einer gespeicherten Partie und heisst dann: keine', () => {
+    expect(BuildingSchema.parse({ owner: 'p1', kind: 'city' }).metropolis).toBeNull();
+  });
+
+  it('traegt den Bereich, aus dem sie kommt', () => {
+    const parsed = BuildingSchema.parse({ owner: 'p1', kind: 'city', metropolis: 'trade' });
+    expect(parsed.metropolis).toBe('trade');
+  });
+
+  it('kennt keinen Bereich, den es nicht gibt', () => {
+    expect(() =>
+      BuildingSchema.parse({ owner: 'p1', kind: 'city', metropolis: 'kultur' }),
+    ).toThrow();
+  });
+});

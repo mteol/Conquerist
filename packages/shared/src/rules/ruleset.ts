@@ -242,6 +242,13 @@ export const RuleSetSchema = z.object({
      * diesem Tisch gibt es die Chips nicht.
      */
     defender: z.number().int().min(0).default(0),
+    /**
+     * Was ein Metropolenaufsatz **zusaetzlich** zur Stadt zaehlt.
+     *
+     * Zwei, nicht vier: die Stadt darunter zaehlt ihre eigenen zwei weiter. Wer
+     * hier vier eintraegt, zaehlt die Stadt doppelt.
+     */
+    metropolis: z.number().int().min(0).default(0),
   }),
   /** Ab wie vielen zusammenhaengenden Strassen die Laengste Handelsstrasse vergeben wird. */
   longestRoadMinimum: z.number().int().min(1),
@@ -357,6 +364,7 @@ export const CLASSIC_RULES: RuleSet = {
     largestArmy: 2,
     developmentCard: 1,
     defender: 0,
+    metropolis: 0,
   },
   longestRoadMinimum: 5,
   largestArmyMinimum: 3,

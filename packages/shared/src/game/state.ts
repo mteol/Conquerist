@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { RuleSetSchema, CardAmountsSchema } from '../rules/index.js';
 import { ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { RuleViolation } from './errors.js';
+import { TrackIdSchema } from './cities/tracks.js';
 import { DevelopmentCardIdSchema } from './development.js';
 import { RollSchema } from './dice.js';
 import { PhaseSchema } from './phase.js';
@@ -53,6 +54,18 @@ export const BuildingSchema = z.object({
    * keine Mauer.
    */
   wall: z.boolean().default(false),
+  /**
+   * Metropolenaufsatz auf dieser Stadt, mit seinem Bereich - `null` heisst keiner.
+   *
+   * Am **Gebaeude** und nicht beim Spieler, aus demselben Grund wie die Mauer:
+   * "diese Stadt ist Metropole" ist eine Frage an das Bauwerk. Eine Tabelle
+   * `metropolis: Record<TrackId, PlayerId>` waere eine zweite Wahrheit darueber,
+   * wo der Aufsatz steht - und beim ersten Barbarenueberfall, der Staedte
+   * zurueckstuft, liefe sie mit der ersten auseinander.
+   *
+   * Mit Vorgabe: gespeicherte Partien kennen das Feld nicht.
+   */
+  metropolis: TrackIdSchema.nullable().default(null),
 });
 
 export type Building = z.infer<typeof BuildingSchema>;

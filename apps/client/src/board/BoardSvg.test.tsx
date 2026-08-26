@@ -230,8 +230,18 @@ describe('BoardSvg', () => {
     const withBoth = {
       ...start,
       buildings: {
-        [vertices[0]!]: { owner: seats[0]!.id, kind: 'settlement' as const, wall: false },
-        [vertices[8]!]: { owner: seats[0]!.id, kind: 'city' as const, wall: false },
+        [vertices[0]!]: {
+          owner: seats[0]!.id,
+          kind: 'settlement' as const,
+          wall: false,
+          metropolis: null,
+        },
+        [vertices[8]!]: {
+          owner: seats[0]!.id,
+          kind: 'city' as const,
+          wall: false,
+          metropolis: null,
+        },
       },
     };
 
@@ -273,7 +283,7 @@ describe('BoardSvg', () => {
       // braucht eine eigene Siedlung unter sich, damit `buildCity` erlaubt ist.
       const built = {
         ...start.buildings,
-        [vertices[0]!]: { owner: 'p1' as const, kind, wall: false },
+        [vertices[0]!]: { owner: 'p1' as const, kind, wall: false, metropolis: null },
       };
       const ghost = vertices[8]!;
       const targets = {
@@ -489,8 +499,8 @@ describe('BoardSvg mit Rittern', () => {
         state={{
           ...start,
           buildings: {
-            [walled]: { owner: seats[0]!.id, kind: 'city' as const, wall: true },
-            [bare]: { owner: seats[0]!.id, kind: 'city' as const, wall: false },
+            [walled]: { owner: seats[0]!.id, kind: 'city' as const, wall: true, metropolis: null },
+            [bare]: { owner: seats[0]!.id, kind: 'city' as const, wall: false, metropolis: null },
           },
         }}
         targets={EMPTY_TARGETS}

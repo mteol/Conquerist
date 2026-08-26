@@ -117,7 +117,9 @@ describe('longestRoadLength', () => {
     // Kette ueber die Ecken 0-1-2; auf Ecke 1 steht p2 im Weg.
     const state = testGame({
       roads: roadsFor('p1', RING.slice(0, 2)),
-      buildings: { [CORNERS[1]!]: { owner: 'p2', kind: 'settlement', wall: false } },
+      buildings: {
+        [CORNERS[1]!]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+      },
     });
 
     expect(longestRoadLength(state, 'p1')).toBe(1);
@@ -126,7 +128,7 @@ describe('longestRoadLength', () => {
   it('laesst die eigene Siedlung die Strecke nicht unterbrechen', () => {
     const state = testGame({
       roads: roadsFor('p1', RING.slice(0, 2)),
-      buildings: { [CORNERS[1]!]: { owner: 'p1', kind: 'city', wall: false } },
+      buildings: { [CORNERS[1]!]: { owner: 'p1', kind: 'city', wall: false, metropolis: null } },
     });
 
     expect(longestRoadLength(state, 'p1')).toBe(2);
@@ -136,7 +138,9 @@ describe('longestRoadLength', () => {
     // p2 steht auf Ecke 0, dem Ende der Kette 0-1-2 - dort endet sie ohnehin.
     const state = testGame({
       roads: roadsFor('p1', RING.slice(0, 2)),
-      buildings: { [CORNERS[0]!]: { owner: 'p2', kind: 'settlement', wall: false } },
+      buildings: {
+        [CORNERS[0]!]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+      },
     });
 
     expect(longestRoadLength(state, 'p1')).toBe(2);

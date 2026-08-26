@@ -41,7 +41,11 @@ function knightOf(owner: string): Knight {
 /** Der Zustand, in dem p1 an `CENTER_VERTEX` siedelt und genug Karten hat. */
 function withSettlement(resources = hand()): GameState {
   return giving(
-    testGame({ buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } } }),
+    testGame({
+      buildings: {
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+      },
+    }),
     'p1',
     resources,
   );
@@ -178,7 +182,9 @@ describe('applyBuildRoad', () => {
     const state = giving(
       testGame({
         roads: { [CENTER_EDGE]: 'p1' },
-        buildings: { [ADJACENT_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false } },
+        buildings: {
+          [ADJACENT_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+        },
       }),
       'p1',
       hand(ROAD_COST),
@@ -233,6 +239,7 @@ describe('applyBuildSettlement', () => {
         owner: 'p1',
         kind: 'settlement',
         wall: false,
+        metropolis: null,
       });
       expect(playerOf(result.state, 'p1').piecesLeft.settlement).toBe(
         CLASSIC_RULES.pieceStock.settlement - 1,
@@ -260,7 +267,9 @@ describe('applyBuildSettlement', () => {
     const state = giving(
       testGame({
         roads: { [CENTER_EDGE]: 'p1' },
-        buildings: { [ADJACENT_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false } },
+        buildings: {
+          [ADJACENT_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+        },
       }),
       'p1',
       hand(SETTLEMENT_COST),
@@ -284,6 +293,7 @@ describe('applyBuildCity', () => {
         owner: 'p1',
         kind: 'city',
         wall: false,
+        metropolis: null,
       });
       expect(playerOf(result.state, 'p1').piecesLeft.city).toBe(before.city - 1);
       // Die Siedlung kommt zurueck in den Vorrat - sie steht ja nicht mehr.
@@ -302,7 +312,9 @@ describe('applyBuildCity', () => {
   it('lehnt eine fremde Siedlung ab', () => {
     const state = giving(
       testGame({
-        buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false } },
+        buildings: {
+          [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+        },
       }),
       'p1',
       hand(CITY_COST),
@@ -315,7 +327,11 @@ describe('applyBuildCity', () => {
 
   it('lehnt eine bereits ausgebaute Stadt ab', () => {
     const state = giving(
-      testGame({ buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } } }),
+      testGame({
+        buildings: {
+          [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: null },
+        },
+      }),
       'p1',
       hand(CITY_COST),
     );

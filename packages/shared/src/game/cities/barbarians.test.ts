@@ -63,8 +63,8 @@ describe('barbarianStrength', () => {
   it('zaehlt jede Stadt auf dem Brett, egal wem sie gehoert', () => {
     const state = gameWithCities({
       buildings: {
-        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false },
-        [FAR_VERTEX]: { owner: 'p2', kind: 'city', wall: false },
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: null },
+        [FAR_VERTEX]: { owner: 'p2', kind: 'city', wall: false, metropolis: null },
       },
     });
 
@@ -74,8 +74,8 @@ describe('barbarianStrength', () => {
   it('zaehlt Siedlungen nicht mit - die Barbaren wollen Staedte', () => {
     const state = gameWithCities({
       buildings: {
-        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false },
-        [FAR_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false },
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: null },
+        [FAR_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
       },
     });
 
@@ -114,7 +114,7 @@ const RICH = 'v:0,-1|0,0|1,-1';
 const POOR = 'v:-1,1|0,0|0,1';
 
 function city(owner: string, wall = false): Building {
-  return { owner, kind: 'city', wall };
+  return { owner, kind: 'city', wall, metropolis: null };
 }
 
 function knight(owner: string, level: KnightLevel, active = true): Knight {
@@ -205,7 +205,7 @@ describe('barbarianOutcome - die Barbaren gewinnen', () => {
       buildings: {
         [CENTER_VERTEX]: city('p1'),
         [RICH]: city('p1'),
-        [FAR_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false },
+        [FAR_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
       },
       knights: {},
     });
@@ -283,7 +283,12 @@ describe('applyBarbarianAttack', () => {
     const before = landed({ buildings: { [RICH]: city('p1') }, knights: {} });
     const after = applyBarbarianAttack(before);
 
-    expect(after.buildings[RICH]).toEqual({ owner: 'p1', kind: 'settlement', wall: false });
+    expect(after.buildings[RICH]).toEqual({
+      owner: 'p1',
+      kind: 'settlement',
+      wall: false,
+      metropolis: null,
+    });
     expect(playerOf(after, 'p1').piecesLeft.city).toBe(playerOf(before, 'p1').piecesLeft.city + 1);
     expect(playerOf(after, 'p1').piecesLeft.settlement).toBe(
       playerOf(before, 'p1').piecesLeft.settlement - 1,

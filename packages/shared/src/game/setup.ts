@@ -152,7 +152,10 @@ export function applySetupSettlement(
 
   const placed: GameState = {
     ...state,
-    buildings: { ...state.buildings, [vertex]: { owner: player, kind, wall: false } },
+    buildings: {
+      ...state.buildings,
+      [vertex]: { owner: player, kind, wall: false, metropolis: null },
+    },
     players: state.players.map((entry) =>
       entry.id === player
         ? {

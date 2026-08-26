@@ -87,6 +87,7 @@ describe('CLASSIC_RULES', () => {
       largestArmy: 2,
       developmentCard: 1,
       defender: 0,
+      metropolis: 0,
     });
     expect(CLASSIC_RULES.longestRoadMinimum).toBe(5);
     expect(CLASSIC_RULES.largestArmyMinimum).toBe(3);

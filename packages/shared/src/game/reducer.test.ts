@@ -115,7 +115,9 @@ describe('reduce - Zugrecht und Phasen', () => {
 describe('reduce - wuerfeln', () => {
   it('haelt den Wurf fest und verteilt den Ertrag', () => {
     const state = rolling(SIX, {
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
+      buildings: {
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+      },
     });
 
     const result = reduce(state, { type: 'rollDice', player: 'p1' });
@@ -162,7 +164,9 @@ describe('reduce - wuerfeln', () => {
 
   it('verteilt bei einer Sieben keinen Ertrag', () => {
     const state = rolling(SEVEN, {
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
+      buildings: {
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+      },
     });
 
     const result = reduce(state, { type: 'rollDice', player: 'p1' });
@@ -201,7 +205,9 @@ describe('reduce - Nacharbeit nach jedem Zug', () => {
       testGame({
         phase: { kind: 'main' },
         roads: Object.fromEntries(chain.map((edge) => [edge, 'p1'])),
-        buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
+        buildings: {
+          [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+        },
       }),
       'p1',
       hand(CLASSIC_RULES.buildCosts.road),
@@ -221,7 +227,9 @@ describe('reduce - Nacharbeit nach jedem Zug', () => {
         rules: { ...CLASSIC_RULES, victoryPointGoal: 2 },
         phase: { kind: 'main' },
         roads: { [CENTER_EDGE]: 'p1' },
-        buildings: { [FAR_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
+        buildings: {
+          [FAR_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+        },
       }),
       'p1',
       hand(CLASSIC_RULES.buildCosts.settlement),
@@ -247,8 +255,8 @@ describe('reduce - Nacharbeit nach jedem Zug', () => {
         phase: { kind: 'main' },
         currentPlayerIndex: 0,
         buildings: {
-          [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false },
-          [FAR_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false },
+          [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+          [FAR_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
         },
         roads: Object.fromEntries(chain.map((edge) => [edge, 'p2'])),
       }),

@@ -99,6 +99,7 @@ export const CITIES_RULES: RuleSet = {
     developmentCard: 0,
     /* Jeder Siegpunkt-Chip "Retter Catans" zaehlt einen Punkt. */
     defender: 1,
+    metropolis: 2,
   },
   longestRoadMinimum: 5,
   largestArmyMinimum: 3,

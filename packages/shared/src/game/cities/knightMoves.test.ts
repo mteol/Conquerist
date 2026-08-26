@@ -73,7 +73,9 @@ describe('reachableVertices', () => {
 
   it('laesst eine fremde Siedlung passieren - die Anleitung nennt nur Ritter', () => {
     const state = withChain('p1', {
-      buildings: { [CORNERS[2]!]: { owner: 'p2', kind: 'settlement', wall: false } },
+      buildings: {
+        [CORNERS[2]!]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+      },
     });
 
     expect(reachableVertices(state, 'p1', START).has(CORNERS[4]!)).toBe(true);
@@ -81,7 +83,9 @@ describe('reachableVertices', () => {
 
   it('nimmt belegte Kreuzungen auf - ob dort gelandet wird, entscheidet der Zug', () => {
     const state = withChain('p1', {
-      buildings: { [CORNERS[2]!]: { owner: 'p2', kind: 'settlement', wall: false } },
+      buildings: {
+        [CORNERS[2]!]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+      },
     });
 
     expect(reachableVertices(state, 'p1', START).has(CORNERS[2]!)).toBe(true);
@@ -95,7 +99,7 @@ describe('vertexIsFree', () => {
 
   it('verneint unter einem Bauwerk', () => {
     const state = withChain('p1', {
-      buildings: { [CORNERS[2]!]: { owner: 'p2', kind: 'city', wall: false } },
+      buildings: { [CORNERS[2]!]: { owner: 'p2', kind: 'city', wall: false, metropolis: null } },
     });
 
     expect(vertexIsFree(state, CORNERS[2]!)).toBe(false);

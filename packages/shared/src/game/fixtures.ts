@@ -139,7 +139,7 @@ export function testGame(overrides: Partial<GameState> = {}): GameState {
 export function gameWithCities(overrides: Partial<GameState> = {}): GameState {
   return testGame({
     rules: CITIES_RULES,
-    buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } },
+    buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: null } },
     barbarians: { position: 0, attacks: 0 },
     ...overrides,
   });

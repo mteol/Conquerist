@@ -121,6 +121,7 @@ describe('applySetupSettlement', () => {
         owner: 'p1',
         kind: 'settlement',
         wall: false,
+        metropolis: null,
       });
       expect(result.state.players[0]?.resources).toEqual(hand());
       expect(result.state.players[0]?.piecesLeft.settlement).toBe(

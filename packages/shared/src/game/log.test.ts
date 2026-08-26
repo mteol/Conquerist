@@ -74,7 +74,9 @@ describe('Verlaufssaetze', () => {
       rules: { ...CLASSIC_RULES, victoryPointGoal: 2 },
       phase: { kind: 'main' },
       currentPlayerIndex: 0,
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
+      buildings: {
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+      },
     });
     const before = giving(base, 'p1', { grain: 2, ore: 3 });
     const action: GameAction = { type: 'buildCity', player: 'p1', vertex: CENTER_VERTEX };
@@ -339,7 +341,7 @@ describe('Der Ueberfall im Verlauf', () => {
   it('erzaehlt, dass die Ritter gehalten haben, und nennt den Retter', () => {
     const state = gameWithCities({
       barbarians: AT_COAST,
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: null } },
       knights: {
         'v:-1,0|-1,1|0,0': {
           owner: 'p2',
@@ -362,8 +364,8 @@ describe('Der Ueberfall im Verlauf', () => {
     const state = gameWithCities({
       barbarians: AT_COAST,
       buildings: {
-        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false },
-        'v:0,-1|0,0|1,-1': { owner: 'p1', kind: 'city', wall: false },
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: null },
+        'v:0,-1|0,0|1,-1': { owner: 'p1', kind: 'city', wall: false, metropolis: null },
       },
       knights: {},
       turn: 2,
@@ -387,7 +389,7 @@ describe('Befunde aus dem Browser-Durchgang', () => {
   const POOR = 'v:-1,1|0,0|0,1';
 
   function city(owner: string) {
-    return { owner, kind: 'city' as const, wall: false };
+    return { owner, kind: 'city' as const, wall: false, metropolis: null };
   }
 
   /* Am Bildschirm stand: „Spieler 1 und Spieler 2 und Spieler 3 verliert eine

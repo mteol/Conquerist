@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CARD_IDS } from '../scenario/terrain.js';
 import { CITIES_DICE, CITIES_RULES, CITIES_RULES_56, citiesRulesFor } from './cities.js';
-import { RuleSetSchema, cardAmounts } from './ruleset.js';
+import { CLASSIC_RULES, RuleSetSchema, cardAmounts } from './ruleset.js';
 
 describe('CITIES_RULES', () => {
   it('besteht das eigene Schema', () => {
@@ -116,4 +116,12 @@ describe('CITIES_RULES_56', () => {
     expect(citiesRulesFor(5)).toBe(CITIES_RULES_56);
     expect(citiesRulesFor(6)).toBe(CITIES_RULES_56);
   });
+});
+
+it('zaehlt eine Metropole mit zwei Punkten ueber der Stadt', () => {
+  expect(CITIES_RULES.victoryPoints.metropolis).toBe(2);
+});
+
+it('kennt an einem Basistisch keine Metropolen', () => {
+  expect(CLASSIC_RULES.victoryPoints.metropolis).toBe(0);
 });

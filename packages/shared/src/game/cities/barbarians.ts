@@ -239,7 +239,12 @@ export function applyBarbarianAttack(state: GameState): GameState {
   for (const loss of outcome.losses) {
     const building = buildings[loss.vertex]!;
     // Die Mauer geht mit der Stadt - sie gehoerte diesem Bauwerk.
-    buildings[loss.vertex] = { owner: building.owner, kind: 'settlement', wall: false };
+    buildings[loss.vertex] = {
+      owner: building.owner,
+      kind: 'settlement',
+      wall: false,
+      metropolis: null,
+    };
   }
 
   const players = state.players.map((player) => {

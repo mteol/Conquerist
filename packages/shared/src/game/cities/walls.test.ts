@@ -39,14 +39,16 @@ describe('canBuildWall / applyBuildWall', () => {
 
   it('weist eine eigene Siedlung ab', () => {
     const state = withCity({
-      buildings: { [ADJACENT_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false } },
+      buildings: {
+        [ADJACENT_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+      },
     });
     expect(canBuildWall(state, 'p1', ADJACENT_VERTEX)?.code).toBe(RuleViolationCode.NOT_OWN_CITY);
   });
 
   it('weist eine fremde Stadt ab', () => {
     const state = withCity({
-      buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'city', wall: false } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'city', wall: false, metropolis: null } },
     });
     expect(canBuildWall(state, 'p1', CENTER_VERTEX)?.code).toBe(RuleViolationCode.NOT_OWN_CITY);
   });
@@ -57,7 +59,7 @@ describe('canBuildWall / applyBuildWall', () => {
 
   it('weist eine Stadt mit Mauer ab', () => {
     const state = withCity({
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: true } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: true, metropolis: null } },
     });
     expect(canBuildWall(state, 'p1', CENTER_VERTEX)?.code).toBe(RuleViolationCode.WALL_EXISTS);
   });
@@ -81,7 +83,11 @@ describe('canBuildWall / applyBuildWall', () => {
 
   it('weist an einem Basistisch ab - dort gibt es keine Mauern', () => {
     const basis = giving(
-      testGame({ buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } } }),
+      testGame({
+        buildings: {
+          [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: null },
+        },
+      }),
       'p1',
       WALL_COST,
     );
@@ -93,9 +99,9 @@ describe('wallsOf', () => {
   it('zaehlt nur die eigenen Mauern', () => {
     const state = gameWithCities({
       buildings: {
-        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: true },
-        [ADJACENT_VERTEX]: { owner: 'p2', kind: 'city', wall: true },
-        [FAR_VERTEX]: { owner: 'p1', kind: 'city', wall: false },
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: true, metropolis: null },
+        [ADJACENT_VERTEX]: { owner: 'p2', kind: 'city', wall: true, metropolis: null },
+        [FAR_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: null },
       },
     });
 
@@ -115,7 +121,7 @@ describe('handLimitOf', () => {
       buildings: Object.fromEntries(
         vertices.map((vertex, index) => [
           vertex,
-          { owner: 'p1', kind: 'city' as const, wall: index < count },
+          { owner: 'p1', kind: 'city' as const, wall: index < count, metropolis: null },
         ]),
       ),
     });
@@ -135,7 +141,7 @@ describe('handLimitOf', () => {
 
   it('bleibt an einem Basistisch bei sieben - dort hebt keine Mauer', () => {
     const basis = testGame({
-      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: true } },
+      buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: true, metropolis: null } },
     });
     expect(CLASSIC_RULES.handLimitPerWall).toBe(0);
     expect(handLimitOf(basis, 'p1')).toBe(7);
@@ -150,7 +156,7 @@ describe('discardCountFor mit Mauern', () => {
         buildings: Object.fromEntries(
           vertices.map((vertex, index) => [
             vertex,
-            { owner: 'p1', kind: 'city' as const, wall: index < walls },
+            { owner: 'p1', kind: 'city' as const, wall: index < walls, metropolis: null },
           ]),
         ),
       }),

@@ -108,7 +108,9 @@ describe('canMoveKnight / applyMoveKnight - versetzen', () => {
 
   it('weist ein Ziel mit Bauwerk ab', () => {
     const state = withChain({
-      buildings: { [CORNERS[2]!]: { owner: 'p1', kind: 'settlement', wall: false } },
+      buildings: {
+        [CORNERS[2]!]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+      },
     });
     expect(canMoveKnight(state, 'p1', START, CORNERS[2]!)?.code).toBe(
       RuleViolationCode.KNIGHT_TARGET_TAKEN,
@@ -195,7 +197,7 @@ describe('applyMoveKnight - vertreiben', () => {
 describe('displacementTargets', () => {
   it('nennt nur freie Kreuzungen im eigenen Netz', () => {
     const state = gameWithCities({
-      buildings: { [CORNERS[2]!]: { owner: 'p1', kind: 'city', wall: false } },
+      buildings: { [CORNERS[2]!]: { owner: 'p1', kind: 'city', wall: false, metropolis: null } },
       roads: Object.fromEntries(CHAIN.map((edge) => [edge, 'p2'])),
       knights: {},
     });
@@ -261,7 +263,7 @@ describe('canPlaceDisplacedKnight / applyPlaceDisplacedKnight', () => {
 
   it('weist eine belegte Kreuzung ab', () => {
     const state = displacing({
-      buildings: { [CORNERS[2]!]: { owner: 'p1', kind: 'city', wall: false } },
+      buildings: { [CORNERS[2]!]: { owner: 'p1', kind: 'city', wall: false, metropolis: null } },
     });
     expect(canPlaceDisplacedKnight(state, 'p2', CORNERS[2]!)?.code).toBe(
       RuleViolationCode.KNIGHT_TARGET_TAKEN,
