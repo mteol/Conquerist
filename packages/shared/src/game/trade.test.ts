@@ -262,10 +262,28 @@ describe('Die Gilde', () => {
     expect(tradeRateFor(state, 'p2', 'cloth')).toBe(4);
   });
 
-  it('schlaegt einen 3:1-Hafen, aber nicht einen 2:1-Hafen', () => {
-    // Der Hafen bleibt der bessere Kurs, wo er besser ist - `tradeRateFor`
-    // nimmt weiterhin das Beste, was dieser Spieler erreicht.
-    const state = withGuild(gameWithCities(), 'p1');
+  it('schlaegt einen 3:1-Hafen', () => {
+    // p1 baut diesmal am 3:1-Hafen und nicht auf `CENTER_VERTEX` - der liegt
+    // an keinem Hafen der Fixture, und ohne Hafen im Spiel wuerde dieser Test
+    // nur denselben Messvorgang wie oben unter falschem Namen wiederholen.
+    const atHarbor = gameWithCities({
+      buildings: {
+        [HARBOR3_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+      },
+    });
+
+    // Erst ohne Gilde belegen, dass der Hafen wirklich greift ...
+    expect(tradeRateFor(atHarbor, 'p1', 'paper')).toBe(3);
+
+    // ... dann mit Gilde: sie schlaegt den 3:1-Hafen.
+    const state = withGuild(atHarbor, 'p1');
     expect(tradeRateFor(state, 'p1', 'paper')).toBe(2);
+
+    // Dass die Gilde einen *besseren* 2:1-Hafen nicht schlagen wuerde, ist in
+    // diesem Spiel nicht zu messen: es gibt hier keinen 2:1-Hafen fuer eine
+    // Handelsware (nur den Erzhafen bei `HARBOR2_ORE_VERTEX`, und der zaehlt
+    // ausschliesslich fuer Erz). Das garantiert stattdessen die `Math.min`-
+    // Logik in `tradeRateFor` selbst - dieselbe, die zwischen zwei Haefen
+    // entscheidet.
   });
 });

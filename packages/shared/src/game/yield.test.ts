@@ -301,4 +301,27 @@ describe('Das Aquaedukt', () => {
     const leer = { ...withScience(base, 'p1', 3), bank: EMPTY_CARDS };
     expect(handOf(grantAqueduct(leer, base), 'p1')).toEqual(handOf(leer, 'p1'));
   });
+
+  /*
+   * Zwei Spieler mit Aquaedukt und derselben letzten Karte in der Bank: ohne
+   * die mitgefuehrte `remainingBank` in `grantAqueduct` wuerden beide `ore`
+   * beanspruchen, `payOut` wollte zwei ausgeben, wo nur eine da ist, und
+   * `subtractCards` wuerfe. Die Bank haelt hier ausschliesslich diese eine
+   * Karte - kein anderer Rohstoff liegt vor, damit kein Gleichstand
+   * hineinspielt und die Behauptung eindeutig bleibt.
+   */
+  it('teilt die letzte Karte der Bank nur einem von zwei Anspruchsberechtigten zu', () => {
+    const scarce: GameState = {
+      ...withScience(withScience(base, 'p1', 3), 'p2', 3),
+      bank: { ...EMPTY_CARDS, ore: 1 },
+    };
+
+    const after = grantAqueduct(scarce, scarce);
+
+    // p1 steht in `state.players` vor p2 und bekommt die letzte Karte.
+    expect(handOf(after, 'p1')).toEqual(hand({ ore: 1 }));
+    // p2 geht leer aus - die Bank ist bereits erschoepft.
+    expect(handOf(after, 'p2')).toEqual(hand());
+    expect(countCards(after.bank)).toBe(0);
+  });
 });
