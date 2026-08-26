@@ -12,7 +12,8 @@ import type { GameState } from './state.js';
  * zaehlt ihre ganze Laenge, eine Kreuzung mit drei Armen nur zwei davon.
  *
  * Ueber einen Knoten mit fremder Siedlung oder Stadt fuehrt die Strasse nicht
- * hindurch; enden darf sie dort. Genau dafuer ist es wichtig, dass die Suche
+ * hindurch; enden darf sie dort. **Ritter unterbrechen wie Gebaeude** - ein
+ * fremder Ritter auf einer Kreuzung teilt die Strecke genauso. Genau dafuer ist es wichtig, dass die Suche
  * beim Startknoten *nicht* auf Blockade prueft: die Strecke endet dort ja, und
  * jede Strecke wird von beiden Enden aus durchsucht.
  *
@@ -45,10 +46,19 @@ function ownNetwork(
   return network;
 }
 
-/** Steht hier ein fremdes Gebaeude, das die Strecke unterbricht? */
+/** Steht hier etwas Fremdes, das die Strecke unterbricht? */
 function isBlocked(state: GameState, player: PlayerId, vertex: VertexId): boolean {
   const building = state.buildings[vertex];
-  return building !== undefined && building.owner !== player;
+  if (building !== undefined && building.owner !== player) return true;
+
+  /*
+   * Ein fremder Ritter unterbricht wie ein fremdes Dorf - so steht es in der
+   * Anleitung, und es ist der Grund, warum ein Ritter ueberhaupt ein Zug gegen
+   * eine fremde Laengste Handelsstrasse ist. Der eigene unterbricht nicht: man
+   * geht durch die eigene Stellung hindurch.
+   */
+  const knight = state.knights[vertex];
+  return knight !== undefined && knight.owner !== player;
 }
 
 /** Die Laenge der laengsten zusammenhaengenden Strasse dieses Spielers. */
@@ -59,8 +69,8 @@ export function longestRoadLength(state: GameState, player: PlayerId): number {
   const used = new Set<EdgeId>();
 
   function walk(vertex: VertexId, isStart: boolean): number {
-    // Ein fremdes Gebaeude beendet die Strecke - ausser man startet dort, denn
-    // dann endet sie eben an dieser Stelle.
+    // Ein fremdes Gebaeude oder ein fremder Ritter beendet die Strecke - ausser
+    // man startet dort, denn dann endet sie eben an dieser Stelle.
     if (!isStart && isBlocked(state, player, vertex)) return 0;
 
     let best = 0;

@@ -23,7 +23,7 @@ import {
   hand,
   testGame,
 } from './fixtures.js';
-import type { GameState } from './state.js';
+import type { GameState, Knight } from './state.js';
 
 const ROAD_COST = CLASSIC_RULES.buildCosts.road!;
 const SETTLEMENT_COST = CLASSIC_RULES.buildCosts.settlement;
@@ -31,6 +31,11 @@ const CITY_COST = CLASSIC_RULES.buildCosts.city;
 
 function playerOf(state: GameState, id: string) {
   return state.players.find((player) => player.id === id)!;
+}
+
+/** Ein passiver Ritter der untersten Stufe. */
+function knightOf(owner: string): Knight {
+  return { owner, level: 1, active: false, activatedOnTurn: null, upgradedThisTurn: false };
 }
 
 /** Der Zustand, in dem p1 an `CENTER_VERTEX` siedelt und genug Karten hat. */
@@ -111,6 +116,18 @@ describe('canPlaceSettlementAt', () => {
 
   it('erlaubt zwei Schritte Abstand', () => {
     expect(canPlaceSettlementAt(withSettlement(), FAR_VERTEX)).toBeNull();
+  });
+
+  it('laesst auf einer Kreuzung mit Ritter nichts bauen - auch nicht dem Besitzer', () => {
+    const state = testGame({ knights: { [CENTER_VERTEX]: knightOf('p1') } });
+    expect(canPlaceSettlementAt(state, CENTER_VERTEX)?.code).toBe(
+      RuleViolationCode.VERTEX_OCCUPIED,
+    );
+  });
+
+  it('laesst neben einem Ritter bauen - er ist kein Bauwerk', () => {
+    const state = testGame({ knights: { [ADJACENT_VERTEX]: knightOf('p2') } });
+    expect(canPlaceSettlementAt(state, CENTER_VERTEX)).toBeNull();
   });
 });
 

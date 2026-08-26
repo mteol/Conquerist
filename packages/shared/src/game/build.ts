@@ -34,8 +34,20 @@ export function canPlaceSettlementAt(state: GameState, vertex: VertexId): RuleVi
     return violation(RuleViolationCode.VERTEX_OCCUPIED, `Auf ${vertex} steht bereits etwas`);
   }
 
+  /*
+   * Ein Ritter belegt seine Kreuzung wie ein Bauwerk - auch der eigene. Die
+   * Regel sagt es ausdruecklich: wer dort bauen will, muss ihn erst versetzen,
+   * und geht das nicht, kann er dort nicht bauen. Eine Ausnahme fuer den
+   * eigenen Ritter waere ein Ritter, der von seinem eigenen Haus verschluckt
+   * wird.
+   */
+  if (state.knights[vertex] !== undefined) {
+    return violation(RuleViolationCode.VERTEX_OCCUPIED, `Auf ${vertex} steht ein Ritter`);
+  }
+
   // Abstandsregel: kein direkter Nachbarknoten darf bebaut sein - auch nicht
-  // von einem selbst.
+  // von einem selbst. Sie fragt nach Nachbar*bauwerken*; ein Ritter ist keines
+  // und sperrt den Nachbarknoten deshalb nicht.
   for (const neighbour of board.topology.vertexNeighbors.get(vertex) ?? []) {
     if (state.buildings[neighbour] !== undefined) {
       return violation(

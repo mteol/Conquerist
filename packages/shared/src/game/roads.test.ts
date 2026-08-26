@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { isEdgeId } from '../geometry/index.js';
 import { testGame } from './fixtures.js';
 import { longestRoadLength, recomputeLongestRoad } from './roads.js';
-import type { GameState } from './state.js';
+import type { GameState, Knight } from './state.js';
 
 /**
  * Die sechs Kanten rund um das mittlere Feld bilden einen geschlossenen Ring
@@ -37,6 +37,11 @@ const RIVAL_CHAIN: readonly string[] = [
   'e:1,-1|2,-1',
   'e:1,0|2,-1',
 ];
+
+/** Ein passiver Ritter der untersten Stufe. */
+function knightOf(owner: string): Knight {
+  return { owner, level: 1, active: false, activatedOnTurn: null, upgradedThisTurn: false };
+}
 
 function roadsFor(player: string, edges: readonly string[]): Record<string, string> {
   return Object.fromEntries(edges.map((edge) => [edge, player]));
@@ -135,6 +140,36 @@ describe('longestRoadLength', () => {
     });
 
     expect(longestRoadLength(state, 'p1')).toBe(2);
+  });
+
+  it('unterbricht die Strecke an einem fremden Ritter', () => {
+    // Vier Strassen ueber die Ecken 0-1-2-3-4, in der Mitte auf Ecke 2 ein
+    // fremder Ritter: zwei Strassen auf jeder Seite.
+    const state = testGame({
+      roads: roadsFor('p1', RING.slice(0, 4)),
+      knights: { [CORNERS[2]!]: knightOf('p2') },
+    });
+
+    expect(longestRoadLength(state, 'p1')).toBe(2);
+  });
+
+  it('laesst den eigenen Ritter durch', () => {
+    const state = testGame({
+      roads: roadsFor('p1', RING.slice(0, 4)),
+      knights: { [CORNERS[2]!]: knightOf('p1') },
+    });
+
+    expect(longestRoadLength(state, 'p1')).toBe(4);
+  });
+
+  it('laesst die Strecke am fremden Ritter enden', () => {
+    // Ecke 0 ist das Ende der Kette - dort endet sie ohnehin, und sie zaehlt voll.
+    const state = testGame({
+      roads: roadsFor('p1', RING.slice(0, 4)),
+      knights: { [CORNERS[0]!]: knightOf('p2') },
+    });
+
+    expect(longestRoadLength(state, 'p1')).toBe(4);
   });
 });
 
