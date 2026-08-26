@@ -13,3 +13,4 @@ export * from './knightMoves.js';
 export * from './knights.js';
 export * from './tracks.js';
 export * from './turn.js';
+export * from './walls.js';

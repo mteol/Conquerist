@@ -32,6 +32,10 @@ export const RuleViolationCode = {
   NOT_CONNECTED: 'NOT_CONNECTED',
   /** Auf dem Knoten steht keine eigene Siedlung. */
   NOT_OWN_SETTLEMENT: 'NOT_OWN_SETTLEMENT',
+  /** Auf dem Knoten steht keine eigene Stadt. */
+  NOT_OWN_CITY: 'NOT_OWN_CITY',
+  /** Diese Stadt hat schon eine Mauer. */
+  WALL_EXISTS: 'WALL_EXISTS',
 
   /** Die Handkarten reichen nicht. */
   INSUFFICIENT_RESOURCES: 'INSUFFICIENT_RESOURCES',

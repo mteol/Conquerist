@@ -6,6 +6,7 @@ import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { PlayerId } from './player.js';
 import { EMPTY_CARDS, addCards, canAfford, countCards, cardAt, subtractCards } from './cards.js';
 import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './state.js';
+import { handLimitOf } from './cities/walls.js';
 
 /**
  * Die Sieben - abwerfen, Raeuber versetzen, stehlen.
@@ -20,13 +21,19 @@ import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './s
  * RNG-Zustand, gleiche Karte (Regel 2).
  */
 
-/** Wie viele Karten dieser Spieler bei einer Sieben abwerfen muss. */
+/**
+ * Wie viele Karten dieser Spieler bei einer Sieben abwerfen muss.
+ *
+ * **Das Limit ist keine Konstante mehr.** Jede Stadtmauer hebt es um zwei, und
+ * die Zahl steht deshalb in `cities/walls.ts` und nicht hier - dort, wo die
+ * Mauern gezaehlt werden.
+ */
 export function discardCountFor(state: GameState, player: PlayerId): number {
   const owner = findPlayer(state, player);
   if (owner === undefined) return 0;
 
   const held = countCards(owner.resources);
-  return held > state.rules.handLimitBeforeDiscard ? Math.floor(held / 2) : 0;
+  return held > handLimitOf(state, player) ? Math.floor(held / 2) : 0;
 }
 
 /** Wer nach einer Sieben abwerfen muss - in Zugreihenfolge. */
