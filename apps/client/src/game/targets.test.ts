@@ -130,3 +130,80 @@ describe('Klickkarten', () => {
     expect(targets.vertices.size).toBe(0);
   });
 });
+
+/**
+ * Die Ritterzuege in der Klickkarte.
+ *
+ * Sie liegen in **eigenen** Karten und nicht in `vertices`: auf einer freien
+ * Kreuzung sind Siedlung und Ritter zugleich moeglich, und die `claim`-Sperre
+ * gegen doppelte Belegung ist richtig und soll bleiben.
+ */
+describe('targetsFrom mit Ritterzuegen', () => {
+  const A = 'v:0,0|1,-1|1,0';
+  const B = 'v:0,0|0,1|1,0';
+  const C = 'v:0,1|1,0|1,1';
+
+  it('legt Siedlung und Ritter auf demselben Knoten nebeneinander, ohne zu werfen', () => {
+    const targets = targetsFrom([
+      { type: 'buildSettlement', player: 'p1', vertex: A },
+      { type: 'buildKnight', player: 'p1', vertex: A },
+    ] as GameAction[]);
+
+    expect(targets.vertices.get(A)?.type).toBe('buildSettlement');
+    expect(targets.knightBuild.get(A)?.type).toBe('buildKnight');
+  });
+
+  it('zaehlt Ritter und Mauer als eigene Bauteile', () => {
+    const targets = targetsFrom([
+      { type: 'buildKnight', player: 'p1', vertex: A },
+      { type: 'buildKnight', player: 'p1', vertex: B },
+      { type: 'buildWall', player: 'p1', vertex: C },
+    ] as GameAction[]);
+
+    expect(targets.buildable.knight).toBe(2);
+    expect(targets.buildable.wall).toBe(1);
+  });
+
+  it('sortiert Aktivieren, Aufwerten und Raeuberjagd an ihren Ort', () => {
+    const targets = targetsFrom([
+      { type: 'activateKnight', player: 'p1', vertex: A },
+      { type: 'upgradeKnight', player: 'p1', vertex: A },
+      { type: 'chaseRobber', player: 'p1', vertex: A },
+    ] as GameAction[]);
+
+    expect(targets.activate.get(A)?.type).toBe('activateKnight');
+    expect(targets.upgrade.get(A)?.type).toBe('upgradeKnight');
+    expect(targets.chase.get(A)?.type).toBe('chaseRobber');
+  });
+
+  it('gruppiert das Versetzen nach Ausgangskreuzung', () => {
+    const targets = targetsFrom([
+      { type: 'moveKnight', player: 'p1', from: A, to: B },
+      { type: 'moveKnight', player: 'p1', from: A, to: C },
+      { type: 'moveKnight', player: 'p1', from: B, to: C },
+    ] as GameAction[]);
+
+    expect([...targets.moves.keys()].sort()).toEqual([A, B].sort());
+    expect([...targets.moves.get(A)!.keys()].sort()).toEqual([B, C].sort());
+    expect(targets.moves.get(B)!.get(C)?.type).toBe('moveKnight');
+  });
+
+  it('sammelt das Ausweichen', () => {
+    const targets = targetsFrom([
+      { type: 'placeDisplacedKnight', player: 'p2', vertex: B },
+    ] as GameAction[]);
+
+    expect(targets.displace.get(B)?.type).toBe('placeDisplacedKnight');
+  });
+
+  it('laesst an einem Basistisch alle neuen Karten leer', () => {
+    const targets = actionTargets(afterSetup(), 'p1');
+
+    expect(targets.knightBuild.size).toBe(0);
+    expect(targets.wallBuild.size).toBe(0);
+    expect(targets.moves.size).toBe(0);
+    expect(targets.displace.size).toBe(0);
+    expect(targets.buildable.knight).toBe(0);
+    expect(targets.buildable.wall).toBe(0);
+  });
+});

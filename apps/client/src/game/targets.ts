@@ -57,6 +57,30 @@ export interface ActionTargets {
   readonly playKnight: GameAction | null;
   /** Wie viele Stellen es je Bauteil gibt. Null heisst: der Knopf ist grau. */
   readonly buildable: Readonly<Record<BuildableKind, number>>;
+
+  /*
+   * Die Ritterzuege stehen in **eigenen** Karten und nicht in `vertices`.
+   *
+   * Der Grund ist eine freie Kreuzung an eigener Strasse: dort ist eine
+   * Siedlung moeglich **und** ein Ritter, und `claim` wuerfe "doppelt belegt".
+   * Die Sperre ist richtig - zwei Bauwerke auf einem Knoten waeren ein
+   * Widerspruch in den Regeln. Zwei verschiedene Zugarten am selben Ort sind
+   * keiner, sie brauchen nur zwei Karten.
+   */
+  /** Wo ein Ritter aufgestellt werden kann. */
+  readonly knightBuild: ReadonlyMap<VertexId, GameAction>;
+  /** Welche eigene Stadt eine Mauer bekommen kann. */
+  readonly wallBuild: ReadonlyMap<VertexId, GameAction>;
+  /** Welcher Ritter den Helm bekommen kann. */
+  readonly activate: ReadonlyMap<VertexId, GameAction>;
+  /** Welcher Ritter eine Stufe steigen kann. */
+  readonly upgrade: ReadonlyMap<VertexId, GameAction>;
+  /** Welcher Ritter den Raeuber verjagen kann. */
+  readonly chase: ReadonlyMap<VertexId, GameAction>;
+  /** Von welcher Kreuzung wohin. Zwei Klicks, deshalb zwei Ebenen. */
+  readonly moves: ReadonlyMap<VertexId, ReadonlyMap<VertexId, GameAction>>;
+  /** Wohin der eigene vertriebene Ritter ausweichen kann. */
+  readonly displace: ReadonlyMap<VertexId, GameAction>;
 }
 
 /** Nichts anklickbar - fuer Spieler, die gerade nicht handeln duerfen. */
@@ -70,6 +94,13 @@ export const EMPTY_TARGETS: ActionTargets = {
   buyCard: null,
   playKnight: null,
   buildable: { road: 0, settlement: 0, city: 0, wall: 0, knight: 0 },
+  knightBuild: new Map(),
+  wallBuild: new Map(),
+  activate: new Map(),
+  upgrade: new Map(),
+  chase: new Map(),
+  moves: new Map(),
+  displace: new Map(),
 };
 
 /**
@@ -99,6 +130,12 @@ export function buildKindOf(action: GameAction): BuildableKind | null {
       return 'settlement';
     case 'buildCity':
       return 'city';
+    case 'buildWall':
+      return 'wall';
+    case 'buildKnight':
+      // Gebaut wird immer der Einfache Ritter; die drei Vorratsstufen sind
+      // eine Frage des Aufwertens und keine der Bauleiste.
+      return 'knight';
     default:
       return null;
   }
@@ -117,6 +154,13 @@ export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
   const edges = new Map<EdgeId, GameAction>();
   const hexes = new Map<HexId, GameAction[]>();
   const trades: GameAction[] = [];
+  const knightBuild = new Map<VertexId, GameAction>();
+  const wallBuild = new Map<VertexId, GameAction>();
+  const activate = new Map<VertexId, GameAction>();
+  const upgrade = new Map<VertexId, GameAction>();
+  const chase = new Map<VertexId, GameAction>();
+  const moves = new Map<VertexId, Map<VertexId, GameAction>>();
+  const displace = new Map<VertexId, GameAction>();
   let roll: GameAction | null = null;
   let endTurn: GameAction | null = null;
   let buyCard: GameAction | null = null;
@@ -187,6 +231,34 @@ export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
         // steht in `view.playableCards`.
         break;
 
+      case 'buildKnight':
+        claim(knightBuild, action.vertex, action, 'Ritterplatz');
+        break;
+      case 'buildWall':
+        claim(wallBuild, action.vertex, action, 'Mauerplatz');
+        break;
+      case 'activateKnight':
+        claim(activate, action.vertex, action, 'Aktivierung');
+        break;
+      case 'upgradeKnight':
+        claim(upgrade, action.vertex, action, 'Aufwertung');
+        break;
+      case 'chaseRobber':
+        claim(chase, action.vertex, action, 'Raeuberjagd');
+        break;
+      case 'placeDisplacedKnight':
+        claim(displace, action.vertex, action, 'Ausweichkreuzung');
+        break;
+
+      case 'moveKnight': {
+        // Zwei Ebenen, weil das Versetzen zwei Klicks braucht: erst der
+        // Ritter, dann sein Ziel.
+        const from = moves.get(action.from) ?? new Map<VertexId, GameAction>();
+        claim(from, action.to, action, 'Ritterziel');
+        moves.set(action.from, from);
+        break;
+      }
+
       case 'discard':
         // `legalActions` zaehlt das Abwerfen bewusst nicht auf - bei acht
         // Handkarten gaebe es dutzende gueltige Kombinationen. Der Dialog
@@ -195,7 +267,24 @@ export function targetsFrom(actions: readonly GameAction[]): ActionTargets {
     }
   }
 
-  return { vertices, edges, hexes, trades, roll, endTurn, buyCard, playKnight, buildable };
+  return {
+    vertices,
+    edges,
+    hexes,
+    trades,
+    roll,
+    endTurn,
+    buyCard,
+    playKnight,
+    buildable,
+    knightBuild,
+    wallBuild,
+    activate,
+    upgrade,
+    chase,
+    moves,
+    displace,
+  };
 }
 
 /**
