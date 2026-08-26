@@ -4,7 +4,7 @@ import { boardOf } from '../board.js';
 import { canPayFor, payFor } from '../build.js';
 import { canAfford } from '../cards.js';
 import { RuleViolationCode, violation, type RuleViolation } from '../errors.js';
-import type { PlayerId, PlayerState } from '../player.js';
+import type { PlayerId } from '../player.js';
 import {
   findPlayer,
   ok,
@@ -14,7 +14,12 @@ import {
   type KnightLevel,
   type ReduceResult,
 } from '../state.js';
-import { FORTRESS_LEVEL } from './tracks.js';
+// `hasFortress` wohnt in `tracks.ts`: sie gehoert zu den Ausbaustufen, und seit
+// die Stufenliste dort steht, hat sie dort einen Ort. Re-exportiert, damit
+// `knights.test.ts` sie weiterhin von hier beziehen kann.
+import { hasFortress } from './tracks.js';
+
+export { hasFortress };
 
 /**
  * Ritter: wie sie entstehen und wie sie wachsen.
@@ -91,11 +96,6 @@ export function catanStrength(source: KnightSource): number {
     if (knight.active) strength += knight.level;
   }
   return strength;
-}
-
-/** Ob dieser Spieler Starke zu Maechtigen Rittern aufwerten darf. */
-export function hasFortress(player: PlayerState): boolean {
-  return (player.improvements.politics ?? 0) >= FORTRESS_LEVEL;
 }
 
 /**
