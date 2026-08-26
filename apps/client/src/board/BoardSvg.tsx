@@ -7,7 +7,7 @@ import {
   type VertexId,
 } from '@conquerist/shared';
 import { seatsById, type Seat } from '../seats';
-import { RESOURCE_COLORS, TERRAIN_COLORS, harborLabel } from '../game/labels';
+import { RESOURCE_COLORS, TERRAIN_COLORS, TRACK_COLORS, harborLabel } from '../game/labels';
 import type { ActionTargets } from '../game/targets';
 import {
   edgeMidpoint,
@@ -26,6 +26,7 @@ import {
   KNIGHT_MAST_PATH,
   KNIGHT_PATH,
   KNIGHT_PENNANTS,
+  METROPOLIS_PATHS,
   SETTLEMENT_PATH,
   WALL_PATH,
 } from './shapes';
@@ -897,6 +898,36 @@ function VertexMark({
                 className="wall"
                 d={WALL_PATH}
                 style={{ fill: colorOf(building.owner) }}
+              />
+            ) : null}
+            {/*
+             * Der Metropolenaufsatz - **nach** dem Bauwerkspfad und aus
+             * demselben Grund wie die Mauer: davor gezeichnet waere er vom
+             * Stadtpfad verdeckt. Er sitzt ueber dem Dach (`METROPOLIS_PATHS`
+             * bleibt bei y kleiner -8), die Mauer bleibt darunter am Sockel -
+             * eine ummauerte Metropole zeigt beides, und keins verdeckt das
+             * andere.
+             *
+             * `key` traegt den Bereich, nicht nur "metropolis": eine
+             * Metropole, die den Bereich wechselt (Stufe 5 nimmt einem
+             * anderen den Aufsatz ab), soll neu einhaengen, damit die
+             * Einblendung `settle` (ueber die Klasse `building`) noch einmal
+             * laeuft - dieselbe Falle wie beim Ausbau zur Stadt, siehe
+             * `CLAUDE.md`.
+             *
+             * Die Bereichsfarbe kommt aus `TRACK_COLORS` und damit aus den
+             * CSS-Variablen in `index.css`, nicht aus einem Hex-Wert hier -
+             * und per `style`, nicht als Attribut, aus demselben Grund wie
+             * ueberall sonst auf dem Brett.
+             */}
+            {building.metropolis !== null ? (
+              <path
+                key={`metropolis-${building.metropolis}`}
+                data-testid={`metropolis-${vertex}`}
+                data-track={building.metropolis}
+                className="metropolis building"
+                d={METROPOLIS_PATHS[building.metropolis]}
+                style={{ fill: TRACK_COLORS[building.metropolis] }}
               />
             ) : null}
           </g>

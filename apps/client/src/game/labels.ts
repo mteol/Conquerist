@@ -9,6 +9,7 @@ import {
   type CommodityId,
   type ResourceId,
   type TerrainId,
+  type TrackId,
 } from '@conquerist/shared';
 
 /**
@@ -71,4 +72,18 @@ export const COMMODITY_COLORS: Readonly<Record<CommodityId, string>> = {
 export const CARD_COLORS: Readonly<Record<CardId, string>> = {
   ...RESOURCE_COLORS,
   ...COMMODITY_COLORS,
+};
+
+/**
+ * Die Farbe eines Bereichs - kein eigener Hex-Wert, sondern ein Zeiger auf
+ * `index.css`. Dort stehen `--track-trade`, `--track-politics` und
+ * `--track-science` schon fuer die Wuerfelseiten der Barbaren
+ * (`.die__event-gate--*`); der Metropolenaufsatz auf dem Brett nutzt dieselbe
+ * Variable, statt eine zweite Palette anzulegen, die mit der ersten
+ * auseinanderlaufen koennte.
+ */
+export const TRACK_COLORS: Readonly<Record<TrackId, string>> = {
+  trade: 'var(--track-trade)',
+  politics: 'var(--track-politics)',
+  science: 'var(--track-science)',
 };

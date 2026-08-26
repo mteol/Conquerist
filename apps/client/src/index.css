@@ -5687,6 +5687,18 @@ body {
 }
 
 /*
+ * Der Metropolenaufsatz - dasselbe Material wie Stadt und Mauer, deshalb
+ * dieselbe Kontur im Pfadmass (`board/BoardSvg.tsx`). Die Flaeche kommt per
+ * `style` aus `TRACK_COLORS` (`game/labels.ts`) und steht nicht hier - eine
+ * Regel hier wuerde jedes `fill` am Element schlagen.
+ */
+.metropolis {
+  stroke: #16202a;
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+}
+
+/*
  * Der Ritter.
  *
  * Keine Farbe im Blatt, die die Sitzfarbe schluege - Rumpf, Mast und Spitzen

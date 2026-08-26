@@ -1,3 +1,5 @@
+import type { TrackId } from '@conquerist/shared';
+
 /**
  * Die Silhouetten der Bauwerke - an einem Ort, weil sie an drei Orten stehen.
  *
@@ -99,3 +101,58 @@ export const WALL_PATH =
   'M -10 8 L -10 1.6 L -7.4 1.6 L -7.4 3.2 L -4.8 3.2 L -4.8 1.6 L -2.2 1.6 ' +
   'L -2.2 3.2 L 0.4 3.2 L 0.4 1.6 L 3 1.6 L 3 3.2 L 5.6 3.2 L 5.6 1.6 ' +
   'L 8.2 1.6 L 8.2 3.2 L 10 3.2 L 10 8 Z';
+
+/**
+ * Der Metropolenaufsatz je Bereich, im Raster von `VIEWBOX`.
+ *
+ * Er sitzt **ueber** dem Dach: die Stadt reicht bis zu ihrem First bei
+ * y -8 (dem Punkt `-3 -8` in `CITY_PATH`), und jeder Aufsatz bleibt darueber,
+ * also bei y kleiner als -8 - der einzige freie Streifen im Raster, zwischen
+ * dem First und dem oberen Rand der `VIEWBOX` bei y -9. Zentriert ist er auf
+ * denselben Punkt `-3`, an dem das Dach seine Spitze hat, nicht auf den
+ * Nullpunkt: er kroent den First und nicht die Mitte der Gruppe.
+ *
+ * Farbe traegt nur den Bereich, nicht die Form (Designregel 7) - wer die drei
+ * Farben nicht auseinanderhaelt, muss die drei Umrisse auseinanderhalten. Die
+ * Waage ist ein breiter, gerader Balken mit zwei Waagschalen an den Enden -
+ * rechteckig und liegend. Die Krone ist ein Band mit drei spitzen Zacken,
+ * die mittlere am hoechsten - ein Zickzack, keine Waagerechte. Die
+ * Zahnrad-Sonne ist eine Nabe mit fuenf duennen Strahlen, die strahlenfoermig
+ * auseinanderlaufen - ein Stern um einen Punkt, keine der beiden anderen
+ * Formen hat eine Mitte, von der etwas ausgeht.
+ */
+export const METROPOLIS_PATHS: Readonly<Record<TrackId, string>> = {
+  /**
+   * Handel: die Waage. Balken und zwei Waagschalen, symmetrisch um den First -
+   * eine liegende, rechteckige Form ohne Zacken und ohne Mittelpunkt, an dem
+   * mehrere Linien zusammenlaufen.
+   */
+  trade:
+    'M -3.25 -8.05 L -3.25 -8.55 L -2.75 -8.55 L -2.75 -8.05 Z ' +
+    'M -7.8 -8.55 L -7.8 -8.75 L 1.8 -8.75 L 1.8 -8.55 Z ' +
+    'M -3.15 -8.75 L -2.85 -8.75 L -3 -9 Z ' +
+    'M -8.6 -8.55 L -7 -8.55 L -7.3 -8.05 L -8.3 -8.05 Z ' +
+    'M 1 -8.55 L 2.6 -8.55 L 2.3 -8.05 L 1.3 -8.05 Z',
+  /**
+   * Politik: die Krone. Ein Band mit drei Zacken, die mittlere am hoechsten -
+   * ein Zickzack ueber einer geraden Kante, ohne Waagschalen und ohne
+   * ausstrahlende Spitzen.
+   */
+  politics:
+    'M -7 -8.05 L -7 -8.3 L 1 -8.3 L 1 -8.05 Z ' +
+    'M -6.3 -8.3 L -4.7 -8.3 L -5.5 -8.75 Z ' +
+    'M -3.8 -8.3 L -2.2 -8.3 L -3 -9 Z ' +
+    'M -1.3 -8.3 L 0.3 -8.3 L -0.5 -8.75 Z',
+  /**
+   * Wissenschaft: die Zahnrad-Sonne. Eine kleine Nabe mit fuenf duennen
+   * Strahlen, die von ihr ausgehen wie ein Stern - der First traegt keine
+   * andere Form, aus der mehrere Linien strahlenfoermig auseinanderlaufen.
+   */
+  science:
+    'M -3 -8.15 L -2.65 -8.5 L -3 -8.85 L -3.35 -8.5 Z ' +
+    'M -3.35 -8.4 L -3.35 -8.6 L -8.6 -8.25 Z ' +
+    'M -3.15 -8.65 L -3.35 -8.55 L -5.6 -8.85 Z ' +
+    'M -3.15 -8.75 L -2.85 -8.75 L -3 -9 Z ' +
+    'M -2.85 -8.65 L -2.65 -8.55 L -0.4 -8.85 Z ' +
+    'M -2.65 -8.4 L -2.65 -8.6 L 2.6 -8.25 Z',
+};

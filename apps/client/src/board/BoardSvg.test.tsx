@@ -513,3 +513,103 @@ describe('BoardSvg mit Rittern', () => {
     expect(screen.queryByTestId(`wall-${bare}`)).toBeNull();
   });
 });
+
+/**
+ * Metropolen auf dem Brett.
+ *
+ * Der Aufsatz sagt zwei Dinge auf einen Blick - daß diese Stadt eine Metropole
+ * ist, und welcher Bereich sie hervorgebracht hat. Die Farbe steht per `style`
+ * da (dieselbe Falle wie bei Straße und Ritter), der Bereich zusätzlich als
+ * `data-track`, und die drei Bereiche zeichnen verschiedene Formen - Farbe
+ * allein wäre kein Träger.
+ */
+describe('BoardSvg mit Metropolen', () => {
+  const vertices = boardOf(scenario).topology.vertices;
+
+  function cityWith(metropolis: 'trade' | 'politics' | 'science' | null, wall = false) {
+    return {
+      owner: seats[0]!.id,
+      kind: 'city' as const,
+      wall,
+      metropolis,
+    };
+  }
+
+  it('zeigt den Aufsatz an einer Stadt mit Metropole', () => {
+    const vertex = vertices[0]!;
+    render(
+      <BoardSvg
+        state={{ ...start, buildings: { [vertex]: cityWith('trade') } }}
+        targets={EMPTY_TARGETS}
+        seats={seats}
+        onPick={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId(`metropolis-${vertex}`)).not.toBeNull();
+  });
+
+  it('zeigt keinen Aufsatz an einer Stadt ohne Metropole', () => {
+    const vertex = vertices[0]!;
+    render(
+      <BoardSvg
+        state={{ ...start, buildings: { [vertex]: cityWith(null) } }}
+        targets={EMPTY_TARGETS}
+        seats={seats}
+        onPick={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId(`metropolis-${vertex}`)).toBeNull();
+  });
+
+  it('faerbt den Aufsatz in der Bereichsfarbe per style und traegt den Bereich als data-track', () => {
+    const vertex = vertices[0]!;
+    render(
+      <BoardSvg
+        state={{ ...start, buildings: { [vertex]: cityWith('science') } }}
+        targets={EMPTY_TARGETS}
+        seats={seats}
+        onPick={vi.fn()}
+      />,
+    );
+
+    const topper = screen.getByTestId(`metropolis-${vertex}`);
+    expect(topper.style.fill).toBe('var(--track-science)');
+    expect(topper.getAttribute('data-track')).toBe('science');
+  });
+
+  it('zeichnet fuer die drei Bereiche verschiedene Formen', () => {
+    const vertex = vertices[0]!;
+    const paths = (['trade', 'politics', 'science'] as const).map((track) => {
+      const { unmount } = render(
+        <BoardSvg
+          state={{ ...start, buildings: { [vertex]: cityWith(track) } }}
+          targets={EMPTY_TARGETS}
+          seats={seats}
+          onPick={vi.fn()}
+        />,
+      );
+      const d = screen.getByTestId(`metropolis-${vertex}`).getAttribute('d');
+      unmount();
+      return d;
+    });
+
+    expect(new Set(paths).size).toBe(3);
+  });
+
+  it('zeigt Mauer und Aufsatz gemeinsam an einer ummauerten Metropole', () => {
+    const vertex = vertices[0]!;
+    render(
+      <BoardSvg
+        state={{ ...start, buildings: { [vertex]: cityWith('politics', true) } }}
+        targets={EMPTY_TARGETS}
+        seats={seats}
+        onPick={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId(`wall-${vertex}`)).not.toBeNull();
+    expect(screen.queryByTestId(`metropolis-${vertex}`)).not.toBeNull();
+  });
+});
