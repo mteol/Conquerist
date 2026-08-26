@@ -171,7 +171,7 @@ export type PieceCounts = Record<PieceId, number>;
 //   handLimitPerWall: z.number().int().min(0).default(0)
 ```
 
-- [ ] **Schritt 1: Den fehlschlagenden Test schreiben**
+- [x] **Schritt 1: Den fehlschlagenden Test schreiben**
 
 An `packages/shared/src/rules/ruleset.test.ts` anhängen:
 
@@ -210,12 +210,12 @@ describe('Teilevorraete', () => {
 });
 ```
 
-- [ ] **Schritt 2: Test laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Test laufen lassen und Fehlschlag sehen**
 
 `pnpm --filter @conquerist/shared test -- ruleset` — erwartet: `PieceCountsSchema` ist
 nicht exportiert.
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 In `rules/ruleset.ts`:
 
@@ -247,7 +247,7 @@ In `game/player.ts`:
   wo „noch nicht" gilt, ist genau der Knopf, der nie angeht. Teilweise und nicht
   vollständig, weil ein nicht begonnener Bereich keine Null braucht.
 
-- [ ] **Schritt 4: Test laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Test laufen lassen und Erfolg sehen**
 
 `pnpm --filter @conquerist/shared test -- ruleset` — grün. Danach der volle Lauf
 `pnpm --filter @conquerist/shared test`: es dürfen **keine** bestehenden Tests fallen. Wo
@@ -255,7 +255,7 @@ ein Test `piecesLeft` oder `pieceStock` wörtlich vergleicht (`toEqual`), erwart
 jetzt sieben Schlüssel — solche Erwartungen werden auf `toMatchObject` umgestellt oder um
 die Nullen ergänzt, nicht die Auffüllung aufgeweicht.
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add packages/shared/src/rules/ruleset.ts packages/shared/src/rules/ruleset.test.ts packages/shared/src/game/player.ts
@@ -296,7 +296,7 @@ export type Knight = { owner: PlayerId; level: KnightLevel; active: boolean;
 // Building:   wall: z.boolean().default(false)
 ```
 
-- [ ] **Schritt 1: Den fehlschlagenden Test schreiben**
+- [x] **Schritt 1: Den fehlschlagenden Test schreiben**
 
 `packages/shared/src/game/state.test.ts`:
 
@@ -342,9 +342,9 @@ describe('Stadtmauer am Gebaeude', () => {
 `gameWithPlayers` kommt aus `game/fixtures.ts` — dort nachsehen, wie die bestehenden
 Tests einen Zustand bauen, und dieselbe Hilfe benutzen.
 
-- [ ] **Schritt 2: Test laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Test laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 `game/cities/tracks.ts` anlegen — **nur** die Ids, `TrackIdSchema` und `FORTRESS_LEVEL`.
 Kopfkommentar: die fünf Stufen, ihre Namen, Kosten und Schwellen kommen in 10c; hier
@@ -372,11 +372,11 @@ trägt jetzt sieben Schlüssel.
 
 `game/cities/index.ts`: `export * from './tracks.js';`
 
-- [ ] **Schritt 4: Test laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Test laufen lassen und Erfolg sehen**
 
 `pnpm --filter @conquerist/shared test` — grün.
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add packages/shared/src/game packages/shared/src/rules
@@ -398,7 +398,7 @@ Rückgriffen.
 - Ändern: `packages/shared/src/game/roads.ts` (`isBlocked`)
 - Test: `packages/shared/src/game/build.test.ts`, `packages/shared/src/game/roads.test.ts`
 
-- [ ] **Schritt 1: Die fehlschlagenden Tests schreiben**
+- [x] **Schritt 1: Die fehlschlagenden Tests schreiben**
 
 `build.test.ts`:
 
@@ -432,9 +432,9 @@ it('laesst die Strecke am fremden Ritter enden', () => {
 });
 ```
 
-- [ ] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 `build.ts`, in `canPlaceSettlementAt`, direkt nach der Prüfung auf `state.buildings`:
 
@@ -475,9 +475,9 @@ function isBlocked(state: GameState, player: PlayerId, vertex: VertexId): boolea
 Der Kopfkommentar von `roads.ts` bekommt einen Satz dazu: **Ritter unterbrechen wie
 Gebäude**, und die Suche prüft am Startknoten weiterhin nicht — die Strecke endet dort.
 
-- [ ] **Schritt 4: Tests laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Tests laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add packages/shared/src/game/build.ts packages/shared/src/game/roads.ts packages/shared/src/game/build.test.ts packages/shared/src/game/roads.test.ts
@@ -536,7 +536,7 @@ KNIGHT_NEEDS_FORTRESS— Stark zu Maechtig verlangt die Festung
 KNIGHT_ALREADY_UPGRADED — je Zug steigt ein Ritter nur einmal
 ```
 
-- [ ] **Schritt 1: Die fehlschlagenden Tests schreiben**
+- [x] **Schritt 1: Die fehlschlagenden Tests schreiben**
 
 `knights.test.ts`. Die Fälle, jeder als eigenes `it`:
 
@@ -579,9 +579,9 @@ _Stärke_
 - `knightStrengthOf` zählt nur **aktivierte** Ritter und summiert ihre Stufen
 - `catanStrength` summiert über alle Spieler
 
-- [ ] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: `rules/cities.ts` ergänzen**
+- [x] **Schritt 3: `rules/cities.ts` ergänzen**
 
 ```ts
 buildCosts: {
@@ -611,7 +611,7 @@ Der bestehende Gleichheitstest in `rules/cities.test.ts` wird um `pieceStock`,
 `handLimitPerWall` und `victoryPoints.defender` erweitert: zwischen `CITIES_RULES` und
 `CITIES_RULES_56` weichen weiterhin nur `resourceBank` und `castleTurns` ab.
 
-- [ ] **Schritt 4: `knights.ts` umsetzen**
+- [x] **Schritt 4: `knights.ts` umsetzen**
 
 Kopfkommentar der Datei: was ein Ritter ist (Figur auf einer Kreuzung, Stufe = Stärke,
 Helm = aktiviert), und daß die **Züge** eines Ritters in `knightActions.ts` stehen — hier
@@ -639,9 +639,9 @@ Kernpunkte:
 - `knightMayAct` prüft: eigener Ritter, `active`, `activatedOnTurn !== null`,
   `activatedOnTurn < state.turn`.
 
-- [ ] **Schritt 5: Tests laufen lassen und Erfolg sehen**
+- [x] **Schritt 5: Tests laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 6: Commit**
+- [x] **Schritt 6: Commit**
 
 ```bash
 git add packages/shared/src/game/cities packages/shared/src/rules/cities.ts packages/shared/src/rules/cities.test.ts packages/shared/src/game/errors.ts packages/shared/src/game/build.ts
@@ -682,7 +682,7 @@ export function reachableVertices(
 export function vertexIsFree(state: GameState, vertex: VertexId): boolean;
 ```
 
-- [ ] **Schritt 1: Den fehlschlagenden Test schreiben**
+- [x] **Schritt 1: Den fehlschlagenden Test schreiben**
 
 Die Fälle:
 
@@ -697,9 +697,9 @@ Die Fälle:
   `PROGRESS.md`.)
 - ohne eigene Straßen ist die Menge leer
 
-- [ ] **Schritt 2: Test laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Test laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 Breitensuche über `board.topology.vertexEdges` / `edgeVertices`, Kante nur, wenn
 `state.roads[edge] === player`. Ein Knoten wird aufgenommen; **weitergegangen** wird von
@@ -707,9 +707,9 @@ ihm nur, wenn dort **kein fremder Ritter** steht. Der Kopfkommentar hält beides
 warum der fremde Ritter aufgenommen, aber nicht überschritten wird (man darf ihn
 vertreiben, aber nicht an ihm vorbei), und warum eine fremde Siedlung nicht sperrt.
 
-- [ ] **Schritt 4: Test laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Test laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add packages/shared/src/game/cities/knightMoves.ts packages/shared/src/game/cities/knightMoves.test.ts packages/shared/src/game/cities/index.ts
@@ -779,7 +779,7 @@ ROBBER_LOCKED        — der Raeuber bleibt bis zum ersten Barbarenueberfall ste
 NOT_DISPLACING       — dieser Spieler setzt gerade keinen vertriebenen Ritter
 ```
 
-- [ ] **Schritt 1: Die fehlschlagenden Tests schreiben**
+- [x] **Schritt 1: Die fehlschlagenden Tests schreiben**
 
 _Versetzen_
 
@@ -817,9 +817,9 @@ _Räuber vertreiben_
 - weist ab, wenn der Räuber woanders steht (`ROBBER_NOT_ADJACENT`)
 - weist ab, solange der Räuber gesperrt ist (`ROBBER_LOCKED`)
 
-- [ ] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 Kopfkommentar von `knightActions.ts`: **`moveKnight` deckt das Vertreiben mit ab.** Ziel
 frei heißt versetzen, Ziel von einem schwächeren fremden Ritter besetzt heißt vertreiben.
@@ -842,9 +842,9 @@ dorthin wäre eine zweite Auslegung derselben Regel.
 `displacementTargets(state, owner, from)` = `reachableVertices(state, owner, from)`
 gefiltert auf `vertexIsFree`.
 
-- [ ] **Schritt 4: Tests laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Tests laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add packages/shared/src/game
@@ -887,7 +887,7 @@ export interface HandLimitSource {
 **Neuer Ablehnungsgrund:** `NOT_OWN_CITY` — auf dieser Kreuzung steht keine eigene Stadt.
 Dazu `WALL_EXISTS` — diese Stadt hat schon eine Mauer.
 
-- [ ] **Schritt 1: Die fehlschlagenden Tests schreiben**
+- [x] **Schritt 1: Die fehlschlagenden Tests schreiben**
 
 - baut unter eine eigene Stadt und zieht 2 Lehm ab
 - weist eine eigene **Siedlung** ab (`NOT_OWN_CITY`)
@@ -898,9 +898,9 @@ Dazu `WALL_EXISTS` — diese Stadt hat schon eine Mauer.
 - `handLimitOf` an einem Basistisch: immer 7, weil `handLimitPerWall` dort null ist
 - `discardCountFor` wirft mit zwei Mauern erst ab elf Karten ab
 
-- [ ] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 `walls.ts` mit dem üblichen `can…`/`apply…`-Paar. `applyBuildWall` setzt
 `wall: true` am Gebäude und zieht `wall` aus dem Vorrat.
@@ -914,9 +914,9 @@ Achtung auf den Ladezirkel: `robber.ts` importiert aus `cities/walls.ts`, und `w
 darf deshalb **nicht** aus `robber.ts` importieren. Prüfen, daß `walls.ts` nur `board`,
 `errors`, `cards` und `state` zieht.
 
-- [ ] **Schritt 4: Tests laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Tests laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add packages/shared/src/game
@@ -955,7 +955,7 @@ export function barbarianOutcome(state: GameState): BarbarianOutcome;
 export function applyBarbarianAttack(state: GameState): GameState;
 ```
 
-- [ ] **Schritt 1: Die fehlschlagenden Tests schreiben**
+- [x] **Schritt 1: Die fehlschlagenden Tests schreiben**
 
 _Fahrstrecke_
 
@@ -992,9 +992,9 @@ _Im Wurf_
   aus
 - `resolveEvent` mit einer Stadttorseite rührt das Schiff nicht an
 
-- [ ] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 `barbarians.ts`:
 
@@ -1015,9 +1015,9 @@ _Im Wurf_
 aufrufen. Der Kopfkommentar wird um den Grund für die Reihenfolge ergänzt, der bisher als
 Vorgriff dastand — jetzt gilt er wirklich.
 
-- [ ] **Schritt 4: Tests laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Tests laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add packages/shared/src/game/cities
@@ -1034,7 +1034,7 @@ git commit -m "Die Barbaren landen"
 - Ändern: `packages/shared/src/game/reducer.ts` (`rollDice`)
 - Test: `packages/shared/src/game/robber.test.ts`
 
-- [ ] **Schritt 1: Die fehlschlagenden Tests schreiben**
+- [x] **Schritt 1: Die fehlschlagenden Tests schreiben**
 
 - `canMoveRobber` weist ab, solange `barbarians.attacks === 0` (`ROBBER_LOCKED`)
 - nach dem ersten Überfall geht es
@@ -1047,9 +1047,9 @@ git commit -m "Die Barbaren landen"
   werden — der Angriff kommt vor dem Ertrag, und `resolveEvent` läuft vor dem
   Sieben-Zweig
 
-- [ ] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 In `canMoveRobber` als **erste** Prüfung `robberIsFree(state)`. In `applyDiscard` und in
 `rollDice` die Folgephase über eine gemeinsame Hilfe wählen:
@@ -1067,9 +1067,9 @@ export function afterDiscardPhase(state: GameState): Phase;
 
 Beide Aufrufer benutzen sie. Sie steht in `robber.ts`, weil dort die Sieben zu Hause ist.
 
-- [ ] **Schritt 4: Tests laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Tests laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add packages/shared/src/game
@@ -1104,7 +1104,7 @@ z.object({ ...Base, type: z.literal('placeDisplacedKnight'), vertex: z.string() 
 Alle sieben gehören auch in `GAME_ACTION_TYPES` — der zweite Wächter
 (`NoActionTypeForgotten`) fängt sonst den Compiler-Fehler, und genau dafür steht er da.
 
-- [ ] **Schritt 1: Die fehlschlagenden Tests schreiben**
+- [x] **Schritt 1: Die fehlschlagenden Tests schreiben**
 
 - `actions.test.ts`: jede der sieben Aktionen parst; `GAME_ACTION_TYPES` enthält sie
 - `reducer.test.ts`:
@@ -1122,9 +1122,9 @@ Alle sieben gehören auch in `GAME_ACTION_TYPES` — der zweite Wächter
 - `scoring.test.ts`: ein Retter-Chip zählt einen Punkt, und er zählt **öffentlich**
   (`publicVictoryPointsOf`)
 
-- [ ] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 `reducer.ts`:
 
@@ -1159,9 +1159,9 @@ Brett in der Liste, und `canMoveKnight` liefe rund tausendmal je Aufruf.
 Neuer Zweig `case 'displacePending':` — nur für `state.phase.owner`, über
 `displacementTargets`.
 
-- [ ] **Schritt 4: Tests laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Tests laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add packages/shared/src/game
@@ -1200,7 +1200,7 @@ export const KNIGHT_LABELS: Readonly<Record<KnightLevel, string>> = {
 };
 ```
 
-- [ ] **Schritt 1: Die fehlschlagenden Tests schreiben**
+- [x] **Schritt 1: Die fehlschlagenden Tests schreiben**
 
 - `playerViewOf` trägt `knights` unverändert weiter — sie sind öffentlich
 - `defenders` ist die Summe über **alle** aktivierten Ritter, nicht nur die eigenen
@@ -1218,9 +1218,9 @@ export const KNIGHT_LABELS: Readonly<Record<KnightLevel, string>> = {
 Ritter halten (4 gegen 3) - Ben wird Retter Catans` bzw. `… die Barbaren siegen (2
 gegen 3) - Ben verliert eine Stadt`
 
-- [ ] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 `log.ts`: `describeAction` bekommt sieben neue Zweige. Für `moveKnight` entscheidet der
 Vergleich von vorher und nachher, ob versetzt oder vertrieben wurde — der Verlauf liest
@@ -1233,9 +1233,9 @@ aus dem Unterschied von `buildings` bzw. `defenderPoints`, wie er ausging. Angeh
 den `rollDice`-Satz. Kommentar: **aus dem Übergang gelesen und nicht aus einem Ereignis**
 — dieselbe Begründung, die im Kopf der Datei schon steht.
 
-- [ ] **Schritt 4: Tests laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Tests laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add packages/shared/src/game
@@ -1250,7 +1250,7 @@ git commit -m "Der Tisch sieht die Ritter, der Verlauf erzaehlt vom Ueberfall"
 
 - Ändern: `packages/shared/src/game/game.integration.test.ts`
 
-- [ ] **Schritt 1: Den Test schreiben**
+- [x] **Schritt 1: Den Test schreiben**
 
 Eine Partie nach `CITIES_RULES` über den Reducer, mit festem Seed:
 
@@ -1265,9 +1265,9 @@ Eine Partie nach `CITIES_RULES` über den Reducer, mit festem Seed:
 Der Test darf **nicht** an einer bestimmten Wurffolge hängen. Was geprüft wird, sind die
 Invarianten nach dem Überfall, nicht sein Ausgang.
 
-- [ ] **Schritt 2: Test laufen lassen und Erfolg sehen**
+- [x] **Schritt 2: Test laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 3: Commit**
+- [x] **Schritt 3: Commit**
 
 ```bash
 git add packages/shared/src/game/game.integration.test.ts
@@ -1313,7 +1313,7 @@ export const KNIGHT_HELMET_PATH: string;
 export const WALL_PATH: string;
 ```
 
-- [ ] **Schritt 1: Die fehlschlagenden Tests schreiben**
+- [x] **Schritt 1: Die fehlschlagenden Tests schreiben**
 
 `BoardSvg.test.tsx`:
 
@@ -1324,9 +1324,9 @@ export const WALL_PATH: string;
 - eine Stadt mit Mauer zeigt `[data-testid="wall-<vertex>"]`, eine ohne nicht
 - die Zahl der Spitzen entspricht der Stufe (drei Pfade bei Stufe 3)
 
-- [ ] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 `shapes.ts`: die vier Pfade im Raster `-10 -9 20 17` (`VIEWBOX`), mit demselben
 Kopfkommentar-Ton wie die bestehenden. Die Spitzen sitzen an einem Fahnenmast rechts vom
@@ -1350,9 +1350,9 @@ Rumpf, damit sie auch bei kleiner Darstellung einzeln stehen.
 Blatt, die die Sitzfarbe schlägt — die kommt per `style`. Spezifität der neuen Regeln
 gegen `.vertex …` nachzählen.
 
-- [ ] **Schritt 4: Tests laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Tests laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add apps/client/src/board apps/client/src/index.css
@@ -1384,7 +1384,7 @@ readonly moves:      ReadonlyMap<VertexId, ReadonlyMap<VertexId, GameAction>>;
 readonly displace:   ReadonlyMap<VertexId, GameAction>;
 ```
 
-- [ ] **Schritt 1: Die fehlschlagenden Tests schreiben**
+- [x] **Schritt 1: Die fehlschlagenden Tests schreiben**
 
 - `buildKnight` und `buildSettlement` auf **demselben** Knoten landen in verschiedenen
   Karten und werfen nicht (`claim` würde sonst „doppelt belegt" melden) — das ist der
@@ -1393,18 +1393,18 @@ readonly displace:   ReadonlyMap<VertexId, GameAction>;
 - `moves` gruppiert nach Ausgangskreuzung
 - `displace` sammelt `placeDisplacedKnight`
 
-- [ ] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 `targetsFrom` bekommt die neuen Zweige, `EMPTY_TARGETS` die leeren Karten, `buildKindOf`
 die zwei neuen Bauteile. Kommentar an den eigenen Karten: **warum nicht in `vertices`** —
 auf einer freien Kreuzung sind Siedlung **und** Ritter zugleich möglich, und die
 `claim`-Sperre gegen doppelte Belegung ist richtig und soll bleiben.
 
-- [ ] **Schritt 4: Tests laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Tests laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add apps/client/src/game/targets.ts apps/client/src/game/targets.test.ts
@@ -1443,7 +1443,7 @@ Pixel groß. Vier Aktionen daran wären vier Trefferflächen unter Fingergröße
 davon wären fast immer gesperrt. Die Frage kommt zuerst („was tun"), die Stelle danach —
 genau wie beim Bauen seit dem Playtest.
 
-- [ ] **Schritt 1: Die fehlschlagenden Tests schreiben**
+- [x] **Schritt 1: Die fehlschlagenden Tests schreiben**
 
 `KnightPanel.test.tsx`:
 
@@ -1462,9 +1462,9 @@ genau wie beim Bauen seit dem Playtest.
   die Ausweichkreuzungen leuchten
 - die Bauleiste zeigt an einem Basistisch weiterhin genau drei Bauteile
 
-- [ ] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
+- [x] **Schritt 2: Tests laufen lassen und Fehlschlag sehen**
 
-- [ ] **Schritt 3: Umsetzen**
+- [x] **Schritt 3: Umsetzen**
 
 `ActionPanel.tsx`:
 
@@ -1517,9 +1517,9 @@ Ritter um". `discardCountForView` rechnet mit `handLimitOf` aus `shared` statt m
 der `HandLimitSource`. Der bestehende Test, der beide Rechnungen vergleicht, deckt das
 mit ab.
 
-- [ ] **Schritt 4: Tests laufen lassen und Erfolg sehen**
+- [x] **Schritt 4: Tests laufen lassen und Erfolg sehen**
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add apps/client/src
@@ -1578,7 +1578,7 @@ git commit -m "Was der Browser zu den Rittern gesagt hat"
 
 ## Aufgabe 17: Abnahme und `PROGRESS.md`
 
-- [ ] **Schritt 1: Volle Abnahme**
+- [x] **Schritt 1: Volle Abnahme**
 
 ```bash
 pnpm typecheck && pnpm test && pnpm build && pnpm format:check
@@ -1587,7 +1587,7 @@ pnpm typecheck && pnpm test && pnpm build && pnpm format:check
 Die Zahlen aus dem Testlauf (je Paket Tests/Dateien) und die Bundlegröße aus dem Build
 **abschreiben**, nicht schätzen — eine erfundene Zahl macht die ganze Tabelle wertlos.
 
-- [ ] **Schritt 2: Den Abschnitt schreiben**
+- [x] **Schritt 2: Den Abschnitt schreiben**
 
 `PROGRESS.md`, in der bestehenden Form:
 
@@ -1607,7 +1607,7 @@ Die Zahlen aus dem Testlauf (je Paket Tests/Dateien) und die Bundlegröße aus d
   Browser-Durchgang offengelassen hat.
 - **Nächste Etappe:** 10c — Stadtausbau und Metropolen.
 
-- [ ] **Schritt 3: Commit**
+- [x] **Schritt 3: Commit**
 
 ```bash
 git add PROGRESS.md
