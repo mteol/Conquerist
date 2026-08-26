@@ -2,14 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import { createRng } from '../random/index.js';
 import { RuleViolationCode } from './errors.js';
-import { CENTER_VERTEX, giving, hand, testGame } from './fixtures.js';
+import { CENTER_VERTEX, gameWithCities, giving, hand, testGame } from './fixtures.js';
 import {
+  afterDiscardPhase,
   applyDiscard,
   applyMoveRobber,
+  canMoveRobber,
   discardCountFor,
   playersMustDiscard,
   victimsAt,
 } from './robber.js';
+import { CITIES_RULES } from '../rules/index.js';
+import { reduce } from './reducer.js';
 import { PhaseSchema } from './phase.js';
 import { countCards } from './cards.js';
 import type { GameState } from './state.js';
@@ -283,5 +287,102 @@ describe('der Rueckweg des Raeubers', () => {
 
   it('kennt keine Raeuberphase ohne Rueckweg', () => {
     expect(PhaseSchema.safeParse({ kind: 'robberPending' }).success).toBe(false);
+  });
+});
+
+/**
+ * Die Raeubersperre aus Staedte & Ritter.
+ *
+ * Der Raeuber steht still, bis die Barbaren einmal gelandet sind. In der Runde
+ * des ersten Ueberfalls darf er schon ziehen, und das haengt an der
+ * Reihenfolge im Wurf: `resolveEvent` laeuft **vor** dem Sieben-Zweig, also
+ * ist der Ueberfall abgehandelt, wenn die Folgephase gewaehlt wird.
+ */
+describe('Der Raeuber vor dem ersten Ueberfall', () => {
+  const LOCKED = { position: 0, attacks: 0 };
+  const FREED = { position: 0, attacks: 1 };
+
+  it('laesst sich nicht versetzen, solange die Barbaren nicht da waren', () => {
+    const state = gameWithCities({
+      barbarians: LOCKED,
+      phase: { kind: 'robberPending', resume: 'main' },
+    });
+    expect(canMoveRobber(state, 'p1', '1,0', null)?.code).toBe(RuleViolationCode.ROBBER_LOCKED);
+  });
+
+  it('laesst sich nach dem ersten Ueberfall versetzen', () => {
+    const state = gameWithCities({
+      barbarians: FREED,
+      phase: { kind: 'robberPending', resume: 'main' },
+    });
+    expect(canMoveRobber(state, 'p1', '1,0', null)).toBeNull();
+  });
+
+  it('laesst sich an einem Basistisch immer versetzen', () => {
+    const state = testGame({ phase: { kind: 'robberPending', resume: 'main' } });
+    expect(state.barbarians).toBeNull();
+    expect(canMoveRobber(state, 'p1', '1,0', null)).toBeNull();
+  });
+
+  it('geht nach dem Abwerfen direkt in die Hauptphase', () => {
+    expect(afterDiscardPhase(gameWithCities({ barbarians: LOCKED }))).toEqual({ kind: 'main' });
+  });
+
+  it('oeffnet nach dem Abwerfen robberPending, sobald sie gelandet waren', () => {
+    expect(afterDiscardPhase(gameWithCities({ barbarians: FREED }))).toEqual({
+      kind: 'robberPending',
+      resume: 'main',
+    });
+  });
+
+  it('laesst den letzten Abwerfenden in die Hauptphase durchgehen', () => {
+    const state = giving(
+      gameWithCities({ barbarians: LOCKED, phase: { kind: 'discardPending', pending: ['p1'] } }),
+      'p1',
+      { brick: 8 },
+    );
+
+    const result = applyDiscard(state, 'p1', hand({ brick: 4 }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.state.phase).toEqual({ kind: 'main' });
+  });
+
+  /*
+   * Der Ueberfall kommt vor dem Ertrag - also ist der Raeuber schon frei, wenn
+   * in derselben Runde eine Sieben faellt. Gesucht wird ein Seed, bei dem
+   * beides zusammentrifft (Wahrscheinlichkeit rund ein Zwoelftel je Wurf).
+   */
+  it('gibt den Raeuber in der Runde des ersten Ueberfalls schon frei', () => {
+    const track = CITIES_RULES.barbarianTrack;
+    let found = false;
+
+    for (let seed = 0; seed < 200 && !found; seed += 1) {
+      const state = gameWithCities({
+        barbarians: { position: track - 1, attacks: 0 },
+        buildings: {},
+        knights: {},
+        phase: { kind: 'rollPending' },
+        rng: createRng(`seven-${seed}`),
+      });
+
+      const result = reduce(state, { type: 'rollDice', player: 'p1' });
+      if (!result.ok) continue;
+
+      const roll = result.state.lastRoll!;
+      const total = roll
+        .filter((entry) => entry.die !== 'event')
+        .reduce((sum, entry) => sum + entry.value, 0);
+      const ship = (roll.find((entry) => entry.die === 'event')?.value ?? 6) <= 3;
+
+      if (total !== 7 || !ship) continue;
+
+      found = true;
+      expect(result.state.barbarians).toEqual({ position: 0, attacks: 1 });
+      expect(result.state.phase).toEqual({ kind: 'robberPending', resume: 'main' });
+    }
+
+    expect(found).toBe(true);
   });
 });

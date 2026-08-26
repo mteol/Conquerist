@@ -3,7 +3,7 @@ import { applyBuildCity, applyBuildRoad, applyBuildSettlement } from './build.js
 import { rollAll, yieldTotal } from './dice.js';
 import { RuleViolationCode, violation } from './errors.js';
 import type { PlayerId } from './player.js';
-import { applyDiscard, applyMoveRobber, playersMustDiscard } from './robber.js';
+import { afterDiscardPhase, applyDiscard, applyMoveRobber, playersMustDiscard } from './robber.js';
 import { recomputeLongestRoad } from './roads.js';
 import { hasWon } from './scoring.js';
 import { applyOpeningRoll } from './opening.js';
@@ -129,10 +129,7 @@ function rollDice(state: GameState): ReduceResult {
   const pending = playersMustDiscard(afterEvent);
   return ok({
     ...afterEvent,
-    phase:
-      pending.length > 0
-        ? { kind: 'discardPending', pending }
-        : { kind: 'robberPending', resume: 'main' },
+    phase: pending.length > 0 ? { kind: 'discardPending', pending } : afterDiscardPhase(afterEvent),
   });
 }
 

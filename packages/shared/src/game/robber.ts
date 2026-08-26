@@ -6,7 +6,9 @@ import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { PlayerId } from './player.js';
 import { EMPTY_CARDS, addCards, canAfford, countCards, cardAt, subtractCards } from './cards.js';
 import { findPlayer, ok, rejected, type GameState, type ReduceResult } from './state.js';
+import { robberIsFree } from './cities/barbarians.js';
 import { handLimitOf } from './cities/walls.js';
+import type { Phase } from './phase.js';
 
 /**
  * Die Sieben - abwerfen, Raeuber versetzen, stehlen.
@@ -34,6 +36,20 @@ export function discardCountFor(state: GameState, player: PlayerId): number {
 
   const held = countCards(owner.resources);
   return held > handLimitOf(state, player) ? Math.floor(held / 2) : 0;
+}
+
+/**
+ * Wohin es nach einer Sieben weitergeht.
+ *
+ * Solange die Barbaren nicht gelandet sind, bleibt der Raeuber stehen - dann
+ * ist mit dem Abwerfen alles getan. Eine Phase `robberPending`, in der jeder
+ * Zug abgewiesen wird, waere ein Tisch, der auf nichts wartet.
+ *
+ * Sie steht hier, weil die Sieben hier zu Hause ist, und **beide** Aufrufer
+ * benutzen sie: der Wurf (wenn niemand abwerfen muss) und der letzte Abwurf.
+ */
+export function afterDiscardPhase(state: GameState): Phase {
+  return robberIsFree(state) ? { kind: 'robberPending', resume: 'main' } : { kind: 'main' };
 }
 
 /** Wer nach einer Sieben abwerfen muss - in Zugreihenfolge. */
@@ -92,10 +108,7 @@ export function applyDiscard(
         : entry,
     ),
     bank: addCards(state.bank, resources),
-    phase:
-      pending.length === 0
-        ? { kind: 'robberPending', resume: 'main' }
-        : { kind: 'discardPending', pending },
+    phase: pending.length === 0 ? afterDiscardPhase(state) : { kind: 'discardPending', pending },
   });
 }
 
@@ -123,6 +136,18 @@ export function canMoveRobber(
   hex: HexId,
   victim: PlayerId | null,
 ): RuleViolation | null {
+  /*
+   * Zuerst die Sperre: bis zum ersten Barbarenueberfall ruehrt sich der
+   * Raeuber nicht. Vor allen anderen Pruefungen, weil sie den Zug an sich
+   * verbietet und nicht seine Einzelheiten.
+   */
+  if (!robberIsFree(state)) {
+    return violation(
+      RuleViolationCode.ROBBER_LOCKED,
+      'Der Räuber bleibt stehen, bis die Barbaren zum ersten Mal gelandet sind',
+    );
+  }
+
   const board = boardOf(state.scenario);
 
   if (!board.hexes.has(hex)) {
