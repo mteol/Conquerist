@@ -102,8 +102,16 @@ function connectsAt(
   return false;
 }
 
-/** Reichen Karten und Vorrat? */
-function canPay(
+/**
+ * Reichen Karten und Vorrat?
+ *
+ * **Exportiert**, weil `cities/knights.ts` und `cities/walls.ts` dieselbe
+ * Frage stellen. Eine zweite Pruefung daneben waere eine zweite Auslegung
+ * derselben Regel - und die Reihenfolge (erst Vorrat, dann Karten) ist eine
+ * Auskunft: wer keine Bauteile mehr hat, soll das hoeren und nicht "zu wenig
+ * Karten".
+ */
+export function canPayFor(
   state: GameState,
   player: PlayerId,
   piece: PieceId,
@@ -130,12 +138,15 @@ function canPay(
 }
 
 /**
- * Zieht die Kosten ab und verbucht ein Bauteil.
+ * Zieht die Kosten ab und verbucht Bauteile.
  *
  * Die bezahlten Karten gehen zurueck an die Bank - der Kartenvorrat ist
  * endlich, und ohne Ruecklauf waere er nach wenigen Runden leer.
+ *
+ * **Exportiert** aus demselben Grund wie `canPayFor`: zwei Stellen, die Karten
+ * an die Bank zurueckgeben, waeren zwei Gelegenheiten, es zu vergessen.
  */
-function pay(
+export function payFor(
   state: GameState,
   player: PlayerId,
   cost: CardAmounts,
@@ -196,14 +207,14 @@ export function canBuildRoad(
     );
   }
 
-  return canPay(state, player, 'road', costOf(state.rules, 'road'));
+  return canPayFor(state, player, 'road', costOf(state.rules, 'road'));
 }
 
 export function applyBuildRoad(state: GameState, player: PlayerId, edge: EdgeId): ReduceResult {
   const problem = canBuildRoad(state, player, edge);
   if (problem !== null) return rejected(problem);
 
-  const paid = pay(state, player, costOf(state.rules, 'road'), { road: -1 });
+  const paid = payFor(state, player, costOf(state.rules, 'road'), { road: -1 });
   return ok({ ...paid, roads: { ...paid.roads, [edge]: player } });
 }
 
@@ -220,7 +231,7 @@ export function canBuildSettlement(
     return violation(RuleViolationCode.NOT_CONNECTED, `An ${vertex} endet keine eigene Straße`);
   }
 
-  return canPay(state, player, 'settlement', costOf(state.rules, 'settlement'));
+  return canPayFor(state, player, 'settlement', costOf(state.rules, 'settlement'));
 }
 
 export function applyBuildSettlement(
@@ -231,7 +242,7 @@ export function applyBuildSettlement(
   const problem = canBuildSettlement(state, player, vertex);
   if (problem !== null) return rejected(problem);
 
-  const paid = pay(state, player, costOf(state.rules, 'settlement'), { settlement: -1 });
+  const paid = payFor(state, player, costOf(state.rules, 'settlement'), { settlement: -1 });
   return ok({
     ...paid,
     buildings: { ...paid.buildings, [vertex]: { owner: player, kind: 'settlement', wall: false } },
@@ -252,7 +263,7 @@ export function canBuildCity(
     );
   }
 
-  return canPay(state, player, 'city', costOf(state.rules, 'city'));
+  return canPayFor(state, player, 'city', costOf(state.rules, 'city'));
 }
 
 export function applyBuildCity(state: GameState, player: PlayerId, vertex: VertexId): ReduceResult {
@@ -261,7 +272,7 @@ export function applyBuildCity(state: GameState, player: PlayerId, vertex: Verte
 
   // Die Siedlung kommt in den Vorrat zurueck: sie steht nicht mehr auf dem
   // Brett und laesst sich woanders wieder aufbauen.
-  const paid = pay(state, player, costOf(state.rules, 'city'), { city: -1, settlement: +1 });
+  const paid = payFor(state, player, costOf(state.rules, 'city'), { city: -1, settlement: +1 });
   return ok({
     ...paid,
     buildings: { ...paid.buildings, [vertex]: { owner: player, kind: 'city', wall: false } },

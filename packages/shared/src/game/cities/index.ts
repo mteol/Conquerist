@@ -8,5 +8,6 @@
  */
 export * from './barbarians.js';
 export * from './event.js';
+export * from './knights.js';
 export * from './tracks.js';
 export * from './turn.js';

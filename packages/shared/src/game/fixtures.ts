@@ -83,13 +83,21 @@ export function hand(partial: Partial<CardAmounts> = {}): CardAmounts {
  * eigentlich pruefen wollte.
  */
 export function testGame(overrides: Partial<GameState> = {}): GameState {
+  /*
+   * Vorrat und Bank folgen dem Regelwerk, das der Test verlangt - nicht dem
+   * Basisspiel. Sonst saesse an einem Staedte-&-Ritter-Tisch niemand vor
+   * Ritterfiguren, und jeder Ritterbau schluege mit NO_PIECES_LEFT fehl, ohne
+   * dass der Test danach gefragt haette.
+   */
+  const rules = overrides.rules ?? CLASSIC_RULES;
+
   const base: GameState = {
     scenario: TEST_SCENARIO,
-    rules: CLASSIC_RULES,
+    rules,
     players: TEST_PLAYERS.map((id) => ({
       id,
       resources: hand(),
-      piecesLeft: { ...CLASSIC_RULES.pieceStock },
+      piecesLeft: { ...rules.pieceStock },
       developmentCards: [],
       playedKnights: 0,
       defenderPoints: 0,
@@ -102,7 +110,7 @@ export function testGame(overrides: Partial<GameState> = {}): GameState {
     knights: {},
     robber: TEST_SCENARIO.robberStart,
     barbarians: null,
-    bank: { ...CLASSIC_RULES.resourceBank },
+    bank: { ...rules.resourceBank },
     longestRoad: { holder: null, length: 0 },
     largestArmy: { holder: null, size: 0 },
     deck: [],
@@ -131,7 +139,6 @@ export function testGame(overrides: Partial<GameState> = {}): GameState {
 export function gameWithCities(overrides: Partial<GameState> = {}): GameState {
   return testGame({
     rules: CITIES_RULES,
-    bank: { ...CITIES_RULES.resourceBank },
     buildings: { [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false } },
     barbarians: { position: 0, attacks: 0 },
     ...overrides,
