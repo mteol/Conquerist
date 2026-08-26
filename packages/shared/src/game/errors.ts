@@ -37,6 +37,17 @@ export const RuleViolationCode = {
   /** Diese Stadt hat schon eine Mauer. */
   WALL_EXISTS: 'WALL_EXISTS',
 
+  /** Ausbauen verlangt mindestens eine eigene Stadt. */
+  NEEDS_CITY: 'NEEDS_CITY',
+  /** Dieser Bereich ist auf der hoechsten Stufe. */
+  TRACK_MAX_LEVEL: 'TRACK_MAX_LEVEL',
+  /** Dieser Ausbau bringt den Aufsatz, also fehlt die Stadt dafuer. */
+  METROPOLIS_REQUIRED: 'METROPOLIS_REQUIRED',
+  /** Dieser Ausbau bringt keinen Aufsatz, die genannte Stadt gehoert nicht dazu. */
+  METROPOLIS_NOT_WANTED: 'METROPOLIS_NOT_WANTED',
+  /** Die genannte Stadt taugt nicht: fremd, keine Stadt, oder besetzt. */
+  INVALID_METROPOLIS: 'INVALID_METROPOLIS',
+
   /** Die Handkarten reichen nicht. */
   INSUFFICIENT_RESOURCES: 'INSUFFICIENT_RESOURCES',
   /** Der eigene Bauteilvorrat ist aufgebraucht. */
