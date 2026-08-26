@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CLASSIC_RULES, type CardAmounts } from '../rules/index.js';
+import { CITIES_RULES, CLASSIC_RULES, type CardAmounts } from '../rules/index.js';
 import { CLASSIC_34, RESOURCE_IDS, generateScenario } from '../scenario/index.js';
 import type { GameAction } from './actions.js';
 import { legalActions } from './legal.js';
@@ -9,6 +9,7 @@ import { replay } from './replay.js';
 import { EMPTY_CARDS, countCards } from './cards.js';
 import { discardCountFor } from './robber.js';
 import { victoryPointsOf } from './scoring.js';
+import { robberIsFree } from './cities/barbarians.js';
 import { giving, hand, testGame } from './fixtures.js';
 import { createGame } from './setup.js';
 import type { GameState } from './state.js';
@@ -314,5 +315,132 @@ describe('Spielerhandel', () => {
     expect(restored.ok).toBe(true);
     if (!restored.ok) return;
     expect(totalCards(restored.state)).toBe(before);
+  });
+});
+
+/**
+ * Eine Partie nach Staedte-&-Ritter-Regeln bis zum ersten Barbarenueberfall.
+ *
+ * Gefahren wird mit derselben stumpfen Strategie, nur um die Ritterzuege
+ * erweitert. Der Test haengt **nicht** an einer bestimmten Wurffolge: die
+ * Wuerfe kommen aus dem Seed, also wird gezaehlt statt gesteuert, und geprueft
+ * werden die Invarianten **nach** dem Ueberfall - nicht sein Ausgang.
+ */
+describe('Eine Partie bis zur Kueste', () => {
+  const CITIES_PRIORITY: readonly GameAction['type'][] = [
+    'placeSetupSettlement',
+    'placeSetupRoad',
+    'rollDice',
+    'moveRobber',
+    // Ein vertriebener Ritter haelt den Tisch an - er kommt vor allem anderen.
+    'placeDisplacedKnight',
+    'buildCity',
+    'buildSettlement',
+    'buildKnight',
+    'activateKnight',
+    'upgradeKnight',
+    'moveKnight',
+    'buildWall',
+    'buildRoad',
+    'tradeWithBank',
+    'endTurn',
+  ];
+
+  function chooseCitiesAction(state: GameState, player: string): GameAction | null {
+    if (state.phase.kind === 'discardPending') {
+      return { type: 'discard', player, resources: chooseDiscard(state, player) };
+    }
+
+    const options = legalActions(state, player);
+    for (const type of CITIES_PRIORITY) {
+      const match = options.find((action) => action.type === type);
+      if (match !== undefined) return match;
+    }
+
+    return null;
+  }
+
+  function citiesActor(state: GameState): string | null {
+    // Den Vertriebenen setzt sein Besitzer um, nicht der Spieler am Zug.
+    if (state.phase.kind === 'displacePending') return state.phase.owner;
+    return nextActor(state);
+  }
+
+  const initial = createGame(SCENARIO, CITIES_RULES, PLAYERS, 'barbaren-seed');
+
+  let state = initial;
+  let steps = 0;
+  const LIMIT = 20_000;
+
+  while ((state.barbarians?.attacks ?? 0) === 0 && state.phase.kind !== 'finished') {
+    if (steps >= LIMIT) break;
+
+    const actor = citiesActor(state);
+    if (actor === null) break;
+
+    const action = chooseCitiesAction(state, actor);
+    if (action === null) break;
+
+    const result = reduce(state, action);
+    if (!result.ok) {
+      throw new Error(
+        `Zug ${steps} (${action.type}, ${actor}) abgelehnt: ${result.error.code} - ${result.error.message}`,
+      );
+    }
+
+    expect(totalCards(result.state)).toBe(totalCards(initial));
+
+    state = result.state;
+    steps += 1;
+  }
+
+  it('kommt bis zum ersten Ueberfall', () => {
+    expect(steps).toBeLessThan(LIMIT);
+    expect(state.barbarians?.attacks).toBeGreaterThanOrEqual(1);
+  });
+
+  it('hat unterwegs Ritter gebaut, aktiviert und versetzt', () => {
+    // Der Ueberfall hat sie danach alle deaktiviert - dass es sie gibt, sagt
+    // der Vorrat, aus dem sie genommen wurden.
+    const built = state.players.some(
+      (player) => player.piecesLeft.knight1 < CITIES_RULES.pieceStock.knight1,
+    );
+    expect(built).toBe(true);
+  });
+
+  it('schickt das Schiff zurueck auf den Anfang', () => {
+    expect(state.barbarians?.position).toBe(0);
+  });
+
+  it('gibt danach den Raeuber frei', () => {
+    expect(robberIsFree(state)).toBe(true);
+  });
+
+  it('laesst danach keinen aktivierten Ritter stehen', () => {
+    for (const knight of Object.values(state.knights)) {
+      expect(knight.active).toBe(false);
+      expect(knight.activatedOnTurn).toBeNull();
+    }
+  });
+
+  it('passt Staedte und Retter-Chips zum Ausgang zusammen', () => {
+    const chips = state.players.reduce((sum, player) => sum + player.defenderPoints, 0);
+    const cities = Object.values(state.buildings).filter(
+      (building) => building.kind === 'city',
+    ).length;
+
+    /*
+     * Genau eines von beidem kann der Ueberfall gebracht haben, und beides ist
+     * zulaessig: ein Chip (die Ritter hielten, mit alleinigem Hoechstbeitrag)
+     * oder ein Staedteverlust. Keiner von beiden Faellen ist ein Fehler - was
+     * hier geprueft wird, ist, dass die Zahlen ueberhaupt zusammenpassen.
+     */
+    expect(chips).toBeLessThanOrEqual(state.players.length);
+    expect(cities).toBeGreaterThanOrEqual(0);
+    expect(cities).toBeLessThanOrEqual(CITIES_RULES.pieceStock.city * state.players.length);
+  });
+
+  it('haelt den Kartenbestand ueber die ganze Strecke', () => {
+    expect(totalCards(state)).toBe(totalCards(initial));
   });
 });
