@@ -375,3 +375,131 @@ describe('BoardSvg', () => {
     expect(onPick).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Ritter und Mauern auf dem Brett.
+ *
+ * Drei Dinge muß eine Ritterfigur auf einen Blick sagen: wem sie gehört, wie
+ * stark sie ist und ob sie handeln kann. Die Farbe steht per `style` da (eine
+ * gleichnamige CSS-Regel schlüge jedes Präsentationsattribut), die Stärke in
+ * der Zahl der Fahnenspitzen, und der Helm sagt „aktiviert".
+ */
+describe('BoardSvg mit Rittern', () => {
+  const vertices = boardOf(scenario).topology.vertices;
+
+  function knight(owner: string, level: 1 | 2 | 3, active: boolean) {
+    return { owner, level, active, activatedOnTurn: active ? 1 : null, upgradedThisTurn: false };
+  }
+
+  function withKnights(knights: Record<string, ReturnType<typeof knight>>) {
+    return { ...start, knights };
+  }
+
+  it('zeichnet einen Ritter an seiner Kreuzung, in der Sitzfarbe per style', () => {
+    const mine = vertices[3]!;
+    const theirs = vertices[9]!;
+
+    render(
+      <BoardSvg
+        state={withKnights({
+          [mine]: knight(seats[0]!.id, 1, false),
+          [theirs]: knight(seats[1]!.id, 1, false),
+        })}
+        targets={EMPTY_TARGETS}
+        seats={seats}
+        onPick={vi.fn()}
+      />,
+    );
+
+    const bodyOf = (vertex: string): SVGElement =>
+      screen.getByTestId(`knight-${vertex}`).querySelector('.knight__body')!;
+
+    /*
+     * Geprueft wird beides: dass die Farbe per `style` kommt (ein Attribut
+     * `fill` wuerde von jeder gleichnamigen CSS-Regel geschlagen), und dass
+     * sie dem Besitzer folgt. Auf den Hexwert selbst laesst sich nicht
+     * pruefen - jsdom normalisiert ihn zu `rgb(...)`.
+     */
+    expect(bodyOf(mine).getAttribute('fill')).toBeNull();
+    expect(bodyOf(mine).getAttribute('style')).toMatch(/fill:/);
+    expect(bodyOf(mine).getAttribute('style')).not.toBe(bodyOf(theirs).getAttribute('style'));
+  });
+
+  it('traegt Stufe und Helmzustand als Daten', () => {
+    const vertex = vertices[3]!;
+    render(
+      <BoardSvg
+        state={withKnights({ [vertex]: knight(seats[1]!.id, 2, true) })}
+        targets={EMPTY_TARGETS}
+        seats={seats}
+        onPick={vi.fn()}
+      />,
+    );
+
+    const figure = screen.getByTestId(`knight-${vertex}`);
+    expect(figure.getAttribute('data-level')).toBe('2');
+    expect(figure.getAttribute('data-active')).toBe('true');
+  });
+
+  it('zeigt so viele Fahnenspitzen, wie der Ritter Stufen hat', () => {
+    for (const level of [1, 2, 3] as const) {
+      const vertex = vertices[3]!;
+      const view = render(
+        <BoardSvg
+          state={withKnights({ [vertex]: knight(seats[0]!.id, level, false) })}
+          targets={EMPTY_TARGETS}
+          seats={seats}
+          onPick={vi.fn()}
+        />,
+      );
+
+      const figure = screen.getByTestId(`knight-${vertex}`);
+      expect(figure.querySelectorAll('.knight__pennant')).toHaveLength(level);
+
+      view.unmount();
+    }
+  });
+
+  it('setzt den Helm nur einem aktivierten Ritter auf', () => {
+    const passive = vertices[3]!;
+    const active = vertices[9]!;
+
+    render(
+      <BoardSvg
+        state={withKnights({
+          [passive]: knight(seats[0]!.id, 1, false),
+          [active]: knight(seats[0]!.id, 1, true),
+        })}
+        targets={EMPTY_TARGETS}
+        seats={seats}
+        onPick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId(`knight-${passive}`).querySelector('.knight__helmet')).toBeNull();
+    expect(screen.getByTestId(`knight-${active}`).querySelector('.knight__helmet')).not.toBeNull();
+  });
+
+  it('zeichnet die Mauer nur an einer Stadt, die eine hat', () => {
+    const walled = vertices[0]!;
+    const bare = vertices[8]!;
+
+    render(
+      <BoardSvg
+        state={{
+          ...start,
+          buildings: {
+            [walled]: { owner: seats[0]!.id, kind: 'city' as const, wall: true },
+            [bare]: { owner: seats[0]!.id, kind: 'city' as const, wall: false },
+          },
+        }}
+        targets={EMPTY_TARGETS}
+        seats={seats}
+        onPick={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId(`wall-${walled}`)).not.toBeNull();
+    expect(screen.queryByTestId(`wall-${bare}`)).toBeNull();
+  });
+});

@@ -5518,6 +5518,57 @@ body {
   stroke-linejoin: round;
 }
 
+/*
+ * Die Stadtmauer traegt dieselbe Kontur wie das Bauwerk darunter - sie ist
+ * dasselbe Material, nur ein anderes Stueck davon. Eine eigene Linienbreite
+ * haette sie zu einem zweiten Gegenstand gemacht.
+ *
+ * Etwas dunkler als die Stadt: ein Band in genau der Farbe des Hauses waere
+ * bei kleiner Darstellung mit ihm verschmolzen, und die Zinnen sind zum
+ * Zaehlen da.
+ */
+.wall {
+  stroke: #16202a;
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+  filter: brightness(0.78);
+}
+
+/*
+ * Der Ritter.
+ *
+ * Keine Farbe im Blatt, die die Sitzfarbe schluege - Rumpf, Mast und Spitzen
+ * bekommen sie per `style`. Hier steht nur, was fuer alle Ritter gilt: die
+ * Kontur im Pfadmass (derselbe Grund wie bei `.vertex__building`) und der
+ * Helm, der die einzige Form mit eigener Farbe ist.
+ */
+.knight__body,
+.knight__pennant {
+  stroke: #16202a;
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+}
+
+.knight__mast {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/*
+ * Der Helm ist hell und gehoert keinem Spieler.
+ *
+ * **Aktiv und passiv unterscheidet ein Stueck Material, keine Deckkraft.** Ein
+ * halbdurchsichtiger Ritter laese sich als "gesperrt", nicht als "ruht" - und
+ * ein ruhender Ritter ist nicht gesperrt, ihm fehlt nur sein Getreide.
+ */
+.knight__helmet {
+  fill: #f6efdf;
+  stroke: #16202a;
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+}
+
 /* --- Dialoge -------------------------------------------------------------- */
 
 .modal {

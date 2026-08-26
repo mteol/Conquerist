@@ -20,7 +20,15 @@ import {
   type Point,
 } from './layout';
 import { nearestTarget, targetPoints } from './pick';
-import { CITY_PATH, SETTLEMENT_PATH } from './shapes';
+import {
+  CITY_PATH,
+  KNIGHT_HELMET_PATH,
+  KNIGHT_MAST_PATH,
+  KNIGHT_PATH,
+  KNIGHT_PENNANTS,
+  SETTLEMENT_PATH,
+  WALL_PATH,
+} from './shapes';
 import { HARBOR_MARK, HarborMark } from './harbor';
 import { LAYERS, TerrainPatterns, terrainFill } from './terrain';
 import { Numeral } from '../type/Numerals';
@@ -49,6 +57,8 @@ export interface BoardSource {
   readonly scenario: GameState['scenario'];
   readonly buildings: GameState['buildings'];
   readonly roads: GameState['roads'];
+  /** Wer wo steht. Oeffentlich wie Siedlungen und Staedte. */
+  readonly knights: GameState['knights'];
   readonly robber: GameState['robber'];
 }
 
@@ -127,9 +137,16 @@ const DOCK_BEND = 0.055;
  * gemacht als die Siedlung, und der Unterschied soll die Form tragen (Haus mit
  * Anbau), nicht die Groesse - siehe `board/shapes.ts`.
  */
-const BUILDING_SCALE: Readonly<Record<'settlement' | 'city', number>> = {
+const BUILDING_SCALE: Readonly<Record<'settlement' | 'city' | 'knight', number>> = {
   settlement: 0.027,
   city: 0.0245,
+  /*
+   * Ritter etwas kleiner als eine Siedlung: fuer sie gilt keine Abstandsregel,
+   * sie stehen also dichter beieinander als jedes Bauwerk - und einer davon
+   * kann direkt neben einer eigenen Stadt stehen. Der Faktor ist im Browser
+   * nachgemessen (Aufgabe 16 der Etappe).
+   */
+  knight: 0.0225,
 };
 
 /** Augenwahrscheinlichkeit eines Chips - fuer die Punktreihe unter der Zahl. */
@@ -701,6 +718,64 @@ function VertexMark({
 }): JSX.Element {
   const point = vertexPoint(vertex);
   const building = state.buildings[vertex];
+  const knight = state.knights[vertex];
+
+  /*
+   * Ein Ritter steht **statt** eines Bauwerks: beides zugleich gibt es nicht,
+   * weil `canBuildKnight` eine belegte Kreuzung abweist und `canPlaceSettlementAt`
+   * eine mit Ritter. Deshalb ein Zweig davor und kein zweites Gebilde daneben.
+   */
+  if (knight !== undefined) {
+    return (
+      <g
+        data-testid={`vertex-${vertex}`}
+        data-target={isTarget ? 'true' : 'false'}
+        className="vertex vertex--knight"
+      >
+        {isTarget ? (
+          <circle
+            className="vertex__target vertex__target--yard"
+            cx={point.x}
+            cy={point.y}
+            r={0.235}
+          />
+        ) : null}
+
+        {/*
+         * `key` traegt Stufe **und** Helm: React haengt sonst nur neu ein, wenn
+         * die Figur entsteht, und eine Einblendung, die beim Einhaengen laeuft,
+         * laeuft beim Aktualisieren nicht (die Falle steht in `CLAUDE.md`).
+         * Aufwerten und Aufsetzen des Helms sollen beide sichtbar sein.
+         */}
+        <g
+          key={`knight-${knight.level}-${knight.active}`}
+          data-testid={`knight-${vertex}`}
+          data-level={knight.level}
+          data-active={knight.active ? 'true' : 'false'}
+          className="knight"
+          transform={`translate(${point.x} ${point.y}) scale(${BUILDING_SCALE.knight})`}
+        >
+          {/* Farbe per `style` - eine gleichnamige CSS-Regel schlaegt jedes
+              SVG-Praesentationsattribut. */}
+          <path className="knight__body" d={KNIGHT_PATH} style={{ fill: colorOf(knight.owner) }} />
+          <path
+            className="knight__mast"
+            d={KNIGHT_MAST_PATH}
+            style={{ stroke: colorOf(knight.owner) }}
+          />
+          {KNIGHT_PENNANTS.slice(0, knight.level).map((pennant, index) => (
+            <path
+              key={index}
+              className="knight__pennant"
+              d={pennant}
+              style={{ fill: colorOf(knight.owner) }}
+            />
+          ))}
+          {knight.active ? <path className="knight__helmet" d={KNIGHT_HELMET_PATH} /> : null}
+        </g>
+      </g>
+    );
+  }
 
   return (
     <g
@@ -802,6 +877,21 @@ function VertexMark({
               // gebauten Strassen unsichtbar geworden.
               style={{ fill: colorOf(building.owner) }}
             />
+            {/*
+             * Die Mauer **nach** der Stadt und damit darueber: sie nimmt ihr
+             * das untere Drittel und laesst Dach und Giebel stehen. Unter der
+             * Stadt gezeichnet waere sie unsichtbar - der Stadtpfad deckt
+             * genau diesen Bereich.
+             */}
+            {building.wall ? (
+              <path
+                key="wall"
+                data-testid={`wall-${vertex}`}
+                className="wall"
+                d={WALL_PATH}
+                style={{ fill: colorOf(building.owner) }}
+              />
+            ) : null}
           </g>
         </>
       )}
