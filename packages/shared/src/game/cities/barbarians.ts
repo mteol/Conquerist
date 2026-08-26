@@ -239,6 +239,11 @@ export function applyBarbarianAttack(state: GameState): GameState {
   for (const loss of outcome.losses) {
     const building = buildings[loss.vertex]!;
     // Die Mauer geht mit der Stadt - sie gehoerte diesem Bauwerk.
+    // metropolis: null faellt hier keine Regel - eine Siedlung kann keinen
+    // Aufsatz tragen, deshalb null. Die eigentliche Regel steht anderswo:
+    // Metropolen sind vor den Barbaren geschuetzt (Regelwerk Abschnitt 8.2).
+    // Aufgabe 5 nimmt Metropolenstaedte in cityToLose aus den Kandidaten -
+    // danach erreicht dieser Zweig eine Metropolenstadt gar nicht mehr.
     buildings[loss.vertex] = {
       owner: building.owner,
       kind: 'settlement',
