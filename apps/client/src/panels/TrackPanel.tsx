@@ -11,7 +11,13 @@ import {
   type TrackId,
   type TrackLevelSource,
 } from '@conquerist/shared';
-import { TRACK_ABBR, TRACK_COLORS, TRACK_NAMES } from '../game/labels';
+import {
+  TRACK_ABBR,
+  TRACK_BUILT_WORD_COLORS,
+  TRACK_COLORS,
+  TRACK_COLORS_ON_SEA,
+  TRACK_NAMES,
+} from '../game/labels';
 import { METROPOLIS_PATHS } from '../board/shapes';
 import { NumeralText } from '../type/Numerals';
 import type { ActionTargets } from '../game/targets';
@@ -100,7 +106,13 @@ function TrackLadder({
   return (
     <div
       className="tracks__ladder"
-      style={{ '--track-color': TRACK_COLORS[track] } as CSSProperties}
+      style={
+        {
+          '--track-color': TRACK_COLORS[track],
+          '--track-color-on-sea': TRACK_COLORS_ON_SEA[track],
+          '--track-word-color': TRACK_BUILT_WORD_COLORS[track],
+        } as CSSProperties
+      }
     >
       <span className="tracks__name" title={TRACK_NAMES[track]}>
         {TRACK_ABBR[track]}

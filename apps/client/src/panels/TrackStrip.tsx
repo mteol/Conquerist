@@ -6,7 +6,7 @@ import {
   type PlayerId,
   type TrackId,
 } from '@conquerist/shared';
-import { TRACK_ABBR, TRACK_COLORS, TRACK_NAMES } from '../game/labels';
+import { TRACK_ABBR, TRACK_COLORS_ON_SEA, TRACK_NAMES } from '../game/labels';
 
 /**
  * Die kompakte Leiste: derselbe Stand, aber für die anderen am Tisch.
@@ -44,7 +44,7 @@ export function TrackStrip({ player, levels }: TrackStripProps): JSX.Element {
           <span
             key={track}
             className="trackstrip__row"
-            style={{ '--track-color': TRACK_COLORS[track] } as CSSProperties}
+            style={{ '--track-color-on-sea': TRACK_COLORS_ON_SEA[track] } as CSSProperties}
             title={`${TRACK_NAMES[track]}: Stufe ${level}`}
           >
             <span className="trackstrip__abbr" aria-hidden="true">

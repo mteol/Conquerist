@@ -10,6 +10,9 @@ import {
 import { render, screen, userEvent } from '../test/dom';
 import { EMPTY_TARGETS, targetsFrom } from '../game/targets';
 import { TrackPanel } from './TrackPanel';
+// Roher Dateiinhalt statt `node:fs`, wie in `AccountCorner.test.tsx`: das
+// Client-Paket haelt sich bewusst frei von Node-Typen.
+import css from '../index.css?raw';
 
 const player = (levels: Partial<Record<TrackId, number>>) => ({
   improvements: levels,
@@ -149,5 +152,54 @@ describe('TrackPanel', () => {
 
     await userEvent.click(screen.getByTestId('track-trade-3'));
     expect(onImprove).toHaveBeenCalledWith('trade');
+  });
+});
+
+/*
+ * jsdom rechnet kein Layout aus - eine gerenderte Schriftgroesse oder ein
+ * tatsaechlicher Kontrast lassen sich hier nicht beobachten (Befund A und C
+ * aus Aufgabe 11 wurden im echten Browser gemessen). Was sich pruefen laesst:
+ * dass die Regeln, die die Befunde beheben, tatsaechlich im CSS stehen.
+ */
+
+/** Liefert den Inhalt der ersten Regel `selector { ... }` ab `fromIndex`. */
+function ruleBody(selector: string, fromIndex = 0): string {
+  const needle = `${selector} {`;
+  const start = css.indexOf(needle, fromIndex);
+  if (start === -1) throw new Error(`Regel nicht gefunden: ${selector}`);
+  const openBrace = start + needle.length - 1;
+  let depth = 1;
+  let i = openBrace + 1;
+  while (depth > 0) {
+    if (css[i] === '{') depth += 1;
+    else if (css[i] === '}') depth -= 1;
+    i += 1;
+  }
+  return css.slice(openBrace + 1, i - 1);
+}
+
+describe('Tableau im CSS (index.css)', () => {
+  it('Befund A: die naechste Stufe erbt die Schriftgroesse, statt die Vorgabe des Nutzeragenten zu behalten', () => {
+    expect(ruleBody('.tracks__step--next')).toMatch(/font:\s*inherit/);
+  });
+
+  it('Befund C: das Kopfwort der Leiter liest die Tiefsee-Variante der Bereichsfarbe', () => {
+    expect(ruleBody('.tracks__name')).toMatch(/color:\s*var\(--track-color-on-sea\)/);
+  });
+
+  it('Befund D: die gebaute Stufe waehlt die Wortfarbe je Bereich, nicht pauschal die helle Tinte', () => {
+    expect(ruleBody('.tracks__step--built .tracks__word')).toMatch(
+      /color:\s*var\(--track-word-color\)/,
+    );
+  });
+
+  it('Befund D: die ungebaute Stufe traegt dunkle Tinte auf ihrem Pergamentkoerper', () => {
+    // `.tracks__word {` steht als Teilstring auch in
+    // `.tracks__step--built .tracks__word {` weiter oben im Blatt - erst
+    // hinter dessen gesamter Kopfzeile weitersuchen, sonst findet `ruleBody`
+    // dieselbe falsche Regel wieder.
+    const builtRuleHead = '.tracks__step--built .tracks__word {';
+    const afterBuiltRule = css.indexOf(builtRuleHead) + builtRuleHead.length;
+    expect(ruleBody('.tracks__word', afterBuiltRule)).toMatch(/color:\s*var\(--ink\)/);
   });
 });

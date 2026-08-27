@@ -89,6 +89,37 @@ export const TRACK_COLORS: Readonly<Record<TrackId, string>> = {
 };
 
 /**
+ * Dieselben drei Bereichsfarben, aber für die Tiefsee gemischt.
+ *
+ * Wie `TRACK_COLORS` ein Zeiger auf `index.css`, nur auf das zweite Tripel
+ * (`--track-trade-on-sea` und die beiden anderen). Das erste Tripel ist für
+ * den hellen Würfelkörper gemischt und trägt dort - auf der dunklen Fläche
+ * (die kompakte Leiste am Sitz, das Kopfwort über der Leiter) reißt es den
+ * Kontrast, genau wie `--ok`/`--bad` es für die Barbarenleiste taten
+ * (`--ok-on-sea`, `--bad-on-sea` in `index.css`).
+ */
+export const TRACK_COLORS_ON_SEA: Readonly<Record<TrackId, string>> = {
+  trade: 'var(--track-trade-on-sea)',
+  politics: 'var(--track-politics-on-sea)',
+  science: 'var(--track-science-on-sea)',
+};
+
+/**
+ * Die Wortfarbe auf der **gebauten** Sprosse (`.tracks__word`).
+ *
+ * Kein drittes Farbtripel wie bei `TRACK_COLORS_ON_SEA`: die zwei Werte gibt
+ * es mit `--ink` und `--on-sea` schon, nur die Zuordnung ist pro Bereich
+ * verschieden. Politik und Wissenschaft bauen auf dunklen Farben und
+ * behalten die helle `--on-sea`; Handel baut auf Gold, einem hellen Grund,
+ * und braucht dort dieselbe dunkle Tinte wie die ungebaute Stufe.
+ */
+export const TRACK_BUILT_WORD_COLORS: Readonly<Record<TrackId, string>> = {
+  trade: 'var(--ink)',
+  politics: 'var(--on-sea)',
+  science: 'var(--on-sea)',
+};
+
+/**
  * Die deutschen Bereichsnamen, ausgeschrieben - fürs `title` am Kürzel.
  *
  * Nicht in `shared`: dort stehen die Stufennamen (`TRACK_STEPS`), weil der

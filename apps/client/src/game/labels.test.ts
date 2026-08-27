@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { RESOURCE_IDS, TERRAIN_IDS, terrainYield, cardAmounts } from '@conquerist/shared';
+import {
+  RESOURCE_IDS,
+  TERRAIN_IDS,
+  TRACK_IDS,
+  terrainYield,
+  cardAmounts,
+} from '@conquerist/shared';
 import {
   RESOURCE_COLORS,
   RESOURCE_LABELS,
   TERRAIN_COLORS,
   TERRAIN_LABELS,
+  TRACK_BUILT_WORD_COLORS,
+  TRACK_COLORS_ON_SEA,
   harborLabel,
   resourceList,
 } from './labels';
@@ -45,5 +53,23 @@ describe('Bezeichner', () => {
     expect(resourceList(cardAmounts({ brick: 0, lumber: 0, wool: 0, grain: 0, ore: 0 }))).toBe(
       'nichts',
     );
+  });
+
+  // Befund B/C (Aufgabe 11): jeder Bereich zeigt neben der Pergament-Farbe
+  // (`TRACK_COLORS`) eine zweite fuer die Tiefsee - dieselbe Zeigertechnik,
+  // dasselbe Muster wie `--ok-on-sea`/`--bad-on-sea`.
+  it('zeigt fuer jeden Bereich eine Tiefsee-Variante seiner Farbe', () => {
+    for (const track of TRACK_IDS) {
+      expect(TRACK_COLORS_ON_SEA[track]).toBe(`var(--track-${track}-on-sea)`);
+    }
+  });
+
+  // Befund D (Aufgabe 11): die gebaute Handelsstufe steht auf Gold, einem
+  // hellen Grund, und braucht dieselbe dunkle Tinte wie die ungebaute Stufe;
+  // Politik und Wissenschaft bauen auf dunklen Farben und behalten die helle.
+  it('gibt der gebauten Handelsstufe dunkle Tinte, Politik und Wissenschaft die helle', () => {
+    expect(TRACK_BUILT_WORD_COLORS.trade).toBe('var(--ink)');
+    expect(TRACK_BUILT_WORD_COLORS.politics).toBe('var(--on-sea)');
+    expect(TRACK_BUILT_WORD_COLORS.science).toBe('var(--on-sea)');
   });
 });
