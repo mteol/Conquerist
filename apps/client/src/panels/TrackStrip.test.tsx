@@ -29,7 +29,7 @@ import css from '../index.css?raw';
 const levels = (improvements: Partial<Record<TrackId, number>>) => ({ improvements });
 
 describe('TrackStrip (Rendering)', () => {
-  it('zeigt fuenf Punkte je Bereich', () => {
+  it('zeigt fünf Punkte je Bereich', () => {
     render(<TrackStrip player="p1" levels={levels({})} />);
 
     for (const track of TRACK_IDS) {
@@ -39,7 +39,7 @@ describe('TrackStrip (Rendering)', () => {
     }
   });
 
-  it('fuellt so viele Punkte, wie die Stufe verlangt - und keinen mehr', () => {
+  it('füllt so viele Punkte, wie die Stufe verlangt - und keinen mehr', () => {
     render(<TrackStrip player="p1" levels={levels({ trade: 2, politics: 0, science: 5 })} />);
 
     for (let step = 1; step <= MAX_TRACK_LEVEL; step += 1) {
@@ -62,7 +62,7 @@ describe('TrackStrip (Rendering)', () => {
     }
   });
 
-  it('traegt das Kuerzel je Bereich, nicht nur die Farbe (Designregel 7)', () => {
+  it('trägt das Kürzel je Bereich, nicht nur die Farbe (Designregel 7)', () => {
     render(<TrackStrip player="p1" levels={levels({})} />);
 
     const strip = screen.getByTestId('trackstrip-p1');

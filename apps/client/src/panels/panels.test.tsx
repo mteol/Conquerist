@@ -64,10 +64,10 @@ describe('TablePanel', () => {
   });
 
   it('I3: zeigt die kompakte Leiste nur bei den anderen, nicht beim eigenen Sitz', () => {
-    // Genau der Fehler der Abschlussreview: `showTracks={barbarianTrack > 0}`
+    // Genau der Fehler der Abschlußreview: `showTracks={barbarianTrack > 0}`
     // stand ohne `isYou`-Filter da, und jeder der drei Sitze bekam die Leiste -
     // auch der eigene, obwohl derselbe Stand schon im Tableau in der Ecke
-    // steht (Kommentar in `TablePanel.tsx`). Ohne diesen Test haette ein
+    // steht (Kommentar in `TablePanel.tsx`). Ohne diesen Test hätte ein
     // Rendertest, der `TrackStrip` nur aufruft, den Fehler nicht gefangen: die
     // Komponente selbst kennt kein `isYou`, nur `TablePanel` filtert.
     const state = afterSetup();

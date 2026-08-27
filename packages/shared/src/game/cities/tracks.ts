@@ -115,11 +115,11 @@ export const FORTRESS_LEVEL = 3;
  * Welche Stufe in diesem Bereich die Zusatznutzenstufe ist.
  *
  * Kein Zusammenfassen der drei Konstanten - genau das soll `AQUEDUCT_LEVEL`,
- * `GUILD_LEVEL` und `FORTRESS_LEVEL` bewusst nicht sein. Diese Tabelle bündelt
+ * `GUILD_LEVEL` und `FORTRESS_LEVEL` bewusst nicht sein. Diese Tabelle buendelt
  * nur den Zugriff je Bereich: wer fragen muss "ist Stufe X hier die
- * Zusatznutzenstufe", schlägt hier nach, statt die Drei ein zweites Mal als
+ * Zusatznutzenstufe", schlaegt hier nach, statt die Drei ein zweites Mal als
  * Literal zu schreiben (`TrackPanel.tsx` in `apps/client` tat das und driftete
- * so von den drei Konstanten weg, sobald eine von ihnen verschoben würde).
+ * so von den drei Konstanten weg, sobald eine von ihnen verschoben wuerde).
  */
 export const TRACK_BONUS_LEVEL: Readonly<Record<TrackId, number>> = {
   trade: GUILD_LEVEL,
