@@ -40,10 +40,10 @@ describe('Startbildschirm', () => {
         .join('');
 
     const seed = screen.getByLabelText('Seed');
-    await neuTippen(seed, 'brett-eins');
+    await neuBefuellen(seed, 'brett-eins');
     const first = terrainOf();
 
-    await neuTippen(seed, 'brett-zwei');
+    await neuBefuellen(seed, 'brett-zwei');
 
     expect(terrainOf()).not.toBe(first);
   });
@@ -53,7 +53,7 @@ describe('Startbildschirm', () => {
     render(<StartScreen initialWay="local" onStartLocal={onStart} onJoinRoom={vi.fn()} />);
 
     const firstName = screen.getAllByLabelText(/^Name von Spieler/)[0]!;
-    await neuTippen(firstName, 'Anna');
+    await neuBefuellen(firstName, 'Anna');
     await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
 
     expect(onStart).toHaveBeenCalledTimes(1);
@@ -70,7 +70,7 @@ describe('Startbildschirm', () => {
     render(<StartScreen initialWay="local" onStartLocal={onStart} onJoinRoom={vi.fn()} />);
 
     const seed = screen.getByLabelText('Seed');
-    await neuTippen(seed, 'immer-gleich');
+    await neuBefuellen(seed, 'immer-gleich');
     await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
     await userEvent.click(screen.getByRole('button', { name: 'Lokale Partie starten' }));
 
@@ -475,21 +475,42 @@ describe('Der Eingang', () => {
  * schon vor dieser Etappe da** und ist nur aufgefallen, weil neue Tests die
  * Last erhoeht haben - gemessen auf dem Stand davor, ohne die Aenderungen am
  * Brett.
+ *
+ * **Damit war der Fehler seltener, aber die eigentliche Arbeit stand noch.**
+ * `zeichnet zu einem anderen Seed ein anderes Brett` tippt zwei zehnstellige
+ * Seeds zeichenweise ein, macht also rund vierzig vollstaendige
+ * Brett-Neuzeichnungen (19 Felder je Tastendruck) - fuer einen Test, dessen
+ * Gegenstand der **Seedwechsel** ist, nicht die Tastatureingabe. Unter 46
+ * parallel laufenden Testdateien reichten diese vierzig Renderings allein
+ * schon, um das Budget von 5 s zu sprengen, ganz ohne die eingangs erwaehnten
+ * Verzoegerungen zwischen den Tastendruecken - die waren mit `delay: null`
+ * bereits auf null. Die verbleibende Ursache war also die **Zahl** der
+ * Renderings, nicht der Abstand zwischen ihnen.
+ *
+ * Deshalb heisst diese Funktion jetzt `neuBefuellen` und tippt nicht mehr:
+ * `clear` raeumt das Feld, `paste` setzt den ganzen Text in einem einzigen
+ * Schritt (ein Ereignis, ein Rendering) - fuer ein kontrolliertes Textfeld
+ * ohne eigene Tastaturlogik ist das dieselbe Bedienung wie ein Einfuegen aus
+ * der Zwischenablage, nur ohne die zwanzig Zwischenschritte, die hier niemand
+ * pruefte. Wo ein Test wirklich Tastatureingabe pruefen will (das tut in
+ * dieser Datei bisher keiner), gehoert dafuer ein eigener, zeichenweise
+ * tippender Helfer her und nicht diese Funktion.
  */
-async function neuTippen(feld: HTMLElement, text: string): Promise<void> {
+async function neuBefuellen(feld: HTMLElement, text: string): Promise<void> {
   const user = userEvent.setup({ delay: null });
 
   await user.clear(feld);
-  await user.type(feld, text);
+  await user.paste(text);
 
   /*
    * **Und dann warten, bis der Wert wirklich dasteht.** Die gemeinsame Sitzung
    * allein hat den Fehler nur seltener gemacht (einer von vier Laeufen statt
    * zwei von drei), weil hier ein zweiter Grund mitwirkt: das Feld ist
    * kontrolliert, sein Wert kommt aus dem React-Zustand **zurueck**. Wer
-   * unmittelbar nach dem Tippen das Brett ausliest, liest im Zweifel das von
-   * vorher - und `zeichnet zu einem anderen Seed ein anderes Brett` vergleicht
-   * dann zweimal dasselbe und meldet einen Fehler, den es nicht gibt.
+   * unmittelbar nach dem Einfuegen das Brett ausliest, liest im Zweifel das
+   * von vorher - und `zeichnet zu einem anderen Seed ein anderes Brett`
+   * vergleicht dann zweimal dasselbe und meldet einen Fehler, den es nicht
+   * gibt.
    *
    * Der Wert im Feld ist dafuer die richtige Sonde: er stammt aus demselben
    * Zustandswechsel wie das Brett. Steht er, ist auch alles neu gezeichnet,
