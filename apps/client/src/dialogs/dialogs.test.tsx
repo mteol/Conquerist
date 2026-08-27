@@ -23,6 +23,7 @@ const player: PlayerRow = {
   isCurrent: true,
   connected: true,
   mustDiscard: 4,
+  improvements: {},
 };
 
 describe('DiscardDialog', () => {

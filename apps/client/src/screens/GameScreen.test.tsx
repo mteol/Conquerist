@@ -900,4 +900,75 @@ describe('GameScreen mit Rittern', () => {
     expect(screen.queryByTestId('build-wall')).not.toBeNull();
     expect(screen.queryByTestId('knight-activate')).not.toBeNull();
   });
+
+  /*
+   * Der Stadtausbau am Bildschirm - dasselbe Zwei-Karten-Muster wie bei den
+   * Rittern (`targets.ts`): derselbe Bereich fuehrt je nach Stand entweder
+   * sofort zu einem Zug oder erst zur Suche nach der faelligen Stadt.
+   */
+  describe('und der Stadtausbau', () => {
+    it('laesst beim Ausbau mit Aufsatz die eigenen freien Staedte leuchten und zeigt den Hinweis', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      // Stufe 3 -> 4 bringt den Aufsatz, solange ihn niemand haelt.
+      const state: GameState = {
+        ...base,
+        players: base.players.map((player) =>
+          player.id === me
+            ? { ...player, resources: cardAmounts({ cloth: 4 }), improvements: { trade: 3 } }
+            : player,
+        ),
+      };
+
+      render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByTestId('track-trade-4'));
+
+      const ownFreeCities = new Set(
+        Object.entries(state.buildings)
+          .filter(
+            ([, building]) =>
+              building.owner === me && building.kind === 'city' && building.metropolis === null,
+          )
+          .map(([vertex]) => `vertex-${vertex}`),
+      );
+
+      // Aus der Gruendung an einem Staedte-&-Ritter-Tisch steht bereits eine
+      // eigene Stadt (die zweite Setzung ist dort eine Stadt und keine
+      // Siedlung) - sonst wuerde dieser Test nichts pruefen.
+      expect(ownFreeCities.size).toBeGreaterThan(0);
+      expect(new Set(litVertices())).toEqual(ownFreeCities);
+      expect(screen.getByTestId('metropolis-mode').textContent).toContain(
+        'Wohin kommt die Metropole?',
+      );
+    });
+
+    it('schickt einen Ausbau ohne Aufsatz sofort und laesst das Brett ruhig', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const state: GameState = {
+        ...base,
+        players: base.players.map((player) =>
+          player.id === me
+            ? { ...player, resources: cardAmounts({ cloth: 1 }), improvements: {} }
+            : player,
+        ),
+      };
+
+      render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByTestId('track-trade-1'));
+
+      expect(screen.queryByTestId('metropolis-mode')).toBeNull();
+      expect(litVertices()).toEqual([]);
+      // Der Zug ist tatsaechlich hinausgegangen: die Stufe steht jetzt.
+      expect(screen.getByTestId('track-trade-1').getAttribute('data-built')).toBe('true');
+    });
+
+    it('zeigt an einem Basistisch kein Fortschritt-Tableau', () => {
+      render(<LocalGameFrom state={richMainPhase()} />);
+
+      expect(screen.queryByTestId('track-trade-1')).toBeNull();
+    });
+  });
 });

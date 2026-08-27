@@ -10,6 +10,7 @@ import {
   type CardAmounts,
   type Roll,
   type RuleSet,
+  type TrackId,
 } from '@conquerist/shared';
 import { awardsOf, type Award } from './awards';
 
@@ -47,6 +48,14 @@ export interface PlayerRow {
   readonly playedKnights: number;
   /** Wie viele Karten dieser Spieler gerade abwerfen muss; 0, wenn keine. */
   readonly mustDiscard: number;
+  /**
+   * Erreichte Ausbaustufe je Bereich - oeffentlich, bei jedem Spieler.
+   *
+   * Kommt unveraendert aus `PlayerInView.improvements` (seit Aufgabe 4, auch
+   * beim `TrackLevelSource`, den `levelOf` aus `shared` erwartet). Die
+   * kompakte Leiste in `TablePanel` liest genau dieses Feld.
+   */
+  readonly improvements: Partial<Record<TrackId, number>>;
 }
 
 export interface GameView {
@@ -273,6 +282,7 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     developmentCards: player.developmentCards,
     developmentCount: player.developmentCount,
     playedKnights: player.playedKnights,
+    improvements: player.improvements,
     isCurrent: player.id === current?.id,
     mustDiscard:
       view.phase.kind === 'discardPending' && view.phase.pending.includes(player.id)

@@ -40,6 +40,7 @@ function tableView(gains: ReadonlyMap<string, number>): GameView {
       isCurrent: index === 0,
       connected: true,
       mustDiscard: 0,
+      improvements: {},
     })),
     actingPlayers: [seats[0]!.id],
     currentPlayerId: seats[0]!.id,
@@ -88,14 +89,14 @@ describe('Bewegung', () => {
   });
 
   it('nennt einen Kartenzuwachs im Text und nicht nur als aufsteigende Zahl', () => {
-    render(<TablePanel view={tableView(new Map([[seats[1]!.id, 2]]))} />);
+    render(<TablePanel view={tableView(new Map([[seats[1]!.id, 2]]))} barbarianTrack={0} />);
 
     // Ohne Bewegung waere die Information sonst weg.
     expect(screen.getByText('+2')).toBeDefined();
   });
 
   it('zeigt gar keinen Zuwachs, wenn keiner entstanden ist', () => {
-    render(<TablePanel view={tableView(new Map())} />);
+    render(<TablePanel view={tableView(new Map())} barbarianTrack={0} />);
 
     expect(screen.queryByText(/^\+\d+$/)).toBeNull();
   });

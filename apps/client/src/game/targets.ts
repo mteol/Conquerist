@@ -6,6 +6,7 @@ import {
   type GameState,
   type HexId,
   type PlayerId,
+  type TrackId,
   type VertexId,
 } from '@conquerist/shared';
 
@@ -82,6 +83,16 @@ export interface ActionTargets {
   readonly moves: ReadonlyMap<VertexId, ReadonlyMap<VertexId, GameAction>>;
   /** Wohin der eigene vertriebene Ritter ausweichen kann. */
   readonly displace: ReadonlyMap<VertexId, GameAction>;
+
+  /*
+   * Zwei Karten aus demselben Grund wie bei den Rittern oben: derselbe
+   * Bereich kann einen Zug ohne Stadt **oder** mehrere mit Stadt hervorbringen,
+   * und eine Karte, die beides fuehrt, muesste luegen.
+   */
+  /** Je Bereich der Ausbauzug ohne Aufsatz - `null`, wo er gerade nicht geht. */
+  readonly improve: ReadonlyMap<TrackId, GameAction>;
+  /** Je Bereich die Staedte, auf die der faellige Aufsatz koennte. */
+  readonly metropolis: ReadonlyMap<TrackId, ReadonlyMap<VertexId, GameAction>>;
 }
 
 /** Nichts anklickbar - fuer Spieler, die gerade nicht handeln duerfen. */
@@ -102,6 +113,8 @@ export const EMPTY_TARGETS: ActionTargets = {
   chase: new Map(),
   moves: new Map(),
   displace: new Map(),
+  improve: new Map(),
+  metropolis: new Map(),
 };
 
 /**
@@ -177,6 +190,8 @@ export function targetsFrom(
   const chase = new Map<VertexId, GameAction>();
   const moves = new Map<VertexId, Map<VertexId, GameAction>>();
   const displace = new Map<VertexId, GameAction>();
+  const improve = new Map<TrackId, GameAction>();
+  const metropolis = new Map<TrackId, Map<VertexId, GameAction>>();
   let roll: GameAction | null = null;
   let endTurn: GameAction | null = null;
   let buyCard: GameAction | null = null;
@@ -266,6 +281,16 @@ export function targetsFrom(
         claim(displace, action.vertex, action, 'Ausweichkreuzung');
         break;
 
+      case 'improveCity':
+        if (action.metropolisAt === undefined) {
+          claim(improve, action.track, action, 'Ausbau');
+        } else {
+          const forTrack = metropolis.get(action.track) ?? new Map<VertexId, GameAction>();
+          claim(forTrack, action.metropolisAt, action, 'Metropolenziel');
+          metropolis.set(action.track, forTrack);
+        }
+        break;
+
       case 'moveKnight': {
         // Zwei Ebenen, weil das Versetzen zwei Klicks braucht: erst der
         // Ritter, dann sein Ziel.
@@ -300,6 +325,8 @@ export function targetsFrom(
     chase,
     moves,
     displace,
+    improve,
+    metropolis,
   };
 }
 

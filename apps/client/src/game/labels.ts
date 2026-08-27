@@ -87,3 +87,30 @@ export const TRACK_COLORS: Readonly<Record<TrackId, string>> = {
   politics: 'var(--track-politics)',
   science: 'var(--track-science)',
 };
+
+/**
+ * Die deutschen Bereichsnamen, ausgeschrieben - fürs `title` am Kürzel.
+ *
+ * Nicht in `shared`: dort stehen die Stufennamen (`TRACK_STEPS`), weil der
+ * Server den Verlaufssatz baut, aber die drei Bereiche selbst nennt keine
+ * Regel - nur diese beiden Anzeigen (`TrackPanel`, `TrackStrip`).
+ */
+export const TRACK_NAMES: Readonly<Record<TrackId, string>> = {
+  trade: 'Handel',
+  politics: 'Politik',
+  science: 'Wissenschaft',
+};
+
+/**
+ * Dasselbe, als Kürzel für die schmale Spalte oder Zeile.
+ *
+ * Ein einzelner Buchstabe wäre kein Wort mehr (Designregel 7 verlangt eins
+ * neben der Farbe) - drei reichen zum Lesen und tragen trotzdem ein `title`
+ * mit dem vollen Namen. Eine Tabelle für beide Anzeigen, die dasselbe Kürzel
+ * zeigen - zwei getrennte liefen irgendwann auseinander.
+ */
+export const TRACK_ABBR: Readonly<Record<TrackId, string>> = {
+  trade: 'Han',
+  politics: 'Pol',
+  science: 'Wis',
+};

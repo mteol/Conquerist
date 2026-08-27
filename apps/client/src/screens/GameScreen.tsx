@@ -11,10 +11,12 @@ import {
   type CardAmounts,
   type CardId,
   type Roll,
+  type TrackId,
 } from '@conquerist/shared';
 import { BoardSvg, type Place } from '../board/BoardSvg';
 import { BarbarianTrack } from '../panels/BarbarianTrack';
 import { KnightPanel, type KnightMode } from '../panels/KnightPanel';
+import { TrackPanel } from '../panels/TrackPanel';
 import {
   EMPTY_TARGETS,
   buildKindOf,
@@ -251,21 +253,42 @@ export function GameScreen({
    * `null` heisst: es leuchten noch die Ritter, nicht ihre Ziele.
    */
   const [movingFrom, setMovingFrom] = useState<VertexId | null>(null);
+  /**
+   * Welcher Bereich gerade seine Metropole sucht - dasselbe Zwei-Schritt-Muster
+   * wie beim Bauen und bei den Rittern, nur mit einem Bereich statt einem
+   * Bauteil oder einer Frage als erstem Schritt.
+   *
+   * `null` heisst: es leuchtet nichts. Gesetzt wird er nur, wenn der Ausbau
+   * tatsaechlich den Aufsatz bringt - sonst schickt das `onImprove` der
+   * `TrackPanel` den Zug sofort, und dieser Zustand bleibt unberuehrt.
+   */
+  const [metropolisFor, setMetropolisForRaw] = useState<TrackId | null>(null);
 
   /*
-   * Bauwahl und Rittermodus schliessen einander aus. Zwei gleichzeitig
-   * leuchtende Absichten waeren genau das Raten, gegen das der zweite Schritt
-   * eingefuehrt wurde.
+   * Bauwahl, Rittermodus und Metropolenwahl schliessen einander aus. Zwei
+   * gleichzeitig leuchtende Absichten waeren genau das Raten, gegen das der
+   * zweite Schritt eingefuehrt wurde - und mit dem Stadtausbau ist daraus eine
+   * Dreiheit geworden statt eines Paars: dieselbe Regel, ein drittes Mal
+   * angewandt.
    */
   const setBuildMode = useCallback((kind: BuildableKind | null) => {
     setBuildModeRaw(kind);
     setKnightModeRaw(null);
     setMovingFrom(null);
+    setMetropolisForRaw(null);
   }, []);
 
   const setKnightMode = useCallback((mode: KnightMode | null) => {
     setKnightModeRaw(mode);
     setBuildModeRaw(null);
+    setMovingFrom(null);
+    setMetropolisForRaw(null);
+  }, []);
+
+  const setMetropolisFor = useCallback((track: TrackId | null) => {
+    setMetropolisForRaw(track);
+    setBuildModeRaw(null);
+    setKnightModeRaw(null);
     setMovingFrom(null);
   }, []);
 
@@ -323,6 +346,9 @@ export function GameScreen({
     setBuildModeRaw(null);
     setKnightModeRaw(null);
     setMovingFrom(null);
+    // Dasselbe gilt fuer die Metropolenwahl: nach dem Ausbau ist sie erledigt,
+    // und nach einem fremden Zug stimmt sie vielleicht nicht mehr.
+    setMetropolisForRaw(null);
   }, [view.version]);
 
   /*
@@ -409,6 +435,15 @@ export function GameScreen({
       return { ...EMPTY_TARGETS, vertices: new Map(map) };
     }
 
+    /*
+     * Die Metropolenwahl - dieselbe eigene Karte wie bei den Rittern, aus
+     * demselben Grund (`targets.ts`): der faellige Aufsatz sucht eine eigene
+     * Stadt, und die stehen in `targets.metropolis`, nicht in `vertices`.
+     */
+    if (metropolisFor !== null) {
+      return { ...EMPTY_TARGETS, vertices: new Map(targets.metropolis.get(metropolisFor) ?? []) };
+    }
+
     const shown = (action: GameAction): boolean => {
       const kind = buildKindOf(action, setupKind);
       return kind === null || kind === buildMode;
@@ -424,6 +459,7 @@ export function GameScreen({
     buildMode,
     knightMode,
     movingFrom,
+    metropolisFor,
     setupKind,
     buildingRoads,
     view.roadBuildingTargets,
@@ -467,6 +503,12 @@ export function GameScreen({
           const build = (buildMode === 'knight' ? targets.knightBuild : targets.wallBuild).get(
             place.id,
           );
+          if (build !== undefined) onAct(build);
+          return;
+        }
+
+        if (metropolisFor !== null) {
+          const build = targets.metropolis.get(metropolisFor)?.get(place.id);
           if (build !== undefined) onAct(build);
           return;
         }
@@ -516,6 +558,7 @@ export function GameScreen({
       buildMode,
       knightMode,
       movingFrom,
+      metropolisFor,
       view.you,
       view.roadBuildingTargets,
     ],
@@ -690,7 +733,7 @@ export function GameScreen({
        * stimmen. Eine Spalte, in der beide fliessen, kann es.
        */}
       <div className="leftrail">
-        <TablePanel view={display} />
+        <TablePanel view={display} barbarianTrack={view.rules.barbarianTrack} />
 
         {/*
          * **Der Status steht oben, neben der Tuer zum Verlauf.**
@@ -880,6 +923,35 @@ export function GameScreen({
             mode={knightMode}
             onMode={setKnightMode}
           />
+
+          {/*
+           * Das Fortschritt-Tableau steht daneben, aus demselben Grund wie die
+           * Ritterleiste: eine dritte Frage, kein drittes Bauteil. An einem
+           * Basistisch erscheint es gar nicht (`TrackPanel` prueft das selbst).
+           *
+           * Ein Klick meldet nur den Bereich - ob daraus sofort ein Zug oder
+           * erst die Suche nach der faelligen Stadt wird, entscheidet hier
+           * `targets`: bringt der Ausbau den Aufsatz, leuchten die eigenen
+           * freien Staedte (`metropolisFor`); sonst geht der Zug sofort hinaus
+           * und das Brett bleibt ruhig.
+           */}
+          {you === undefined ? null : (
+            <TrackPanel
+              targets={targets}
+              barbarianTrack={view.rules.barbarianTrack}
+              player={you}
+              onImprove={(track) => {
+                const direct = targets.improve.get(track);
+                if (direct !== undefined) {
+                  onAct(direct);
+                  return;
+                }
+                if ((targets.metropolis.get(track)?.size ?? 0) > 0) {
+                  setMetropolisFor(track);
+                }
+              }}
+            />
+          )}
 
           {/*
            * Die Wuerfel haengen nicht mehr in der Bauleiste, sondern daneben.
@@ -1081,6 +1153,24 @@ export function GameScreen({
             type="button"
             className="button button--ghost"
             onClick={() => setKnightMode(null)}
+          >
+            Abbrechen
+          </button>
+        </div>
+      )}
+
+      {/*
+       * Dieselbe Leiste ein drittes Mal, fuer die Metropolenwahl. Ein Satz
+       * genuegt: anders als beim Bauen oder bei den Rittern gibt es hier nur
+       * eine Frage, die je zwei Gruende hat, sie zu stellen.
+       */}
+      {metropolisFor === null ? null : (
+        <div className="mode" role="status" data-testid="metropolis-mode">
+          <span>Wohin kommt die Metropole?</span>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => setMetropolisFor(null)}
           >
             Abbrechen
           </button>

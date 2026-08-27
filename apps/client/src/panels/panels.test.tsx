@@ -42,7 +42,7 @@ describe('TablePanel', () => {
     const state = afterSetup();
     const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
 
-    render(<TablePanel view={view} />);
+    render(<TablePanel view={view} barbarianTrack={0} />);
 
     // Die eigene Zeile stand hier als „L2 H0 W0 K0 E1" - fuenf
     // Anfangsbuchstaben an der Stelle, an der bei allen anderen „3 Karten"
@@ -57,7 +57,7 @@ describe('TablePanel', () => {
     const offline = new Map([[ids[1]!, false]]);
     const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1, offline));
 
-    render(<TablePanel view={view} />);
+    render(<TablePanel view={view} barbarianTrack={0} />);
 
     expect(screen.getByText('getrennt')).toBeDefined();
   });

@@ -3781,6 +3781,154 @@ body {
 }
 
 /*
+ * Das Fortschritt-Tableau: drei Leitern nebeneinander.
+ *
+ * Sie steht neben der Ritterleiste in `.tray__controls` und ist deshalb kein
+ * `.panel` - dieselbe schwebende Flaeche ohne eigenen Kasten, jedes Kaestchen
+ * traegt sein Pergament selbst (wie `.knights__pick`).
+ */
+.tracks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.tracks__ladder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+/*
+ * Das Kuerzel ueber der Leiter - der Wortanteil neben der Bereichsfarbe
+ * (Designregel 7). `title` traegt den vollen Namen; drei Buchstaben reichen
+ * zum Lesen, ein einzelner waere kein Wort mehr.
+ */
+.tracks__name {
+  color: var(--track-color);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tracks__step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.3rem;
+  min-height: 1.55rem;
+  padding: 0.15rem;
+  border: 1px solid var(--track-color);
+  border-radius: 6px;
+  background: var(--parchment);
+  opacity: 0.55;
+}
+
+.tracks__step--built {
+  background: var(--track-color);
+  border-color: transparent;
+  opacity: 1;
+}
+
+/*
+ * Die naechste Stufe ist der einzige Knopf der Leiter - und die einzige
+ * Flaeche, die 44 px messen muss (`CLAUDE.md`: die Lehre aus 10b, wo die
+ * Ritterknoepfe mit 32,2 px darunter lagen). Die uebrigen Sprossen sind
+ * Auskunft und duerfen kleiner bleiben.
+ */
+.tracks__step--next {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  opacity: 1;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.tracks__step--next:disabled {
+  opacity: 0.55;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Auf der gefuellten Sprosse braucht Wort und Ziffer die helle Tinte fuer den Tiefsee-Grund. */
+.tracks__step--built .tracks__word {
+  color: var(--on-sea);
+}
+
+.tracks__word {
+  font-size: 0.5rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.05;
+}
+
+.tracks__threshold {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  fill: var(--bad-ink);
+}
+
+.tracks__metropolis {
+  width: 1.7rem;
+  height: 0.17rem;
+}
+
+/*
+ * Die kompakte Leiste am Tisch: derselbe Stand der anderen, in einer Zeile.
+ *
+ * `width: 100%` in `.seat` (das jetzt umbricht) traegt sie unter den Namen -
+ * dieselbe Technik wie bei `.seat__pending`.
+ */
+.trackstrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  width: 100%;
+  margin-top: 0.15rem;
+}
+
+.trackstrip__row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+/* Dasselbe Kuerzel wie im Tableau - der Wortanteil neben der Farbe (Designregel 7). */
+.trackstrip__abbr {
+  color: var(--track-color);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.trackstrip__dots {
+  display: inline-flex;
+  gap: 0.12rem;
+}
+
+.trackstrip__dot {
+  width: 0.3rem;
+  height: 0.3rem;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--track-color);
+}
+
+.trackstrip__dot--filled {
+  background: var(--track-color);
+  border-color: transparent;
+}
+
+/*
  * Ueber dem Bauteil, mittig, auf einem Stueck Pergament - und **auch am
  * gesperrten Knopf**: was ein Haus kostet, will man gerade dann wissen, wenn es
  * nicht geht. Die Bewegung darunter (das Stueck hebt sich) bleibt dagegen dem
@@ -4224,8 +4372,15 @@ body {
   font-size: 0.75rem;
 }
 
+/*
+ * `flex-wrap: wrap` ist seit dem Stadtausbau noetig, damit `.trackstrip`
+ * (`width: 100%`) tatsaechlich in eine eigene Zeile faellt - dieselbe Technik
+ * traegt `.seat__pending` schon laenger, ohne dass es bisher eine Zeile zum
+ * Umbrechen brauchte.
+ */
 .seat {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
   align-items: baseline;
   padding: 0.22rem 0.35rem;
