@@ -87,11 +87,11 @@ export interface ActionTargets {
   /*
    * Zwei Karten aus demselben Grund wie bei den Rittern oben: derselbe
    * Bereich kann einen Zug ohne Stadt **oder** mehrere mit Stadt hervorbringen,
-   * und eine Karte, die beides fuehrt, muesste luegen.
+   * und eine Karte, die beides führt, müßte lügen.
    */
   /** Je Bereich der Ausbauzug ohne Aufsatz - `null`, wo er gerade nicht geht. */
   readonly improve: ReadonlyMap<TrackId, GameAction>;
-  /** Je Bereich die Staedte, auf die der faellige Aufsatz koennte. */
+  /** Je Bereich die Städte, auf die der fällige Aufsatz könnte. */
   readonly metropolis: ReadonlyMap<TrackId, ReadonlyMap<VertexId, GameAction>>;
 }
 

@@ -903,14 +903,14 @@ describe('GameScreen mit Rittern', () => {
 
   /*
    * Der Stadtausbau am Bildschirm - dasselbe Zwei-Karten-Muster wie bei den
-   * Rittern (`targets.ts`): derselbe Bereich fuehrt je nach Stand entweder
-   * sofort zu einem Zug oder erst zur Suche nach der faelligen Stadt.
+   * Rittern (`targets.ts`): derselbe Bereich führt je nach Stand entweder
+   * sofort zu einem Zug oder erst zur Suche nach der fälligen Stadt.
    */
   describe('und der Stadtausbau', () => {
     it('laesst beim Ausbau mit Aufsatz die eigenen freien Staedte leuchten und zeigt den Hinweis', async () => {
       const base = citiesMainPhase();
       const me = base.players[base.currentPlayerIndex]!.id;
-      // Stufe 3 -> 4 bringt den Aufsatz, solange ihn niemand haelt.
+      // Stufe 3 -> 4 bringt den Aufsatz, solange ihn niemand hält.
       const state: GameState = {
         ...base,
         players: base.players.map((player) =>
@@ -933,9 +933,9 @@ describe('GameScreen mit Rittern', () => {
           .map(([vertex]) => `vertex-${vertex}`),
       );
 
-      // Aus der Gruendung an einem Staedte-&-Ritter-Tisch steht bereits eine
+      // Aus der Gründung an einem Städte-&-Ritter-Tisch steht bereits eine
       // eigene Stadt (die zweite Setzung ist dort eine Stadt und keine
-      // Siedlung) - sonst wuerde dieser Test nichts pruefen.
+      // Siedlung) - sonst würde dieser Test nichts prüfen.
       expect(ownFreeCities.size).toBeGreaterThan(0);
       expect(new Set(litVertices())).toEqual(ownFreeCities);
       expect(screen.getByTestId('metropolis-mode').textContent).toContain(
@@ -961,7 +961,7 @@ describe('GameScreen mit Rittern', () => {
 
       expect(screen.queryByTestId('metropolis-mode')).toBeNull();
       expect(litVertices()).toEqual([]);
-      // Der Zug ist tatsaechlich hinausgegangen: die Stufe steht jetzt.
+      // Der Zug ist tatsächlich hinausgegangen: die Stufe steht jetzt.
       expect(screen.getByTestId('track-trade-1').getAttribute('data-built')).toBe('true');
     });
 

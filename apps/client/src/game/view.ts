@@ -49,9 +49,9 @@ export interface PlayerRow {
   /** Wie viele Karten dieser Spieler gerade abwerfen muss; 0, wenn keine. */
   readonly mustDiscard: number;
   /**
-   * Erreichte Ausbaustufe je Bereich - oeffentlich, bei jedem Spieler.
+   * Erreichte Ausbaustufe je Bereich - öffentlich, bei jedem Spieler.
    *
-   * Kommt unveraendert aus `PlayerInView.improvements` (seit Aufgabe 4, auch
+   * Kommt unverändert aus `PlayerInView.improvements` (seit Aufgabe 4, auch
    * beim `TrackLevelSource`, den `levelOf` aus `shared` erwartet). Die
    * kompakte Leiste in `TablePanel` liest genau dieses Feld.
    */

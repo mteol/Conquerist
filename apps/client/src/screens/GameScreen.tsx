@@ -258,16 +258,16 @@ export function GameScreen({
    * wie beim Bauen und bei den Rittern, nur mit einem Bereich statt einem
    * Bauteil oder einer Frage als erstem Schritt.
    *
-   * `null` heisst: es leuchtet nichts. Gesetzt wird er nur, wenn der Ausbau
-   * tatsaechlich den Aufsatz bringt - sonst schickt das `onImprove` der
-   * `TrackPanel` den Zug sofort, und dieser Zustand bleibt unberuehrt.
+   * `null` heißt: es leuchtet nichts. Gesetzt wird er nur, wenn der Ausbau
+   * tatsächlich den Aufsatz bringt - sonst schickt das `onImprove` der
+   * `TrackPanel` den Zug sofort, und dieser Zustand bleibt unberührt.
    */
   const [metropolisFor, setMetropolisForRaw] = useState<TrackId | null>(null);
 
   /*
-   * Bauwahl, Rittermodus und Metropolenwahl schliessen einander aus. Zwei
-   * gleichzeitig leuchtende Absichten waeren genau das Raten, gegen das der
-   * zweite Schritt eingefuehrt wurde - und mit dem Stadtausbau ist daraus eine
+   * Bauwahl, Rittermodus und Metropolenwahl schließen einander aus. Zwei
+   * gleichzeitig leuchtende Absichten wären genau das Raten, gegen das der
+   * zweite Schritt eingeführt wurde - und mit dem Stadtausbau ist daraus eine
    * Dreiheit geworden statt eines Paars: dieselbe Regel, ein drittes Mal
    * angewandt.
    */
@@ -346,7 +346,7 @@ export function GameScreen({
     setBuildModeRaw(null);
     setKnightModeRaw(null);
     setMovingFrom(null);
-    // Dasselbe gilt fuer die Metropolenwahl: nach dem Ausbau ist sie erledigt,
+    // Dasselbe gilt für die Metropolenwahl: nach dem Ausbau ist sie erledigt,
     // und nach einem fremden Zug stimmt sie vielleicht nicht mehr.
     setMetropolisForRaw(null);
   }, [view.version]);
@@ -437,7 +437,7 @@ export function GameScreen({
 
     /*
      * Die Metropolenwahl - dieselbe eigene Karte wie bei den Rittern, aus
-     * demselben Grund (`targets.ts`): der faellige Aufsatz sucht eine eigene
+     * demselben Grund (`targets.ts`): der fällige Aufsatz sucht eine eigene
      * Stadt, und die stehen in `targets.metropolis`, nicht in `vertices`.
      */
     if (metropolisFor !== null) {
@@ -927,12 +927,12 @@ export function GameScreen({
           {/*
            * Das Fortschritt-Tableau steht daneben, aus demselben Grund wie die
            * Ritterleiste: eine dritte Frage, kein drittes Bauteil. An einem
-           * Basistisch erscheint es gar nicht (`TrackPanel` prueft das selbst).
+           * Basistisch erscheint es gar nicht (`TrackPanel` prüft das selbst).
            *
            * Ein Klick meldet nur den Bereich - ob daraus sofort ein Zug oder
-           * erst die Suche nach der faelligen Stadt wird, entscheidet hier
+           * erst die Suche nach der fälligen Stadt wird, entscheidet hier
            * `targets`: bringt der Ausbau den Aufsatz, leuchten die eigenen
-           * freien Staedte (`metropolisFor`); sonst geht der Zug sofort hinaus
+           * freien Städte (`metropolisFor`); sonst geht der Zug sofort hinaus
            * und das Brett bleibt ruhig.
            */}
           {you === undefined ? null : (
@@ -1160,9 +1160,9 @@ export function GameScreen({
       )}
 
       {/*
-       * Dieselbe Leiste ein drittes Mal, fuer die Metropolenwahl. Ein Satz
-       * genuegt: anders als beim Bauen oder bei den Rittern gibt es hier nur
-       * eine Frage, die je zwei Gruende hat, sie zu stellen.
+       * Dieselbe Leiste ein drittes Mal, für die Metropolenwahl. Ein Satz
+       * genügt: anders als beim Bauen oder bei den Rittern gibt es hier nur
+       * eine Frage, die je zwei Gründe hat, sie zu stellen.
        */}
       {metropolisFor === null ? null : (
         <div className="mode" role="status" data-testid="metropolis-mode">

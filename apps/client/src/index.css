@@ -3784,8 +3784,8 @@ body {
  * Das Fortschritt-Tableau: drei Leitern nebeneinander.
  *
  * Sie steht neben der Ritterleiste in `.tray__controls` und ist deshalb kein
- * `.panel` - dieselbe schwebende Flaeche ohne eigenen Kasten, jedes Kaestchen
- * traegt sein Pergament selbst (wie `.knights__pick`).
+ * `.panel` - dieselbe schwebende Fläche ohne eigenen Kasten, jedes Kästchen
+ * trägt sein Pergament selbst (wie `.knights__pick`).
  */
 .tracks {
   display: flex;
@@ -3802,9 +3802,9 @@ body {
 }
 
 /*
- * Das Kuerzel ueber der Leiter - der Wortanteil neben der Bereichsfarbe
- * (Designregel 7). `title` traegt den vollen Namen; drei Buchstaben reichen
- * zum Lesen, ein einzelner waere kein Wort mehr.
+ * Das Kürzel über der Leiter - der Wortanteil neben der Bereichsfarbe
+ * (Designregel 7). `title` trägt den vollen Namen; drei Buchstaben reichen
+ * zum Lesen, ein einzelner wäre kein Wort mehr.
  */
 .tracks__name {
   color: var(--track-color);
@@ -3835,10 +3835,10 @@ body {
 }
 
 /*
- * Die naechste Stufe ist der einzige Knopf der Leiter - und die einzige
- * Flaeche, die 44 px messen muss (`CLAUDE.md`: die Lehre aus 10b, wo die
- * Ritterknoepfe mit 32,2 px darunter lagen). Die uebrigen Sprossen sind
- * Auskunft und duerfen kleiner bleiben.
+ * Die nächste Stufe ist der einzige Knopf der Leiter - und die einzige
+ * Fläche, die 44 px messen muß (`CLAUDE.md`: die Lehre aus 10b, wo die
+ * Ritterknöpfe mit 32,2 px darunter lagen). Die übrigen Sprossen sind
+ * Auskunft und dürfen kleiner bleiben.
  */
 .tracks__step--next {
   min-width: 2.75rem;
@@ -3854,7 +3854,7 @@ body {
   cursor: not-allowed;
 }
 
-/* Auf der gefuellten Sprosse braucht Wort und Ziffer die helle Tinte fuer den Tiefsee-Grund. */
+/* Auf der gefüllten Sprosse braucht Wort und Ziffer die helle Tinte für den Tiefsee-Grund. */
 .tracks__step--built .tracks__word {
   color: var(--on-sea);
 }
@@ -3884,7 +3884,7 @@ body {
 /*
  * Die kompakte Leiste am Tisch: derselbe Stand der anderen, in einer Zeile.
  *
- * `width: 100%` in `.seat` (das jetzt umbricht) traegt sie unter den Namen -
+ * `width: 100%` in `.seat` (das jetzt umbricht) trägt sie unter den Namen -
  * dieselbe Technik wie bei `.seat__pending`.
  */
 .trackstrip {
@@ -3901,7 +3901,7 @@ body {
   gap: 0.2rem;
 }
 
-/* Dasselbe Kuerzel wie im Tableau - der Wortanteil neben der Farbe (Designregel 7). */
+/* Dasselbe Kürzel wie im Tableau - der Wortanteil neben der Farbe (Designregel 7). */
 .trackstrip__abbr {
   color: var(--track-color);
   font-size: 0.58rem;
@@ -4373,9 +4373,9 @@ body {
 }
 
 /*
- * `flex-wrap: wrap` ist seit dem Stadtausbau noetig, damit `.trackstrip`
- * (`width: 100%`) tatsaechlich in eine eigene Zeile faellt - dieselbe Technik
- * traegt `.seat__pending` schon laenger, ohne dass es bisher eine Zeile zum
+ * `flex-wrap: wrap` ist seit dem Stadtausbau nötig, damit `.trackstrip`
+ * (`width: 100%`) tatsächlich in eine eigene Zeile fällt - dieselbe Technik
+ * trägt `.seat__pending` schon länger, ohne dass es bisher eine Zeile zum
  * Umbrechen brauchte.
  */
 .seat {
