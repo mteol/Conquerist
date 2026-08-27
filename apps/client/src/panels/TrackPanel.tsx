@@ -2,6 +2,7 @@ import type { CSSProperties, JSX } from 'react';
 import {
   COMMODITY_LABELS,
   METROPOLIS_LEVEL,
+  TRACK_BONUS_LEVEL,
   TRACK_COMMODITY,
   TRACK_IDS,
   improvementCost,
@@ -41,11 +42,14 @@ import type { ActionTargets } from '../game/targets';
  * sondern weg - dieselbe Regel wie bei der Ritterleiste: ein leerer Rahmen
  * wäre eine Auskunft über nichts.
  *
- * **Zwei Stufen tragen eine feste Marke, unabhängig vom eigenen Stand:**
- * Stufe 3 ihr Wort (Aquädukt / Gilde / Festung), Stufe 4 die Metropolenform
- * aus `shapes.ts` - dieselbe wie auf dem Brett, damit man sie am Knoten
- * wiedererkennt. Beide stehen an ihrer Stufe, ob gebaut, nächste oder noch
- * leer: wer die Leiter zum ersten Mal sieht, soll wissen, wohin sie führt.
+ * **Zwei Stufen tragen eine feste Marke, unabhängig vom eigenen Stand:** die
+ * Zusatznutzenstufe ihr Wort (Aquädukt / Gilde / Festung - `TRACK_BONUS_LEVEL`
+ * aus `shared` sagt je Bereich, welche das ist, nicht diese Datei), Stufe 4
+ * die Metropolenform aus `shapes.ts` - dieselbe wie auf dem Brett, damit man
+ * sie am Knoten wiedererkennt. Beide stehen an ihrer Stufe, ob gebaut,
+ * nächste oder noch leer: wer die Leiter zum ersten Mal sieht, soll wissen,
+ * wohin sie führt. Die Form trägt im gebauten Fall dieselbe Tinte wie das
+ * Wort (`TRACK_BUILT_WORD_COLORS`) - beide stehen auf demselben Grund.
  */
 export interface TrackPanelProps {
   readonly targets: ActionTargets;
@@ -149,13 +153,30 @@ function TrackStep({
   const isNext = !built && step === level + 1;
   const testId = `track-${track}-${step}`;
 
+  const bonusLevel = TRACK_BONUS_LEVEL[track];
+
   const marks = (
     <>
-      <NumeralText value={progressThreshold(step)} className="tracks__threshold" />
-      {step === 3 ? <span className="tracks__word">{stepName(track, 3)}</span> : null}
+      <span className="tracks__threshold-badge">
+        <NumeralText value={progressThreshold(step)} className="tracks__threshold" />
+      </span>
+      {step === bonusLevel ? (
+        <span className="tracks__word">{stepName(track, bonusLevel)}</span>
+      ) : null}
       {step === METROPOLIS_LEVEL ? (
         <svg className="tracks__metropolis" viewBox={METROPOLIS_VIEWBOX} aria-hidden="true">
-          <path d={METROPOLIS_PATHS[track]} style={{ fill: TRACK_COLORS[track] }} />
+          {/*
+           * Auf der gebauten Sprosse ist der Grund `var(--track-color)` -
+           * derselbe Wert, den `TRACK_COLORS[track]` hier eintrüge. Farbe auf
+           * Farbe, Kontrast 1:1 (I1 der Abschlußreview, derselbe Fehler wie
+           * Befund D, nur an diesem zweiten Element). `TRACK_BUILT_WORD_COLORS`
+           * beantwortet dieselbe Frage schon für `.tracks__word`, das auf
+           * demselben Grund steht - hier gilt dieselbe Antwort.
+           */}
+          <path
+            d={METROPOLIS_PATHS[track]}
+            style={{ fill: built ? TRACK_BUILT_WORD_COLORS[track] : TRACK_COLORS[track] }}
+          />
         </svg>
       ) : null}
     </>

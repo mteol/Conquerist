@@ -105,13 +105,22 @@ export const TRACK_COLORS_ON_SEA: Readonly<Record<TrackId, string>> = {
 };
 
 /**
- * Die Wortfarbe auf der **gebauten** Sprosse (`.tracks__word`).
+ * Die Tinte auf der **gebauten** Sprosse - für das Wort (`.tracks__word`)
+ * *und* für die Metropolenform (`.tracks__metropolis`), sobald ihre Stufe
+ * gebaut ist. Beide sitzen auf demselben Grund (`var(--track-color)`), also
+ * beantwortet dieselbe Zuordnung dieselbe Frage zweimal.
  *
  * Kein drittes Farbtripel wie bei `TRACK_COLORS_ON_SEA`: die zwei Werte gibt
  * es mit `--ink` und `--on-sea` schon, nur die Zuordnung ist pro Bereich
  * verschieden. Politik und Wissenschaft bauen auf dunklen Farben und
  * behalten die helle `--on-sea`; Handel baut auf Gold, einem hellen Grund,
  * und braucht dort dieselbe dunkle Tinte wie die ungebaute Stufe.
+ *
+ * Die Metropolenform hatte hier bis zur Abschlußreview (I1) keine eigene
+ * Zeile und färbte sich im gebauten Fall mit `TRACK_COLORS[track]` - derselbe
+ * Wert wie ihr eigener Grund, Kontrast 1:1. Genau der Fehler, den diese
+ * Tabelle für das Wort schon einmal behoben hatte (Befund D), nur am
+ * Nachbarelement noch offen.
  */
 export const TRACK_BUILT_WORD_COLORS: Readonly<Record<TrackId, string>> = {
   trade: 'var(--ink)',

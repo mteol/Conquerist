@@ -4,9 +4,12 @@ import { EMPTY_CARDS } from '../cards.js';
 import { gameWithCities } from '../fixtures.js';
 import type { PlayerState } from '../player.js';
 import {
+  AQUEDUCT_LEVEL,
   FORTRESS_LEVEL,
+  GUILD_LEVEL,
   MAX_TRACK_LEVEL,
   METROPOLIS_LEVEL,
+  TRACK_BONUS_LEVEL,
   TRACK_COMMODITY,
   TRACK_IDS,
   TRACK_STEPS,
@@ -67,6 +70,17 @@ describe('Die drei Bereiche', () => {
   it('setzen Festung und Metropole auf die Stufen, an denen sie haengen', () => {
     expect(FORTRESS_LEVEL).toBe(3);
     expect(METROPOLIS_LEVEL).toBe(4);
+  });
+
+  // M2 der Abschlussreview: der Client (`TrackPanel.tsx`) fragte bisher mit
+  // einem Literal `step === 3`, statt hier nachzusehen - eine Verschiebung
+  // von `AQUEDUCT_LEVEL`, `GUILD_LEVEL` oder `FORTRESS_LEVEL` haette die
+  // Anzeige nicht mitgenommen. `TRACK_BONUS_LEVEL` buendelt die drei bewusst
+  // getrennten Konstanten nur im Zugriff, nicht im Wert.
+  it('nennt je Bereich die eigene Zusatznutzenstufe, ohne die drei Konstanten zusammenzufassen', () => {
+    expect(TRACK_BONUS_LEVEL.trade).toBe(GUILD_LEVEL);
+    expect(TRACK_BONUS_LEVEL.politics).toBe(FORTRESS_LEVEL);
+    expect(TRACK_BONUS_LEVEL.science).toBe(AQUEDUCT_LEVEL);
   });
 });
 

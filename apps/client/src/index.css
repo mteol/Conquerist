@@ -3912,12 +3912,43 @@ body {
   line-height: 1.05;
 }
 
-.tracks__threshold {
+/*
+ * I2 der Abschlußreview: die Ziffer stand auf zwei Gründen zugleich - zu
+ * 25,9 % ihrer Fläche auf der eigenen Sprosse (Pergament, oder je nach
+ * Zustand Handel-Gold/Politik-Blau/Wissenschaft-Grün), zu 74,1 % auf der
+ * Tiefsee dahinter (`.tracks__ladder`, `.tracks`, `.tray__controls`, `.tray`
+ * sind alle durchsichtig). Gemessen: 2,04:1 auf der Tiefsee, bis zu 1,03:1
+ * auf der gebauten Politik-Sprosse - beide weit unter den geforderten 4,5:1.
+ *
+ * Kur an der Ursache statt am Einzelfall: die Ziffer bekommt einen eigenen,
+ * blickdichten Träger, damit sie nur noch **einen** Grund kennt. Der Träger
+ * trägt `--parchment` - dieselbe Paarung, die die ungebaute Sprosse schon
+ * hatte (5,75:1) - und liefert damit denselben Kontrast, ganz gleich, was
+ * dahinter liegt: Tiefsee oder eine der drei Bereichsfarben.
+ */
+.tracks__threshold-badge {
   position: absolute;
   top: -0.35rem;
   right: -0.35rem;
-  width: 0.85rem;
-  height: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  background: var(--parchment);
+  box-shadow: var(--shadow);
+}
+
+/*
+ * Größe und Position stehen jetzt am Träger (`.tracks__threshold-badge`).
+ * `width`/`height` standen früher hier als 0,85rem - wirkungslos, denn
+ * `NumeralText` schreibt Breite und Höhe inline in `em` (`Numerals.tsx`), und
+ * ein Inline-Style schlägt jede Klasse (M1 der Abschlußreview - dieselbe
+ * Diskrepanz wie bei `.barbarians__figure`, die konsequenterweise nur `fill`
+ * setzt). Nur die Farbe hier wirkt tatsächlich.
+ */
+.tracks__threshold {
   fill: var(--bad-ink);
 }
 
