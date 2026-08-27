@@ -6750,8 +6750,28 @@ innerhalb dieser Etappe entsteht und nicht in eine spätere verschoben wird — 
   sitzt. Wer das beseitigen will, muss entweder alle Sprossen auf 44 px verbreitern (das
   Tableau wüchse von 151 auf rund 175 px) oder die Ziffer aus der Sprosse lösen — beides
   eine Entwurfsfrage für den nächsten Playtest, keine Fehlerbehebung.
+- **`StartScreen.test.tsx` lief unter der Last der vollen Suite reproduzierbar in einen
+  Timeout — dieselbe Krankheit wie `hotseatClock.test.tsx` gleich darunter.** Der Test
+  `zeichnet zu einem anderen Seed ein anderes Brett` tippte über den gemeinsamen Helfer
+  `neuTippen` zwei zehnstellige Seeds zeichenweise ein, also rund vierzig vollständige
+  Brett-Neuzeichnungen (19 Felder je Tastendruck) für einen Test mit 5 s Budget. Allein
+  lief die Datei in 9,5–22 s grün; unter 46 parallel laufenden Dateien (63–97 s
+  Gesamtlaufzeit der Suite) fiel er dreimal hintereinander — zweimal bei einem anderen
+  Umsetzer, einmal hier. Die Ursache lag **vor** dieser Etappe: der Kommentar am Helfer
+  beschrieb bereits eine erste Kur (eine gemeinsame `userEvent`-Sitzung mit `delay: null`
+  statt dreier getrennter, dazu ein `waitFor` auf den Feldwert gegen das verzögerte
+  Zurücklesen aus dem kontrollierten Zustand), die den Fehler seltener machte, ohne ihn zu
+  beheben — sie nahm die Verzögerung zwischen den Tastendrücken weg, nicht deren Zahl, und
+  die blieb bei rund vierzig Renderings. Kur: `neuTippen` heißt jetzt `neuBefuellen` und
+  ersetzt `user.type` durch `user.clear` + `user.paste` — der Seed steht in einem Schritt
+  statt in zehn, und was der Test wirklich prüft (zwei Seeds ergeben zwei Bretter) ändert
+  sich nicht. Nachher: Einzellauf 9,54 s (vorher 21,63 s), volle Suite dreimal
+  hintereinander grün (510/510 Tests, 47/47 Dateien), davon einer unter vergleichbarer
+  Last wie der zuvor gescheiterte Lauf (82,86 s gegen 96,23 s). Details und die
+  Vorher/Nachher-Befehle stehen in `task-13-report.md`.
 - **`hotseatClock.test.tsx` flackert.** Einmal in einen Timeout gelaufen, im
-  Wiederholungslauf grün — ein Zeit-Test, der manchmal rot ist, ist kein Zaun mehr.
+  Wiederholungslauf grün — ein Zeit-Test, der manchmal rot ist, ist kein Zaun mehr. Noch
+  ungeklärt, ob dieselbe Ursache greift (viele Renderings unter Last) oder eine eigene.
 - **Die Umlaut-Regel ist in dieser Etappe dreimal hintereinander gerissen** (Aufgaben 9, 10,
   11) und jedes Mal in einer eigenen Fixrunde nachgezogen worden, statt sich für Aufgabe 12
   zu sammeln — ein gesammelter Fix träfe sonst auf einen Diff, in dem niemand mehr weiß,
