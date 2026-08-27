@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import {
+  CITIES_RULES,
   CLASSIC_34,
   CLASSIC_RULES,
   createGame,
@@ -60,6 +61,23 @@ describe('TablePanel', () => {
     render(<TablePanel view={view} barbarianTrack={0} />);
 
     expect(screen.getByText('getrennt')).toBeDefined();
+  });
+
+  it('I3: zeigt die kompakte Leiste nur bei den anderen, nicht beim eigenen Sitz', () => {
+    // Genau der Fehler der Abschlussreview: `showTracks={barbarianTrack > 0}`
+    // stand ohne `isYou`-Filter da, und jeder der drei Sitze bekam die Leiste -
+    // auch der eigene, obwohl derselbe Stand schon im Tableau in der Ecke
+    // steht (Kommentar in `TablePanel.tsx`). Ohne diesen Test haette ein
+    // Rendertest, der `TrackStrip` nur aufruft, den Fehler nicht gefangen: die
+    // Komponente selbst kennt kein `isYou`, nur `TablePanel` filtert.
+    const state = afterSetup();
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
+
+    render(<TablePanel view={view} barbarianTrack={CITIES_RULES.barbarianTrack} />);
+
+    expect(screen.queryByTestId(`trackstrip-${view.you}`)).toBeNull();
+    expect(screen.getByTestId(`trackstrip-${ids[1]}`)).toBeTruthy();
+    expect(screen.getByTestId(`trackstrip-${ids[2]}`)).toBeTruthy();
   });
 });
 

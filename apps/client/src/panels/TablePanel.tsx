@@ -57,7 +57,7 @@ export function TablePanel({ view, barbarianTrack }: TablePanelProps): JSX.Eleme
           isYou={player.id === view.you}
           gained={view.gains.get(player.id) ?? 0}
           awards={player.id === view.you ? [] : awardsHeldBy(view.awards, player.id)}
-          showTracks={barbarianTrack > 0}
+          showTracks={barbarianTrack > 0 && player.id !== view.you}
         />
       ))}
     </section>

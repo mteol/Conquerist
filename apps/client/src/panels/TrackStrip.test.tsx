@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { MAX_TRACK_LEVEL, TRACK_IDS, type TrackId } from '@conquerist/shared';
+import { render, screen } from '../test/dom';
+import { TRACK_ABBR } from '../game/labels';
+import { TrackStrip } from './TrackStrip';
 // Roher Dateiinhalt statt `node:fs`, wie in `AccountCorner.test.tsx`: das
 // Client-Paket hält sich bewusst frei von Node-Typen.
 import css from '../index.css?raw';
@@ -12,6 +16,61 @@ import css from '../index.css?raw';
  * keinen Kontrast - was sich prüfen läßt, ist, daß die Leiste jetzt die
  * Tiefsee-Variante der Bereichsfarbe liest.
  */
+
+/*
+ * I4 der Abschlußreview: diese Datei prüfte bislang ausschließlich die drei
+ * CSS-Regeln unten und importierte `TrackStrip` nirgends - die Komponente
+ * selbst stand ohne einen einzigen Rendertest da, und die Testkennungen
+ * `trackstrip-${player}-${track}-${step}` waren Haken ohne Leine. Genau
+ * deshalb ist I3 (die Leiste ohne `isYou`-Filter) durchgerutscht: kein Test
+ * hat je behauptet, was die Leiste zeigen soll. Die folgenden Tests rendern
+ * die Komponente wirklich und benutzen ihre Testkennungen.
+ */
+const levels = (improvements: Partial<Record<TrackId, number>>) => ({ improvements });
+
+describe('TrackStrip (Rendering)', () => {
+  it('zeigt fuenf Punkte je Bereich', () => {
+    render(<TrackStrip player="p1" levels={levels({})} />);
+
+    for (const track of TRACK_IDS) {
+      for (let step = 1; step <= MAX_TRACK_LEVEL; step += 1) {
+        expect(screen.getByTestId(`trackstrip-p1-${track}-${step}`)).toBeTruthy();
+      }
+    }
+  });
+
+  it('fuellt so viele Punkte, wie die Stufe verlangt - und keinen mehr', () => {
+    render(<TrackStrip player="p1" levels={levels({ trade: 2, politics: 0, science: 5 })} />);
+
+    for (let step = 1; step <= MAX_TRACK_LEVEL; step += 1) {
+      const filled = step <= 2;
+      expect(
+        screen
+          .getByTestId(`trackstrip-p1-trade-${step}`)
+          .classList.contains('trackstrip__dot--filled'),
+      ).toBe(filled);
+      expect(
+        screen
+          .getByTestId(`trackstrip-p1-politics-${step}`)
+          .classList.contains('trackstrip__dot--filled'),
+      ).toBe(false);
+      expect(
+        screen
+          .getByTestId(`trackstrip-p1-science-${step}`)
+          .classList.contains('trackstrip__dot--filled'),
+      ).toBe(true);
+    }
+  });
+
+  it('traegt das Kuerzel je Bereich, nicht nur die Farbe (Designregel 7)', () => {
+    render(<TrackStrip player="p1" levels={levels({})} />);
+
+    const strip = screen.getByTestId('trackstrip-p1');
+    for (const track of TRACK_IDS) {
+      expect(strip.textContent).toContain(TRACK_ABBR[track]);
+    }
+  });
+});
 
 /** Liefert den Inhalt der ersten Regel `selector { ... }` ab `fromIndex`. */
 function ruleBody(selector: string, fromIndex = 0): string {
