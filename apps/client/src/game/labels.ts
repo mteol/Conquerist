@@ -77,10 +77,10 @@ export const CARD_COLORS: Readonly<Record<CardId, string>> = {
 /**
  * Die Farbe eines Bereichs - kein eigener Hex-Wert, sondern ein Zeiger auf
  * `index.css`. Dort stehen `--track-trade`, `--track-politics` und
- * `--track-science` schon fuer die Wuerfelseiten der Barbaren
+ * `--track-science` schon für die Würfelseiten der Barbaren
  * (`.die__event-gate--*`); der Metropolenaufsatz auf dem Brett nutzt dieselbe
  * Variable, statt eine zweite Palette anzulegen, die mit der ersten
- * auseinanderlaufen koennte.
+ * auseinanderlaufen könnte.
  */
 export const TRACK_COLORS: Readonly<Record<TrackId, string>> = {
   trade: 'var(--track-trade)',

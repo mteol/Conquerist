@@ -902,23 +902,23 @@ function VertexMark({
             ) : null}
             {/*
              * Der Metropolenaufsatz - **nach** dem Bauwerkspfad und aus
-             * demselben Grund wie die Mauer: davor gezeichnet waere er vom
-             * Stadtpfad verdeckt. Er sitzt ueber dem Dach (`METROPOLIS_PATHS`
+             * demselben Grund wie die Mauer: davor gezeichnet wäre er vom
+             * Stadtpfad verdeckt. Er sitzt über dem Dach (`METROPOLIS_PATHS`
              * bleibt bei y kleiner -8), die Mauer bleibt darunter am Sockel -
              * eine ummauerte Metropole zeigt beides, und keins verdeckt das
              * andere.
              *
-             * `key` traegt den Bereich, nicht nur "metropolis": eine
+             * `key` trägt den Bereich, nicht nur "metropolis": eine
              * Metropole, die den Bereich wechselt (Stufe 5 nimmt einem
-             * anderen den Aufsatz ab), soll neu einhaengen, damit die
-             * Einblendung `settle` (ueber die Klasse `building`) noch einmal
-             * laeuft - dieselbe Falle wie beim Ausbau zur Stadt, siehe
+             * anderen den Aufsatz ab), soll neu einhängen, damit die
+             * Einblendung `settle` (über die Klasse `building`) noch einmal
+             * läuft - dieselbe Falle wie beim Ausbau zur Stadt, siehe
              * `CLAUDE.md`.
              *
              * Die Bereichsfarbe kommt aus `TRACK_COLORS` und damit aus den
              * CSS-Variablen in `index.css`, nicht aus einem Hex-Wert hier -
              * und per `style`, nicht als Attribut, aus demselben Grund wie
-             * ueberall sonst auf dem Brett.
+             * überall sonst auf dem Brett.
              */}
             {building.metropolis !== null ? (
               <path

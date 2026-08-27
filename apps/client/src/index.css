@@ -5688,9 +5688,9 @@ body {
 
 /*
  * Der Metropolenaufsatz - dasselbe Material wie Stadt und Mauer, deshalb
- * dieselbe Kontur im Pfadmass (`board/BoardSvg.tsx`). Die Flaeche kommt per
+ * dieselbe Kontur im Pfadmaß (`board/BoardSvg.tsx`). Die Fläche kommt per
  * `style` aus `TRACK_COLORS` (`game/labels.ts`) und steht nicht hier - eine
- * Regel hier wuerde jedes `fill` am Element schlagen.
+ * Regel hier würde jedes `fill` am Element schlagen.
  */
 .metropolis {
   stroke: #16202a;
