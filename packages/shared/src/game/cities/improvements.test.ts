@@ -14,7 +14,7 @@ import {
   applyImproveCity,
   canImproveCity,
   claimsMetropolis,
-  metropolisAt,
+  findMetropolisVertex,
   metropolisHolder,
 } from './improvements.js';
 
@@ -296,11 +296,11 @@ describe('canImproveCity / applyImproveCity - die freie Stadt', () => {
   });
 });
 
-describe('metropolisHolder / metropolisAt', () => {
+describe('metropolisHolder / findMetropolisVertex', () => {
   it('nennt niemanden, wenn kein Aufsatz vergeben ist', () => {
     const state = gameWithCities();
     expect(metropolisHolder(state, 'trade')).toBeNull();
-    expect(metropolisAt(state, 'trade')).toBeNull();
+    expect(findMetropolisVertex(state, 'trade')).toBeNull();
   });
 
   it('nennt Besitzer und Ort des Aufsatzes', () => {
@@ -310,7 +310,7 @@ describe('metropolisHolder / metropolisAt', () => {
       },
     });
     expect(metropolisHolder(state, 'trade')).toBe('p1');
-    expect(metropolisAt(state, 'trade')).toBe(CENTER_VERTEX);
+    expect(findMetropolisVertex(state, 'trade')).toBe(CENTER_VERTEX);
   });
 });
 

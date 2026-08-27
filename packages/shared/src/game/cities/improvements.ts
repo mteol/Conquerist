@@ -27,8 +27,8 @@ import {
  * Ausbaus und kein eigener Bauzug.
  */
 
-/** Auf welchem Knoten der Aufsatz dieses Bereichs steht - `null`, wenn nirgends. */
-function findMetropolisVertex(source: BuildingSource, track: TrackId): VertexId | null {
+/** Wo der Aufsatz dieses Bereichs steht - `null`, wenn nirgends. */
+export function findMetropolisVertex(source: BuildingSource, track: TrackId): VertexId | null {
   for (const [vertex, building] of Object.entries(source.buildings)) {
     if (building.metropolis === track) return vertex;
   }
@@ -39,11 +39,6 @@ function findMetropolisVertex(source: BuildingSource, track: TrackId): VertexId 
 export function metropolisHolder(source: BuildingSource, track: TrackId): PlayerId | null {
   const vertex = findMetropolisVertex(source, track);
   return vertex === null ? null : source.buildings[vertex]!.owner;
-}
-
-/** Wo der Aufsatz dieses Bereichs steht - `null`, wenn nirgends. */
-export function metropolisAt(source: BuildingSource, track: TrackId): VertexId | null {
-  return findMetropolisVertex(source, track);
 }
 
 /**
