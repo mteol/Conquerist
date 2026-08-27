@@ -6502,3 +6502,275 @@ Testfehlern in Aufgabe 4, die alle dasselbe sagten.
 **10c — Stadtausbau und Metropolen.** Die drei Bereiche (Handel, Politik,
 Wissenschaft), die fünf Stufen je Bereich, die Metropolen und was sie schützen. Das Feld
 `improvements` steht dafür schon im Zustand.
+
+---
+
+## Etappe 10c — Stadtausbau und Metropolen (2026-08-27, `etappe-10-staedte-und-ritter`)
+
+Siebzehn Commits von `452e7a9` (drei Bereiche, fünfzehn Stufen) bis `e5ec8a4` (Umlaute
+auch in den Testnamen), dazu der Plan-Commit `fa03be0` davor. Plan:
+`docs/superpowers/plans/2026-08-26-etappe-10c-stadtausbau-und-metropolen.md`, Entwurf für
+alle fünf Teiletappen: `docs/superpowers/specs/2026-08-25-staedte-und-ritter-design.md`.
+
+Was jetzt geht: der Stadtausbau aus Städte & Ritter. Drei Bereiche (Handel, Politik,
+Wissenschaft) zu je fünf Stufen, bezahlt mit der zugehörigen Handelsware. Die Metropole als
+Aufsatz auf einer Stadt — drei Stück, je Bereich eine, mit zwei zusätzlichen Siegpunkten und
+der Bedingung der freien Stadt bei Gleichstand. Das Fortschritt-Tableau in der Ecke zeigt
+alle fünfzehn Stufen samt der Schwelle, nach der beim Würfeln gesucht wird. Jeder Sitz trägt
+eine kompakte Leiste mit drei Punktreihen. Das Aquädukt (Wissenschaft 3) und die Gilde
+(Handel 3) tun etwas; die Festung (Politik 3) ist an den Mächtigen Ritter aus 10b
+angeschlossen.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                    |
+| ------------------- | ------------------------------------------------------------ |
+| `pnpm typecheck`    | grün                                                        |
+| `pnpm test`         | grün — shared 966 / 50, server 211 / 22, client 510 / 47    |
+| `pnpm build`        | grün, Client-Bundle 480,95 kB (141,59 kB gzip), CSS 59,21 kB |
+| `pnpm format:check` | grün                                                        |
+
+Gelaufen am 27.08.2026 auf `5074032`, abgeschrieben in `task-12-abnahme.md`. Der Commit
+danach (`e5ec8a4`) ist eine reine Umlaut-Korrektur in Kommentaren und Testnamen und ändert
+an diesen Zahlen nichts; zur Sicherheit erneut `pnpm --filter @conquerist/client test`
+gelaufen, weiterhin 510 grün.
+
+Vorher (10b): 894 / 211 / 485. Neu also 72 Tests in `shared`, keiner im Server, 25 im
+Client. Gewachsen ist vor allem `packages/shared` (die fünfzehn Stufen, der Ausbauzug, die
+Metropole am Gebäude) und `apps/client` (Tableau und kompakte Leiste sind neu).
+
+### Getroffene Entscheidungen
+
+**Die Metropole hängt am Gebäude, nicht am Spieler.** `Building.metropolis: TrackId | null`
+statt eines Feldes am Spieler — Grund: Städte und Mauern stehen seit jeher am Brett und
+werden von dort gelesen (`cityToLose` beim Barbarenüberfall, `scoring.ts` bei den
+Siegpunkten, `BoardSvg.tsx` beim Zeichnen). Ein zweiter Ort, an dem festgehalten wird, wer
+welche Metropole hält, wäre eine zweite Wahrheit über dieselbe Frage — genau die Falle, gegen
+die sich Etappe 10b bei den Rittern schon einmal entschieden hat (Ritter stehen im
+`GameState`, nicht beim Spieler).
+
+**Die Stufennamen und -artikel liegen in `shared`, nicht im Client.** `TRACK_STEPS` mit Name
+und Artikel für alle fünfzehn Stufen steht in `cities/tracks.ts`. Grund: `stepName` und
+`stepWithArticle` werden von den Verlaufssätzen (`log.ts`, in `shared`) und vom
+Fortschritt-Tableau (Client) gleichermaßen gebraucht. Zwei Tabellen an zwei Orten liefen bei
+der ersten neuen Stufe auseinander; eine Tabelle mit zwei Lesern nicht.
+
+**Der Zusatznutzen ist eine Frage an die Stufe, kein eigenes Feld am Zustand.**
+`hasAqueduct`, `hasGuild` und `hasFortress` lesen `levelOf(source, track) >= AQUEDUCT_LEVEL`
+(bzw. `GUILD_LEVEL`, `FORTRESS_LEVEL`) aus `improvements` — es gibt kein separates Flag „hat
+Aquädukt" im Zustand. Grund: der Zusatznutzen ist vollständig aus der erreichten Stufe
+ableitbar; ein eigenes Feld wäre eine zweite Buchführung über dieselbe Zahl, die bei jeder
+Änderung der Stufe mitgezogen werden müsste, ohne dass sie je etwas anderes sagen könnte.
+
+**Drei Konstanten mit dem Wert 3, keine geteilte.** `AQUEDUCT_LEVEL`, `GUILD_LEVEL` und
+`FORTRESS_LEVEL` tragen alle den Wert 3, sind aber drei getrennte Bezeichner statt eines
+gemeinsamen `LEVEL_3`. Grund: es sind drei verschiedene Regeln (Wissenschaft, Handel,
+Politik), die zufällig bei derselben Stufe greifen. Eine geteilte Konstante würde eine
+Kopplung behaupten, die es inhaltlich nicht gibt, und bräche beim ersten Regelwerk, das sie
+auseinanderzieht.
+
+**`improveCity` trägt die Metropole gleich mit, statt eine zweite Phase zu öffnen.** Die
+Zugart hat ein optionales Feld `metropolisAt`; wer mit diesem Ausbau die Bereichsmetropole
+einbringt, nennt im selben Zug, an welcher eigenen freien Stadt sie steht. Grund: eine
+zweite Phase — erst ausbauen, dann separat die Metropole setzen — hätte den Tisch zwischen
+zwei Zügen offengehalten, für einen Fall, den `legalActions` mit einem eigenen Zug je
+möglicher Stadt in einem Klick erledigt.
+
+**Der Client bekommt zwei Zielkarten für den Ausbau: `improve` und `metropolis`.** Genau wie
+bei den Rittern in 10b, wo Versetzen und Vertreiben getrennte Karten bekamen, obwohl beides
+über `moveKnight` läuft. Grund: `improveCity` ohne `metropolisAt` ist ein einziger Klick auf
+eine Stufe, mit `metropolisAt` ein zweistufiger (erst der Bereich, dann die Stadt). Eine
+gemeinsame Karte hätte entweder den einfachen Fall verkompliziert oder den doppelten
+verschluckt.
+
+**`HarborSource.players` wächst um die Spielerliste, weil die Gilde beim Spieler steht.**
+Der Hafenhandel braucht jetzt von jedem Spieler `id` und `improvements`, nicht mehr nur die
+eigenen Daten des Handelnden. Grund: der Gildenkurs (`hasGuild`) muss aus Sicht jedes am
+Handel beteiligten Spielers geprüft werden können, und `GameScreen.tsx` reicht dafür eine
+`PlayerView` statt eines vollen `PlayerState` herein. Der neue Typ ist deshalb der
+strukturelle Mindesttyp `Pick<PlayerState, 'id'> & TrackLevelSource` (letzteres
+`Pick<PlayerState, 'improvements'>`), den sowohl `GameState.players` als auch
+`PlayerView.players` erfüllen, ohne dass eine Seite mehr verspricht, als sie hat.
+
+### Bewußte Abweichungen von Spec und Regelwerk
+
+1. **Die freie Stadt ist nur nötig, wenn der Aufsatz auch wirklich kommt.** Die Anleitung
+   sagt, wer nur eine Stadt hat und die schon Metropole ist, komme in den anderen Bereichen
+   nur bis Stufe 3. Sie sagt nicht, ob das auch gilt, wenn die Metropole des Bereichs längst
+   einer anderen Person gehört und Stufe 4 also gar keinen Aufsatz einbringt. Wir legen es so
+   aus: die freie Stadt ist Bedingung genau dann, wenn dieser Ausbau die Metropole
+   **einbringt**. Alles andere bestrafte jemanden für einen Wettlauf, den er ohnehin schon
+   verloren hat.
+2. **Die Fortschrittskarten kommen nicht in 10c.** `progressThreshold` steht hier trotzdem,
+   weil das Tableau die rote Ziffer je Stufe **anzeigt** — das ist die Zahl, nach der man
+   beim Würfeln sucht, und ohne sie wäre die Leiter eine Treppe ohne Ziel. Gezogen wird erst
+   in 10d; die drei Stadttore des Ereigniswürfels bleiben bis dahin wirkungslos.
+3. **Die Rohstoffwahl beim Aquädukt folgt einer festen Regel, nicht der freien Wahl des
+   Spielers.** Das Regelwerk lässt offen, wer beim Aquädukt-Bonus wählt; eine echte Wahl wäre
+   eine Phase, die den laufenden Würfelwurf anhalten und später fortsetzen müsste — dieselbe
+   Art Umbau, die 10b beim `cityLossPending` schon einmal aus genau diesem Grund vertagt hat.
+   Vergeben wird deshalb, wovon die Bank am meisten hat, bei Gleichstand nach der
+   `RESOURCE_IDS`-Reihenfolge. Bei zwei Anspruchsberechtigten im selben Wurf zieht
+   `grantAqueduct` eine lokale `remainingBank` mit, die nach jeder Vergabe sinkt, damit nicht
+   beide dieselbe letzte Karte bekommen. `aqueductPending` bleibt der Ort für eine spätere
+   echte Wahl.
+
+### Der Durchgang im Browser — vier Befunde, alle behoben und nachgemessen
+
+Chrome verbunden, lokale Städte-&-Ritter-Partie über den ausgelieferten Build, Seed
+`3d1p6y5j`, Viewport 1920 × 945 px, Wurzelschrift 16 px, `DATABASE_FILE=":memory:"`.
+Kontrastwerte nach WCAG-2.1-Leuchtdichte, Vordergrund über den tatsächlich zusammengesetzten
+Hintergrund gelegt. Alle vier Befunde sind an ihrer Ursache behoben und im laufenden Blatt
+nach einem frischen Build nachgemessen worden (nicht nur nachgerechnet).
+
+**A. Die Schwellenziffer der nächsten Stufe sprang.** Vorher 6,72 × 9,59 px gegen 8,06 ×
+11,52 px bei den vier übrigen Ziffern — 83 % der Größe, Mitte 4,28 px weiter rechts, in
+allen drei Leitern gleich. Ursache: `.tracks__step--next` ist ein `<button>` und erbte die
+Schriftgröße des Nutzeragenten (13,3333 px) statt der 16 px, die die `<div>`-Stufen vom
+Blatt bekommen — die Ziffer selbst ist ein SVG-Pfad, der sich in `em` bemisst. Kur:
+`font: inherit` auf `.tracks__step--next`. Nachher: alle fünfzehn Ziffern messen dieselben
+8,06 × 11,52 px. Der verbleibende 3,61-px-Versatz und warum er kein Mangel ist, steht unter
+Offene Punkte.
+
+**B. Die kompakte Leiste fiel unter den Kontrast, zum zweiten Mal seit 10b.** Sieben von
+neun Werten rissen 4,5:1, `Pol` am aktiven Sitz stand bei 1,25:1 und war mit bloßem Auge
+nicht mehr zu finden. Ursache: die drei `--track-*` sind für Pergament gemischt, die
+kompakte Leiste stellte sie auf die Tiefsee. Kur: ein drittes Tripel neben `--ok-on-sea`/
+`--bad-on-sea` aus 10b — `--track-trade-on-sea`, `--track-politics-on-sea`,
+`--track-science-on-sea`. Nachher: aktiver Sitz 4,91:1 / 4,86:1 / 4,81:1, übrige Sitze
+8,33:1 / 8,24:1 / 8,16:1 — alle neun Werte über der Schwelle, `POL` und `WIS` am
+vergrößerten Bild jetzt lesbar, wo vorher nichts zu erkennen war.
+
+**C. Dasselbe Problem im Tableau-Kopf.** `.tracks__name` stand ebenfalls auf der Tiefsee,
+4,77:1 / 2,11:1 / 2,28:1. Dieselbe Kur wie B, an einer zweiten Fundstelle, damit nicht eine
+von beiden beim nächsten Durchgang wieder auffällt. Nachher: 8,33:1 / 8,24:1 / 8,16:1.
+
+**D. Das Wort auf Stufe 3 war unsichtbar, solange die Stufe nicht gebaut ist.** Vorher
+1,05:1 (helle Schrift auf hellem Pergament) im ungebauten Fall; im gebauten Fall zusätzlich
+Handel bei 2,34:1 (helle Schrift auf Gold). Ursache: eine einzige Farbregel, die nur den
+gebauten Fall traf und pauschal für alle drei Bereiche galt. Kur: die ungebaute Stufe
+bekommt dunkle Tinte (`--ink`), die gebaute liest je Bereich die Farbe, die auf ihrem
+eigenen Grund trägt (`TRACK_BUILT_WORD_COLORS`). Nachher: ungebaut 13,31:1, gebaut Handel
+5,40:1, Politik und Wissenschaft unverändert gut (5,29:1 / 4,91:1). Am vergrößerten Bild
+bestätigt: Gilde, Festung und Aquädukt stehen lesbar auf ihren Sprossen.
+
+**Kein Befund, nachgemessen und in Ordnung:** das Tableau passt in die Ecke (151,19 ×
+174 px, 12 px Luft zum Rand), drei Leitern zu je fünf Stufen, die nächste Stufe ist ein
+Knopf mit 44,0 × 44,0 px Trefferfläche, gesperrt unterscheidet sich an drei Merkmalen
+(Deckkraft, Schatten, Zeiger), und Designregel 7 ist erfüllt — jede Bereichsfarbe steht
+neben einem Wort.
+
+**Was der Durchgang nicht erreicht hat, steht unter Offene Punkte** (die Punkte 6, 7, 8 und
+10 der Prüfliste, sowie Punkt 9, die Viewport-Breakpoints).
+
+### Abweichungen vom Plan
+
+**Die Dateilisten des Plans waren an mehreren Rufstellen unvollständig.** Aufgabe 4 durfte
+`reducer.ts` ändern (das Einhängen des Aquädukts in `rollDice` verlangte es, die Liste
+nannte die Datei nicht), Aufgabe 9 `game/labels.ts` (die Bereichsfarben-Tabelle stand im
+Fließtext, nicht in der Liste), Aufgabe 6 `log.ts`/`log.test.ts` (`describeAction` ist ein
+erschöpfender `switch` ohne `default`; ohne einen `improveCity`-Zweig hätte `tsc` mit
+„Function lacks ending return statement" abgebrochen). Dieselbe Klasse Fehler wie schon in
+10b bei `cardAmounts`/`pieceStock`: der Compiler zeigt die Lücke, der Umsetzer hatte keine
+Wahl.
+
+**`CLASSIC_RULES` bekam ein Feld, das der Plan wörtlich verboten hatte.** Aufgabe 2 sollte
+laut Plantext „nichts eintragen", weil der Vorgabewert null sei. Tatsächlich ist
+`CLASSIC_RULES: RuleSet` explizit getypt, und `z.infer` macht ein Feld mit `.default(...)`
+im Ausgangstyp nicht optional — ohne `metropolis: 0` (genau wie beim Nachbarfeld
+`defender: 0`) scheiterte `pnpm typecheck`, das dieselbe Aufgabe als Abnahme verlangt. Der
+Plantext lag hier falsch, nicht der Umsetzer.
+
+**Ein Test, der wörtlich aus dem Plan stammte, maß den falschen Fall.** Der Gildentest gegen
+einen 3:1-Hafen setzte den Spieler auf `CENTER_VERTEX` — einen Knoten, der an keinem der
+beiden Testhäfen liegt. Der Test bewies deshalb dasselbe wie der hafenlose Fall davor, nur
+unter einem Namen, der etwas anderes versprach. Der eigene Vorflug-Scan vor der Ausführung
+hatte das nicht gefangen, weil er Testcode gegen Signaturen prüft und nicht gegen die
+Geometrie des Testbretts — eine Lücke, die für den Rest der Etappe nachgeholt wurde (nur
+Aufgabe 5 nennt überhaupt Knoten, dort war die Brettgeometrie in Ordnung). Der Test heißt
+jetzt nur noch nach dem, was er tatsächlich zeigt, und zeigt es doppelt (ohne Gilde 3, mit
+Gilde 2).
+
+**Der Plan schrieb den falschen Kasus vor.** Zwei Stellen verlangten `stepWithArticle`
+(Nominativ) für den Verlaufssatz nach „baut" — grammatikalisch richtig bei „die Gilde" und
+„das Theater", falsch bei den zwei maskulinen Stufennamen („baut der Markt" statt „baut den
+Markt"). Der Plan hatte den Fehler nicht gesehen, weil alle drei Beispielsätze in Aufgabe 7
+feminin oder neutral sind — dort fallen Nominativ und Akkusativ zusammen. Die Kur ist
+dieselbe wie bei `KNIGHT_LABELS_DATIVE` aus 10b: eine dritte, kurze und abschließende
+Tabelle (`stepInAccusative`, drei Einträge für „der"/„die"/„das"), keine Endungsregel aus
+dem Code abgeleitet.
+
+**Ein Reviewer-Befund wurde bewusst nicht in derselben Aufgabe behoben.** Dass kein Test den
+Verlust eines vorhandenen Aufsatzes beim Barbarenüberfall abdeckt, stimmt für Aufgabe 2 —
+und ist trotzdem richtig so: das Regelwerk (Abschnitt 8.2) sagt, Metropolen seien vor den
+Barbaren immer geschützt, und genau das baut Aufgabe 5. Ein Test in Aufgabe 2 hätte das
+Gegenteil der Spec festgeschrieben und wäre in Aufgabe 5 sofort wieder umzuschreiben
+gewesen.
+
+**Ein zweiter Reviewer-Befund blieb ebenfalls stehen, aus dem umgekehrten Grund.** Der Test
+„zählt die Metropole trotzdem zur Stärke" war von Anfang an grün und hätte in der
+vorgesehenen Reihenfolge gar nicht rot sein können — trotzdem bleibt er stehen: er sichert
+die naheliegendste falsche Umsetzung ab, den Metropolenfilter versehentlich auch in
+`barbarianStrength` zu setzen. Ein Test, der eine Nicht-Änderung festhält, ist ein Zaun,
+kein Scheintest.
+
+**`PROGRESS.md` entsteht am Stück in Aufgabe 12, nicht aufgabenweise.** Die globale Regel
+„wird mitgeschrieben, nicht nachgereicht (Aufgabe 12)" ist mehrdeutig gelesen worden; der
+Klammerzusatz nennt die Aufgabe, die den Abschnitt schreibt, und die Absicht ist, dass er
+innerhalb dieser Etappe entsteht und nicht in eine spätere verschoben wird — genau wie in
+10a und 10b, wo ebenfalls ein Abschnitt je Etappe stand, nicht je Aufgabe.
+
+### Offene Punkte
+
+- **Die Rohstoffwahl beim Aquädukt trifft weiterhin das Spiel, nicht der Spieler** —
+  `aqueductPending` wäre der Ort für eine echte Wahl (siehe Abweichung 3 oben).
+- **Der Ausbauzug ist weiterhin unbefristet.** `deadlineOf` kennt `improveCity` nicht —
+  dieselbe Lücke, die in 10b für Ritter- und Ausweichzüge offen blieb und dort wie hier
+  denselben Ort als Antwort hätte.
+- **Vier Punkte des Browser-Durchgangs sind ungeprüft geblieben, weil die gespielte Partie
+  nicht weit genug kam.** Über 31 Runden (Gründung, Würfeln, Abwerfen, Räuber, Bauen,
+  Ausbauen) ist kein Spieler über Wissenschaft Stufe 2 hinausgekommen — Papier fällt nur an
+  Waldstädten, und der Nachschub reichte für Stufe 3 (3 Papier) und 4 (4 Papier) nicht.
+  Ungeprüft blieben: der Metropolenaufsatz auf dem Brett (erkennt man den Bereich, verdeckt
+  er die Stadtform), die Metropolenwahl unter den eigenen freien Städten, die zwei
+  Randfälle Stufe 4 ohne freie Stadt / Stufe 5 als sicherer Halter, und das Aquädukt selbst
+  (bekommt man wirklich eine Karte, steht es im Verlauf). Sie sind durch Tests gedeckt, aber
+  keiner der elf Befunde aus 10b wäre durch einen Test gefunden worden.
+- **Die zwei Viewport-Breakpoints sind ebenfalls ungeprüft geblieben — aus einem
+  Werkzeuggrund.** `resize_window` ändert die Fensterbreite nicht, solange das
+  Chrome-Fenster maximiert ist: nach `resize_window(400, 800)` blieb `outerWidth` bei 1920,
+  nur die Höhe folgte (945 → 889). Ein `window.open` mit fester Breite scheitert am
+  Popup-Blocker mangels Nutzergeste. Der Weg dahin ist, das Fenster vor dem nächsten
+  Durchgang aus der Maximierung zu lösen.
+- **Nach der Behebung von Befund A bleibt ein Versatz von 3,61 px, und das ist kein
+  Mangel.** Die Mitte der Ziffer der nächsten Stufe sitzt weiterhin etwas rechts von den
+  vier darüber (1801,38 gegen 1797,77) — nicht mehr, weil die Schriftgröße abweicht (das ist
+  behoben), sondern weil die Trefferfläche der nächsten Stufe 44 px breit ist, die vier
+  anderen Sprossen aber nur 2,3 rem = 36,8 px, und die Ziffer am rechten Rand ihrer Sprosse
+  sitzt. Wer das beseitigen will, muss entweder alle Sprossen auf 44 px verbreitern (das
+  Tableau wüchse von 151 auf rund 175 px) oder die Ziffer aus der Sprosse lösen — beides
+  eine Entwurfsfrage für den nächsten Playtest, keine Fehlerbehebung.
+- **`hotseatClock.test.tsx` flackert.** Einmal in einen Timeout gelaufen, im
+  Wiederholungslauf grün — ein Zeit-Test, der manchmal rot ist, ist kein Zaun mehr.
+- **Die Umlaut-Regel ist in dieser Etappe dreimal hintereinander gerissen** (Aufgaben 9, 10,
+  11) und jedes Mal in einer eigenen Fixrunde nachgezogen worden, statt sich für Aufgabe 12
+  zu sammeln — ein gesammelter Fix träfe sonst auf einen Diff, in dem niemand mehr weiß,
+  welcher Kommentar aus welcher Aufgabe stammt. Das Muster hat sich dabei verschärft: erst
+  sah es aus, als hielten neue Dateien die Konvention, während geänderte Bestandsdateien in
+  die ASCII-Schreibweise ihrer Nachbarschaft zurückfielen (Aufgabe 9, 10); beim dritten Mal
+  (Aufgabe 11) saß der Fehler in brandneuen Testdateien und in Testnamen, nicht mehr nur in
+  Bestandscode. Eine Rahmenbedingung, die dreimal hintereinander übersehen wird, ist keine
+  Frage der Sorgfalt mehr, sondern eine offene Frage an das Werkzeug — ob ein Lint- oder
+  Pre-Commit-Schritt näher an der Ursache läge als eine manuelle Fixrunde je Aufgabe.
+- **Der dritte strukturgleiche Zwei-Schritt-Block.** `metropolisFor` in `GameScreen.tsx` ist
+  nach `buildMode` und `knightMode` das dritte Feld, das erst „was tun" und dann „wo" fragt
+  — bei einer vierten Gelegenheit ist eine gemeinsame Abstraktion fällig.
+- Die offenen Punkte aus Etappe 9 (Volume, HTTPS, Sicherung, Drossel im Wartebereich) und
+  aus Etappe 10b (ein Mächtiger Ritter ungesehen, `cityLossPending` fehlt, Variante „mehr
+  Taktik" fehlt, Fortschrittskarten kommen erst in 10d) gelten unverändert weiter.
+
+### Nächste Etappe
+
+**10d — Fortschrittskarten.** Die drei Stadttore des Ereigniswürfels bekommen Wirkung: die
+drei Stapel, das Ziehen bei Aquädukt, Metropolenkampf und Sieg, `defenderPending` und
+`aqueductPending` als echte Wahl statt einer festen Regel.
