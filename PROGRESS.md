@@ -6523,12 +6523,12 @@ angeschlossen.
 
 ### Abnahme
 
-| Prüfung             | Ergebnis                                                    |
+| Prüfung             | Ergebnis                                                     |
 | ------------------- | ------------------------------------------------------------ |
-| `pnpm typecheck`    | grün                                                        |
-| `pnpm test`         | grün — shared 966 / 50, server 211 / 22, client 510 / 47    |
+| `pnpm typecheck`    | grün                                                         |
+| `pnpm test`         | grün — shared 966 / 50, server 211 / 22, client 510 / 47     |
 | `pnpm build`        | grün, Client-Bundle 480,95 kB (141,59 kB gzip), CSS 59,21 kB |
-| `pnpm format:check` | grün                                                        |
+| `pnpm format:check` | grün                                                         |
 
 Gelaufen am 27.08.2026 auf `5074032`, abgeschrieben in `task-12-abnahme.md`. Der Commit
 danach (`e5ec8a4`) ist eine reine Umlaut-Korrektur in Kommentaren und Testnamen und ändert
@@ -6772,8 +6772,7 @@ innerhalb dieser Etappe entsteht und nicht in eine spätere verschoben wird — 
 - **`hotseatClock.test.tsx` flackert.** Einmal in einen Timeout gelaufen, im
   Wiederholungslauf grün — ein Zeit-Test, der manchmal rot ist, ist kein Zaun mehr. Noch
   ungeklärt, ob dieselbe Ursache greift (viele Renderings unter Last) oder eine eigene.
-- **Die Umlaut-Regel ist in dieser Etappe dreimal hintereinander gerissen** (Aufgaben 9, 10,
-  11) und jedes Mal in einer eigenen Fixrunde nachgezogen worden, statt sich für Aufgabe 12
+- **Die Umlaut-Regel ist in dieser Etappe dreimal hintereinander gerissen** (Aufgaben 9, 10, 11) und jedes Mal in einer eigenen Fixrunde nachgezogen worden, statt sich für Aufgabe 12
   zu sammeln — ein gesammelter Fix träfe sonst auf einen Diff, in dem niemand mehr weiß,
   welcher Kommentar aus welcher Aufgabe stammt. Das Muster hat sich dabei verschärft: erst
   sah es aus, als hielten neue Dateien die Konvention, während geänderte Bestandsdateien in
