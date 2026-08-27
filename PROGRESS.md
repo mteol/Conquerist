@@ -6507,8 +6507,8 @@ Wissenschaft), die fünf Stufen je Bereich, die Metropolen und was sie schützen
 
 ## Etappe 10c — Stadtausbau und Metropolen (2026-08-27, `etappe-10-staedte-und-ritter`)
 
-Siebzehn Commits von `452e7a9` (drei Bereiche, fünfzehn Stufen) bis `e5ec8a4` (Umlaute
-auch in den Testnamen), dazu der Plan-Commit `fa03be0` davor. Plan:
+Einundzwanzig Commits von `452e7a9` (drei Bereiche, fünfzehn Stufen) bis `620a0f7`
+(Prettier über den Abschnitt), dazu der Plan-Commit `fa03be0` davor. Plan:
 `docs/superpowers/plans/2026-08-26-etappe-10c-stadtausbau-und-metropolen.md`, Entwurf für
 alle fünf Teiletappen: `docs/superpowers/specs/2026-08-25-staedte-und-ritter-design.md`.
 
@@ -6534,6 +6534,14 @@ Gelaufen am 27.08.2026 auf `5074032`, abgeschrieben in `task-12-abnahme.md`. Der
 danach (`e5ec8a4`) ist eine reine Umlaut-Korrektur in Kommentaren und Testnamen und ändert
 an diesen Zahlen nichts; zur Sicherheit erneut `pnpm --filter @conquerist/client test`
 gelaufen, weiterhin 510 grün.
+
+Vier weitere Commits folgen `e5ec8a4`, keiner davon ändert diese Zahlen: `500d63e` hält eine
+Entscheidung fest, `48d6d01` behebt den unter „Offene Punkte" beschriebenen flackernden
+`StartScreen`-Test (eigene, dort abgeschriebene Vorher/Nachher-Zahlen), `b8f7087` trägt
+einen Abnahme-Nachtrag nach und `620a0f7` ist reines Prettier. Die Abschlussreview über alle
+21 Commits bis `620a0f7` hat eigene Befunde gebracht (vier Important, vier Minor,
+`abschluss-befunde.md`), behoben in `abschluss-report.md` — 1687 Tests vorher, alle grün,
+auf `620a0f7` bestätigt.
 
 Vorher (10b): 894 / 211 / 485. Neu also 72 Tests in `shared`, keiner im Server, 25 im
 Client. Gewachsen ist vor allem `packages/shared` (die fünfzehn Stufen, der Ausbauzug, die
