@@ -56,9 +56,9 @@ describe('Bezeichner', () => {
   });
 
   // Befund B/C (Aufgabe 11): jeder Bereich zeigt neben der Pergament-Farbe
-  // (`TRACK_COLORS`) eine zweite fuer die Tiefsee - dieselbe Zeigertechnik,
+  // (`TRACK_COLORS`) eine zweite für die Tiefsee - dieselbe Zeigertechnik,
   // dasselbe Muster wie `--ok-on-sea`/`--bad-on-sea`.
-  it('zeigt fuer jeden Bereich eine Tiefsee-Variante seiner Farbe', () => {
+  it('zeigt für jeden Bereich eine Tiefsee-Variante seiner Farbe', () => {
     for (const track of TRACK_IDS) {
       expect(TRACK_COLORS_ON_SEA[track]).toBe(`var(--track-${track}-on-sea)`);
     }

@@ -11,7 +11,7 @@ import { render, screen, userEvent } from '../test/dom';
 import { EMPTY_TARGETS, targetsFrom } from '../game/targets';
 import { TrackPanel } from './TrackPanel';
 // Roher Dateiinhalt statt `node:fs`, wie in `AccountCorner.test.tsx`: das
-// Client-Paket haelt sich bewusst frei von Node-Typen.
+// Client-Paket hält sich bewusst frei von Node-Typen.
 import css from '../index.css?raw';
 
 const player = (levels: Partial<Record<TrackId, number>>) => ({
@@ -156,10 +156,10 @@ describe('TrackPanel', () => {
 });
 
 /*
- * jsdom rechnet kein Layout aus - eine gerenderte Schriftgroesse oder ein
- * tatsaechlicher Kontrast lassen sich hier nicht beobachten (Befund A und C
- * aus Aufgabe 11 wurden im echten Browser gemessen). Was sich pruefen laesst:
- * dass die Regeln, die die Befunde beheben, tatsaechlich im CSS stehen.
+ * jsdom rechnet kein Layout aus - eine gerenderte Schriftgröße oder ein
+ * tatsächlicher Kontrast lassen sich hier nicht beobachten (Befund A und C
+ * aus Aufgabe 11 wurden im echten Browser gemessen). Was sich prüfen läßt:
+ * daß die Regeln, die die Befunde beheben, tatsächlich im CSS stehen.
  */
 
 /** Liefert den Inhalt der ersten Regel `selector { ... }` ab `fromIndex`. */
@@ -179,7 +179,7 @@ function ruleBody(selector: string, fromIndex = 0): string {
 }
 
 describe('Tableau im CSS (index.css)', () => {
-  it('Befund A: die naechste Stufe erbt die Schriftgroesse, statt die Vorgabe des Nutzeragenten zu behalten', () => {
+  it('Befund A: die nächste Stufe erbt die Schriftgröße, statt die Vorgabe des Nutzeragenten zu behalten', () => {
     expect(ruleBody('.tracks__step--next')).toMatch(/font:\s*inherit/);
   });
 
@@ -187,13 +187,13 @@ describe('Tableau im CSS (index.css)', () => {
     expect(ruleBody('.tracks__name')).toMatch(/color:\s*var\(--track-color-on-sea\)/);
   });
 
-  it('Befund D: die gebaute Stufe waehlt die Wortfarbe je Bereich, nicht pauschal die helle Tinte', () => {
+  it('Befund D: die gebaute Stufe wählt die Wortfarbe je Bereich, nicht pauschal die helle Tinte', () => {
     expect(ruleBody('.tracks__step--built .tracks__word')).toMatch(
       /color:\s*var\(--track-word-color\)/,
     );
   });
 
-  it('Befund D: die ungebaute Stufe traegt dunkle Tinte auf ihrem Pergamentkoerper', () => {
+  it('Befund D: die ungebaute Stufe trägt dunkle Tinte auf ihrem Pergamentkörper', () => {
     // `.tracks__word {` steht als Teilstring auch in
     // `.tracks__step--built .tracks__word {` weiter oben im Blatt - erst
     // hinter dessen gesamter Kopfzeile weitersuchen, sonst findet `ruleBody`

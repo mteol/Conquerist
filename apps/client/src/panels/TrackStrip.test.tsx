@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 // Roher Dateiinhalt statt `node:fs`, wie in `AccountCorner.test.tsx`: das
-// Client-Paket haelt sich bewusst frei von Node-Typen.
+// Client-Paket hält sich bewusst frei von Node-Typen.
 import css from '../index.css?raw';
 
 /*
  * Befund B (Aufgabe 11): die kompakte Leiste je Sitz stand mit `--track-color`
- * auf der Tiefsee - der Wert ist fuer den hellen Wuerfelkoerper gemischt und
+ * auf der Tiefsee - der Wert ist für den hellen Würfelkörper gemischt und
  * riss dort den Kontrast (Politik 1,25:1, Wissenschaft 1,34:1 gegen den
  * aktiven, olivfarben hinterlegten Sitz). jsdom rechnet kein Layout und
- * keinen Kontrast - was sich pruefen laesst, ist, dass die Leiste jetzt die
+ * keinen Kontrast - was sich prüfen läßt, ist, daß die Leiste jetzt die
  * Tiefsee-Variante der Bereichsfarbe liest.
  */
 
@@ -30,15 +30,15 @@ function ruleBody(selector: string, fromIndex = 0): string {
 }
 
 describe('Kompakte Leiste im CSS (index.css)', () => {
-  it('faerbt das Kuerzel mit der Tiefsee-Variante der Bereichsfarbe', () => {
+  it('färbt das Kürzel mit der Tiefsee-Variante der Bereichsfarbe', () => {
     expect(ruleBody('.trackstrip__abbr')).toMatch(/color:\s*var\(--track-color-on-sea\)/);
   });
 
-  it('faerbt den leeren Punkt mit derselben Tiefsee-Variante', () => {
+  it('färbt den leeren Punkt mit derselben Tiefsee-Variante', () => {
     expect(ruleBody('.trackstrip__dot')).toMatch(/border:\s*1px solid var\(--track-color-on-sea\)/);
   });
 
-  it('faerbt den gefuellten Punkt mit derselben Tiefsee-Variante', () => {
+  it('färbt den gefüllten Punkt mit derselben Tiefsee-Variante', () => {
     expect(ruleBody('.trackstrip__dot--filled')).toMatch(
       /background:\s*var\(--track-color-on-sea\)/,
     );
