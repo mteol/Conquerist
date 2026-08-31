@@ -805,6 +805,77 @@ zuerst die Karten, die im eigenen Zug fertig werden, danach `progressPending`
 und die sieben. Die Stapelgrenze wäre eine hübsche Naht durch die falsche
 Stelle — sie zerschnitte dreimal dieselbe Phase.
 
+#### Der Zuschnitt von 10d, entschieden am 2026-08-31
+
+Geteilt wird an der oben genannten Naht, nicht an der Stapelgrenze.
+
+**10d-1 — die Stapel und die zwanzig Karten, die im eigenen Zug fertig werden.**
+Drei Stapel im `RuleSet`, Ziehbedingung am roten Würfel, Ziehreihenfolge im
+Uhrzeigersinn, Handlimit 4 samt `progressDiscardPending`, dazu `defenderPending`.
+An Karten: alle zehn Wissenschaftskarten, Händler, Rohstoffmonopol,
+Handelsmonopol, Handelsflotte, Bischof, Diplomat, Heerführer, Verfassung — und
+Sabotage und Intrige, die nichts Neues brauchen, weil sie `discardPending` und
+`displacePending` aus 10b benutzen.
+
+**10d-2 — `progressPending` und die fünf, die warten.** Großhändler, Spionage,
+Deserteur, Handelshafen, Hochzeit, und mit ihnen der ausdrückliche Zweig in
+`playerViewOf`, der die Geheimhaltungsgrenze für eine Person, eine Hand und eine
+Phase öffnet.
+
+**Die Kartenmotive kommen später.** In 10d-1 tragen die Karten den Kartenkörper
+der Entwicklungskarten, einen Grundton je Stapel und ihren Namen. Fünfundzwanzig
+gezeichnete Motive wären in der ohnehin größten Etappe der Reihe der größte
+Einzelblock, und sie hängen an keiner Regel — dieselbe Reihenfolge wie bei den
+Entwicklungskarten, die ihren Körper erst lange nach ihrer Wirkung bekamen.
+
+**`aqueductPending` kommt in 10d-1 mit.** Es ist keine Fortschrittskarte,
+sondern der offene Punkt aus 10c: `grantAqueduct` wählt den Rohstoff bisher
+selbst (der, von dem die Bank am meisten hat). Es kommt trotzdem hierher, weil
+10d-1 die Wurfsequenz ohnehin aufmacht und weil `defenderPending` dieselbe
+Bauform hat — die entsteht damit einmal für beide statt zweimal.
+
+#### Die Kette im Wurf
+
+Ein Wurf kann jetzt mehrmals hintereinander auf fremde Eingaben warten:
+
+```
+resolveEvent  ──┬─ Schiff → Barbaren → bei Gleichstand: defenderPending
+                └─ Stadttor → wer rot ≤ Stufe+1 hat, zieht → wer dabei über 4
+                              kommt und nicht am Zug ist: progressDiscardPending
+distributeYield → grantAqueduct → wer leer ausging: aqueductPending
+main
+```
+
+Der Ereigniswürfel zeigt Schiff **oder** Stadttor, nie beides. Die Kette ist
+trotzdem echt: `defenderPending` verteilt Karten und kann selbst über das
+Handlimit heben. `PhaseSchema` hält immer nur **eine** Phase, sie müssen sich
+also weiterreichen.
+
+**Das geschieht über benannte Nachfolgerfunktionen und nicht über ein Feld im
+Zustand** — so, wie `rollDice` es mit `afterDiscardPhase` heute schon tut. Jede
+Wartephase hat genau einen Nachfolger; ihre Funktion öffnet entweder die nächste
+Wartephase oder rechnet weiter. Der Grund gegen den naheliegenden `rollStage`-
+Merker ist die wiederkehrende Falle dieses Repos: ein neues Pflichtfeld im
+gespeicherten Zustand ohne `.default(...)` läßt `GameStateSchema.safeParse` an
+jeder seit Etappe 6 in SQLite liegenden Partie scheitern, und beim nächsten
+Serverstart sind alle laufenden Spiele weg. Solange die Kette **linear** ist,
+kostet der Verzicht nichts. Verzweigt 10d-2 sie, ist der Merker ein bewußter
+Umbau und keine Nebenwirkung.
+
+#### Vier der zwanzig sind schwerer als der Rest
+
+Sie bekommen im Plan eigene Aufgaben, weil sie außerhalb von `progress/` etwas
+anfassen: **Erfinder** (zwei Zahlenchips tauschen — Brettdaten, an denen der
+Ertrag hängt), **Händler** (neue Figur auf dem Brett, 2:1 in `trade.ts`, Summand
+in `scoring.ts`), **Diplomat** (offene Straße entfernen, Längste Handelsroute
+neu rechnen), **Bischof** (Räuber versetzen und von jeder Person am neuen Feld
+eine Karte).
+
+**Händler und Bischof sind die vierte und fünfte Gelegenheit für „erst was, dann
+wo".** `PROGRESS.md` hält seit 10c fest, daß bei der vierten die gemeinsame
+Abstraktion fällig ist — `buildMode`, `knightMode` und `metropolisFor` in
+`GameScreen.tsx` sind strukturgleich. Sie gehört damit in diese Etappe.
+
 ### 10e — Fünf und sechs Personen
 
 Burg 1 / Burg 2 nach Abschnitt 7. Client: sichtbar, wer den vollen und wer den
