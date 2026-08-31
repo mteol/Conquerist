@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CardAmountsSchema } from '../rules/index.js';
 import { CardIdSchema, ResourceIdSchema } from '../scenario/index.js';
 import { ProgressCardIdSchema } from './cities/progress/cards.js';
+import { ProgressPlaySchema } from './cities/progress/play.js';
 import { TrackIdSchema } from './cities/tracks.js';
 import { PlayerIdSchema } from './player.js';
 
@@ -212,6 +213,15 @@ export const GameActionSchema = z.discriminatedUnion('type', [
     metropolisAt: z.string().optional(),
   }),
 
+  /**
+   * Eine Fortschrittskarte spielen. `play` traegt Kartenart und Auswahl in
+   * einer eigenen Union (`ProgressPlaySchema`) - fuenfundzwanzig Eintraege
+   * hier verdoppelten die Hauptunion, dieselbe Grenze wie bei den
+   * Entwicklungskarten. Alchemie geht **vor** dem Wurf, jede andere Karte
+   * **danach** - siehe `progressRules.ts`.
+   */
+  z.object({ ...Base, type: z.literal('playProgress'), play: ProgressPlaySchema }),
+
   /*
    * Die drei Wartestationen eines Wurfs (Etappe 10d). Alle drei sind eine
    * **Wahl**, die vorher eine feste Regel oder gar nichts war - deshalb je
@@ -281,6 +291,7 @@ export const GAME_ACTION_TYPES = [
   'chaseRobber',
   'placeDisplacedKnight',
   'improveCity',
+  'playProgress',
   'pickProgressDeck',
   'discardProgressCard',
   'pickAqueduct',

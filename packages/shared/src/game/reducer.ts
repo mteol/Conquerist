@@ -44,6 +44,7 @@ import {
 } from './cities/knightActions.js';
 import { applyBuildWall } from './cities/walls.js';
 import { applyImproveCity } from './cities/improvements.js';
+import { applyPlayProgress } from './cities/progress/progressRules.js';
 
 /**
  * Der Reducer: `(state, action) => newState`, rein und ohne Seiteneffekte.
@@ -63,7 +64,21 @@ import { applyImproveCity } from './cities/improvements.js';
 const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
   opening: ['rollDice'],
   setup: ['placeSetupSettlement', 'placeSetupRoad'],
-  rollPending: ['rollDice', 'playKnight', 'playRoadBuilding', 'playYearOfPlenty', 'playMonopoly'],
+  /*
+   * `playProgress` steht hier **auch** - nicht, weil in dieser Phase jede
+   * Fortschrittskarte ginge, sondern weil Alchemie genau hier gespielt wird:
+   * sie bestimmt die Wuerfel und muss vor dem Wurf kommen. Welche Karte
+   * tatsaechlich durchkommt, entscheidet `canPlayProgress` in
+   * `progressRules.ts` - dort darf in dieser Phase nur Alchemie.
+   */
+  rollPending: [
+    'rollDice',
+    'playKnight',
+    'playRoadBuilding',
+    'playYearOfPlenty',
+    'playMonopoly',
+    'playProgress',
+  ],
   discardPending: ['discard'],
   robberPending: ['moveRobber'],
   /*
@@ -92,6 +107,7 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
     'moveKnight',
     'chaseRobber',
     'improveCity',
+    'playProgress',
     'endTurn',
   ],
   /*
@@ -315,6 +331,8 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
       return applyPlaceDisplacedKnight(state, action.player, action.vertex);
     case 'improveCity':
       return applyImproveCity(state, action.player, action.track, action.metropolisAt);
+    case 'playProgress':
+      return applyPlayProgress(state, action.player, action.play);
     case 'tradeWithBank':
       return applyTradeWithBank(state, action.player, action.give, action.receive);
     case 'buyDevelopmentCard':

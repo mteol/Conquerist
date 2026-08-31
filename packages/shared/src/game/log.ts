@@ -219,6 +219,12 @@ function describeAction(
         : `${built} und nimmt ${nameOf(previousHolder)} die Metropole ab`;
     }
 
+    case 'playProgress':
+      // Welche Wahl die Karte getroffen hat (Feld, Ritter, Ware, ...) steht
+      // bewusst nicht im Satz: die Wirkung selbst kommt erst in den Aufgaben 6
+      // bis 12, und der Verlauf soll nicht mehr behaupten, als heute passiert.
+      return `${who} spielt ${PROGRESS_NAMES[action.play.card]}`;
+
     case 'pickProgressDeck': {
       // Was gezogen wurde, steht **nachher** auf der Hand - und es bleibt
       // ungenannt: eine Fortschrittskarte liegt verdeckt, und der Verlauf

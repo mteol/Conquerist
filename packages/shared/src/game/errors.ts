@@ -104,6 +104,10 @@ export const RuleViolationCode = {
   PROGRESS_CARD_IS_VICTORY: 'PROGRESS_CARD_IS_VICTORY',
   /** Dieser Spieler nimmt gerade keinen Rohstoff aus dem Aquaedukt. */
   NOT_CLAIMING_AQUEDUCT: 'NOT_CLAIMING_AQUEDUCT',
+  /** Diese Karte gibt es an diesem Tisch nicht. */
+  PROGRESS_CARD_NOT_IN_PLAY: 'PROGRESS_CARD_NOT_IN_PLAY',
+  /** Die Karte laesst sich gerade nicht sinnvoll spielen. */
+  PROGRESS_HAS_NO_EFFECT: 'PROGRESS_HAS_NO_EFFECT',
 
   /** Fuer diesen Tausch gibt es kein Verhaeltnis - oder es ist derselbe Rohstoff. */
   INVALID_TRADE: 'INVALID_TRADE',

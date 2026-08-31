@@ -27,7 +27,9 @@ import { reachableVertices } from './cities/knightMoves.js';
 import { canBuildWall } from './cities/walls.js';
 import { canImproveCity, claimsMetropolis } from './cities/improvements.js';
 import { TRACK_IDS } from './cities/tracks.js';
-import { PROGRESS_CARD_IDS } from './cities/progress/cards.js';
+import { PROGRESS_CARD_IDS, type ProgressCardId } from './cities/progress/cards.js';
+import { canPlayProgress } from './cities/progress/progressRules.js';
+import type { ProgressPlay } from './cities/progress/play.js';
 import { canDiscardProgressCard, canPickAqueduct, canPickProgressDeck } from './cities/rollFlow.js';
 import { RESOURCE_IDS } from '../scenario/index.js';
 
@@ -269,6 +271,21 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
       }
 
       /*
+       * Fortschrittskarten ohne Auswahl - Bergbau, Bewaesserung, Buchdruck,
+       * Heerfuehrer, Sabotage, Verfassung. Alles andere braeuchte eine
+       * Aufzaehlung ueber Kreuzungen, Kanten, Felder oder Sorten und bleibt wie
+       * Strassenbau, Erfindung und Monopol bei den Entwicklungskarten der
+       * Auswahl im Dialog ueberlassen.
+       */
+      for (const card of state.players[state.currentPlayerIndex]?.progressCards ?? []) {
+        const play = zeroArgumentProgressPlay(card);
+        if (play === null) continue;
+        if (canPlayProgress(state, player, play) === null) {
+          actions.push({ type: 'playProgress', player, play });
+        }
+      }
+
+      /*
        * Strassenbau, Erfindung und Monopol stehen hier bewusst NICHT als
        * fertige Zuege - wie bei `discard` waeren es dutzende Kombinationen
        * (jedes Kantenpaar, jedes Rohstoffpaar, jede Sorte). Die Auswahl trifft
@@ -299,6 +316,33 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
       actions.push({ type: 'endTurn', player });
       return actions;
     }
+  }
+}
+
+/**
+ * Baut die Wahl fuer eine Fortschrittskarte ohne Parameter - `null`, wenn
+ * diese Karte eine Auswahl braucht (oder an diesem Tisch gar keine Karte
+ * ist).
+ *
+ * Nur fuer `legalActions`: dieselbe Grenze wie bei Strassenbau, Erfindung und
+ * Monopol - Karten mit Auswahl werden dort nicht einzeln aufgezaehlt.
+ */
+function zeroArgumentProgressPlay(card: ProgressCardId): ProgressPlay | null {
+  switch (card) {
+    case 'mining':
+      return { card };
+    case 'irrigation':
+      return { card };
+    case 'printer':
+      return { card };
+    case 'warlord':
+      return { card };
+    case 'saboteur':
+      return { card };
+    case 'constitution':
+      return { card };
+    default:
+      return null;
   }
 }
 
