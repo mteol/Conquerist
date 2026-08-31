@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CardAmountsSchema, RuleSetSchema } from '../rules/index.js';
 import { ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { Seat } from '../seats.js';
+import { ProgressCardIdSchema } from './cities/progress/cards.js';
 import { TrackIdSchema } from './cities/tracks.js';
 import { DevelopmentCardIdSchema, DevelopmentCardSchema } from './development.js';
 import { RollSchema } from './dice.js';
@@ -49,6 +50,16 @@ export const PlayerInViewSchema = z.object({
    */
   developmentCards: z.array(DevelopmentCardSchema).nullable(),
   developmentCount: z.number().int().min(0),
+  /**
+   * Die offen liegenden Siegpunkt-Fortschrittskarten (Buchdruck, Verfassung).
+   *
+   * Nur diese beiden. Die uebrigen Fortschrittskarten liegen verdeckt und
+   * stehen bei Mitspielern nur als Anzahl - dieselbe Grenze wie bei den
+   * Handkarten.
+   */
+  openProgressCards: z.array(ProgressCardIdSchema).default([]),
+  /** Wie viele verdeckte Fortschrittskarten dieser Mitspieler haelt. */
+  progressCardCount: z.number().int().min(0).default(0),
   /** Ausgespielte Ritter. Oeffentlich - sie liegen offen. */
   playedKnights: z.number().int().min(0),
   /**
@@ -199,6 +210,9 @@ export function playerViewOf(
         resources: player.id === viewer ? player.resources : null,
         developmentCards: player.id === viewer ? player.developmentCards : null,
         developmentCount: player.developmentCards.length,
+        // Oeffentlich fuer alle - sie liegen offen vor dem Spieler.
+        openProgressCards: player.openProgressCards,
+        progressCardCount: player.progressCards.length,
         playedKnights: player.playedKnights,
         defenderPoints: player.defenderPoints,
         piecesLeft: player.piecesLeft,

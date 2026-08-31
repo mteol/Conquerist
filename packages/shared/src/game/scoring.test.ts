@@ -138,6 +138,44 @@ describe('Retter-Chips zaehlen mit', () => {
   });
 });
 
+describe('Offene Siegpunkt-Fortschrittskarten zaehlen mit', () => {
+  function withOpenCards(cards: readonly ('printer' | 'constitution')[]): GameState {
+    const base = gameWithCities();
+    return {
+      ...base,
+      players: base.players.map((player) =>
+        player.id === 'p1' ? { ...player, openProgressCards: [...cards] } : player,
+      ),
+    };
+  }
+
+  it('zaehlt jede offene Karte einen Punkt', () => {
+    // Die Stadt aus `gameWithCities` bringt zwei, jede offene Karte einen dazu.
+    expect(publicVictoryPointsOf(withOpenCards([]), 'p1')).toBe(2);
+    expect(publicVictoryPointsOf(withOpenCards(['printer', 'constitution']), 'p1')).toBe(4);
+  });
+
+  it('zaehlt oeffentlich - Buchdruck und Verfassung liegen offen vor dem Spieler', () => {
+    // Anders als die verdeckte Siegpunkt-Entwicklungskarte zaehlen sie schon
+    // in `publicVictoryPointsOf` und nicht erst in `victoryPointsOf`.
+    expect(victoryPointsOf(withOpenCards(['printer']), 'p1')).toBe(
+      publicVictoryPointsOf(withOpenCards(['printer']), 'p1'),
+    );
+  });
+
+  it('laesst die verdeckte Hand unberuehrt - dort zaehlen sie nicht', () => {
+    const base = gameWithCities();
+    const withHand: GameState = {
+      ...base,
+      players: base.players.map((player) =>
+        player.id === 'p1' ? { ...player, progressCards: ['printer', 'constitution'] } : player,
+      ),
+    };
+
+    expect(publicVictoryPointsOf(withHand, 'p1')).toBe(2);
+  });
+});
+
 describe('Die Metropole zaehlt mit', () => {
   it('zaehlt vier Punkte - zwei fuer die Stadt, zwei fuer den Aufsatz - und zaehlt oeffentlich', () => {
     const state = gameWithCities({

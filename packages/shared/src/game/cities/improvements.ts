@@ -1,4 +1,5 @@
 import type { VertexId } from '../../geometry/index.js';
+import type { CardAmounts } from '../../rules/index.js';
 import { addCards, canAfford, subtractCards } from '../cards.js';
 import { RuleViolationCode, violation, type RuleViolation } from '../errors.js';
 import type { PlayerId } from '../player.js';
@@ -17,6 +18,7 @@ import {
   MAX_TRACK_LEVEL,
   METROPOLIS_LEVEL,
   stepWithArticle,
+  TRACK_COMMODITY,
   type TrackId,
 } from './tracks.js';
 
@@ -26,6 +28,21 @@ import {
  * Metropolenvergabe hier und nicht in `build.ts`: sie ist die Folge eines
  * Ausbaus und kein eigener Bauzug.
  */
+
+/**
+ * Der Ausbaupreis nach dem Kran: eine Handelsware weniger, wenn `track` in
+ * `state.craneDiscount` steht - nie unter null.
+ *
+ * Eine Funktion und keine Ableitung in `canImproveCity`/`applyImproveCity`
+ * allein: beide brauchen denselben Preis, und zwei Rechnungen dafuer liefen
+ * bei einer spaeteren Aenderung auseinander.
+ */
+function priceWithCraneDiscount(state: GameState, track: TrackId, price: CardAmounts): CardAmounts {
+  if (!state.craneDiscount.includes(track)) return price;
+
+  const commodity = TRACK_COMMODITY[track];
+  return { ...price, [commodity]: Math.max(0, price[commodity] - 1) };
+}
 
 /** Wo der Aufsatz dieses Bereichs steht - `null`, wenn nirgends. */
 export function findMetropolisVertex(source: BuildingSource, track: TrackId): VertexId | null {
@@ -142,7 +159,7 @@ export function canImproveCity(
     }
   }
 
-  const price = improvementCost(track, level + 1);
+  const price = priceWithCraneDiscount(state, track, improvementCost(track, level + 1));
   if (!canAfford(owner.resources, price)) {
     return violation(
       RuleViolationCode.INSUFFICIENT_RESOURCES,
@@ -175,7 +192,7 @@ export function applyImproveCity(
 
   const owner = findPlayer(state, player)!;
   const level = levelOf(owner, track);
-  const price = improvementCost(track, level + 1);
+  const price = priceWithCraneDiscount(state, track, improvementCost(track, level + 1));
   const claims = claimsMetropolis(state, player, track);
 
   const buildings = { ...state.buildings };
@@ -198,5 +215,7 @@ export function applyImproveCity(
       improvements: { ...p.improvements, [track]: level + 1 },
     })),
     bank: addCards(state.bank, price),
+    // Der Kran gilt fuer genau ein Hochruecken - danach ist der Bereich weg.
+    craneDiscount: state.craneDiscount.filter((entry) => entry !== track),
   });
 }

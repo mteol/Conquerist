@@ -46,6 +46,14 @@ export function publicVictoryPointsOf(state: GameState, player: PlayerId): numbe
   const hand = state.players.find((entry) => entry.id === player);
   points += (hand?.defenderPoints ?? 0) * values.defender;
 
+  /*
+   * Buchdruck und Verfassung liegen offen vor dem Spieler, sobald gespielt -
+   * anders als die verdeckte Siegpunkt-Entwicklungskarte, die erst unten in
+   * `victoryPointsOf` zaehlt. Wer sie hier nicht mitzaehlte, kann den
+   * Punktestand am Tisch nicht nachrechnen.
+   */
+  points += (hand?.openProgressCards.length ?? 0) * values.progressCard;
+
   return points;
 }
 

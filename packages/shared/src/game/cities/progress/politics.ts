@@ -61,11 +61,18 @@ export function applySaboteur(
   return ok(state);
 }
 
+/** Verfassung: ein Siegpunkt, sofort offen - dieselbe Wirkung wie Buchdruck (`applyPrinter` in `science.ts`). */
 export function applyConstitution(
   state: GameState,
-  _player: PlayerId,
+  player: PlayerId,
   _play: Extract<ProgressPlay, { card: 'constitution' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: ein Siegpunkt, sofort offen.
-  return ok(state);
+  return ok({
+    ...state,
+    players: state.players.map((entry) =>
+      entry.id === player
+        ? { ...entry, openProgressCards: [...entry.openProgressCards, 'constitution'] }
+        : entry,
+    ),
+  });
 }

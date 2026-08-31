@@ -101,8 +101,14 @@ function claimsForRoll(state: GameState, roll: number): Claim[] {
   return claims;
 }
 
-/** Wendet eine Liste bewilligter Ansprueche auf Spieler und Bank an. */
-function payOut(state: GameState, granted: readonly Claim[]): GameState {
+/**
+ * Wendet eine Liste bewilligter Ansprueche auf Spieler und Bank an.
+ *
+ * **Exportiert** fuer `cities/progress/science.ts`: Bergbau und Bewaesserung
+ * rechnen ueber die Felder des Bretts und brauchen genau diese Funktion, damit
+ * die Bank mitgefuehrt wird - dieselbe Begruendung wie beim Aquaedukt.
+ */
+export function payOut(state: GameState, granted: readonly Claim[]): GameState {
   if (granted.length === 0) return state;
 
   const perPlayer = new Map<PlayerId, CardAmounts>();

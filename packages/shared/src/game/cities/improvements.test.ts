@@ -99,6 +99,34 @@ describe('canImproveCity / applyImproveCity - bauen', () => {
   });
 });
 
+describe('canImproveCity / applyImproveCity - der Kran-Rabatt', () => {
+  it('zieht eine Handelsware vom Preis ab, wenn der Bereich im Rabatt steht', () => {
+    const before: GameState = { ...gameWithCities(), craneDiscount: ['science'] };
+    const result = applyImproveCity(before, 'p1', 'science');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Stufe 1 der Wissenschaft kostet normalerweise ein Papier.
+    expect(playerOf(result.state, 'p1').resources).toEqual(hand());
+  });
+
+  it('laesst einen Bereich ohne Rabatt beim vollen Preis', () => {
+    const state: GameState = { ...gameWithCities(), craneDiscount: ['trade'] };
+    expect(canImproveCity(state, 'p1', 'science')?.code).toBe(
+      RuleViolationCode.INSUFFICIENT_RESOURCES,
+    );
+  });
+
+  it('streicht den Bereich nach dem Ausbau - der Rabatt gilt fuer genau ein Hochruecken', () => {
+    const before: GameState = { ...gameWithCities(), craneDiscount: ['science', 'trade'] };
+    const result = applyImproveCity(before, 'p1', 'science');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.craneDiscount).toEqual(['trade']);
+  });
+});
+
 describe('canImproveCity / applyImproveCity - die Metropole', () => {
   it('verlangt bei Stufe 4 und unvergebenem Aufsatz eine Stadt', () => {
     const state = giving(withLevels(gameWithCities(), 'p1', { trade: 3 }), 'p1', { cloth: 4 });

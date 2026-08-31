@@ -193,6 +193,52 @@ describe('PlayerView', () => {
   });
 });
 
+describe('Offene Fortschrittskarten in der Sicht', () => {
+  it('zeigt die zwei Siegpunktkarten auch den Mitspielern', () => {
+    const state = gameWithCities();
+    const withCards: GameState = {
+      ...state,
+      players: state.players.map((player) =>
+        player.id === 'p1'
+          ? { ...player, progressCards: ['crane'], openProgressCards: ['printer'] }
+          : player,
+      ),
+    };
+
+    const view = playerViewOf(withCards, 'p2', seats, 1);
+    const p1 = view.players.find((entry) => entry.id === 'p1');
+
+    expect(p1?.openProgressCards).toEqual(['printer']);
+  });
+
+  it('zeigt nur die Anzahl der verdeckten Fortschrittskarten', () => {
+    const state = gameWithCities();
+    const withCards: GameState = {
+      ...state,
+      players: state.players.map((player) =>
+        player.id === 'p1' ? { ...player, progressCards: ['crane', 'mining'] } : player,
+      ),
+    };
+
+    const view = playerViewOf(withCards, 'p2', seats, 1);
+    const p1 = view.players.find((entry) => entry.id === 'p1');
+
+    expect(p1?.progressCardCount).toBe(2);
+  });
+
+  it('geht durch das eigene Schema', () => {
+    const state = gameWithCities();
+    const withCards: GameState = {
+      ...state,
+      players: state.players.map((player) =>
+        player.id === 'p1' ? { ...player, openProgressCards: ['constitution'] } : player,
+      ),
+    };
+
+    expect(() => PlayerViewSchema.parse(playerViewOf(withCards, 'p1', seats, 1))).not.toThrow();
+  });
+});
+
 describe('Ausbaustufen in der Sicht', () => {
   it('traegt improvements bei jedem Spieler, nicht nur beim Empfaenger', () => {
     const state = afterSetup();

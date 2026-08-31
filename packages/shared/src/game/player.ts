@@ -41,6 +41,16 @@ export const PlayerStateSchema = z.object({
   /** Fortschrittskarten auf der Hand. Geheim - ausser den Siegpunktkarten. */
   progressCards: z.array(ProgressCardIdSchema).default([]),
   /**
+   * Die gespielten Siegpunkt-Fortschrittskarten (Buchdruck, Verfassung).
+   * **Oeffentlich** - sie liegen offen vor dem Spieler, sobald gespielt, und
+   * zaehlen deshalb in `publicVictoryPointsOf` statt erst in
+   * `victoryPointsOf`. Wer sie in `progressCards` liegen liesse, machte den
+   * Punktestand am Tisch unnachrechenbar.
+   *
+   * Mit Vorgabe wie jedes neue Feld: gespeichert wird nur der Startzustand.
+   */
+  openProgressCards: z.array(ProgressCardIdSchema).default([]),
+  /**
    * Ausgespielte Ritter. **Oeffentlich** - sie liegen offen vor dem Spieler und
    * entscheiden die Groesste Rittermacht. Deshalb eine eigene Zahl und nicht
    * bloss ein Zaehlen der Handkarten.

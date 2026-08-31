@@ -204,6 +204,14 @@ export const GameStateSchema = z.object({
    * Spieler, weil immer nur einer am Zug ist - und `endTurn` setzt ihn zurueck.
    */
   developmentPlayed: z.boolean(),
+  /**
+   * Fuer welche Bereiche der naechste Ausbau in diesem Zug eine Handelsware
+   * weniger kostet. Leer heisst: kein Rabatt.
+   *
+   * Am Zustand und nicht beim Spieler, aus demselben Grund wie
+   * `developmentPlayed`: es ist immer nur einer am Zug, und `endTurn` raeumt ab.
+   */
+  craneDiscount: z.array(TrackIdSchema).default([]),
   /** Der Zufallszustand. Geheim - siehe Kopf dieser Datei. */
   rng: RngSchema,
   /**

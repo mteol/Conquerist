@@ -14,8 +14,9 @@ import type { ProgressPlay } from './play.js';
 /**
  * Die zehn Wissenschaftskarten - Kran bis Strassenbau.
  *
- * **Aufgabe 6.** Bergbau, Bewaesserung, Strassenbau, Medizin, Ingenieur und
- * Schmied haben ab hier eine Wirkung. Alchemie, Kran, Buchdruck und Erfinder
+ * **Aufgabe 6 und 7.** Bergbau, Bewaesserung, Strassenbau, Medizin, Ingenieur
+ * und Schmied (Aufgabe 6) sowie Kran und Buchdruck (Aufgabe 7, Verfassung
+ * steht in `politics.ts`) haben ab hier eine Wirkung. Alchemie und Erfinder
  * folgen in spaeteren Aufgaben.
  *
  * **Keine Wirkung hier baut selbst aufs Brett.** Strassenbau, Medizin,
@@ -71,13 +72,19 @@ export function applyAlchemist(
   return ok(state);
 }
 
+/**
+ * Kran: ein Stadtausbau kostet in diesem Zug eine Handelsware weniger.
+ *
+ * Legt nur den Vermerk ab - `canImproveCity`/`applyImproveCity` in
+ * `cities/improvements.ts` lesen `craneDiscount` beim Preis und streichen den
+ * Bereich nach dem Ausbau. `endTurn` raeumt ihn ab, falls er ungenutzt blieb.
+ */
 export function applyCrane(
   state: GameState,
   _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'crane' }>,
+  play: Extract<ProgressPlay, { card: 'crane' }>,
 ): ReduceResult {
-  // Wirkung folgt in Aufgabe 7: ein Ausbau kostet eine Ware weniger.
-  return ok(state);
+  return ok({ ...state, craneDiscount: [...state.craneDiscount, play.track] });
 }
 
 /** Wie viele Felder dieser Gelaendeart eine eigene Siedlung oder Stadt tragen - je Feld hoechstens einmal gezaehlt. */
@@ -137,13 +144,20 @@ export function applyIrrigation(
   return applyFieldBonus(state, player, 'fields', 'grain');
 }
 
+/** Buchdruck: ein Siegpunkt, sofort offen - siehe `applyConstitution` in `politics.ts`. */
 export function applyPrinter(
   state: GameState,
-  _player: PlayerId,
+  player: PlayerId,
   _play: Extract<ProgressPlay, { card: 'printer' }>,
 ): ReduceResult {
-  // Wirkung folgt in Aufgabe 7: ein Siegpunkt, sofort offen.
-  return ok(state);
+  return ok({
+    ...state,
+    players: state.players.map((entry) =>
+      entry.id === player
+        ? { ...entry, openProgressCards: [...entry.openProgressCards, 'printer'] }
+        : entry,
+    ),
+  });
 }
 
 export function applyInventor(

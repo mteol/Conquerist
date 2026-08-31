@@ -11,12 +11,14 @@ import {
   CENTER_VERTEX,
   FAR_VERTEX,
   NEXT_EDGE,
+  gameWithCities,
   giving,
   hand,
   testGame,
 } from '../../fixtures.js';
 import type { PlayerId, PlayerState } from '../../player.js';
 import type { Building, GameState, Knight } from '../../state.js';
+import { applyImproveCity } from '../improvements.js';
 import { knightAt } from '../knights.js';
 import type { ProgressCardId } from './cards.js';
 import { applyPlayProgress } from './progressRules.js';
@@ -315,6 +317,63 @@ describe('Wissenschaft: Ertrag und Bau', () => {
       const result = applyPlayProgress(twoKnightsNoFortress, 'p1', { card: 'smith', vertices: [] });
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.code).toBe(RuleViolationCode.PROGRESS_HAS_NO_EFFECT);
+    });
+  });
+});
+
+describe('Kran, Buchdruck und Verfassung', () => {
+  describe('Kran', () => {
+    const state = withHand(giving(gameWithCities(), 'p1', { paper: 1 }), 'p1', ['crane']);
+
+    it('zieht dem naechsten Ausbau eine Handelsware ab', () => {
+      const played = applyPlayProgress(state, 'p1', { card: 'crane', track: 'science' });
+      expect(played.ok).toBe(true);
+      if (!played.ok) return;
+
+      const improved = applyImproveCity(played.state, 'p1', 'science', undefined);
+      expect(improved.ok).toBe(true);
+      if (!improved.ok) return;
+
+      // Stufe 1 der Wissenschaft kostet normalerweise ein Papier - mit dem
+      // Kran nichts, das Papier bleibt also stehen.
+      expect(playerNamed(improved.state, 'p1').resources.paper).toBe(1);
+    });
+
+    it('gilt fuer genau ein Hochruecken', () => {
+      const played = applyPlayProgress(state, 'p1', { card: 'crane', track: 'science' });
+      expect(played.ok).toBe(true);
+      if (!played.ok) return;
+
+      const improved = applyImproveCity(played.state, 'p1', 'science', undefined);
+      expect(improved.ok).toBe(true);
+      if (!improved.ok) return;
+
+      // Nach dem ersten Ausbau ist der Rabatt weg.
+      expect(improved.state.craneDiscount).toEqual([]);
+    });
+  });
+
+  describe('Buchdruck und Verfassung', () => {
+    it('legt Buchdruck offen ab und nimmt ihn von der Hand', () => {
+      const state = withHand(citiesTable(), 'p1', ['printer']);
+      const result = applyPlayProgress(state, 'p1', { card: 'printer' });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(playerNamed(result.state, 'p1').progressCards).toEqual([]);
+        expect(playerNamed(result.state, 'p1').openProgressCards).toEqual(['printer']);
+      }
+    });
+
+    it('legt Verfassung offen ab und nimmt sie von der Hand', () => {
+      const state = withHand(citiesTable(), 'p1', ['constitution']);
+      const result = applyPlayProgress(state, 'p1', { card: 'constitution' });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(playerNamed(result.state, 'p1').progressCards).toEqual([]);
+        expect(playerNamed(result.state, 'p1').openProgressCards).toEqual(['constitution']);
+      }
     });
   });
 });
