@@ -234,6 +234,14 @@ function phaseTextOf(view: PlayerView): string {
       return `${currentName()} ist am Zug`;
     case 'tradePending':
       return `${nameOf(view.phase.offer.from)} bietet einen Tausch an`;
+    case 'progressDiscardPending':
+      // Wie im Auftakt handelt nur der Vorderste der Warteschlange - die
+      // Übrigen folgen erst, wenn er abgegeben hat.
+      return `${nameOf(view.phase.pending[0] ?? null)} muss eine Fortschrittskarte abgeben`;
+    case 'defenderPending':
+      return `${nameOf(view.phase.pending[0] ?? null)} wählt einen Fortschrittsstapel`;
+    case 'aqueductPending':
+      return `${nameOf(view.phase.pending[0] ?? null)} nimmt einen Rohstoff aus dem Aquädukt`;
     case 'finished':
       return `${nameOf(view.phase.winner)} hat gewonnen`;
   }

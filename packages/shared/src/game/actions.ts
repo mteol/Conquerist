@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { CardAmountsSchema } from '../rules/index.js';
 import { CardIdSchema, ResourceIdSchema } from '../scenario/index.js';
+import { ProgressCardIdSchema } from './cities/progress/cards.js';
 import { TrackIdSchema } from './cities/tracks.js';
 import { PlayerIdSchema } from './player.js';
 
@@ -211,6 +212,23 @@ export const GameActionSchema = z.discriminatedUnion('type', [
     metropolisAt: z.string().optional(),
   }),
 
+  /*
+   * Die drei Wartestationen eines Wurfs (Etappe 10d). Alle drei sind eine
+   * **Wahl**, die vorher eine feste Regel oder gar nichts war - deshalb je
+   * eine eigene Aktion und kein Feld an `rollDice`: sie kommen erst, wenn der
+   * Wurf schon gefallen ist.
+   */
+  /** Gleichstand in der Verteidigung: von welchem Stapel die Karte kommt. */
+  z.object({ ...Base, type: z.literal('pickProgressDeck'), track: TrackIdSchema }),
+  /** Mehr als vier zaehlende Fortschrittskarten: welche abgegeben wird. */
+  z.object({
+    ...Base,
+    type: z.literal('discardProgressCard'),
+    card: ProgressCardIdSchema,
+  }),
+  /** Aquaedukt: welchen Rohstoff der Leerausgegangene nimmt. */
+  z.object({ ...Base, type: z.literal('pickAqueduct'), resource: ResourceIdSchema }),
+
   z.object({ ...Base, type: z.literal('endTurn') }),
 ]);
 
@@ -263,6 +281,9 @@ export const GAME_ACTION_TYPES = [
   'chaseRobber',
   'placeDisplacedKnight',
   'improveCity',
+  'pickProgressDeck',
+  'discardProgressCard',
+  'pickAqueduct',
   'endTurn',
 ] as const satisfies readonly GameActionType[];
 

@@ -3,7 +3,7 @@ import { applyBuildCity, applyBuildRoad, applyBuildSettlement } from './build.js
 import { rollAll, yieldTotal } from './dice.js';
 import { RuleViolationCode, violation } from './errors.js';
 import type { PlayerId } from './player.js';
-import { afterDiscardPhase, applyDiscard, applyMoveRobber, playersMustDiscard } from './robber.js';
+import { applyDiscard, applyMoveRobber, continueAfterSeven } from './robber.js';
 import { recomputeLongestRoad } from './roads.js';
 import { hasWon } from './scoring.js';
 import { applyOpeningRoll } from './opening.js';
@@ -29,8 +29,13 @@ import {
   applyPlayRoadBuilding,
   applyPlayYearOfPlenty,
 } from './developmentRules.js';
-import { distributeYield, grantAqueduct } from './yield.js';
 import { resolveEvent } from './cities/turn.js';
+import {
+  applyDiscardProgressCard,
+  applyPickAqueduct,
+  applyPickProgressDeck,
+  continueAfterEvent,
+} from './cities/rollFlow.js';
 import { applyActivateKnight, applyBuildKnight, applyUpgradeKnight } from './cities/knights.js';
 import {
   applyChaseRobber,
@@ -61,6 +66,14 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
   rollPending: ['rollDice', 'playKnight', 'playRoadBuilding', 'playYearOfPlenty', 'playMonopoly'],
   discardPending: ['discard'],
   robberPending: ['moveRobber'],
+  /*
+   * Die drei Wartestationen eines Wurfs. Jede laesst genau eine Aktion zu -
+   * der Tisch steht still, bis sie kommt, und das ist Absicht: was danach
+   * geschieht, haengt an dieser Wahl.
+   */
+  progressDiscardPending: ['discardProgressCard'],
+  defenderPending: ['pickProgressDeck'],
+  aqueductPending: ['pickAqueduct'],
   main: [
     'buildRoad',
     'buildSettlement',
@@ -105,6 +118,18 @@ function actorFor(state: GameState): PlayerId | null {
   if (state.phase.kind === 'opening') return openingRoller(state.phase);
   if (state.phase.kind === 'setup') return setupPlayer(state);
   if (state.phase.kind === 'discardPending') return null;
+  /*
+   * Bei diesen dreien handelt der **erste** Eintrag der Warteschlange und
+   * nicht die ganze Liste: sie greifen alle auf einen endlichen Vorrat zu -
+   * die oberste Karte eines Stapels, die letzte Karte einer Sorte in der Bank.
+   */
+  if (
+    state.phase.kind === 'progressDiscardPending' ||
+    state.phase.kind === 'defenderPending' ||
+    state.phase.kind === 'aqueductPending'
+  ) {
+    return state.phase.pending[0] ?? null;
+  }
   // Wie beim Abwerfen handeln mehrere: der Anbieter und seine Mitspieler. Wer
   // genau was darf, prueft `playerTrade.ts`.
   if (state.phase.kind === 'tradePending') return null;
@@ -146,22 +171,24 @@ function rollDice(state: GameState): ReduceResult {
    */
   const afterEvent = resolveEvent(rolled, roll);
 
-  if (total !== state.rules.robberRoll) {
-    /*
-     * Aquaedukt: wer bei diesem Wurf leer ausging und die Ausbaustufe hat,
-     * nimmt einen Rohstoff. Nicht auf dem Sieben-Pfad darunter - eine Sieben
-     * ruft den Raeuber und verteilt keinen Ertrag, an dem "leer ausgegangen"
-     * ueberhaupt etwas bedeuten wuerde.
-     */
-    const distributed = distributeYield(afterEvent, total);
-    return ok({ ...grantAqueduct(distributed, afterEvent), phase: { kind: 'main' } });
-  }
+  /*
+   * Das Ereignis kann selbst schon auf eine Wahl warten: bei Gleichstand in
+   * der Verteidigung waehlt jeder Beteiligte seinen Fortschrittsstapel. Dann
+   * steht der Wurf hier still, und `continueAfterDefender` nimmt ihn danach
+   * wieder auf - auf beiden Pfaden, dem Ertrag wie der Sieben.
+   */
+  if (afterEvent.phase.kind === 'defenderPending') return ok(afterEvent);
 
-  const pending = playersMustDiscard(afterEvent);
-  return ok({
-    ...afterEvent,
-    phase: pending.length > 0 ? { kind: 'discardPending', pending } : afterDiscardPhase(afterEvent),
-  });
+  /*
+   * Was nach dem Ereignis kommt - Abgeben, Ertraege, Aquaedukt -, steht in
+   * `cities/rollFlow.ts` und nicht hier: es sind drei Stationen, von denen
+   * jede den Wurf anhalten kann, und ihre Reihenfolge soll an genau einer
+   * Stelle stehen. Der Sieben-Pfad bleibt daneben, wie er war: eine Sieben
+   * verteilt keinen Ertrag, an dem "leer ausgegangen" etwas bedeuten wuerde.
+   */
+  if (total !== state.rules.robberRoll) return ok(continueAfterEvent(afterEvent, total));
+
+  return ok(continueAfterSeven(afterEvent));
 }
 
 /** Gibt den Zug weiter und zaehlt die Runde, sobald sie herum ist. */
@@ -318,6 +345,12 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
       return applyDropFromTrade(state, action.player);
     case 'rejoinTrade':
       return applyRejoinTrade(state, action.player);
+    case 'pickProgressDeck':
+      return applyPickProgressDeck(state, action.player, action.track);
+    case 'discardProgressCard':
+      return applyDiscardProgressCard(state, action.player, action.card);
+    case 'pickAqueduct':
+      return applyPickAqueduct(state, action.player, action.resource);
     case 'endTurn':
       return endTurn(state);
   }

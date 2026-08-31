@@ -12,6 +12,7 @@ export * from './improvements.js';
 export * from './knightActions.js';
 export * from './knightMoves.js';
 export * from './knights.js';
+export * from './rollFlow.js';
 export * from './tracks.js';
 export * from './turn.js';
 export * from './walls.js';

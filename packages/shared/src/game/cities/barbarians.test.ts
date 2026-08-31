@@ -188,6 +188,47 @@ describe('barbarianOutcome - die Ritter gewinnen', () => {
     expect(barbarianOutcome(state).savior).toBeNull();
   });
 
+  /*
+   * Statt des Chips zieht bei Gleichstand jeder Beteiligte eine
+   * Fortschrittskarte seiner Wahl - seit 10d gibt es die Stapel dafuer, und
+   * `applyBarbarianAttack` haelt den Wurf mit `defenderPending` an.
+   */
+  it('nennt bei Gleichstand die Beteiligten in Zugreihenfolge', () => {
+    const state = landed({
+      buildings: { [CENTER_VERTEX]: city('p1') },
+      knights: { [ADJACENT_VERTEX]: knight('p1', 2), [POOR]: knight('p2', 2) },
+    });
+
+    expect(barbarianOutcome(state).tiedLeaders).toEqual(['p1', 'p2']);
+  });
+
+  it('haelt bei Gleichstand fuer die Stapelwahl an', () => {
+    const state = landed({
+      buildings: { [CENTER_VERTEX]: city('p1') },
+      knights: { [ADJACENT_VERTEX]: knight('p1', 2), [POOR]: knight('p2', 2) },
+      progressDecks: { science: ['crane', 'mining'] },
+    });
+
+    expect(applyBarbarianAttack(state).phase).toEqual({
+      kind: 'defenderPending',
+      pending: ['p1', 'p2'],
+    });
+  });
+
+  /*
+   * Ohne eine einzige Karte auf allen drei Stapeln gibt es nichts zu waehlen -
+   * die Phase oeffnet dann gar nicht erst, sonst hielte sie den Tisch fuer
+   * nichts an.
+   */
+  it('haelt nicht an, wenn alle Stapel leer sind', () => {
+    const state = landed({
+      buildings: { [CENTER_VERTEX]: city('p1') },
+      knights: { [ADJACENT_VERTEX]: knight('p1', 2), [POOR]: knight('p2', 2) },
+    });
+
+    expect(applyBarbarianAttack(state).phase).toEqual(state.phase);
+  });
+
   it('gibt keinen Chip, wenn niemand etwas beigetragen hat', () => {
     // Ohne Staedte ist die Staerke der Barbaren null, und null gegen null
     // gewinnen die Ritter - beigetragen hat trotzdem keiner.

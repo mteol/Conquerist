@@ -2,6 +2,7 @@ import type { VertexId } from '../../geometry/index.js';
 import { boardOf } from '../board.js';
 import type { PlayerId, PlayerState } from '../player.js';
 import type { GameState } from '../state.js';
+import { anyProgressCardsLeft } from './progress/draw.js';
 
 /**
  * Das Heer der Barbaren.
@@ -126,6 +127,15 @@ export interface BarbarianOutcome {
   readonly won: boolean;
   /** Wer den Retter-Chip bekommt. `null` bei Gleichstand oder Niederlage. */
   readonly savior: PlayerId | null;
+  /**
+   * Die gleichauf Hoechstbeitragenden bei einem Sieg: jeder von ihnen zieht
+   * eine Fortschrittskarte seiner Wahl (Regel 8.2).
+   *
+   * Leer, wenn es einen alleinigen Retter gab, wenn niemand etwas beigetragen
+   * hat oder wenn die Barbaren gewonnen haben. Chip **oder** Karten - beides
+   * gibt es nie zugleich.
+   */
+  readonly tiedLeaders: readonly PlayerId[];
   /** Wessen Stadt faellt, und welche. Leer, wenn die Ritter gewonnen haben. */
   readonly losses: readonly { readonly player: PlayerId; readonly vertex: VertexId }[];
 }
@@ -160,6 +170,22 @@ function cityToLose(state: GameState, player: PlayerId): VertexId | null {
 }
 
 /**
+ * Dieselben Spieler, im Uhrzeigersinn ab dem Spieler am Zug.
+ *
+ * Die Beitragstabelle steht in Sitzreihenfolge; wer bei Gleichstand zuerst
+ * seinen Stapel waehlt, entscheidet aber der Zug - dieselbe Reihenfolge, in
+ * der auch am Stadttor gezogen wird. Sie zaehlt wirklich: die Stapel sind
+ * endlich, und die oberste Karte gibt es nur einmal.
+ */
+function inTurnOrder(state: GameState, players: readonly PlayerId[]): PlayerId[] {
+  const seats = state.players.map((player) => player.id);
+  const rank = (id: PlayerId): number =>
+    (seats.indexOf(id) - state.currentPlayerIndex + seats.length) % seats.length;
+
+  return [...players].sort((left, right) => rank(left) - rank(right));
+}
+
+/**
  * Rechnet den Ausgang des Ueberfalls.
  *
  * **Gleichstand gewinnt die Verteidigung** - so steht es in der Anleitung, und
@@ -178,13 +204,15 @@ export function barbarianOutcome(state: GameState): BarbarianOutcome {
 
     /*
      * Der Chip geht nur an einen **alleinigen** Hoechstbeitragenden, und nur
-     * wenn ueberhaupt jemand etwas beigetragen hat. Bei Gleichstand zoegen die
-     * Beteiligten laut Regel je eine Fortschrittskarte - die gibt es erst in
-     * 10d, und deshalb geschieht hier bei Gleichstand nichts.
+     * wenn ueberhaupt jemand etwas beigetragen hat. Bei Gleichstand zieht
+     * stattdessen jeder Beteiligte eine Fortschrittskarte seiner Wahl - seit
+     * 10d gibt es die Stapel, und `defenderPending` haelt den Wurf fuer die
+     * Wahl an.
      */
     const savior = best > 0 && leaders.length === 1 ? leaders[0]! : null;
+    const tiedLeaders = best > 0 && leaders.length > 1 ? inTurnOrder(state, leaders) : [];
 
-    return { barbarians, defenders, won: true, savior, losses: [] };
+    return { barbarians, defenders, won: true, savior, tiedLeaders, losses: [] };
   }
 
   // Betroffen ist nur, wer eine Stadt hat - wer bloss Siedlungen haelt, hat
@@ -194,7 +222,7 @@ export function barbarianOutcome(state: GameState): BarbarianOutcome {
     .filter((entry): entry is { id: PlayerId; city: VertexId } => entry.city !== null);
 
   if (affected.length === 0) {
-    return { barbarians, defenders, won: false, savior: null, losses: [] };
+    return { barbarians, defenders, won: false, savior: null, tiedLeaders: [], losses: [] };
   }
 
   const lowest = Math.min(...affected.map((entry) => shares.get(entry.id) ?? 0));
@@ -204,6 +232,7 @@ export function barbarianOutcome(state: GameState): BarbarianOutcome {
     defenders,
     won: false,
     savior: null,
+    tiedLeaders: [],
     losses: affected
       .filter((entry) => (shares.get(entry.id) ?? 0) === lowest)
       .map((entry) => ({ player: entry.id, vertex: entry.city })),
@@ -287,5 +316,18 @@ export function applyBarbarianAttack(state: GameState): GameState {
     knights,
     barbarians:
       state.barbarians === null ? null : { position: 0, attacks: state.barbarians.attacks + 1 },
+    /*
+     * Bei Gleichstand an der Spitze haelt der Wurf hier an: jeder Beteiligte
+     * waehlt seinen Stapel. Die Phase steht in diesem Zweig und nicht beim
+     * Aufrufer, weil nur hier bekannt ist, dass es einen Gleichstand gab -
+     * `continueAfterDefender` nimmt den Wurf danach wieder auf.
+     *
+     * Sind alle drei Stapel leer, gibt es nichts zu waehlen, und die Phase
+     * oeffnet gar nicht erst.
+     */
+    phase:
+      outcome.tiedLeaders.length > 0 && anyProgressCardsLeft(state)
+        ? { kind: 'defenderPending', pending: [...outcome.tiedLeaders] }
+        : state.phase,
   };
 }

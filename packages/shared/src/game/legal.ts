@@ -27,6 +27,9 @@ import { reachableVertices } from './cities/knightMoves.js';
 import { canBuildWall } from './cities/walls.js';
 import { canImproveCity, claimsMetropolis } from './cities/improvements.js';
 import { TRACK_IDS } from './cities/tracks.js';
+import { PROGRESS_CARD_IDS } from './cities/progress/cards.js';
+import { canDiscardProgressCard, canPickAqueduct, canPickProgressDeck } from './cities/rollFlow.js';
+import { RESOURCE_IDS } from '../scenario/index.js';
 
 /**
  * Was dieser Spieler gerade tun darf.
@@ -99,6 +102,39 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
     case 'discardPending':
       // Siehe Kopfkommentar: die Auswahl trifft der Spieler selbst.
       return [];
+
+    /*
+     * Die drei Wartestationen eines Wurfs stehen hier **vollstaendig** und
+     * nicht wie das Abwerfen als leere Liste: es sind je hoechstens eine
+     * Handvoll Zuege - drei Stapel, fuenf Rohstoffe, die eigenen Karten -,
+     * und die Oberflaeche kann daraus unmittelbar Knoepfe machen.
+     */
+    case 'defenderPending': {
+      for (const track of TRACK_IDS) {
+        if (canPickProgressDeck(state, player, track) === null) {
+          actions.push({ type: 'pickProgressDeck', player, track });
+        }
+      }
+      return actions;
+    }
+
+    case 'progressDiscardPending': {
+      for (const card of PROGRESS_CARD_IDS) {
+        if (canDiscardProgressCard(state, player, card) === null) {
+          actions.push({ type: 'discardProgressCard', player, card });
+        }
+      }
+      return actions;
+    }
+
+    case 'aqueductPending': {
+      for (const resource of RESOURCE_IDS) {
+        if (canPickAqueduct(state, player, resource) === null) {
+          actions.push({ type: 'pickAqueduct', player, resource });
+        }
+      }
+      return actions;
+    }
 
     case 'tradePending': {
       const trade = state.phase;

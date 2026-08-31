@@ -202,52 +202,41 @@ export function grantSetupYield(state: GameState, player: PlayerId, vertex: Vert
   return payOut(state, claims);
 }
 
+/** Ob die Bank ueberhaupt noch einen Rohstoff hergibt. */
+export function bankHasResource(state: GameState): boolean {
+  return RESOURCE_IDS.some((resource) => state.bank[resource] > 0);
+}
+
 /**
- * Wer beim Wurf leer ausging und das Aquaedukt hat, nimmt einen Rohstoff.
+ * Wer das Aquaedukt hat und bei diesem Wurf leer ausging.
  *
- * `pick` ist die Wahl des Spielers - in 10c trifft sie der Zustand, siehe
- * Kommentar. Gibt denselben Zustand zurueck, wenn niemand betroffen ist.
+ * Die Funktion beantwortet nur noch das **Wer**; das **Was** beantwortet der
+ * Spieler mit `pickAqueduct`, und die Phase `aqueductPending` haelt den Wurf
+ * dafuer an. Bis 10c waehlte hier eine feste Regel den Rohstoff ("der, von dem
+ * die Bank am meisten hat") - eine Notloesung, solange es die Phase nicht gab.
+ * Sie ist ersatzlos weg, und mit ihr die mitgefuehrte Bank: wer nacheinander
+ * waehlt, kann die letzte Karte einer Sorte nicht zweimal bekommen.
  *
- * **Bewusste Abweichung von der Anleitung:** die Originalregel laesst den
- * Spieler waehlen. Eine Wahl waere eine Phase, und diese Phase laege mitten
- * im Wurf - dieselbe Ueberlegung, mit der 10b die Staedtewahl beim Ueberfall
- * entschieden hat. Genommen wird deshalb nach einer festen Regel: der
- * Rohstoff, von dem die Bank am meisten hat, bei Gleichstand der in
- * `RESOURCE_IDS` zuerst genannte. Soll die Wahl spaeter doch kommen, ist ein
- * `aqueductPending` in der Phase der richtige Ort dafuer - dieselbe Bauform
- * wie `discardPending`.
+ * "Leer ausgegangen" heisst: nach der Verteilung nicht mehr Karten als davor.
+ * Deshalb zwei Zustaende - der Vergleich ist die Regel, und ein Merker im
+ * Zustand waere eine zweite Wahrheit daneben.
  */
-export function grantAqueduct(state: GameState, before: GameState): GameState {
-  const claims: Claim[] = [];
-
+export function aqueductClaimants(state: GameState, before: GameState): PlayerId[] {
   /*
-   * Die Bank wird beim Zuteilen mitgefuehrt: bekaeme sonst ein zweiter
-   * Spieler denselben knappen Rohstoff wie der erste, gaebe `payOut` mehr
-   * aus, als die Bank hat, und `subtractCards` wuerfe. Die Reihenfolge der
-   * Spieler entscheidet damit, wer bei einem Gleichstand zuerst greift - eine
-   * feste, nachvollziehbare Regel statt eines stillen Fehlers.
+   * Eine leere Bank laesst niemanden waehlen, und eine Phase, die auf eine
+   * Wahl ohne Moeglichkeiten wartet, haelt den Tisch fuer nichts an -
+   * dieselbe Haltung wie bei `displacePending`.
    */
-  let remainingBank = state.bank;
+  if (!bankHasResource(state)) return [];
 
-  for (const player of state.players) {
-    if (!hasAqueduct(player)) continue;
+  return state.players
+    .filter((player) => {
+      if (!hasAqueduct(player)) return false;
 
-    const beforePlayer = before.players.find((entry) => entry.id === player.id);
-    if (beforePlayer === undefined) continue;
-    if (countCards(player.resources) > countCards(beforePlayer.resources)) continue;
+      const beforePlayer = before.players.find((entry) => entry.id === player.id);
+      if (beforePlayer === undefined) return false;
 
-    // Der Rohstoff, von dem die Bank am meisten hat - bei Gleichstand der in
-    // `RESOURCE_IDS` zuerst genannte.
-    let best: ResourceId | null = null;
-    for (const resource of RESOURCE_IDS) {
-      if (remainingBank[resource] <= 0) continue;
-      if (best === null || remainingBank[resource] > remainingBank[best]) best = resource;
-    }
-    if (best === null) continue;
-
-    claims.push({ player: player.id, card: best, amount: 1 });
-    remainingBank = { ...remainingBank, [best]: remainingBank[best] - 1 };
-  }
-
-  return payOut(state, claims);
+      return countCards(player.resources) <= countCards(beforePlayer.resources);
+    })
+    .map((player) => player.id);
 }

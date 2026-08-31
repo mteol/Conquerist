@@ -90,6 +90,18 @@ function nextActor(state: GameState): string | null {
   // einzige, der eine ganze Partie von vorn durchlaeuft.
   if (state.phase.kind === 'opening') return state.phase.pending[0] ?? null;
   if (state.phase.kind === 'discardPending') return state.phase.pending[0] ?? null;
+  /*
+   * Die drei Wartestationen eines Wurfs: es handelt der erste Eintrag der
+   * Warteschlange und nicht der Spieler am Zug - wer eine Fortschrittskarte
+   * abgeben muss, ist gerade **nicht** am Zug.
+   */
+  if (
+    state.phase.kind === 'progressDiscardPending' ||
+    state.phase.kind === 'defenderPending' ||
+    state.phase.kind === 'aqueductPending'
+  ) {
+    return state.phase.pending[0] ?? null;
+  }
   if (state.phase.kind === 'finished') return null;
   if (state.phase.kind === 'setup') {
     const count = state.players.length;
@@ -335,6 +347,11 @@ describe('Eine Partie bis zur Kueste', () => {
     'moveRobber',
     // Ein vertriebener Ritter haelt den Tisch an - er kommt vor allem anderen.
     'placeDisplacedKnight',
+    // Dasselbe gilt fuer die drei Wartestationen eines Wurfs: solange eine
+    // offen ist, geht am Tisch nichts anderes.
+    'pickProgressDeck',
+    'discardProgressCard',
+    'pickAqueduct',
     'buildCity',
     'buildSettlement',
     'buildKnight',
@@ -472,6 +489,11 @@ describe('Eine Partie bis zur ersten Metropole', () => {
     'rollDice',
     'moveRobber',
     'placeDisplacedKnight',
+    // Dasselbe gilt fuer die drei Wartestationen eines Wurfs: solange eine
+    // offen ist, geht am Tisch nichts anderes.
+    'pickProgressDeck',
+    'discardProgressCard',
+    'pickAqueduct',
     'buildCity',
     // Weit vorn, wie im Auftrag verlangt: sonst baut der Treiber lieber
     // Strassen, und der Ausbau kommt nie an die Reihe.

@@ -50,6 +50,11 @@ describe('PhaseSchema', () => {
       { kind: 'rollPending' },
       { kind: 'discardPending', pending: ['p1', 'p2'] },
       { kind: 'robberPending', resume: 'main' },
+      // Die drei Wartestationen eines Wurfs - dieselbe Bauform wie
+      // `discardPending`, und alle drei koennen leer laufen.
+      { kind: 'progressDiscardPending', pending: ['p2'] },
+      { kind: 'defenderPending', pending: ['p1', 'p2'] },
+      { kind: 'aqueductPending', pending: ['p1'] },
       { kind: 'main' },
       { kind: 'finished', winner: 'p1' },
     ];

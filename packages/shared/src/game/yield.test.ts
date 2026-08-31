@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { EMPTY_CARDS, countCards } from './cards.js';
-import type { CardAmounts } from '../rules/index.js';
+import { EMPTY_CARDS } from './cards.js';
 import { CENTER_VERTEX, gameWithCities, giving, hand, testGame } from './fixtures.js';
 import type { GameState } from './state.js';
-import { distributeYield, grantAqueduct, grantSetupYield } from './yield.js';
+import { aqueductClaimants, distributeYield, grantSetupYield } from './yield.js';
 
 /**
  * Zwei Knoten am Huegelfeld `1,-1` (Chip 6, Lehm), die einander *nicht*
@@ -266,62 +265,42 @@ function withScience(state: GameState, id: string, level: number): GameState {
   };
 }
 
-/** Die Hand eines Spielers - kurz, weil jeder Test sie vergleicht. */
-function handOf(state: GameState, id: string): CardAmounts {
-  return state.players.find((p) => p.id === id)!.resources;
-}
-
 /** `base` ohne Ertrag, `gained` mit einer Karte mehr fuer p1. */
 const base = gameWithCities();
 const gained = giving(base, 'p1', { brick: 1 });
 
 describe('Das Aquaedukt', () => {
-  it('gibt einen Rohstoff, wer beim Wurf leer ausging', () => {
+  it('nennt, wer beim Wurf leer ausging', () => {
     // p1 hat Wissenschaft 3 und liegt an keinem Feld mit dieser Zahl.
-    const after = grantAqueduct(withScience(base, 'p1', 3), base);
-    expect(countCards(handOf(after, 'p1'))).toBe(countCards(handOf(base, 'p1')) + 1);
+    expect(aqueductClaimants(withScience(base, 'p1', 3), base)).toEqual(['p1']);
   });
 
-  it('gibt nichts, wer etwas bekommen hat', () => {
-    const after = grantAqueduct(withScience(gained, 'p1', 3), base);
-    expect(handOf(after, 'p1')).toEqual(handOf(gained, 'p1'));
+  it('nennt nicht, wer etwas bekommen hat', () => {
+    expect(aqueductClaimants(withScience(gained, 'p1', 3), base)).toEqual([]);
   });
 
-  it('gibt nichts ohne Wissenschaft drei', () => {
-    const after = grantAqueduct(withScience(base, 'p1', 2), base);
-    expect(handOf(after, 'p1')).toEqual(handOf(base, 'p1'));
-  });
-
-  it('nimmt den Rohstoff aus der Bank', () => {
-    const after = grantAqueduct(withScience(base, 'p1', 3), base);
-    expect(countCards(after.bank)).toBe(countCards(base.bank) - 1);
-  });
-
-  it('gibt nichts, wenn die Bank keinen Rohstoff mehr hat', () => {
-    const leer = { ...withScience(base, 'p1', 3), bank: EMPTY_CARDS };
-    expect(handOf(grantAqueduct(leer, base), 'p1')).toEqual(handOf(leer, 'p1'));
+  it('nennt niemanden ohne Wissenschaft drei', () => {
+    expect(aqueductClaimants(withScience(base, 'p1', 2), base)).toEqual([]);
   });
 
   /*
-   * Zwei Spieler mit Aquaedukt und derselben letzten Karte in der Bank: ohne
-   * die mitgefuehrte `remainingBank` in `grantAqueduct` wuerden beide `ore`
-   * beanspruchen, `payOut` wollte zwei ausgeben, wo nur eine da ist, und
-   * `subtractCards` wuerfe. Die Bank haelt hier ausschliesslich diese eine
-   * Karte - kein anderer Rohstoff liegt vor, damit kein Gleichstand
-   * hineinspielt und die Behauptung eindeutig bleibt.
+   * Die Reihenfolge ist die Sitzreihenfolge, und sie zaehlt: die Wahl trifft
+   * der erste Eintrag, und bei der letzten Karte einer Sorte bekommt sie nur
+   * einer. Bis 10c waehlte hier eine feste Regel den Rohstoff und fuehrte die
+   * Bank dabei mit; seit 10d waehlen die Spieler nacheinander selbst.
    */
-  it('teilt die letzte Karte der Bank nur einem von zwei Anspruchsberechtigten zu', () => {
-    const scarce: GameState = {
-      ...withScience(withScience(base, 'p1', 3), 'p2', 3),
-      bank: { ...EMPTY_CARDS, ore: 1 },
-    };
+  it('nennt mehrere in Sitzreihenfolge', () => {
+    const both = withScience(withScience(base, 'p1', 3), 'p2', 3);
+    expect(aqueductClaimants(both, base)).toEqual(['p1', 'p2']);
+  });
 
-    const after = grantAqueduct(scarce, scarce);
-
-    // p1 steht in `state.players` vor p2 und bekommt die letzte Karte.
-    expect(handOf(after, 'p1')).toEqual(hand({ ore: 1 }));
-    // p2 geht leer aus - die Bank ist bereits erschoepft.
-    expect(handOf(after, 'p2')).toEqual(hand());
-    expect(countCards(after.bank)).toBe(0);
+  /*
+   * Eine leere Bank laesst niemanden waehlen. Ohne diesen Zweig oeffnete sich
+   * `aqueductPending` mit einer Warteschlange, die nichts nehmen kann - der
+   * Tisch stuende fuer nichts still.
+   */
+  it('nennt niemanden, wenn die Bank keinen Rohstoff mehr hat', () => {
+    const leer: GameState = { ...withScience(base, 'p1', 3), bank: EMPTY_CARDS };
+    expect(aqueductClaimants(leer, base)).toEqual([]);
   });
 });

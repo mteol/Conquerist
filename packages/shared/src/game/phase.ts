@@ -21,6 +21,20 @@ import { TradeOfferSchema, TradeResponseSchema } from './tradeOffer.js';
  * (ein Ritter wurde vertrieben und sucht seinen Platz)
  * ```
  *
+ * Mit Staedte & Ritter kann **ein** Wurf mehrfach hintereinander auf fremde
+ * Eingaben warten:
+ *
+ * ```
+ * Wurf ──► defenderPending ──► progressDiscardPending ──► aqueductPending ──► main
+ *          (Gleichstand)       (mehr als vier Karten)     (leer ausgegangen)
+ * ```
+ *
+ * Jede dieser drei Phasen kann ausfallen, und keine haelt fest, wohin es
+ * danach geht: die Reihenfolge steht in `cities/rollFlow.ts` und nicht als
+ * Feld im Zustand. Wer noch offen ist, wird jedes Mal neu abgeleitet - die
+ * Stapelwahl der Verteidiger verteilt selbst Karten und kann damit erst
+ * jemanden ueber das Handlimit heben.
+ *
  * Ohne diese Phasen muesste der Reducer bei jeder eingehenden Aktion neu
  * erraten, ob gerade abgeworfen, der Raeuber versetzt oder gebaut wird. Mit
  * ihnen ist eine Aktion zur falschen Zeit ein gewoehnlicher Regelverstoss mit
@@ -109,6 +123,36 @@ export const PhaseSchema = z.discriminatedUnion('kind', [
     activatedOnTurn: z.number().int().min(0).nullable(),
     from: z.string(),
   }),
+  /**
+   * Wer mehr als vier zaehlende Fortschrittskarten haelt, gibt eine ab.
+   *
+   * `pending` haelt fest, wer noch dran ist - und es handelt der **erste**
+   * Eintrag, nicht alle gleichzeitig wie beim Abwerfen nach einer Sieben. Der
+   * Unterschied hat einen Grund: die Liste wird nach jeder Abgabe neu aus dem
+   * Zustand abgeleitet (`playersOverProgressLimit`), und wer zwei Karten zu
+   * viel haelt, steht danach einfach wieder darin.
+   *
+   * **Die Ertraege dieses Wurfs sind hier noch nicht verteilt.** Sie fallen
+   * erst, wenn die Phase schliesst - siehe `cities/rollFlow.ts`.
+   */
+  z.object({ kind: z.literal('progressDiscardPending'), pending: z.array(PlayerIdSchema) }),
+  /**
+   * Gleichstand an der Spitze der Verteidigung: jeder Beteiligte zieht eine
+   * Fortschrittskarte und waehlt dafuer seinen Stapel.
+   *
+   * Der Reihe nach und nicht gleichzeitig, aus demselben Grund wie oben: die
+   * Stapel sind endlich, und zwei Spieler duerfen nicht dieselbe oberste Karte
+   * bekommen.
+   */
+  z.object({ kind: z.literal('defenderPending'), pending: z.array(PlayerIdSchema) }),
+  /**
+   * Wer das Aquaedukt hat und bei diesem Wurf leer ausging, nimmt einen
+   * Rohstoff seiner Wahl.
+   *
+   * Auch hier der Reihe nach: die Bank kann bei der letzten Karte einer Sorte
+   * nur einen von zweien bedienen.
+   */
+  z.object({ kind: z.literal('aqueductPending'), pending: z.array(PlayerIdSchema) }),
   /** Bauen, handeln, Zug beenden. */
   z.object({ kind: z.literal('main') }),
   /**

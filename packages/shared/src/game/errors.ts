@@ -92,6 +92,19 @@ export const RuleViolationCode = {
   /** Dieser Spieler muss gerade nicht abwerfen. */
   NOT_DISCARDING: 'NOT_DISCARDING',
 
+  /** Dieser Spieler waehlt gerade keinen Fortschrittsstapel. */
+  NOT_PICKING_DECK: 'NOT_PICKING_DECK',
+  /** Dieser Fortschrittsstapel ist leer - er waechst nie nach. */
+  PROGRESS_DECK_EMPTY: 'PROGRESS_DECK_EMPTY',
+  /** Dieser Spieler muss gerade keine Fortschrittskarte abgeben. */
+  NOT_DISCARDING_PROGRESS: 'NOT_DISCARDING_PROGRESS',
+  /** Diese Fortschrittskarte liegt nicht auf seiner Hand. */
+  NO_SUCH_PROGRESS_CARD: 'NO_SUCH_PROGRESS_CARD',
+  /** Siegpunktkarten zaehlen nicht zum Limit und helfen beim Abgeben nicht. */
+  PROGRESS_CARD_IS_VICTORY: 'PROGRESS_CARD_IS_VICTORY',
+  /** Dieser Spieler nimmt gerade keinen Rohstoff aus dem Aquaedukt. */
+  NOT_CLAIMING_AQUEDUCT: 'NOT_CLAIMING_AQUEDUCT',
+
   /** Fuer diesen Tausch gibt es kein Verhaeltnis - oder es ist derselbe Rohstoff. */
   INVALID_TRADE: 'INVALID_TRADE',
   /** Die Bank hat die gewuenschte Ressource nicht mehr. */

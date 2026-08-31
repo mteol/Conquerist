@@ -52,6 +52,25 @@ export function afterDiscardPhase(state: GameState): Phase {
   return robberIsFree(state) ? { kind: 'robberPending', resume: 'main' } : { kind: 'main' };
 }
 
+/**
+ * Wie es nach einer gewuerfelten Sieben weitergeht: abwerfen oder Raeuber.
+ *
+ * Sie steht hier aus demselben Grund wie `afterDiscardPhase` und hat seit 10d
+ * zwei Aufrufer: den Wurf selbst und `continueAfterDefender` in
+ * `cities/rollFlow.ts`. Denn auch eine Sieben kann einen Barbarenueberfall im
+ * selben Wurf haben, und bei Gleichstand waehlen die Verteidiger erst ihre
+ * Stapel. Ohne diese zweite Verwendung ueberschriebe die Stapelwahl den
+ * Sieben-Pfad, und der Raeuber bliebe lautlos stehen.
+ */
+export function continueAfterSeven(state: GameState): GameState {
+  const pending = playersMustDiscard(state);
+
+  return {
+    ...state,
+    phase: pending.length > 0 ? { kind: 'discardPending', pending } : afterDiscardPhase(state),
+  };
+}
+
 /** Wer nach einer Sieben abwerfen muss - in Zugreihenfolge. */
 export function playersMustDiscard(state: GameState): PlayerId[] {
   return state.players

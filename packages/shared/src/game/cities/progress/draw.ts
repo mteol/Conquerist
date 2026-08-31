@@ -1,6 +1,6 @@
 import type { PlayerId, PlayerState } from '../../player.js';
 import type { GameState } from '../../state.js';
-import { levelOf, progressThreshold, type TrackId } from '../tracks.js';
+import { TRACK_IDS, levelOf, progressThreshold, type TrackId } from '../tracks.js';
 import { PROGRESS_HAND_LIMIT, PROGRESS_VICTORY_CARDS, type ProgressCardId } from './cards.js';
 
 /**
@@ -62,6 +62,18 @@ export function drawProgressCards(state: GameState, track: TrackId, red: number)
       return { ...player, progressCards: [...player.progressCards, card] };
     }),
   };
+}
+
+/**
+ * Ob ueberhaupt noch irgendein Fortschrittsstapel eine Karte hergibt.
+ *
+ * Gefragt wird das vor jeder Wahl zwischen den Stapeln: eine Phase, die auf
+ * eine Wahl ohne Moeglichkeiten wartet, haelt den Tisch fuer nichts an -
+ * dieselbe Haltung wie bei `displacePending`. Die Stapel wachsen nie nach,
+ * also ist das kein theoretischer Fall.
+ */
+export function anyProgressCardsLeft(state: GameState): boolean {
+  return TRACK_IDS.some((track) => (state.progressDecks[track] ?? []).length > 0);
 }
 
 /** Wie viele zaehlende Karten einer auf der Hand hat - Siegpunktkarten zaehlen nicht. */

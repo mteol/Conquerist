@@ -84,6 +84,21 @@ export const TRACK_STEPS: Readonly<Record<TrackId, readonly TrackStep[]>> = {
   ],
 };
 
+/**
+ * Wie eine Fortschrittskarte dieses Bereichs heisst.
+ *
+ * Eine Tabelle mit drei Woertern und keine Regel: "Handel" wird zu
+ * "Handelskarte", "Politik" zu "Politikkarte" - aber "Wissenschaft" nicht zu
+ * "Wissenschaftkarte". Dieselbe Ueberlegung wie bei `TRACK_STEPS` und
+ * `KNIGHT_LABELS_DATIVE`: drei deutsche Woerter folgen keiner Regel, die man
+ * ableiten koennte.
+ */
+export const TRACK_CARD_LABELS: Readonly<Record<TrackId, string>> = {
+  trade: 'Handelskarte',
+  politics: 'Politikkarte',
+  science: 'Wissenschaftskarte',
+};
+
 /** Die hoechste Stufe, die ein Bereich hat. */
 export const MAX_TRACK_LEVEL = 5;
 

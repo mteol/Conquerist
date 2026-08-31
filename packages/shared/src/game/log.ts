@@ -7,9 +7,10 @@ import {
   resourceList,
 } from './labels.js';
 import { barbarianStrength } from './cities/barbarians.js';
+import { PROGRESS_NAMES } from './cities/progress/cards.js';
 import { metropolisHolder } from './cities/improvements.js';
 import { catanStrength } from './cities/knights.js';
-import { stepInAccusative } from './cities/tracks.js';
+import { TRACK_CARD_LABELS, stepInAccusative } from './cities/tracks.js';
 import type { GameAction } from './actions.js';
 import { yieldTotal } from './dice.js';
 import type { PlayerId } from './player.js';
@@ -217,6 +218,17 @@ function describeAction(
         ? `${built} und setzt eine Metropole`
         : `${built} und nimmt ${nameOf(previousHolder)} die Metropole ab`;
     }
+
+    case 'pickProgressDeck': {
+      // Was gezogen wurde, steht **nachher** auf der Hand - und es bleibt
+      // ungenannt: eine Fortschrittskarte liegt verdeckt, und der Verlauf
+      // liest alle mit.
+      return `${who} zieht eine ${TRACK_CARD_LABELS[action.track]}`;
+    }
+    case 'discardProgressCard':
+      return `${who} gibt ${PROGRESS_NAMES[action.card]} ab`;
+    case 'pickAqueduct':
+      return `${who} nimmt ${RESOURCE_LABELS[action.resource]} aus dem Aquädukt`;
 
     case 'endTurn':
       return `${who} beendet den Zug`;
