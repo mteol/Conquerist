@@ -108,6 +108,19 @@ describe('Ziehen am Stadttor', () => {
     expect(playerNamed(after, 'p1').progressCards).toEqual([before.progressDecks.science![0]]);
   });
 
+  /*
+   * Docs Abschnitt 11: "Siegpunktkarten ... liegen sofort offen." Sofort
+   * heisst beim Ziehen, nicht erst beim Ausspielen - Buchdruck und Verfassung
+   * gehen deshalb nie in die geheime Hand.
+   */
+  it('legt eine gezogene Siegpunktkarte sofort offen ab statt auf die Hand', () => {
+    const before = eligibleForScience(['printer']);
+    const after = drawProgressCards(before, 'science', 1);
+
+    expect(playerNamed(after, 'p1').progressCards).toEqual([]);
+    expect(playerNamed(after, 'p1').openProgressCards).toEqual(['printer']);
+  });
+
   it('gibt still nichts aus einem leeren Stapel', () => {
     const empty = eligibleForScience([]);
     const after = drawProgressCards(empty, 'science', 1);

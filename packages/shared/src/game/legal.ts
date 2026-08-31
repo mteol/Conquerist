@@ -333,13 +333,9 @@ function zeroArgumentProgressPlay(card: ProgressCardId): ProgressPlay | null {
       return { card };
     case 'irrigation':
       return { card };
-    case 'printer':
-      return { card };
     case 'warlord':
       return { card };
     case 'saboteur':
-      return { card };
-    case 'constitution':
       return { card };
     default:
       return null;

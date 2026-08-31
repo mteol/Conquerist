@@ -7,7 +7,11 @@ import { continueAfterSeven } from '../robber.js';
 import { ok, rejected, type GameState, type ReduceResult } from '../state.js';
 import { aqueductClaimants, bankHasResource, distributeYield } from '../yield.js';
 import { PROGRESS_NAMES, PROGRESS_VICTORY_CARDS, type ProgressCardId } from './progress/cards.js';
-import { anyProgressCardsLeft, playersOverProgressLimit } from './progress/draw.js';
+import {
+  anyProgressCardsLeft,
+  playersOverProgressLimit,
+  receiveProgressCard,
+} from './progress/draw.js';
 import type { TrackId } from './tracks.js';
 
 /**
@@ -176,8 +180,10 @@ export function applyPickProgressDeck(
   const drawn: GameState = {
     ...state,
     progressDecks: { ...state.progressDecks, [track]: deck },
+    // `receiveProgressCard` und nicht ein eigenes Anhaengen: Buchdruck und
+    // Verfassung muessen sofort offen liegen, unabhaengig vom Ziehpfad.
     players: state.players.map((entry) =>
-      entry.id === player ? { ...entry, progressCards: [...entry.progressCards, card] } : entry,
+      entry.id === player ? receiveProgressCard(entry, card) : entry,
     ),
   };
 

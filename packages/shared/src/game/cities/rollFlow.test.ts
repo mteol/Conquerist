@@ -208,6 +208,22 @@ describe('Die Stapelwahl der Verteidiger', () => {
     expect(result.state.phase).toEqual({ kind: 'defenderPending', pending: ['p2'] });
   });
 
+  /*
+   * Buchdruck und Verfassung liegen laut Anleitung sofort beim Ziehen offen -
+   * auch auf diesem zweiten Ziehpfad, nicht nur am Stadttor.
+   */
+  it('legt eine gezogene Siegpunktkarte sofort offen ab statt auf die Hand', () => {
+    const withPrinter = plainCitiesRoll({
+      phase: { kind: 'defenderPending', pending: ['p1', 'p2'] },
+      progressDecks: { science: ['printer'], trade: ['merchant'], politics: ['warlord'] },
+    });
+    const result = applyPickProgressDeck(withPrinter, 'p1', 'science');
+    if (!result.ok) throw new Error(result.error.message);
+
+    expect(playerNamed(result.state, 'p1').progressCards).toEqual([]);
+    expect(playerNamed(result.state, 'p1').openProgressCards).toEqual(['printer']);
+  });
+
   it('weist ab, wer nicht an der Reihe ist', () => {
     expect(applyPickProgressDeck(tie, 'p2', 'science').ok).toBe(false);
   });

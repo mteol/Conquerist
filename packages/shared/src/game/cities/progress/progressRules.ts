@@ -17,7 +17,6 @@ import {
 import type { ProgressPlay } from './play.js';
 import {
   applyBishop,
-  applyConstitution,
   applyDiplomat,
   applyIntrigue,
   applySaboteur,
@@ -31,7 +30,6 @@ import {
   applyIrrigation,
   applyMedicine,
   applyMining,
-  applyPrinter,
   applyProgressRoadBuilding,
   applySmith,
 } from './science.js';
@@ -162,8 +160,6 @@ export function applyPlayProgress(
       return applyMining(discarded, player, play);
     case 'irrigation':
       return applyIrrigation(discarded, player, play);
-    case 'printer':
-      return applyPrinter(discarded, player, play);
     case 'inventor':
       return applyInventor(discarded, player, play);
     case 'engineer':
@@ -192,7 +188,5 @@ export function applyPlayProgress(
       return applyIntrigue(discarded, player, play);
     case 'saboteur':
       return applySaboteur(discarded, player, play);
-    case 'constitution':
-      return applyConstitution(discarded, player, play);
   }
 }

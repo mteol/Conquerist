@@ -321,59 +321,38 @@ describe('Wissenschaft: Ertrag und Bau', () => {
   });
 });
 
-describe('Kran, Buchdruck und Verfassung', () => {
-  describe('Kran', () => {
-    const state = withHand(giving(gameWithCities(), 'p1', { paper: 1 }), 'p1', ['crane']);
+/*
+ * Buchdruck und Verfassung stehen hier nicht mehr: sie werden nie ausgespielt
+ * (Fixrunde 1) - `draw.test.ts` und `rollFlow.test.ts` pruefen, dass beide
+ * Ziehpfade sie sofort offen ablegen.
+ */
+describe('Kran', () => {
+  const state = withHand(giving(gameWithCities(), 'p1', { paper: 1 }), 'p1', ['crane']);
 
-    it('zieht dem naechsten Ausbau eine Handelsware ab', () => {
-      const played = applyPlayProgress(state, 'p1', { card: 'crane', track: 'science' });
-      expect(played.ok).toBe(true);
-      if (!played.ok) return;
+  it('zieht dem naechsten Ausbau eine Handelsware ab', () => {
+    const played = applyPlayProgress(state, 'p1', { card: 'crane', track: 'science' });
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
 
-      const improved = applyImproveCity(played.state, 'p1', 'science', undefined);
-      expect(improved.ok).toBe(true);
-      if (!improved.ok) return;
+    const improved = applyImproveCity(played.state, 'p1', 'science', undefined);
+    expect(improved.ok).toBe(true);
+    if (!improved.ok) return;
 
-      // Stufe 1 der Wissenschaft kostet normalerweise ein Papier - mit dem
-      // Kran nichts, das Papier bleibt also stehen.
-      expect(playerNamed(improved.state, 'p1').resources.paper).toBe(1);
-    });
-
-    it('gilt fuer genau ein Hochruecken', () => {
-      const played = applyPlayProgress(state, 'p1', { card: 'crane', track: 'science' });
-      expect(played.ok).toBe(true);
-      if (!played.ok) return;
-
-      const improved = applyImproveCity(played.state, 'p1', 'science', undefined);
-      expect(improved.ok).toBe(true);
-      if (!improved.ok) return;
-
-      // Nach dem ersten Ausbau ist der Rabatt weg.
-      expect(improved.state.craneDiscount).toEqual([]);
-    });
+    // Stufe 1 der Wissenschaft kostet normalerweise ein Papier - mit dem
+    // Kran nichts, das Papier bleibt also stehen.
+    expect(playerNamed(improved.state, 'p1').resources.paper).toBe(1);
   });
 
-  describe('Buchdruck und Verfassung', () => {
-    it('legt Buchdruck offen ab und nimmt ihn von der Hand', () => {
-      const state = withHand(citiesTable(), 'p1', ['printer']);
-      const result = applyPlayProgress(state, 'p1', { card: 'printer' });
+  it('gilt fuer genau ein Hochruecken', () => {
+    const played = applyPlayProgress(state, 'p1', { card: 'crane', track: 'science' });
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(playerNamed(result.state, 'p1').progressCards).toEqual([]);
-        expect(playerNamed(result.state, 'p1').openProgressCards).toEqual(['printer']);
-      }
-    });
+    const improved = applyImproveCity(played.state, 'p1', 'science', undefined);
+    expect(improved.ok).toBe(true);
+    if (!improved.ok) return;
 
-    it('legt Verfassung offen ab und nimmt sie von der Hand', () => {
-      const state = withHand(citiesTable(), 'p1', ['constitution']);
-      const result = applyPlayProgress(state, 'p1', { card: 'constitution' });
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(playerNamed(result.state, 'p1').progressCards).toEqual([]);
-        expect(playerNamed(result.state, 'p1').openProgressCards).toEqual(['constitution']);
-      }
-    });
+    // Nach dem ersten Ausbau ist der Rabatt weg.
+    expect(improved.state.craneDiscount).toEqual([]);
   });
 });

@@ -55,20 +55,20 @@ describe('Fortschrittskarten spielen', () => {
    * nicht gelesen.
    */
   it('erlaubt zwei Karten im selben Zug', () => {
-    const state = withHand(citiesTable(), 'p1', ['warlord', 'constitution']);
+    const state = withHand(citiesTable(), 'p1', ['warlord', 'saboteur']);
     const first = applyPlayProgress(state, 'p1', { card: 'warlord' });
     expect(first.ok).toBe(true);
     if (first.ok) {
-      expect(applyPlayProgress(first.state, 'p1', { card: 'constitution' }).ok).toBe(true);
+      expect(applyPlayProgress(first.state, 'p1', { card: 'saboteur' }).ok).toBe(true);
     }
   });
 
   it('zaehlt jede spielbare Handkarte in legalActions auf', () => {
-    const state = withHand(citiesTable(), 'p1', ['warlord', 'constitution']);
+    const state = withHand(citiesTable(), 'p1', ['warlord', 'saboteur']);
     const kinds = legalActions(state, 'p1')
       .filter((a) => a.type === 'playProgress')
       .map((a) => a.play.card);
-    expect(kinds).toEqual(expect.arrayContaining(['warlord', 'constitution']));
+    expect(kinds).toEqual(expect.arrayContaining(['warlord', 'saboteur']));
   });
 
   /*

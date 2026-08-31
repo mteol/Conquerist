@@ -38,12 +38,20 @@ export const PlayerStateSchema = z.object({
   piecesLeft: PieceCountsSchema,
   /** Entwicklungskarten auf der Hand. Geheim wie die Ressourcen. */
   developmentCards: z.array(DevelopmentCardSchema),
-  /** Fortschrittskarten auf der Hand. Geheim - ausser den Siegpunktkarten. */
+  /**
+   * Fortschrittskarten auf der Hand. Geheim.
+   *
+   * Die beiden Siegpunktkarten (Buchdruck, Verfassung) liegen nie hier -
+   * `draw.ts#receiveProgressCard` legt sie schon beim Ziehen in
+   * `openProgressCards` ab, siehe dort.
+   */
   progressCards: z.array(ProgressCardIdSchema).default([]),
   /**
-   * Die gespielten Siegpunkt-Fortschrittskarten (Buchdruck, Verfassung).
-   * **Oeffentlich** - sie liegen offen vor dem Spieler, sobald gespielt, und
-   * zaehlen deshalb in `publicVictoryPointsOf` statt erst in
+   * Die Siegpunkt-Fortschrittskarten (Buchdruck, Verfassung), sobald gezogen.
+   * **Oeffentlich** - sie liegen laut Anleitung (Abschnitt 11) sofort offen
+   * vor dem Spieler, unabhaengig davon, ob sie je ausgespielt werden (sie
+   * werden es nie - `play.ts` kennt keine `ProgressPlay`-Variante fuer sie).
+   * Sie zaehlen deshalb in `publicVictoryPointsOf` statt erst in
    * `victoryPointsOf`. Wer sie in `progressCards` liegen liesse, machte den
    * Punktestand am Tisch unnachrechenbar.
    *

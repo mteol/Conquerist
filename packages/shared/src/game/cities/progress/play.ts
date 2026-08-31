@@ -16,6 +16,12 @@ import { TrackIdSchema } from '../tracks.js';
  * `tradeHarbor`, `wedding`). An diesem Tisch (`CITIES_RULES.progressDecks`)
  * liegen sie ohnehin nicht.
  *
+ * **Buchdruck und Verfassung fehlen ebenfalls, und zwar dauerhaft.** Beide
+ * liegen laut Anleitung (Abschnitt 11) sofort beim Ziehen offen -
+ * `draw.ts#receiveProgressCard` legt sie direkt in `openProgressCards` ab, nie
+ * in die Hand. Es gibt also nie einen Zug, der eine der beiden Karten
+ * *ausspielt* - `playProgress` kennt sie deshalb nicht.
+ *
  * **`DieValueSchema` gibt es nicht.** `dice.ts` exportiert nur
  * `DieResultSchema` und `RollSchema`, keinen Typ fuer eine einzelne Augenzahl.
  * Fuer Alchemie steht die Zahl deshalb inline und ohne eigenen exportierten
@@ -32,7 +38,6 @@ export const ProgressPlaySchema = z.discriminatedUnion('card', [
   z.object({ card: z.literal('crane'), track: TrackIdSchema }),
   z.object({ card: z.literal('mining') }),
   z.object({ card: z.literal('irrigation') }),
-  z.object({ card: z.literal('printer') }),
   /** Erfinder: zwei Zahlenchips tauschen. */
   z.object({ card: z.literal('inventor'), a: z.string(), b: z.string() }),
   /** Ingenieur: wo die gratis Stadtmauer hinkommt. */
@@ -64,7 +69,6 @@ export const ProgressPlaySchema = z.discriminatedUnion('card', [
   /** Intrige: welcher fremde Ritter vertrieben wird. */
   z.object({ card: z.literal('intrigue'), vertex: z.string() }),
   z.object({ card: z.literal('saboteur') }),
-  z.object({ card: z.literal('constitution') }),
 ]);
 
 export type ProgressPlay = z.infer<typeof ProgressPlaySchema>;

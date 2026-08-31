@@ -37,6 +37,23 @@ export function drawersFor(state: GameState, track: TrackId, red: number): Playe
     .map((player) => player.id);
 }
 
+/**
+ * Legt eine gezogene Karte an ihren Platz - verdeckt in `progressCards`, oder
+ * fuer Buchdruck und Verfassung sofort offen in `openProgressCards`.
+ *
+ * **Der eine Ort, an dem diese Weiche steht.** Zwei Ziehpfade fuehren zu einer
+ * Karte auf der Hand - der Zug am Stadttor (`drawProgressCards` hier) und die
+ * Stapelwahl der Verteidiger (`applyPickProgressDeck` in `cities/rollFlow.ts`).
+ * Beide rufen diese Funktion; eine zweite Auslegung derselben Regel liefe
+ * frueher oder spaeter auseinander. Docs Abschnitt 11: "Siegpunktkarten ...
+ * liegen sofort offen" - sofort heisst beim Ziehen, nicht erst beim Ausspielen.
+ */
+export function receiveProgressCard(player: PlayerState, card: ProgressCardId): PlayerState {
+  return PROGRESS_VICTORY_CARDS.includes(card)
+    ? { ...player, openProgressCards: [...player.openProgressCards, card] }
+    : { ...player, progressCards: [...player.progressCards, card] };
+}
+
 /** Zieht fuer alle Berechtigten. Ein leerer Stapel gibt still nichts - er waechst nie nach. */
 export function drawProgressCards(state: GameState, track: TrackId, red: number): GameState {
   const deck = [...(state.progressDecks[track] ?? [])];
@@ -58,8 +75,7 @@ export function drawProgressCards(state: GameState, track: TrackId, red: number)
     progressDecks: { ...state.progressDecks, [track]: deck },
     players: state.players.map((player) => {
       const card = drawn.get(player.id);
-      if (card === undefined) return player;
-      return { ...player, progressCards: [...player.progressCards, card] };
+      return card === undefined ? player : receiveProgressCard(player, card);
     }),
   };
 }
@@ -76,7 +92,17 @@ export function anyProgressCardsLeft(state: GameState): boolean {
   return TRACK_IDS.some((track) => (state.progressDecks[track] ?? []).length > 0);
 }
 
-/** Wie viele zaehlende Karten einer auf der Hand hat - Siegpunktkarten zaehlen nicht. */
+/**
+ * Wie viele zaehlende Karten einer auf der Hand haelt - Siegpunktkarten
+ * zaehlen nicht.
+ *
+ * Seit `receiveProgressCard` gehen Buchdruck und Verfassung nie mehr in
+ * `progressCards` - der Filter hier trifft ueber die beiden Ziehpfade also nie
+ * mehr etwas. Trotzdem stehen gelassen, nicht vereinfacht zu `.length`: er ist
+ * die Zusicherung selbst ("Siegpunktkarten zaehlen nicht zum Limit"), nicht
+ * bloss ihre Folge, und ein gespeicherter Zustand von vor dieser Aenderung
+ * kann die beiden Karten noch verdeckt in der Hand tragen.
+ */
 export function countedHand(player: PlayerState): number {
   return player.progressCards.filter((card) => !PROGRESS_VICTORY_CARDS.includes(card)).length;
 }

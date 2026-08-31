@@ -3,17 +3,24 @@ import { ok, type GameState, type ReduceResult } from '../../state.js';
 import type { ProgressPlay } from './play.js';
 
 /**
- * Die sechs Politikkarten, die an diesem Tisch liegen - Bischof bis
- * Verfassung. `spy` (Spionage), `deserter` (Deserteur) und `wedding`
- * (Hochzeit) fehlen: sie warten auf eine fremde Antwort und kommen mit ihrer
- * Phase erst in 10d-2.
+ * Fuenf ausspielbare Politikkarten an diesem Tisch - Bischof, Diplomat,
+ * Heerfuehrer, Intrige, Sabotage. `spy` (Spionage), `deserter` (Deserteur) und
+ * `wedding` (Hochzeit) fehlen: sie warten auf eine fremde Antwort und kommen
+ * mit ihrer Phase erst in 10d-2.
  *
- * **Stub-Stand (Aufgabe 5).** Jede Funktion hier bekommt vorerst nur den
- * schon abgeworfenen Zustand aus `progressRules.ts` zurueck, ohne eigene
- * Wirkung. Die Karte selbst ist zu diesem Zeitpunkt bereits von der Hand -
- * das erledigt der Verteiler, nicht diese Datei. Die tatsaechliche Wirkung
- * jeder Karte kommt in den Aufgaben 6 bis 12; bis dahin darf hier niemand aus
- * einem leeren Zweig auf einen vergessenen Fall schliessen.
+ * **Verfassung steht nicht hier.** Sie wird nie ausgespielt: laut Anleitung
+ * (Abschnitt 11) liegt sie sofort beim Ziehen offen -
+ * `draw.ts#receiveProgressCard` legt sie direkt in `openProgressCards` ab.
+ * Dasselbe gilt fuer Buchdruck in `science.ts`. `play.ts` kennt deshalb keine
+ * `ProgressPlay`-Variante fuer eine der beiden Karten.
+ *
+ * **Stub-Stand (Aufgabe 5) fuer die verbleibenden fuenf.** Jede Funktion hier
+ * bekommt vorerst nur den schon abgeworfenen Zustand aus `progressRules.ts`
+ * zurueck, ohne eigene Wirkung. Die Karte selbst ist zu diesem Zeitpunkt
+ * bereits von der Hand - das erledigt der Verteiler, nicht diese Datei. Die
+ * tatsaechliche Wirkung jeder Karte kommt in den Aufgaben 6 bis 12; bis dahin
+ * darf hier niemand aus einem leeren Zweig auf einen vergessenen Fall
+ * schliessen.
  */
 
 export function applyBishop(
@@ -59,20 +66,4 @@ export function applySaboteur(
 ): ReduceResult {
   // Wirkung folgt in einer spaeteren Aufgabe: die Fuehrenden verlieren die Haelfte der Hand.
   return ok(state);
-}
-
-/** Verfassung: ein Siegpunkt, sofort offen - dieselbe Wirkung wie Buchdruck (`applyPrinter` in `science.ts`). */
-export function applyConstitution(
-  state: GameState,
-  player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'constitution' }>,
-): ReduceResult {
-  return ok({
-    ...state,
-    players: state.players.map((entry) =>
-      entry.id === player
-        ? { ...entry, openProgressCards: [...entry.openProgressCards, 'constitution'] }
-        : entry,
-    ),
-  });
 }

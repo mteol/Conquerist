@@ -15,9 +15,12 @@ import type { ProgressPlay } from './play.js';
  * Die zehn Wissenschaftskarten - Kran bis Strassenbau.
  *
  * **Aufgabe 6 und 7.** Bergbau, Bewaesserung, Strassenbau, Medizin, Ingenieur
- * und Schmied (Aufgabe 6) sowie Kran und Buchdruck (Aufgabe 7, Verfassung
- * steht in `politics.ts`) haben ab hier eine Wirkung. Alchemie und Erfinder
- * folgen in spaeteren Aufgaben.
+ * und Schmied (Aufgabe 6) sowie Kran (Aufgabe 7) haben ab hier eine Wirkung.
+ * Alchemie und Erfinder folgen in spaeteren Aufgaben.
+ *
+ * **Buchdruck steht nicht hier.** Er wird nie ausgespielt - siehe
+ * `play.ts`: `draw.ts#receiveProgressCard` legt ihn sofort beim Ziehen offen
+ * ab, in `openProgressCards`. Dasselbe gilt fuer Verfassung in `politics.ts`.
  *
  * **Keine Wirkung hier baut selbst aufs Brett.** Strassenbau, Medizin,
  * Ingenieur und Schmied rufen `applyBuildRoad`, `applyBuildCity`,
@@ -142,22 +145,6 @@ export function applyIrrigation(
   _play: Extract<ProgressPlay, { card: 'irrigation' }>,
 ): ReduceResult {
   return applyFieldBonus(state, player, 'fields', 'grain');
-}
-
-/** Buchdruck: ein Siegpunkt, sofort offen - siehe `applyConstitution` in `politics.ts`. */
-export function applyPrinter(
-  state: GameState,
-  player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'printer' }>,
-): ReduceResult {
-  return ok({
-    ...state,
-    players: state.players.map((entry) =>
-      entry.id === player
-        ? { ...entry, openProgressCards: [...entry.openProgressCards, 'printer'] }
-        : entry,
-    ),
-  });
 }
 
 export function applyInventor(
