@@ -15,9 +15,6 @@ import {
  * ihr Regelwerk als Kopie in sich, und beide sind vollstaendig
  * ausgeschrieben. Ein Spread ueber `CLASSIC_RULES` waere kuerzer und liesse
  * offen, was absichtlich gleich ist und was nur vergessen wurde.
- *
- * Was hier noch fehlt, gehoert zu spaeteren Etappen und ist dort vermerkt:
- * Stadtmauer und Ritter in den Baukosten (10b), die Fortschrittsstapel (10d).
  */
 
 export const CITIES_DICE: DiceSpec = [
@@ -100,12 +97,29 @@ export const CITIES_RULES: RuleSet = {
     /* Jeder Siegpunkt-Chip "Retter Catans" zaehlt einen Punkt. */
     defender: 1,
     metropolis: 2,
+    /* Die Haendlerfigur zaehlt einen Punkt, solange sie bei jemandem steht. */
+    merchant: 1,
+    /* Eine offene Siegpunkt-Fortschrittskarte (Buchdruck, Verfassung) zaehlt einen Punkt. */
+    progressCard: 1,
   },
   longestRoadMinimum: 5,
   largestArmyMinimum: 3,
 
-  /* Kein Stapel. Die Fortschrittskarten kommen in Etappe 10d. */
   developmentDeck: {},
+
+  /*
+   * Die Fortschrittsstapel. Es fehlen fuenf Arten - masterMerchant, spy,
+   * deserter, tradeHarbor, wedding -, weil sie auf die Antwort einer anderen
+   * Person warten und ihre Phase erst in 10d-2 entsteht. Sie fehlen hier und
+   * nicht als Sperre im Regelcode: "was fehlt, gibt es an diesem Tisch nicht"
+   * ist die Zusage, die `developmentDeck` schon gibt.
+   */
+  progressDecks: {
+    alchemist: 2, crane: 2, mining: 2, irrigation: 2, printer: 1,
+    inventor: 2, engineer: 1, medicine: 2, smith: 2, roadBuilding: 2,
+    merchant: 6, resourceMonopoly: 4, commodityMonopoly: 2, merchantFleet: 2,
+    bishop: 2, diplomat: 2, warlord: 2, intrigue: 2, saboteur: 2, constitution: 1,
+  },
 
   handLimitBeforeDiscard: 7,
   /* Jede Stadtmauer hebt das Limit um zwei: 7, 9, 11, 13. */

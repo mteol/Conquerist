@@ -90,6 +90,41 @@ describe('createGame', () => {
     expect(a.rng).not.toEqual(b.rng);
   });
 
+  it('mischt drei Fortschrittsstapel und laesst sie beim Basisspiel leer', () => {
+    const cities = createGame(TEST_SCENARIO, CITIES_RULES, TEST_PLAYERS, 'progress-abc');
+    expect(cities.progressDecks.science).toHaveLength(18);
+    expect(cities.progressDecks.trade).toHaveLength(14);
+    expect(cities.progressDecks.politics).toHaveLength(11);
+
+    const classic = createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'progress-abc');
+    expect(classic.progressDecks).toEqual({});
+  });
+
+  /*
+   * Derselbe Seed muss dieselbe Partie ergeben - sonst spielt jede
+   * gespeicherte Partie sich beim Replay anders nach.
+   */
+  it('mischt aus demselben Seed dieselben Stapel', () => {
+    const a = createGame(TEST_SCENARIO, CITIES_RULES, TEST_PLAYERS, 'progress-gleich');
+    const b = createGame(TEST_SCENARIO, CITIES_RULES, TEST_PLAYERS, 'progress-gleich');
+
+    expect(a.progressDecks).toEqual(b.progressDecks);
+  });
+
+  /*
+   * Ein Basistisch mischt keine Fortschrittskarten - deshalb muss derselbe
+   * Seed denselben `rng`-Endzustand ergeben wie vor dieser Erweiterung. Ohne
+   * eine fruehere Aufnahme laesst sich das nur ueber Determinismus pruefen:
+   * zwei Basispartien mit gleichem Seed muessen exakt gleich weiterlaufen.
+   */
+  it('spielt ein Basistisch bei gleichem Seed identisch weiter, auch mit Fortschrittsregeln im Regelwerk', () => {
+    const a = createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'unberuehrt');
+    const b = createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'unberuehrt');
+
+    expect(a.rng).toEqual(b.rng);
+    expect(a.deck).toEqual(b.deck);
+  });
+
   it('haelt die Reihenfolge der uebergebenen Spieler ein', () => {
     expect(newGame(['c', 'a', 'b']).players.map((player) => player.id)).toEqual(['c', 'a', 'b']);
   });

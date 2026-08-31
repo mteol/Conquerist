@@ -66,6 +66,28 @@ describe('CITIES_RULES', () => {
     expect(CITIES_RULES.handLimitPerWall).toBe(2);
     expect(CITIES_RULES.victoryPoints.defender).toBe(1);
   });
+
+  it('legt in 10d-1 dreiundvierzig Fortschrittskarten aus', () => {
+    const total = Object.values(CITIES_RULES.progressDecks).reduce((sum, n) => sum + n, 0);
+    expect(total).toBe(43);
+  });
+
+  it('laesst die fuenf Karten weg, die auf eine fremde Antwort warten', () => {
+    for (const id of ['masterMerchant', 'spy', 'deserter', 'tradeHarbor', 'wedding'] as const) {
+      expect(CITIES_RULES.progressDecks[id]).toBeUndefined();
+    }
+  });
+
+  it('gibt dem Basistisch keine Fortschrittsstapel', () => {
+    expect(CLASSIC_RULES.progressDecks).toEqual({});
+  });
+
+  it('zahlt fuer die Haendlerfigur und eine offene Fortschrittskarte je einen Punkt', () => {
+    expect(CITIES_RULES.victoryPoints.merchant).toBe(1);
+    expect(CITIES_RULES.victoryPoints.progressCard).toBe(1);
+    expect(CLASSIC_RULES.victoryPoints.merchant).toBe(0);
+    expect(CLASSIC_RULES.victoryPoints.progressCard).toBe(0);
+  });
 });
 
 describe('CITIES_DICE', () => {

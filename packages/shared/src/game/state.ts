@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { RuleSetSchema, CardAmountsSchema } from '../rules/index.js';
 import { ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { RuleViolation } from './errors.js';
+import { ProgressCardIdSchema } from './cities/progress/cards.js';
 import { TrackIdSchema } from './cities/tracks.js';
 import { DevelopmentCardIdSchema } from './development.js';
 import { RollSchema } from './dice.js';
@@ -168,6 +169,13 @@ export const GameStateSchema = z.object({
    * Partie am Schema scheitern.
    */
   barbarians: BarbarianStateSchema.nullable().default(null),
+  /**
+   * Die Haendlerfigur. `null`, solange keine Karte "Haendler" gespielt wurde.
+   *
+   * Mit Vorgabe wie `barbarians` und aus demselben Grund: gespeichert wird nur
+   * der Startzustand.
+   */
+  merchant: z.object({ hex: z.string(), owner: PlayerIdSchema }).nullable().default(null),
   /** Was die Bank noch ausgeben kann. */
   bank: CardAmountsSchema,
   /** Wer die Laengste Handelsstrasse haelt und wie lang sie ist. */
@@ -187,6 +195,8 @@ export const GameStateSchema = z.object({
    * bekannter Wuerfelzustand. Er verlaesst den Server nie.
    */
   deck: z.array(DevelopmentCardIdSchema),
+  /** Die drei Fortschrittsstapel, von oben nach unten. **Geheim** wie `deck`. */
+  progressDecks: z.partialRecord(TrackIdSchema, z.array(ProgressCardIdSchema)).default({}),
   /**
    * Ob in dieser Runde schon eine Entwicklungskarte gespielt wurde.
    *

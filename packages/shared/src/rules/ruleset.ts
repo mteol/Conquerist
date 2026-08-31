@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { ProgressCardIdSchema } from '../game/cities/progress/cards.js';
 import { DevelopmentDeckSchema } from '../game/development.js';
 import { CLASSIC_56 } from '../scenario/blueprints/classic56.js';
 import { CARD_IDS, CardIdSchema, RESOURCE_IDS, type CardId } from '../scenario/terrain.js';
@@ -249,6 +250,10 @@ export const RuleSetSchema = z.object({
      * hier vier eintraegt, zaehlt die Stadt doppelt.
      */
     metropolis: z.number().int().min(0).default(0),
+    /** Was die Haendlerfigur zaehlt, solange sie bei einem steht. */
+    merchant: z.number().int().min(0).default(0),
+    /** Was eine offene Siegpunkt-Fortschrittskarte zaehlt (Buchdruck, Verfassung). */
+    progressCard: z.number().int().min(0).default(0),
   }),
   /** Ab wie vielen zusammenhaengenden Strassen die Laengste Handelsstrasse vergeben wird. */
   longestRoadMinimum: z.number().int().min(1),
@@ -261,6 +266,16 @@ export const RuleSetSchema = z.object({
    * Entwicklungskarten aus, ohne dass irgendwo ein Sonderfall steht.
    */
   developmentDeck: DevelopmentDeckSchema,
+  /**
+   * Wie viele Fortschrittskarten je Art auf den Stapeln liegen.
+   *
+   * Leer heisst: keine Fortschrittsstapel. Dieselbe Bauform wie
+   * `developmentDeck` - und dieselbe Zusage: was fehlt, gibt es an diesem Tisch
+   * nicht. Genau daran haengt der Zuschnitt von 10d: die fuenf Karten, die auf
+   * eine fremde Antwort warten, stehen hier in 10d-1 noch nicht drin und kommen
+   * in 10d-2 dazu, ohne dass eine Regel sich aendert.
+   */
+  progressDecks: z.partialRecord(ProgressCardIdSchema, z.number().int().min(0)).default({}),
   /** Ab wie vielen Handkarten bei einer Sieben abgeworfen wird. */
   handLimitBeforeDiscard: z.number().int().min(1),
 
@@ -365,6 +380,8 @@ export const CLASSIC_RULES: RuleSet = {
     developmentCard: 1,
     defender: 0,
     metropolis: 0,
+    merchant: 0,
+    progressCard: 0,
   },
   longestRoadMinimum: 5,
   largestArmyMinimum: 3,
@@ -381,6 +398,8 @@ export const CLASSIC_RULES: RuleSet = {
     yearOfPlenty: 2,
     monopoly: 2,
   },
+  /* Keine Fortschrittsstapel an einem Basistisch. */
+  progressDecks: {},
   handLimitBeforeDiscard: 7,
   handLimitPerWall: 0,
   tradeOfferMs: 60_000,

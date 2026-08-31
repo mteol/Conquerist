@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { CardAmountsSchema, PieceCountsSchema } from '../rules/index.js';
+import { ProgressCardIdSchema } from './cities/progress/cards.js';
 import { TrackIdSchema } from './cities/tracks.js';
 import { DevelopmentCardSchema } from './development.js';
 
@@ -37,6 +38,8 @@ export const PlayerStateSchema = z.object({
   piecesLeft: PieceCountsSchema,
   /** Entwicklungskarten auf der Hand. Geheim wie die Ressourcen. */
   developmentCards: z.array(DevelopmentCardSchema),
+  /** Fortschrittskarten auf der Hand. Geheim - ausser den Siegpunktkarten. */
+  progressCards: z.array(ProgressCardIdSchema).default([]),
   /**
    * Ausgespielte Ritter. **Oeffentlich** - sie liegen offen vor dem Spieler und
    * entscheiden die Groesste Rittermacht. Deshalb eine eigene Zahl und nicht

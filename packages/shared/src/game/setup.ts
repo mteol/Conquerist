@@ -4,6 +4,8 @@ import type { RuleSet } from '../rules/index.js';
 import type { ScenarioDefinition } from '../scenario/index.js';
 import { boardOf } from './board.js';
 import { canPlaceRoadAt, canPlaceSettlementAt } from './build.js';
+import { PROGRESS_TRACK, type ProgressCardId } from './cities/progress/cards.js';
+import { TRACK_IDS, type TrackId } from './cities/tracks.js';
 import { buildDeck, type DevelopmentCardId } from './development.js';
 import { RuleViolationCode, violation } from './errors.js';
 import { setupPlacementCount, setupPlayerIndex } from './phase.js';
@@ -47,6 +49,13 @@ export function createGame(
     throw new RangeError('createGame: Jeder Spieler darf nur einmal am Tisch sitzen');
   }
 
+  // Beide Stapel mischen mit demselben, fortgefuehrten Zufallszustand - genau
+  // wie `progressDecksAndRng` es dokumentiert. Zwei getrennte `createRng(seed)`
+  // wuerden denselben Anfangszustand zweimal verbrauchen und die Stapel
+  // korrelieren lassen.
+  const { deck, rng: rngAfterDeck } = deckAndRng(rules, seed);
+  const { decks: progressDecks, rng } = progressDecksAndRng(rules, rngAfterDeck);
+
   return {
     scenario,
     rules,
@@ -55,6 +64,7 @@ export function createGame(
       resources: { ...EMPTY_CARDS },
       piecesLeft: { ...rules.pieceStock },
       developmentCards: [],
+      progressCards: [],
       playedKnights: 0,
       defenderPoints: 0,
       improvements: {},
@@ -73,11 +83,15 @@ export function createGame(
      * eine Basispartie bekommt kein Schiff, das nie faehrt.
      */
     barbarians: rules.barbarianTrack > 0 ? { position: 0, attacks: 0 } : null,
+    // Keine Karte "Haendler" wurde gespielt - unabhaengig vom Regelwerk.
+    merchant: null,
     bank: { ...rules.resourceBank },
     longestRoad: { holder: null, length: 0 },
     largestArmy: { holder: null, size: 0 },
-    ...deckAndRng(rules, seed),
+    deck,
+    progressDecks,
     developmentPlayed: false,
+    rng,
     lastRoll: null,
     rollTally: {},
     turn: 0,
@@ -94,6 +108,40 @@ export function createGame(
 function deckAndRng(rules: RuleSet, seed: string): { deck: DevelopmentCardId[]; rng: Rng } {
   const [deck, rng] = shuffle(buildDeck(rules.developmentDeck), createRng(seed));
   return { deck, rng };
+}
+
+/**
+ * Die drei gemischten Fortschrittsstapel und der Zufallszustand danach.
+ *
+ * Nacheinander mit demselben `rng` gemischt - drei Aufrufe von `shuffle`,
+ * jeder fuehrt den Zufallszustand des vorigen fort, genau wie `deckAndRng` es
+ * fuer den Entwicklungsstapel tut.
+ *
+ * Ein leeres `rules.progressDecks` gibt `{}` zurueck und laesst den `rng`
+ * unberuehrt: ein Basistisch darf sich durch diese Erweiterung nicht anders
+ * nachspielen, sonst liefe jede gespeicherte Basispartie beim Replay
+ * auseinander.
+ */
+function progressDecksAndRng(
+  rules: RuleSet,
+  rng: Rng,
+): { decks: Partial<Record<TrackId, ProgressCardId[]>>; rng: Rng } {
+  if (Object.keys(rules.progressDecks).length === 0) return { decks: {}, rng };
+
+  const byTrack: Record<TrackId, ProgressCardId[]> = { science: [], trade: [], politics: [] };
+  for (const [id, count] of Object.entries(rules.progressDecks) as [ProgressCardId, number][]) {
+    for (let index = 0; index < count; index += 1) byTrack[PROGRESS_TRACK[id]].push(id);
+  }
+
+  const decks: Partial<Record<TrackId, ProgressCardId[]>> = {};
+  let current = rng;
+  for (const track of TRACK_IDS) {
+    const [shuffled, next] = shuffle(byTrack[track], current);
+    decks[track] = shuffled;
+    current = next;
+  }
+
+  return { decks, rng: current };
 }
 
 /**
