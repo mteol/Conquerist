@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createRng } from '../random/index.js';
-import { CLASSIC_RULES } from '../rules/index.js';
+import { CITIES_RULES, CLASSIC_RULES } from '../rules/index.js';
 import type { GameAction } from './actions.js';
 import { yieldTotal } from './dice.js';
 import { RuleViolationCode } from './errors.js';
@@ -539,5 +539,73 @@ describe('Die Ritterzuege im Reducer', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.longestRoad.holder).toBeNull();
+  });
+});
+
+/*
+ * Alchemie greift in den Wurf ein - und genau da lauert die Falle: wer bei
+ * gesetzten Augen den `rng` unberuehrt liesse, weil ja nichts mehr zu wuerfeln
+ * sei, liesse jede Partie ab dieser Stelle beim Replay anders laufen.
+ */
+describe('Wuerfeln mit gesetzten Augen', () => {
+  const cities = (overrides: Partial<GameState> = {}): GameState =>
+    gameWithCities({ phase: { kind: 'rollPending' }, rng: createRng('alchemie'), ...overrides });
+
+  it('setzt beide Augenwuerfel auf die genannten Zahlen', () => {
+    const result = reduce(cities({ alchemistRoll: { first: 3, second: 4 } }), {
+      type: 'rollDice',
+      player: 'p1',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.state.lastRoll?.find((die) => die.die === 'first')?.value).toBe(3);
+    expect(result.state.lastRoll?.find((die) => die.die === 'second')?.value).toBe(4);
+    expect(yieldTotal(CITIES_RULES.dice, result.state.lastRoll!)).toBe(7);
+  });
+
+  it('laesst den Ereigniswuerfel unberuehrt', () => {
+    const normal = reduce(cities(), { type: 'rollDice', player: 'p1' });
+    const set = reduce(cities({ alchemistRoll: { first: 3, second: 4 } }), {
+      type: 'rollDice',
+      player: 'p1',
+    });
+
+    expect(normal.ok && set.ok).toBe(true);
+    if (!normal.ok || !set.ok) return;
+
+    const eventOf = (state: GameState): number | undefined =>
+      state.lastRoll?.find((die) => die.die === 'event')?.value;
+
+    // Derselbe Seed, derselbe Ereigniswuerfel - die Karte bestimmt nur die
+    // beiden Augenwuerfel.
+    expect(eventOf(set.state)).toBe(eventOf(normal.state));
+    expect(eventOf(set.state)).not.toBeUndefined();
+  });
+
+  it('schreibt den Zufallszustand fort wie bei jedem anderen Wurf', () => {
+    const before = cities();
+    const normal = reduce(before, { type: 'rollDice', player: 'p1' });
+    const set = reduce(cities({ alchemistRoll: { first: 3, second: 4 } }), {
+      type: 'rollDice',
+      player: 'p1',
+    });
+
+    expect(normal.ok && set.ok).toBe(true);
+    if (!normal.ok || !set.ok) return;
+
+    expect(set.state.rng).not.toEqual(before.rng);
+    expect(set.state.rng).toEqual(normal.state.rng);
+  });
+
+  it('raeumt den Vorsatz nach dem Wurf ab', () => {
+    const result = reduce(cities({ alchemistRoll: { first: 3, second: 4 } }), {
+      type: 'rollDice',
+      player: 'p1',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state.alchemistRoll).toBeNull();
   });
 });

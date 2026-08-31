@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { edgeFromHexes, hexFromId } from '../../../geometry/index.js';
 import { CITIES_RULES } from '../../../rules/index.js';
 import { ScenarioDefinitionSchema, type ScenarioDefinition } from '../../../scenario/index.js';
-import { boardOf } from '../../board.js';
+import { boardOf, chipAt } from '../../board.js';
+import { yieldTotal } from '../../dice.js';
 import { RuleViolationCode } from '../../errors.js';
 import {
   ADJACENT_VERTEX,
@@ -18,6 +19,8 @@ import {
 } from '../../fixtures.js';
 import type { PlayerId, PlayerState } from '../../player.js';
 import type { Building, GameState, Knight } from '../../state.js';
+import { reduce } from '../../reducer.js';
+import { distributeYield } from '../../yield.js';
 import { applyImproveCity } from '../improvements.js';
 import { knightAt } from '../knights.js';
 import type { ProgressCardId } from './cards.js';
@@ -354,5 +357,144 @@ describe('Kran', () => {
 
     // Nach dem ersten Ausbau ist der Rabatt weg.
     expect(improved.state.craneDiscount).toEqual([]);
+  });
+});
+
+/*
+ * Die zwei Sonderfaelle des Stapels: Alchemie greift in den Wurf, der
+ * Erfinder in die Brettdaten. Dass Alchemie **nur** vor dem Wurf und dort als
+ * einzige Karte gespielt werden darf, prueft `progressRules.test.ts` - hier
+ * steht die Wirkung.
+ */
+describe('Alchemie', () => {
+  const beforeRoll = withHand(gameWithCities({ phase: { kind: 'rollPending' } }), 'p1', [
+    'alchemist',
+  ]);
+
+  /** Der Ereigniswuerfel des Regelwerks - der einzige, der nicht mitzaehlt. */
+  function eventFaceOf(roll: NonNullable<GameState['lastRoll']>): number | null {
+    return roll.find((die) => die.die === 'event')?.value ?? null;
+  }
+
+  it('legt einen Vorsatz und wuerfelt nicht selbst', () => {
+    const played = applyPlayProgress(beforeRoll, 'p1', {
+      card: 'alchemist',
+      first: 3,
+      second: 4,
+    });
+
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
+
+    expect(played.state.alchemistRoll).toEqual({ first: 3, second: 4 });
+    // Der Wurf bleibt eine Aktion des Spielers: die Phase steht noch.
+    expect(played.state.phase.kind).toBe('rollPending');
+    expect(played.state.lastRoll).toBeNull();
+  });
+
+  it('setzt die zwei Augen und wuerfelt das Ereignis trotzdem', () => {
+    const played = applyPlayProgress(beforeRoll, 'p1', {
+      card: 'alchemist',
+      first: 3,
+      second: 4,
+    });
+    expect(played.ok).toBe(true);
+    if (!played.ok) return;
+
+    const rolled = reduce(played.state, { type: 'rollDice', player: 'p1' });
+    expect(rolled.ok).toBe(true);
+    if (rolled.ok) {
+      expect(yieldTotal(rolled.state.rules.dice, rolled.state.lastRoll!)).toBe(7);
+      expect(eventFaceOf(rolled.state.lastRoll!)).not.toBeNull();
+      expect(rolled.state.alchemistRoll).toBeNull();
+    }
+  });
+});
+
+describe('Erfinder', () => {
+  /*
+   * Auf dem Testbrett: Wald 5 liegt am Stadtknoten von `gameWithCities`,
+   * Ackerland 9 liegt weit davon weg. Nach dem Tausch muss also eine Neun
+   * Holz bringen, wo vorher nichts kam. Huegel 6 ist eine der vier gesperrten
+   * Zahlen.
+   */
+  const FOREST_FIVE = '1,0';
+  const FIELDS_NINE = '-1,0';
+  const HILLS_SIX = '1,-1';
+
+  const state = withHand(gameWithCities(), 'p1', ['inventor']);
+
+  it('vertauscht zwei Zahlenchips', () => {
+    const result = applyPlayProgress(state, 'p1', {
+      card: 'inventor',
+      a: FOREST_FIVE,
+      b: FIELDS_NINE,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(chipAt(result.state.scenario, FOREST_FIVE)).toBe(chipAt(state.scenario, FIELDS_NINE));
+      expect(chipAt(result.state.scenario, FIELDS_NINE)).toBe(chipAt(state.scenario, FOREST_FIVE));
+    }
+  });
+
+  it('laesst die Ertraege den neuen Zahlen folgen', () => {
+    // Vorher bringt die Neun der Stadt am mittleren Knoten nichts.
+    expect(playerNamed(distributeYield(state, 9), 'p1').resources.lumber).toBe(0);
+
+    const result = applyPlayProgress(state, 'p1', {
+      card: 'inventor',
+      a: FOREST_FIVE,
+      b: FIELDS_NINE,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const paid = distributeYield(result.state, 9);
+    expect(playerNamed(paid, 'p1').resources.lumber).toBeGreaterThan(0);
+  });
+
+  it('laesst 2, 12, 6 und 8 nicht vertauschen', () => {
+    const result = applyPlayProgress(state, 'p1', {
+      card: 'inventor',
+      a: HILLS_SIX,
+      b: FIELDS_NINE,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe(RuleViolationCode.PROGRESS_HAS_NO_EFFECT);
+  });
+
+  it('lehnt die gesperrte Zahl auch als zweites Feld ab', () => {
+    // Beide Seiten und nicht nur die erste - sonst haenge die Regel daran,
+    // in welcher Reihenfolge die Felder genannt werden.
+    const result = applyPlayProgress(state, 'p1', {
+      card: 'inventor',
+      a: FIELDS_NINE,
+      b: HILLS_SIX,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe(RuleViolationCode.PROGRESS_HAS_NO_EFFECT);
+  });
+
+  it('lehnt ein Feld ohne Zahlenchip ab', () => {
+    const result = applyPlayProgress(state, 'p1', {
+      card: 'inventor',
+      a: '0,0',
+      b: FIELDS_NINE,
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it('lehnt zweimal dasselbe Feld ab', () => {
+    const result = applyPlayProgress(state, 'p1', {
+      card: 'inventor',
+      a: FIELDS_NINE,
+      b: FIELDS_NINE,
+    });
+
+    expect(result.ok).toBe(false);
   });
 });

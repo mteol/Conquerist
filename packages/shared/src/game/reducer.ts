@@ -1,6 +1,6 @@
 import type { GameAction } from './actions.js';
 import { applyBuildCity, applyBuildRoad, applyBuildSettlement } from './build.js';
-import { rollAll, yieldTotal } from './dice.js';
+import { rollAll, yieldTotal, type Roll } from './dice.js';
 import { RuleViolationCode, violation } from './errors.js';
 import type { PlayerId } from './player.js';
 import { applyDiscard, applyMoveRobber, continueAfterSeven } from './robber.js';
@@ -162,8 +162,41 @@ function actorFor(state: GameState): PlayerId | null {
  * nicht hier - hier steht nur, was danach passiert. Das ist die Grenze, an der
  * eine Erweiterung mit einem dritten Wuerfel keinen Codepfad mehr braucht.
  */
+/**
+ * Setzt die Augen, die Alchemie festgelegt hat - der Rest des Wurfs bleibt,
+ * wie er gefallen ist.
+ *
+ * Welche Wuerfel "die Augenwuerfel" sind, steht im Regelwerk und nicht hier:
+ * es sind die mitzaehlenden aus `rules.dice`, in ihrer Reihenfolge, dieselben,
+ * die `yieldTotal` addiert. Der Ereigniswuerfel zaehlt nicht mit und bleibt
+ * deshalb unberuehrt.
+ */
+function withAlchemistFaces(state: GameState, roll: Roll): Roll {
+  const set = state.alchemistRoll;
+  if (set === null) return roll;
+
+  const counting = state.rules.dice.filter((die) => die.countsTowardYield);
+  const faces = new Map<string, number>();
+  if (counting[0] !== undefined) faces.set(counting[0].id, set.first);
+  if (counting[1] !== undefined) faces.set(counting[1].id, set.second);
+
+  return roll.map((result) => {
+    const face = faces.get(result.die);
+    return face === undefined ? result : { ...result, value: face };
+  });
+}
+
 function rollDice(state: GameState): ReduceResult {
-  const [roll, rng] = rollAll(state.rules.dice, state.rng);
+  const [thrown, rng] = rollAll(state.rules.dice, state.rng);
+
+  /*
+   * Alchemie bestimmt die Augen, sie erspart aber keinen Wurf: geworfen wird
+   * die ganze Schale, der Ereigniswuerfel faellt normal, und der
+   * Zufallszustand geht denselben Schritt weiter wie bei jedem anderen Wurf.
+   * Wer ihn hier stehen liesse, weil die Augen ja schon feststehen, liesse
+   * jede Partie ab dieser Stelle beim Replay anders laufen.
+   */
+  const roll = withAlchemistFaces(state, thrown);
 
   const total = yieldTotal(state.rules.dice, roll);
 
@@ -174,6 +207,8 @@ function rollDice(state: GameState): ReduceResult {
   const rolled: GameState = {
     ...state,
     rng,
+    // Der Vorsatz gilt fuer genau einen Wurf und ist damit verbraucht.
+    alchemistRoll: null,
     lastRoll: roll,
     rollTally: { ...state.rollTally, [total]: (state.rollTally[total] ?? 0) + 1 },
   };

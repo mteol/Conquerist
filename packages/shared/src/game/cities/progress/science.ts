@@ -1,6 +1,6 @@
 import type { BuildableId, CardAmounts } from '../../../rules/index.js';
 import type { TerrainId } from '../../../scenario/index.js';
-import { boardOf } from '../../board.js';
+import { boardOf, chipIsSwappable, swapChips } from '../../board.js';
 import { applyBuildCity, applyBuildRoad } from '../../build.js';
 import { EMPTY_CARDS } from '../../cards.js';
 import { RuleViolationCode, violation } from '../../errors.js';
@@ -14,9 +14,9 @@ import type { ProgressPlay } from './play.js';
 /**
  * Die zehn Wissenschaftskarten - Kran bis Strassenbau.
  *
- * **Aufgabe 6 und 7.** Bergbau, Bewaesserung, Strassenbau, Medizin, Ingenieur
- * und Schmied (Aufgabe 6) sowie Kran (Aufgabe 7) haben ab hier eine Wirkung.
- * Alchemie und Erfinder folgen in spaeteren Aufgaben.
+ * **Aufgabe 6 bis 8.** Bergbau, Bewaesserung, Strassenbau, Medizin, Ingenieur
+ * und Schmied (Aufgabe 6), Kran (Aufgabe 7) sowie Alchemie und Erfinder
+ * (Aufgabe 8) haben ab hier eine Wirkung.
  *
  * **Buchdruck steht nicht hier.** Er wird nie ausgespielt - siehe
  * `play.ts`: `draw.ts#receiveProgressCard` legt ihn sofort beim Ziehen offen
@@ -66,13 +66,27 @@ function freeOfCharge(
   return runWithCost(state, piece, EMPTY_CARDS, build);
 }
 
+/**
+ * Alchemie: beide Augenwuerfel des naechsten Wurfs bestimmen.
+ *
+ * **Sie legt keine Wuerfel, sie legt einen Vorsatz.** Der Wurf bleibt eine
+ * Aktion des Spielers - `rollDice` liest `alchemistRoll`, setzt die Augen und
+ * raeumt das Feld ab. Wuerde die Karte hier selbst wuerfeln und weiterschalten,
+ * haette `rollDice` zwei Bedeutungen, und der Tisch wuesste nicht mehr, wer
+ * gerade dran ist.
+ *
+ * Dass die Karte nur in `rollPending` gespielt werden darf, entscheidet
+ * `canPlayNow` in `progressRules.ts` - nicht diese Funktion.
+ *
+ * Der Ereigniswuerfel steht nicht im Vorsatz: er faellt normal und wird zuerst
+ * ausgefuehrt, genau wie in jedem anderen Wurf.
+ */
 export function applyAlchemist(
   state: GameState,
   _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'alchemist' }>,
+  play: Extract<ProgressPlay, { card: 'alchemist' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: beide Wuerfel bestimmen.
-  return ok(state);
+  return ok({ ...state, alchemistRoll: { first: play.first, second: play.second } });
 }
 
 /**
@@ -147,13 +161,44 @@ export function applyIrrigation(
   return applyFieldBonus(state, player, 'fields', 'grain');
 }
 
+/**
+ * Erfinder: zwei Zahlenchips vertauschen - nicht 2, 12, 6 und 8.
+ *
+ * Die einzige Karte des Stapels, die die **Brettdaten** aendert. Der Tausch
+ * geht deshalb ueber `swapChips` in `board.ts`: es entsteht ein neues
+ * Szenario, und damit leitet `boardOf` `hexesByChip` neu ab. Die Ertraege
+ * folgen ab dem naechsten Wurf den neuen Zahlen, ohne dass hier irgendetwas
+ * ueber Ertraege stuende.
+ *
+ * **Beide Seiten werden geprueft**, nicht nur die erste: eine gesperrte Zahl
+ * bleibt gesperrt, egal ob sie als `a` oder als `b` genannt wird.
+ */
 export function applyInventor(
   state: GameState,
-  _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'inventor' }>,
+  player: PlayerId,
+  play: Extract<ProgressPlay, { card: 'inventor' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: zwei Zahlenchips vertauschen.
-  return ok(state);
+  if (play.a === play.b) {
+    return rejected(
+      violation(
+        RuleViolationCode.PROGRESS_HAS_NO_EFFECT,
+        `${player} hat zweimal dasselbe Feld genannt`,
+      ),
+    );
+  }
+
+  for (const hex of [play.a, play.b]) {
+    if (!chipIsSwappable(state.scenario, hex)) {
+      return rejected(
+        violation(
+          RuleViolationCode.PROGRESS_HAS_NO_EFFECT,
+          `Auf ${hex} liegt kein Zahlenchip, der vertauscht werden darf`,
+        ),
+      );
+    }
+  }
+
+  return ok({ ...state, scenario: swapChips(state.scenario, play.a, play.b) });
 }
 
 /** Ingenieur: eine Stadtmauer gratis - `canBuildWall`/`applyBuildWall` entscheiden, wo. */

@@ -212,6 +212,21 @@ export const GameStateSchema = z.object({
    * `developmentPlayed`: es ist immer nur einer am Zug, und `endTurn` raeumt ab.
    */
   craneDiscount: z.array(TrackIdSchema).default([]),
+  /**
+   * Die beiden Augen, die Alchemie fuer den naechsten Wurf festlegt. `null`
+   * heisst: normal wuerfeln.
+   *
+   * Der Ereigniswuerfel steht bewusst nicht drin - die Regel wuerfelt ihn
+   * normal und fuehrt ihn zuerst aus.
+   *
+   * Ein Vorsatz und keine gelegten Wuerfel: der Wurf bleibt eine Aktion des
+   * Spielers, sonst haette `rollDice` zwei Bedeutungen. `rollDice` liest das
+   * Feld, setzt die Augen und raeumt es danach wieder ab.
+   */
+  alchemistRoll: z
+    .object({ first: z.number().int().min(1), second: z.number().int().min(1) })
+    .nullable()
+    .default(null),
   /** Der Zufallszustand. Geheim - siehe Kopf dieser Datei. */
   rng: RngSchema,
   /**
