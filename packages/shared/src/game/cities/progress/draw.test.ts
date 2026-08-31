@@ -86,6 +86,15 @@ describe('Ziehen am Stadttor', () => {
     expect(drawersFor(state, 'science', 3)).toEqual(['p1']);
   });
 
+  it('unterscheidet Stufe 0 von Stufe 1 bei rotem Wuerfel 1', () => {
+    // Regel 8.1 hat zwei Bedingungen: erst Stufe >= 1, dann die Schwelle.
+    // Bei rotem Wuerfel 1 waere die Schwelle (Stufe 0 -> 1) fuer beide erfuellt -
+    // die Stufenbedingung trennt sie trotzdem: p1 bleibt auf Stufe 0 und zieht
+    // nicht, p2 steht auf Stufe 1 und zieht.
+    const state = withImprovements(citiesTable(), { p2: { science: 1 } });
+    expect(drawersFor(state, 'science', 1)).toEqual(['p2']);
+  });
+
   it('faengt beim Spieler am Zug an und geht im Uhrzeigersinn', () => {
     // Alle drei berechtigt, am Zug ist der zweite Sitz.
     const state = withCurrentPlayer(allEligible(), 1);
