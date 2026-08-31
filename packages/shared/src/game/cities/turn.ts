@@ -15,11 +15,12 @@ import { drawProgressCards } from './progress/draw.js';
  * ausschuettet. Seit 10b gilt beides wirklich; in 10a stand es als Vorgriff da.
  *
  * Die drei Stadttore lassen jetzt ziehen: `drawProgressCards` prueft fuer
- * jede Person, ob die Augenzahl des roten Wuerfels hoechstens ihre Stufe + 1
- * im gewuerfelten Bereich ist, und zieht fuer alle, die bestehen (Regel 8.1).
- * Wer wegen des Handlimits abgeben muss, wird hier nicht gemeldet - das
- * bleibt `playersOverProgressLimit`, aus dem Zustand abgeleitet und nicht von
- * hier durchgereicht (Aufgabe 4).
+ * jede Person zwei Bedingungen (Regel 8.1) - erst, ob sie im gewuerfelten
+ * Bereich ueberhaupt mindestens Stufe 1 hat, dann, ob die Augenzahl des
+ * roten Wuerfels hoechstens ihre Stufe + 1 ist - und zieht fuer alle, die
+ * beide bestehen. Wer wegen des Handlimits abgeben muss, wird hier nicht
+ * gemeldet - das bleibt `playersOverProgressLimit`, aus dem Zustand
+ * abgeleitet und nicht von hier durchgereicht (Aufgabe 4).
  *
  * Der vierte Schritt aus Spec 5.4 - Aquaedukt: wer leer ausging, nimmt einen
  * Rohstoff - haengt **nicht** hier, sondern in `reducer.ts` an `rollDice`,

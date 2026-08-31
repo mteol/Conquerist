@@ -24,7 +24,16 @@ function inTurnOrder(state: GameState): PlayerState[] {
 /** Wer bei diesem Wurf zieht - im Uhrzeigersinn ab dem Spieler am Zug. */
 export function drawersFor(state: GameState, track: TrackId, red: number): PlayerId[] {
   return inTurnOrder(state)
-    .filter((player) => red <= progressThreshold(levelOf(player, track)))
+    .filter((player) => {
+      /*
+       * Regel 8.1 hat zwei Bedingungen, nicht eine: erst die Stufe (mindestens
+       * 1 im gewuerfelten Bereich), dann die Schwelle. Wer den Bereich nicht
+       * begonnen hat, zieht nie - auch nicht bei rotem Wuerfel 1, wo
+       * `progressThreshold(0) === 1` sonst jeden durchliesse.
+       */
+      const level = levelOf(player, track);
+      return level >= 1 && red <= progressThreshold(level);
+    })
     .map((player) => player.id);
 }
 

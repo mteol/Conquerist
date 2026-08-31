@@ -56,14 +56,26 @@ function testPlayer(): PlayerState {
   return citiesTable().players[0]!;
 }
 
-/** Ein Tisch, an dem jede Person auf Stufe 0 steht - bei rotem Wuerfel 1 reicht die Schwelle 1 immer. */
+/**
+ * Ein Tisch, an dem jede Person in Wissenschaft Stufe 1 hat - Regel 8.1 hat
+ * zwei Bedingungen, und Stufe 0 erfuellt die erste nie, auch nicht bei rotem
+ * Wuerfel 1. Stufe 1 (Schwelle 2) laesst bei rotem Wuerfel 1 alle drei zu.
+ */
 function allEligible(): GameState {
-  return citiesTable();
+  return withImprovements(citiesTable(), {
+    p1: { science: 1 },
+    p2: { science: 1 },
+    p3: { science: 1 },
+  });
 }
 
 /** Ein Tisch mit einem vorgegebenen Wissenschaftsstapel, sonst wie `allEligible`. */
 function eligibleForScience(deck: ProgressCardId[]): GameState {
-  return citiesTable({ progressDecks: { science: deck } });
+  return withImprovements(citiesTable({ progressDecks: { science: deck } }), {
+    p1: { science: 1 },
+    p2: { science: 1 },
+    p3: { science: 1 },
+  });
 }
 
 describe('Ziehen am Stadttor', () => {
