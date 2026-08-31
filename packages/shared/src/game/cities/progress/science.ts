@@ -1,17 +1,66 @@
+import type { BuildableId, CardAmounts } from '../../../rules/index.js';
+import type { TerrainId } from '../../../scenario/index.js';
+import { boardOf } from '../../board.js';
+import { applyBuildCity, applyBuildRoad } from '../../build.js';
+import { EMPTY_CARDS } from '../../cards.js';
+import { RuleViolationCode, violation } from '../../errors.js';
 import type { PlayerId } from '../../player.js';
-import { ok, type GameState, type ReduceResult } from '../../state.js';
+import { ok, rejected, type GameState, type ReduceResult } from '../../state.js';
+import { payOut } from '../../yield.js';
+import { applyBuildWall } from '../walls.js';
+import { applyUpgradeKnight } from '../knights.js';
 import type { ProgressPlay } from './play.js';
 
 /**
  * Die zehn Wissenschaftskarten - Kran bis Strassenbau.
  *
- * **Stub-Stand (Aufgabe 5).** Jede Funktion hier bekommt vorerst nur den
- * schon abgeworfenen Zustand aus `progressRules.ts` zurueck, ohne eigene
- * Wirkung. Die Karte selbst ist zu diesem Zeitpunkt bereits von der Hand -
- * das erledigt der Verteiler, nicht diese Datei. Die tatsaechliche Wirkung
- * jeder Karte kommt in den Aufgaben 6 bis 12; bis dahin darf hier niemand aus
- * einem leeren Zweig auf einen vergessenen Fall schliessen.
+ * **Aufgabe 6.** Bergbau, Bewaesserung, Strassenbau, Medizin, Ingenieur und
+ * Schmied haben ab hier eine Wirkung. Alchemie, Kran, Buchdruck und Erfinder
+ * folgen in spaeteren Aufgaben.
+ *
+ * **Keine Wirkung hier baut selbst aufs Brett.** Strassenbau, Medizin,
+ * Ingenieur und Schmied rufen `applyBuildRoad`, `applyBuildCity`,
+ * `applyBuildWall` und `applyUpgradeKnight` - dieselben Regeln, die auch ein
+ * bezahlter Bauzug benutzt. Zwei Auslegungen davon, wo eine Strasse liegen
+ * darf, waeren ein Fehler, der frueher oder spaeter auseinanderliefe.
  */
+
+/**
+ * Ruft `build` mit dem genannten Preis statt dem echten - und stellt danach
+ * das echte Regelwerk wieder her.
+ *
+ * Die vorhandenen `apply…`-Funktionen lesen ihren Preis aus
+ * `state.rules.buildCosts`. Ein zweiter Preis-Parameter existiert dort nicht,
+ * und ihn dort einzufuehren zoege jede andere Aufruferin dieser Funktionen in
+ * Mitleidenschaft. Ein kurzlebiges Regelwerk mit dem gewuenschten Preis loest
+ * das, ohne die echten Kosten je zu veraendern - das zurueckgegebene Ergebnis
+ * traegt wieder das echte Regelwerk.
+ */
+function runWithCost(
+  state: GameState,
+  piece: BuildableId,
+  cost: CardAmounts,
+  build: (priced: GameState) => ReduceResult,
+): ReduceResult {
+  const priced: GameState = {
+    ...state,
+    rules: { ...state.rules, buildCosts: { ...state.rules.buildCosts, [piece]: cost } },
+  };
+
+  const result = build(priced);
+  if (!result.ok) return result;
+
+  return ok({ ...result.state, rules: state.rules });
+}
+
+/** Dasselbe wie `runWithCost`, aber zum Nulltarif - Strassenbau, Ingenieur, Schmied. */
+function freeOfCharge(
+  state: GameState,
+  piece: BuildableId,
+  build: (priced: GameState) => ReduceResult,
+): ReduceResult {
+  return runWithCost(state, piece, EMPTY_CARDS, build);
+}
 
 export function applyAlchemist(
   state: GameState,
@@ -27,26 +76,65 @@ export function applyCrane(
   _player: PlayerId,
   _play: Extract<ProgressPlay, { card: 'crane' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: ein Ausbau kostet eine Ware weniger.
+  // Wirkung folgt in Aufgabe 7: ein Ausbau kostet eine Ware weniger.
   return ok(state);
+}
+
+/** Wie viele Felder dieser Gelaendeart eine eigene Siedlung oder Stadt tragen - je Feld hoechstens einmal gezaehlt. */
+function ownedHexCount(state: GameState, player: PlayerId, terrain: TerrainId): number {
+  const board = boardOf(state.scenario);
+  let count = 0;
+
+  for (const [hexId, placement] of board.hexes) {
+    if (placement.terrain !== terrain) continue;
+    const vertices = board.topology.hexVertices.get(hexId) ?? [];
+    if (vertices.some((vertex) => state.buildings[vertex]?.owner === player)) count += 1;
+  }
+
+  return count;
+}
+
+/**
+ * Bergbau und Bewaesserung: zwei Karten je passendem Feld mit eigenem
+ * Gebaeude - `payOut` fuehrt die Bank mit, aus demselben Grund wie beim
+ * Aquaedukt: reicht sie nicht, gibt es weniger.
+ */
+function applyFieldBonus(
+  state: GameState,
+  player: PlayerId,
+  terrain: 'mountains' | 'fields',
+  card: 'ore' | 'grain',
+): ReduceResult {
+  const hexes = ownedHexCount(state, player, terrain);
+  if (hexes === 0) {
+    return rejected(
+      violation(
+        RuleViolationCode.PROGRESS_HAS_NO_EFFECT,
+        `${player} hat kein Feld dieser Art mit eigener Siedlung oder Stadt`,
+      ),
+    );
+  }
+
+  const amount = Math.min(hexes * 2, state.bank[card]);
+  if (amount <= 0) return ok(state);
+
+  return ok(payOut(state, [{ player, card, amount }]));
 }
 
 export function applyMining(
   state: GameState,
-  _player: PlayerId,
+  player: PlayerId,
   _play: Extract<ProgressPlay, { card: 'mining' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: zwei Erz je Gebirgsfeld.
-  return ok(state);
+  return applyFieldBonus(state, player, 'mountains', 'ore');
 }
 
 export function applyIrrigation(
   state: GameState,
-  _player: PlayerId,
+  player: PlayerId,
   _play: Extract<ProgressPlay, { card: 'irrigation' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: zwei Getreide je Ackerland.
-  return ok(state);
+  return applyFieldBonus(state, player, 'fields', 'grain');
 }
 
 export function applyPrinter(
@@ -54,7 +142,7 @@ export function applyPrinter(
   _player: PlayerId,
   _play: Extract<ProgressPlay, { card: 'printer' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: ein Siegpunkt, sofort offen.
+  // Wirkung folgt in Aufgabe 7: ein Siegpunkt, sofort offen.
   return ok(state);
 }
 
@@ -67,38 +155,75 @@ export function applyInventor(
   return ok(state);
 }
 
+/** Ingenieur: eine Stadtmauer gratis - `canBuildWall`/`applyBuildWall` entscheiden, wo. */
 export function applyEngineer(
   state: GameState,
-  _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'engineer' }>,
+  player: PlayerId,
+  play: Extract<ProgressPlay, { card: 'engineer' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: eine Stadtmauer gratis.
-  return ok(state);
+  return freeOfCharge(state, 'wall', (priced) => applyBuildWall(priced, player, play.vertex));
 }
 
+/** Was Medizin statt des normalen Stadtpreises verlangt: zwei Erz, ein Getreide. */
+const MEDICINE_PRICE: CardAmounts = { ...EMPTY_CARDS, ore: 2, grain: 1 };
+
+/** Medizin: eine Siedlung wird zur Stadt fuer zwei Erz und ein Getreide statt des normalen Preises. */
 export function applyMedicine(
   state: GameState,
-  _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'medicine' }>,
+  player: PlayerId,
+  play: Extract<ProgressPlay, { card: 'medicine' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: eine Siedlung wird zur Stadt.
-  return ok(state);
+  return runWithCost(state, 'city', MEDICINE_PRICE, (priced) =>
+    applyBuildCity(priced, player, play.vertex),
+  );
 }
 
+/**
+ * Schmied: bis zu zwei eigene Ritter je eine Stufe gratis aufwerten - je
+ * Ritter ein Aufruf von `canUpgradeKnight`/`applyUpgradeKnight`, damit die
+ * Festungsbedingung fuer Stufe 3 unveraendert gilt.
+ */
 export function applySmith(
   state: GameState,
-  _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'smith' }>,
+  player: PlayerId,
+  play: Extract<ProgressPlay, { card: 'smith' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: zwei Ritter je eine Stufe gratis.
-  return ok(state);
+  if (play.vertices.length === 0) {
+    return rejected(
+      violation(RuleViolationCode.PROGRESS_HAS_NO_EFFECT, `${player} hat keinen Ritter genannt`),
+    );
+  }
+
+  let current = state;
+  for (const vertex of play.vertices) {
+    const result = freeOfCharge(current, 'knightUpgrade', (priced) =>
+      applyUpgradeKnight(priced, player, vertex),
+    );
+    if (!result.ok) return result;
+    current = result.state;
+  }
+
+  return ok(current);
 }
 
+/** Strassenbau: bis zu zwei Strassen gratis - `applyBuildRoad` je Kante, nacheinander. */
 export function applyProgressRoadBuilding(
   state: GameState,
-  _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'roadBuilding' }>,
+  player: PlayerId,
+  play: Extract<ProgressPlay, { card: 'roadBuilding' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: zwei Strassen gratis.
-  return ok(state);
+  if (play.edges.length === 0) {
+    return rejected(
+      violation(RuleViolationCode.PROGRESS_HAS_NO_EFFECT, `${player} hat keine Straße genannt`),
+    );
+  }
+
+  let current = state;
+  for (const edge of play.edges) {
+    const result = freeOfCharge(current, 'road', (priced) => applyBuildRoad(priced, player, edge));
+    if (!result.ok) return result;
+    current = result.state;
+  }
+
+  return ok(current);
 }
