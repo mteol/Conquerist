@@ -4,7 +4,7 @@ import type { ProgressPlay } from './play.js';
 
 /**
  * Die vier Handelskarten, die an diesem Tisch liegen - Haendler bis
- * Handelsflotte. `masterMerchant` (Großhaendler) und `tradeHarbor`
+ * Handelsflotte. `masterMerchant` (Grosshaendler) und `tradeHarbor`
  * (Handelshafen) fehlen: sie warten auf eine fremde Antwort und kommen mit
  * ihrer Phase erst in 10d-2.
  *
