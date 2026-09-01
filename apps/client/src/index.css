@@ -3958,6 +3958,73 @@ body {
 }
 
 /*
+ * Die drei Fortschrittsstapel und die eigene Hand (Städte & Ritter, Etappe
+ * 10d) - eine vierte Frage neben Bau, Rittern und Stadtausbau, deshalb
+ * dieselbe schwebende Fläche in `.tray__controls` und kein eigener `.panel`.
+ *
+ * Der Kartenkörper der Hand ist `.devcard`/`.devcard__face` - dieselbe Klasse
+ * wie bei den Entwicklungskarten (`ProgressPanel.tsx` setzt Grundton und
+ * Tinte je Karte über `style`, aus `--track-*` in `:root`, nie als Hex-Wert
+ * hier im Blatt).
+ */
+.progress {
+  margin-top: 0.5rem;
+}
+
+.progress__title {
+  margin: 0 0 0.35rem;
+  color: var(--on-sea-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.progress__decks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Jeder Stapel trägt seinen Grundton als Rand und seinen Namen als Wort
+ * (Designregel 7: die Farbe steht nie allein) - `--deck-color` kommt aus
+ * `TRACK_COLORS` in `labels.ts`, also mittelbar aus `--track-trade` &
+ * Geschwistern in `:root`.
+ */
+.progress__deck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  min-width: 3.6rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--deck-color);
+  border-radius: 7px;
+  background: var(--parchment);
+}
+
+.progress__deck-name {
+  color: var(--ink-base);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.progress__deck-size {
+  color: var(--ink-base);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.progress__hand {
+  margin: 0;
+}
+
+/*
  * Die kompakte Leiste am Tisch: derselbe Stand der anderen, in einer Zeile.
  *
  * `width: 100%` in `.seat` (das jetzt umbricht) trägt sie unter den Namen -

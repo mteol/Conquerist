@@ -1,11 +1,15 @@
 import {
+  boardOf,
   legalActions,
   setupBuildingKind,
+  terrainYield,
+  type Building,
   type EdgeId,
   type GameAction,
   type GameState,
   type HexId,
   type PlayerId,
+  type ScenarioDefinition,
   type TrackId,
   type VertexId,
 } from '@conquerist/shared';
@@ -356,4 +360,71 @@ export function setupKindOf(source: {
   return source.phase.kind === 'setup'
     ? setupBuildingKind(source, source.phase.placement)
     : 'settlement';
+}
+
+/**
+ * Wo der Haendler stehen koennte, wenn diese Person ihn jetzt setzt: ein
+ * Landfeld neben einer eigenen Siedlung oder Stadt.
+ *
+ * Haendler und Bischof sind die vierte und fuenfte Absicht von `usePickMode`
+ * (siehe `GameScreen.tsx`) - `legalActions` zaehlt sie nicht auf, denn
+ * `merchant` und `bishop` brauchen ein Feld, und das waere dieselbe
+ * Aufzaehlung wie beim Strassenbau der Entwicklungskarten (siehe die
+ * Begruendung in `legal.ts`). Diese Funktion baut deshalb, was das Brett
+ * anbietet - **keine Spielregel, reine Brettgeometrie**: Feldnachbarschaft
+ * und wem ein Bauwerk gehoert sind beides oeffentliche Angaben aus der Sicht,
+ * dieselbe Art Ableitung wie `setupKindOf` oben. Ob ein Klick am Ende
+ * zulaessig war (`canPlaceMerchant` in shared), entscheidet weiterhin der
+ * Reducer.
+ */
+export function merchantTargets(
+  source: {
+    readonly scenario: ScenarioDefinition;
+    readonly buildings: Readonly<Record<string, Building>>;
+  },
+  player: PlayerId,
+): ReadonlyMap<HexId, readonly GameAction[]> {
+  const board = boardOf(source.scenario);
+  const targets = new Map<HexId, readonly GameAction[]>();
+
+  for (const [hex, placement] of board.hexes) {
+    // Wueste und See fallen heraus - dort gibt es nichts zu handeln.
+    if (terrainYield(placement.terrain) === null) continue;
+
+    const vertices = board.topology.hexVertices.get(hex) ?? [];
+    const hasOwnBuilding = vertices.some((vertex) => source.buildings[vertex]?.owner === player);
+    if (!hasOwnBuilding) continue;
+
+    targets.set(hex, [{ type: 'playProgress', player, play: { card: 'merchant', hex } }]);
+  }
+
+  return targets;
+}
+
+/**
+ * Wohin der Bischof den Raeuber setzen darf.
+ *
+ * Dieselbe Frage wie beim gewoehnlichen Versetzen (`canPlaceRobberAt` in
+ * shared): jedes Feld auf dem Brett ausser dem, auf dem er schon steht. Die
+ * zusaetzliche Sperre bis zum ersten Barbarenueberfall (`robberIsFree`)
+ * bleibt bewusst aussen vor - sie bräuchte den vollen `GameState`
+ * (`state.rng`, `state.deck`, …), den eine `PlayerView` nicht traegt, und
+ * eine `PlayerView`-taugliche Abschrift der Bedingung wäre trotz nur einer
+ * Zeile eine zweite Auslegung derselben Regel. Ein verfrueher Klick bleibt
+ * deshalb ein gewoehnlicher, angezeigter Regelverstoss vom Reducer - dieselbe
+ * "der Reducer entscheidet"-Haltung wie beim Monopol-Dialog.
+ */
+export function bishopTargets(
+  source: { readonly scenario: ScenarioDefinition; readonly robber: HexId },
+  player: PlayerId,
+): ReadonlyMap<HexId, readonly GameAction[]> {
+  const board = boardOf(source.scenario);
+  const targets = new Map<HexId, readonly GameAction[]>();
+
+  for (const hex of board.hexes.keys()) {
+    if (hex === source.robber) continue;
+    targets.set(hex, [{ type: 'playProgress', player, play: { card: 'bishop', hex } }]);
+  }
+
+  return targets;
 }

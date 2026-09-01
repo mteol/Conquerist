@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'rea
 import {
   barbarianStrength,
   tradeRateFor,
+  RESOURCE_IDS,
   type DevelopmentCardId,
   type EdgeId,
   type VertexId,
@@ -17,9 +18,12 @@ import { BoardSvg, type Place } from '../board/BoardSvg';
 import { BarbarianTrack } from '../panels/BarbarianTrack';
 import { KnightPanel, type KnightMode } from '../panels/KnightPanel';
 import { TrackPanel } from '../panels/TrackPanel';
+import { ProgressPanel } from '../panels/ProgressPanel';
 import {
   EMPTY_TARGETS,
+  bishopTargets,
   buildKindOf,
+  merchantTargets,
   setupKindOf,
   targetsFrom,
   type ActionTargets,
@@ -46,6 +50,8 @@ import { TradeDialog } from '../dialogs/TradeDialog';
 import { TradeOfferDialog } from '../dialogs/TradeOfferDialog';
 import { VictimDialog } from '../dialogs/VictimDialog';
 import { GameOverDialog } from '../dialogs/GameOverDialog';
+import { PickDeckDialog } from '../dialogs/PickDeckDialog';
+import { ProgressDiscardDialog } from '../dialogs/ProgressDiscardDialog';
 import type { LogEntry } from '../game/hotseat';
 import { useCoarsePointer } from '../useCoarsePointer';
 
@@ -218,11 +224,18 @@ const KNIGHT_HINTS: Readonly<Record<KnightMode | 'moveTo', string>> = {
  * `from` steht **in** der Ritterabsicht und nicht daneben: die gemerkte
  * Kreuzung ist der zweite Schritt genau dieser Absicht. Fällt die Absicht,
  * fällt sie mit - ohne daß jemand daran denken muß.
+ *
+ * **Haendler und Bischof sind die vierte und fuenfte Absicht (Etappe 10d).**
+ * Beide fragen ein Feld auf dem Brett und kommen deshalb als weiterer Fall in
+ * dieselbe Vereinigung - nicht als eigenes `useState` daneben, aus genau dem
+ * Grund, der oben schon steht. Ihre Ziele baut `merchantTargets` bzw.
+ * `bishopTargets` in `targets.ts`.
  */
 type PickIntent =
   | { readonly kind: 'build'; readonly build: BuildableKind }
   | { readonly kind: 'knight'; readonly mode: KnightMode; readonly from: VertexId | null }
-  | { readonly kind: 'metropolis'; readonly track: TrackId };
+  | { readonly kind: 'metropolis'; readonly track: TrackId }
+  | { readonly kind: 'progressHex'; readonly card: 'merchant' | 'bishop' };
 
 export function GameScreen({
   view,
@@ -337,9 +350,23 @@ export function GameScreen({
             ...EMPTY_TARGETS,
             vertices: new Map(targets.metropolis.get(intent.track) ?? []),
           };
+        case 'progressHex':
+          /*
+           * Haendler und Bischof leuchten am Feld, nicht am Knoten - beide
+           * Zielmengen kommen aus `targets.ts` und nicht aus `legalActions`
+           * (die zaehlt Fortschrittskarten mit Angabe bewusst nicht auf, siehe
+           * dort).
+           */
+          return {
+            ...EMPTY_TARGETS,
+            hexes:
+              intent.card === 'merchant'
+                ? merchantTargets(view, view.you)
+                : bishopTargets(view, view.you),
+          };
       }
     },
-    [targets, buildTargets],
+    [targets, buildTargets, view],
   );
 
   /** Was leuchtet, solange nichts gewaehlt ist. */
@@ -363,6 +390,7 @@ export function GameScreen({
   const knightMode = intent?.kind === 'knight' ? intent.mode : null;
   const movingFrom = intent?.kind === 'knight' ? intent.from : null;
   const metropolisFor = intent?.kind === 'metropolis' ? intent.track : null;
+  const progressHexFor = intent?.kind === 'progressHex' ? intent.card : null;
 
   /*
    * Die Panels schalten ihre Knoepfe um und melden deshalb `null` fuer "aus".
@@ -577,11 +605,29 @@ export function GameScreen({
         return;
       }
 
-      const options = targets.hexes.get(place.id) ?? [];
+      /*
+       * Haendler und Bischof lesen ihr Feld aus `pickTargets` und nicht aus
+       * `targets`: Letzteres kommt aus `legalActions` und kennt `moveRobber`
+       * nur waehrend `robberPending` - in der Hauptphase, in der beide Karten
+       * gespielt werden, waere es dort immer leer.
+       */
+      const options =
+        intent?.kind === 'progressHex'
+          ? (pickTargets.hexes.get(place.id) ?? [])
+          : (targets.hexes.get(place.id) ?? []);
       if (options.length === 1) onAct(options[0]!);
       else if (options.length > 1) setRobberHex(place.id);
     },
-    [targets, onAct, buildingRoads, intent, beginPick, view.you, view.roadBuildingTargets],
+    [
+      targets,
+      pickTargets,
+      onAct,
+      buildingRoads,
+      intent,
+      beginPick,
+      view.you,
+      view.roadBuildingTargets,
+    ],
   );
 
   /*
@@ -666,6 +712,20 @@ export function GameScreen({
     view.phase.kind === 'discardPending' && view.phase.pending.includes(view.you)
       ? discardCountForView(view, view.you)
       : 0;
+
+  /**
+   * Ob DIESER Empfaenger jetzt an der Reihe ist, in einer der drei neuen
+   * Wartephasen eines Wurfs zu handeln - Ruling 27: der Reihe nach handelt
+   * `pending[0]`, nicht der Spieler am Zug. Ohne diese Pruefung deckte der
+   * Bildschirm am Hotseat-Tisch den Falschen auf.
+   */
+  const isFrontOfQueue = (
+    kind: 'progressDiscardPending' | 'defenderPending' | 'aqueductPending',
+  ): boolean => view.phase.kind === kind && view.phase.pending[0] === view.you;
+
+  /** Die eigene Hand aus `view.players` - `progressCards` liegt am Sitz, siehe `ProgressPanel.tsx`. */
+  const ownProgressCards =
+    view.players.find((player) => player.id === view.you)?.progressCards ?? [];
 
   /**
    * Eine Karte spielen.
@@ -974,6 +1034,18 @@ export function GameScreen({
           )}
 
           {/*
+           * Die drei Fortschrittsstapel und die eigene Hand - eine vierte
+           * Frage neben Bau, Rittern und Stadtausbau. Erscheint gar nicht, wo
+           * dieser Tisch keine Fortschrittskarten kennt (`ProgressPanel`
+           * prueft das selbst, wie `TrackPanel` und `KnightPanel`).
+           */}
+          <ProgressPanel
+            view={view}
+            onAction={onAct}
+            onBoardPick={(card) => beginPick({ kind: 'progressHex', card })}
+          />
+
+          {/*
            * Die Wuerfel haengen nicht mehr in der Bauleiste, sondern daneben.
            *
            * Sie standen dort als erste Zeile, weil ein Zug mit ihnen anfaengt -
@@ -1022,6 +1094,42 @@ export function GameScreen({
           onConfirm={(resources: CardAmounts) => {
             onAct({ type: 'discard', player: view.you, resources });
           }}
+        />
+      ) : null}
+
+      {/*
+       * Die drei Wartestationen eines Wurfs (Staedte & Ritter, Etappe 10d) -
+       * je ein Bedienelement, sichtbar nur beim Vordersten der Warteschlange
+       * (Ruling 27, `isFrontOfQueue`). Kein Knopf davor, aus demselben Grund
+       * wie beim Abwerfen: die Wahl ist Pflicht, der Dialog IST der Zustand.
+       */}
+      {isFrontOfQueue('progressDiscardPending') ? (
+        <ProgressDiscardDialog
+          key={view.you}
+          cards={ownProgressCards}
+          onDiscard={(card) => onAct({ type: 'discardProgressCard', player: view.you, card })}
+        />
+      ) : null}
+
+      {isFrontOfQueue('defenderPending') ? (
+        <PickDeckDialog
+          key={view.you}
+          deckSizes={view.progressDeckSizes}
+          onPick={(track) => onAct({ type: 'pickProgressDeck', player: view.you, track })}
+        />
+      ) : null}
+
+      {isFrontOfQueue('aqueductPending') ? (
+        <ResourcePickDialog
+          key={view.you}
+          title="Aquädukt: welcher Rohstoff?"
+          hint="Bei diesem Wurf leer ausgegangen — einen Rohstoff deiner Wahl aus der Bank."
+          pool={RESOURCE_IDS}
+          count={1}
+          onClose={() => {}}
+          onConfirm={(picks) =>
+            onAct({ type: 'pickAqueduct', player: view.you, resource: picks[0]! })
+          }
         />
       ) : null}
 
@@ -1108,6 +1216,7 @@ export function GameScreen({
               ? 'Alle geben dir ab, was sie von dieser Sorte haben.'
               : 'Zwei Rohstoffe aus der Bank — auch zweimal derselbe.'
           }
+          pool={RESOURCE_IDS}
           count={picking === 'monopoly' ? 1 : 2}
           onConfirm={(picks) => {
             if (picking === 'monopoly') {
@@ -1183,6 +1292,20 @@ export function GameScreen({
       {metropolisFor === null ? null : (
         <div className="mode" role="status" data-testid="metropolis-mode">
           <span>Wohin kommt die Metropole?</span>
+          <button type="button" className="button button--ghost" onClick={cancelPick}>
+            Abbrechen
+          </button>
+        </div>
+      )}
+
+      {/* Dieselbe Leiste ein viertes Mal: Haendler und Bischof fragen ein Feld. */}
+      {progressHexFor === null ? null : (
+        <div className="mode" role="status" data-testid="progress-hex-mode">
+          <span>
+            {progressHexFor === 'merchant'
+              ? 'Händler: Feld neben eigener Siedlung oder Stadt wählen'
+              : 'Bischof: Feld für den Räuber wählen'}
+          </span>
           <button type="button" className="button button--ghost" onClick={cancelPick}>
             Abbrechen
           </button>

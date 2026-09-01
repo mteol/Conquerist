@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CITIES_RULES,
   CLASSIC_34,
   CLASSIC_RULES,
   createGame,
@@ -7,10 +8,14 @@ import {
   legalActions,
   reduce,
   setupPlayer,
+  ScenarioDefinitionSchema,
+  boardOf,
+  terrainYield,
   type GameAction,
   type GameState,
+  type ScenarioDefinition,
 } from '@conquerist/shared';
-import { actionTargets, targetsFrom } from './targets';
+import { actionTargets, bishopTargets, merchantTargets, targetsFrom } from './targets';
 import { afterOpening } from '../test/opening';
 
 const scenario = generateScenario(CLASSIC_34, 'targets-probe');
@@ -205,5 +210,105 @@ describe('targetsFrom mit Ritterzuegen', () => {
     expect(targets.displace.size).toBe(0);
     expect(targets.buildable.knight).toBe(0);
     expect(targets.buildable.wall).toBe(0);
+  });
+});
+
+/*
+ * Sieben Felder um die Wueste - dasselbe kleine Testbrett wie
+ * `packages/shared/src/game/fixtures.ts#TEST_SCENARIO`, hier noch einmal
+ * angelegt, weil jene Datei bewusst nicht im Barrel steht (Testmaterial ist
+ * keine oeffentliche Oberflaeche des Pakets, siehe `game/index.ts`). Der
+ * Mittelknoten `v:0,0|1,-1|1,0` grenzt an die Wueste (0,0), den Huegel
+ * (1,-1) und den Wald (1,0) - genau der Fall, an dem sich pruefen laesst,
+ * dass der Haendler die Wueste ausschliesst, obwohl sie angrenzt.
+ */
+const cityScenario: ScenarioDefinition = ScenarioDefinitionSchema.parse({
+  id: 'targets-test7',
+  name: 'Testbrett fuer Haendler und Bischof',
+  minPlayers: 2,
+  maxPlayers: 4,
+  hexes: [
+    { hex: '0,0', terrain: 'desert' },
+    { hex: '1,0', terrain: 'forest', chip: 5 },
+    { hex: '1,-1', terrain: 'hills', chip: 6 },
+    { hex: '0,-1', terrain: 'pasture', chip: 8 },
+    { hex: '-1,0', terrain: 'fields', chip: 9 },
+    { hex: '-1,1', terrain: 'mountains', chip: 4 },
+    { hex: '0,1', terrain: 'forest', chip: 10 },
+  ],
+  harbors: [],
+  robberStart: '0,0',
+});
+const CENTER_VERTEX = 'v:0,0|1,-1|1,0';
+const cityIds = ['p1', 'p2', 'p3'];
+
+/** Gruendet auf dem kleinen Testbrett, die Mitte zuerst - dieselbe Idee wie `afterSetup`. */
+function afterCitySetup(): GameState {
+  let state = afterOpening(createGame(cityScenario, CITIES_RULES, cityIds, 'targets-cities'));
+
+  while (state.phase.kind === 'setup') {
+    const player = setupPlayer(state)!;
+    const legal = legalActions(state, player);
+    // Die erste Setzung faellt auf den Mittelknoten, sofern er noch frei
+    // und erlaubt ist - so liegt hinterher sicher eine eigene Stadt an der
+    // Wueste UND an zwei Landfeldern, ohne dass der Test raten muss, wohin
+    // die Gruendung sonst gefallen waere.
+    const onCenter = legal.find(
+      (action) => action.type === 'placeSetupSettlement' && action.vertex === CENTER_VERTEX,
+    );
+    const action = onCenter ?? legal[0]!;
+    const result = reduce(state, action);
+    if (!result.ok) throw new Error(result.error.message);
+    state = result.state;
+  }
+
+  return state;
+}
+
+describe('merchantTargets', () => {
+  it('bietet nur Landfelder neben einer eigenen Siedlung oder Stadt an, nie die Wueste', () => {
+    const state = afterCitySetup();
+    const owner = state.buildings[CENTER_VERTEX]?.owner;
+    expect(owner).toBeDefined();
+
+    const targets = merchantTargets(state, owner!);
+
+    // Die Wueste liegt an, faellt aber heraus - Designentscheidung von
+    // `canPlaceMerchant` in shared, hier nachgebaut ueber oeffentliche
+    // Brettgeometrie, nicht ueber eine eigene Regel.
+    expect(targets.has('0,0')).toBe(false);
+    expect(targets.has('1,-1')).toBe(true);
+    expect(targets.has('1,0')).toBe(true);
+
+    for (const [hex, actions] of targets) {
+      expect(terrainYield(boardOf(cityScenario).hexes.get(hex)!.terrain)).not.toBeNull();
+      expect(actions).toEqual([
+        { type: 'playProgress', player: owner, play: { card: 'merchant', hex } },
+      ]);
+    }
+  });
+
+  it('bietet nichts an, wo niemand eine eigene Siedlung oder Stadt hat', () => {
+    const state = afterCitySetup();
+    const targets = merchantTargets(state, 'niemand-hier');
+
+    expect(targets.size).toBe(0);
+  });
+});
+
+describe('bishopTargets', () => {
+  it('bietet jedes Feld ausser dem, auf dem der Raeuber steht', () => {
+    const state = afterCitySetup();
+    const board = boardOf(cityScenario);
+    const targets = bishopTargets(state, 'p1');
+
+    expect(targets.size).toBe(board.hexes.size - 1);
+    expect(targets.has(state.robber)).toBe(false);
+
+    for (const [hex, actions] of targets) {
+      expect(actions).toEqual([
+        { type: 'playProgress', player: 'p1', play: { card: 'bishop', hex } },
+      ]);
+    }
   });
 });

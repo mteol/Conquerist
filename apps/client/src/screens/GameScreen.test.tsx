@@ -18,7 +18,14 @@ import { fireEvent, render, screen, userEvent, within } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { useLocalGame } from '../game/useLocalGame';
 import { GameScreen } from './GameScreen';
-import { asTouchDevice, confirmPlacement, placeEdge, placeVertex, tapVertex } from '../test/board';
+import {
+  asTouchDevice,
+  confirmPlacement,
+  placeEdge,
+  placeHex,
+  placeVertex,
+  tapVertex,
+} from '../test/board';
 import { afterOpening } from '../test/opening';
 
 const scenario = generateScenario(CLASSIC_34, 'screen-probe');
@@ -1091,4 +1098,118 @@ describe('GameScreen mit Rittern', () => {
       expect(screen.queryByTestId('track-trade-1')).toBeNull();
     });
   });
+
+  /*
+   * Die drei Wartestationen eines Wurfs (Etappe 10d) - jede ueber die echte
+   * lokale Partie (`CitiesGame`/`useLocalGame`) und den echten Reducer, nicht
+   * ueber einen nachgebauten Effekt: die Falle "tote Funktion" aus den
+   * Aufgabenhinweisen. Ein Klick, der wirklich ankommt, laesst den zugehoerigen
+   * Dialog verschwinden - bliebe er stehen, haette der Reducer den Zug
+   * abgewiesen.
+   */
+  describe('die drei Wartestationen eines Wurfs', () => {
+    it('laesst in progressDiscardPending genau eine Karte zurueckgeben', async () => {
+      const base = citiesMainPhase();
+      // `pending` legt fest, wer die Sicht bekommt (Ruling 27) - unabhaengig
+      // von `currentPlayerIndex` und der Sitzordnung nach dem Auftakt.
+      const me = base.players[0]!.id;
+      const state: GameState = {
+        ...base,
+        phase: { kind: 'progressDiscardPending', pending: [me] },
+        players: base.players.map((player) =>
+          player.id === me ? { ...player, progressCards: ['crane'] } : player,
+        ),
+      };
+
+      render(<CitiesGame state={state} />);
+
+      const dialog = screen.getByRole('dialog', { name: 'Fortschrittskarte abgeben' });
+
+      // "Kran" steht doppelt da: einmal spielbar auf der eigenen Hand
+      // (`ProgressPanel`), einmal als Abgabewahl im Dialog - hier zaehlt nur
+      // Letzteres.
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Kran' }));
+
+      // Der Dialog verschwindet nur, wenn der Reducer die Abgabe angenommen
+      // und die Phase weitergeschaltet hat (`continueAfterProgressDiscard`).
+      expect(screen.queryByRole('dialog', { name: 'Fortschrittskarte abgeben' })).toBeNull();
+    });
+
+    it('laesst bei defenderPending einen Stapel waehlen - und zeigt den Dialog dem Wartenden, nicht dem Spieler am Zug (Ruling 27)', async () => {
+      const base = citiesMainPhase();
+      const waiting = citiesSeats[1]!.id;
+      const state: GameState = {
+        ...base,
+        // p1 (Index 0) waere "am Zug" - handeln muss aber der Vorderste der
+        // Warteschlange, citiesSeats[1]. Vor Ruling 27 hätte der Bildschirm
+        // hier p1 aufgedeckt, und der Dialog wäre nie erschienen.
+        currentPlayerIndex: 0,
+        phase: { kind: 'defenderPending', pending: [waiting] },
+      };
+
+      render(<CitiesGame state={state} />);
+
+      expect(screen.getByRole('dialog', { name: 'Fortschrittsstapel wählen' })).toBeDefined();
+
+      await userEvent.click(screen.getByRole('button', { name: /Wissenschaft/ }));
+
+      expect(screen.queryByRole('dialog', { name: 'Fortschrittsstapel wählen' })).toBeNull();
+    });
+
+    it('laesst am Aquaedukt den Rohstoff waehlen', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[0]!.id;
+      const state: GameState = {
+        ...base,
+        phase: { kind: 'aqueductPending', pending: [me] },
+      };
+
+      render(<CitiesGame state={state} />);
+
+      expect(screen.getByRole('dialog', { name: 'Aquädukt: welcher Rohstoff?' })).toBeDefined();
+
+      await userEvent.click(screen.getByTestId('pick-ore'));
+      await userEvent.click(screen.getByRole('button', { name: 'Karte spielen' }));
+
+      expect(screen.queryByRole('dialog', { name: 'Aquädukt: welcher Rohstoff?' })).toBeNull();
+    });
+  });
+
+  describe('Haendler und Bischof: Absichten vier und fuenf', () => {
+    it('beginnt am Feld neben einer eigenen Siedlung oder Stadt und spielt den Haendler dorthin', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const state: GameState = {
+        ...base,
+        players: base.players.map((player) =>
+          player.id === me ? { ...player, progressCards: ['merchant'] } : player,
+        ),
+      };
+
+      const { container } = render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Händler/ }));
+
+      expect(screen.getByTestId('progress-hex-mode')).toBeDefined();
+
+      // Irgendein Feld leuchtet - `merchantTargets` fand mindestens eins neben
+      // der eigenen Gruendungsstadt.
+      const litHex = container.querySelector('[data-testid^="hex-"][data-target="true"]');
+      expect(litHex).not.toBeNull();
+
+      const hexId = litHex!.getAttribute('data-testid')!.replace('hex-', '');
+      placeHex(container, hexId);
+
+      // Nach dem Zug ist die Karte gespielt: der Modus-Balken ist weg, und
+      // die Karte liegt nicht mehr auf der Hand.
+      expect(screen.queryByTestId('progress-hex-mode')).toBeNull();
+      expect(screen.queryByRole('button', { name: /Händler/ })).toBeNull();
+    });
+  });
+});
+
+it('zeigt an einem Basistisch keine Fortschrittsstapel', () => {
+  render(<LocalGame />);
+
+  expect(screen.queryByText('Fortschritt')).toBeNull();
 });

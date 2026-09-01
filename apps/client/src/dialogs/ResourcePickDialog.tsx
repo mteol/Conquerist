@@ -1,38 +1,50 @@
 import { useState, type JSX } from 'react';
-import { RESOURCE_IDS, type ResourceId } from '@conquerist/shared';
-import { RESOURCE_LABELS } from '../game/labels';
+import { CARD_LABELS, type CardId } from '@conquerist/shared';
 import { ResourceCard } from '../panels/ResourceCard';
 import { CloseButton } from './CloseButton';
 
 /**
- * Rohstoffe auswaehlen - fuer Erfindung und Monopol.
+ * Sorten auswaehlen - fuer Erfindung, Monopol, und seit Staedte & Ritter auch
+ * fuer Rohstoffmonopol, Handelsmonopol, Handelsflotte und das Aquaedukt.
  *
- * Eine Komponente fuer beide, weil es dieselbe Frage ist: welche Sorte, und
- * wie oft. Erfindung nimmt zwei (auch zweimal dieselbe), Monopol genau eine.
- * Zwei fast gleiche Dialoge waeren zwei Orte, an denen dieselbe Auswahl
+ * Eine Komponente fuer alle, weil es immer dieselbe Frage ist: welche Sorte,
+ * und wie oft. Erfindung nimmt zwei (auch zweimal dieselbe), Monopol genau
+ * eine. Zwei fast gleiche Dialoge waeren zwei Orte, an denen dieselbe Auswahl
  * auseinanderlaufen kann.
+ *
+ * **Die Auswahlmenge ist eine Eigenschaft, keine Konstante mehr (Ruling 28).**
+ * `resourceMonopoly` fragt ueber fuenf Rohstoffe, `commodityMonopoly` ueber
+ * drei Handelswaren, `merchantFleet` ueber alle acht Sorten - drei
+ * verschiedene Wertemengen fuer dieselbe Frage. Statt drei fast gleicher
+ * Dialoge bekommt dieser hier seine Menge als `pool` herein; `T extends
+ * CardId` haelt dabei den genauen Typ der Aufrufer fest (`ResourceId[]` bei
+ * Erfindung und Monopol, `CommodityId[]` beim Handelsmonopol, `CardId[]` bei
+ * der Handelsflotte).
  *
  * Wie beim Abwerfen trifft der Spieler die Auswahl selbst, und `legalActions`
  * zaehlt sie deshalb nicht auf. Die Sperre am Knopf ist Bedienkomfort - ob die
  * Wahl zulaessig war, prueft der Reducer.
  */
-export interface ResourcePickDialogProps {
+export interface ResourcePickDialogProps<T extends CardId = CardId> {
   readonly title: string;
   readonly hint: string;
-  /** Wie viele Karten gewaehlt werden - 2 bei Erfindung, 1 beim Monopol. */
+  /** Aus welcher Menge gewaehlt wird - siehe Kopfkommentar. */
+  readonly pool: readonly T[];
+  /** Wie viele Karten gewaehlt werden - 2 bei Erfindung, sonst 1. */
   readonly count: number;
-  readonly onConfirm: (picks: readonly ResourceId[]) => void;
+  readonly onConfirm: (picks: readonly T[]) => void;
   readonly onClose: () => void;
 }
 
-export function ResourcePickDialog({
+export function ResourcePickDialog<T extends CardId = CardId>({
   title,
   hint,
+  pool,
   count,
   onConfirm,
   onClose,
-}: ResourcePickDialogProps): JSX.Element {
-  const [picks, setPicks] = useState<readonly ResourceId[]>([]);
+}: ResourcePickDialogProps<T>): JSX.Element {
+  const [picks, setPicks] = useState<readonly T[]>([]);
 
   return (
     <div className="modal" role="dialog" aria-label={title}>
@@ -42,18 +54,18 @@ export function ResourcePickDialog({
         <p className="modal__hint">{hint}</p>
 
         <div className="pick">
-          {RESOURCE_IDS.map((resource) => (
+          {pool.map((card) => (
             <button
-              key={resource}
+              key={card}
               type="button"
               className="pick__card"
-              data-testid={`pick-${resource}`}
+              data-testid={`pick-${card}`}
               data-sound="card"
               disabled={picks.length >= count}
-              aria-label={RESOURCE_LABELS[resource]}
-              onClick={() => setPicks((current) => [...current, resource])}
+              aria-label={CARD_LABELS[card]}
+              onClick={() => setPicks((current) => [...current, card])}
             >
-              <ResourceCard card={resource} />
+              <ResourceCard card={card} />
             </button>
           ))}
         </div>
@@ -61,7 +73,7 @@ export function ResourcePickDialog({
         <p className="pick__chosen" data-testid="pick-chosen">
           {picks.length === 0
             ? 'Noch nichts gewählt.'
-            : picks.map((pick) => RESOURCE_LABELS[pick]).join(' + ')}
+            : picks.map((pick) => CARD_LABELS[pick]).join(' + ')}
         </p>
 
         <div className="modal__buttons">
