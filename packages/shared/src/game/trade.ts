@@ -62,6 +62,10 @@ export interface HarborSource {
  *
  * Das steht hier, weil die Stelle beim naechsten Lesen sonst aussieht, als
  * haette jemand den Fall vergessen.
+ *
+ * Die Handelsflotte: eine Sorte (Rohstoff oder Handelsware) 2:1 bis Zugende.
+ * Sie tritt gegen die Haefen und die Gilde an und gewinnt nur, wo sie besser
+ * ist.
  */
 export function tradeRateFor(state: HarborSource, player: PlayerId, give: CardId): number {
   const board = boardOf(state.scenario);
@@ -89,6 +93,26 @@ export function tradeRateFor(state: HarborSource, player: PlayerId, give: CardId
   const owner = state.players.find((entry) => entry.id === player);
   if (owner !== undefined && isCommodity(give) && hasGuild(owner) && GUILD_RATE < best) {
     best = GUILD_RATE;
+  }
+
+  return best;
+}
+
+/**
+ * Ueberladen fuer Trade-Logik, die auch `fleetSort` liest.
+ *
+ * `HarborSource` reicht fuer Haefen und Gilde - dort steht kein `fleetSort`.
+ * Wo die Handelsflotte zaehlen soll, wird die ganze `GameState` uebergeben.
+ */
+export function tradeRateForWithFleet(
+  state: GameState,
+  player: PlayerId,
+  give: CardId,
+): number {
+  let best = tradeRateFor(state, player, give);
+
+  if (state.fleetSort === give && 2 < best) {
+    best = 2;
   }
 
   return best;

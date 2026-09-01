@@ -256,6 +256,8 @@ function endTurn(state: GameState): ReduceResult {
     developmentPlayed: false,
     // Der Kran gilt nur fuer den Zug, in dem er gespielt wurde.
     craneDiscount: [],
+    // Die Handelsflotte gilt nur fuer den Zug, in dem sie gespielt wurde.
+    fleetSort: null,
     /*
      * Ein Ritter steigt je Zug nur einmal. Zurueckgesetzt wird ueber **alle**
      * Ritter und nicht nur die des Spielers am Zug: aufwerten kann ohnehin nur

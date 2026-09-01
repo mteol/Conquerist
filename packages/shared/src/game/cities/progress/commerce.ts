@@ -1,4 +1,5 @@
 import type { PlayerId } from '../../player.js';
+import { addCards, EMPTY_CARDS, subtractCards } from '../../cards.js';
 import { ok, type GameState, type ReduceResult } from '../../state.js';
 import type { ProgressPlay } from './play.js';
 
@@ -27,27 +28,83 @@ export function applyMerchant(
 
 export function applyResourceMonopoly(
   state: GameState,
-  _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'resourceMonopoly' }>,
+  player: PlayerId,
+  play: Extract<ProgressPlay, { card: 'resourceMonopoly' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: alle geben zwei Karten dieser Sorte ab.
-  return ok(state);
+  const resource = play.resource;
+  let newState = state;
+
+  // Jeder andere Spieler gibt 2 Karten dieser Sorte ab (oder was er hat)
+  for (const other of state.players) {
+    if (other.id === player) continue;
+
+    const hasCount = other.resources[resource] ?? 0;
+    const takeCount = Math.min(hasCount, 2);
+
+    if (takeCount > 0) {
+      const taken: typeof EMPTY_CARDS = { ...EMPTY_CARDS, [resource]: takeCount };
+      newState = {
+        ...newState,
+        players: newState.players.map((p) =>
+          p.id === other.id ? { ...p, resources: subtractCards(p.resources, taken) } : p,
+        ),
+      };
+      const giver: typeof EMPTY_CARDS = { ...EMPTY_CARDS, [resource]: takeCount };
+      newState = {
+        ...newState,
+        players: newState.players.map((p) =>
+          p.id === player ? { ...p, resources: addCards(p.resources, giver) } : p,
+        ),
+      };
+    }
+  }
+
+  return ok(newState);
 }
 
 export function applyCommodityMonopoly(
   state: GameState,
-  _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'commodityMonopoly' }>,
+  player: PlayerId,
+  play: Extract<ProgressPlay, { card: 'commodityMonopoly' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: alle geben eine Karte dieser Ware ab.
-  return ok(state);
+  const commodity = play.commodity;
+  let newState = state;
+
+  // Jeder andere Spieler gibt 1 Karte dieser Ware ab (oder was er hat)
+  for (const other of state.players) {
+    if (other.id === player) continue;
+
+    const hasCount = other.resources[commodity] ?? 0;
+    const takeCount = Math.min(hasCount, 1);
+
+    if (takeCount > 0) {
+      const taken: typeof EMPTY_CARDS = { ...EMPTY_CARDS, [commodity]: takeCount };
+      newState = {
+        ...newState,
+        players: newState.players.map((p) =>
+          p.id === other.id ? { ...p, resources: subtractCards(p.resources, taken) } : p,
+        ),
+      };
+      const giver: typeof EMPTY_CARDS = { ...EMPTY_CARDS, [commodity]: takeCount };
+      newState = {
+        ...newState,
+        players: newState.players.map((p) =>
+          p.id === player ? { ...p, resources: addCards(p.resources, giver) } : p,
+        ),
+      };
+    }
+  }
+
+  return ok(newState);
 }
 
 export function applyMerchantFleet(
   state: GameState,
   _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'merchantFleet' }>,
+  play: Extract<ProgressPlay, { card: 'merchantFleet' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: bis Zugende 2:1 fuer eine Sorte.
-  return ok(state);
+  return ok({
+    ...state,
+    fleetSort: play.sort,
+  });
 }

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { RuleSetSchema, CardAmountsSchema } from '../rules/index.js';
-import { ScenarioDefinitionSchema } from '../scenario/index.js';
+import { ScenarioDefinitionSchema, CardIdSchema } from '../scenario/index.js';
 import type { RuleViolation } from './errors.js';
 import { ProgressCardIdSchema } from './cities/progress/cards.js';
 import { TrackIdSchema } from './cities/tracks.js';
@@ -212,6 +212,14 @@ export const GameStateSchema = z.object({
    * `developmentPlayed`: es ist immer nur einer am Zug, und `endTurn` raeumt ab.
    */
   craneDiscount: z.array(TrackIdSchema).default([]),
+  /**
+   * Welche Sorte die Handelsflotte in diesem Zug 2:1 kostet. `null` heisst: keine
+   * Flotte aktiv.
+   *
+   * Am Zustand und nicht beim Spieler, aus demselben Grund wie `craneDiscount`:
+   * es ist immer nur einer am Zug, und `endTurn` raeumt ab.
+   */
+  fleetSort: CardIdSchema.nullable().default(null),
   /**
    * Die beiden Augen, die Alchemie fuer den naechsten Wurf festlegt. `null`
    * heisst: normal wuerfeln.
