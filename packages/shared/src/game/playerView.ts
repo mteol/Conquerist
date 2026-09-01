@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { CardAmountsSchema, RuleSetSchema } from '../rules/index.js';
-import { ScenarioDefinitionSchema } from '../scenario/index.js';
+import { CardIdSchema, ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { Seat } from '../seats.js';
 import { ProgressCardIdSchema } from './cities/progress/cards.js';
 import { TrackIdSchema } from './cities/tracks.js';
@@ -108,6 +108,13 @@ export const PlayerViewSchema = z.object({
    */
   barbarians: BarbarianStateSchema.nullable().default(null),
   /**
+   * Die Haendlerfigur. **Oeffentlich** - sie steht wie `robber` und
+   * `barbarians` sichtbar auf dem Brett. `tradeRateFor` in `trade.ts` braucht
+   * das Feld: ohne es koennte eine `PlayerView` ihren eigenen Kurs nicht mehr
+   * ausrechnen, sobald der Haendler steht.
+   */
+  merchant: z.object({ hex: z.string(), owner: PlayerIdSchema }).nullable().default(null),
+  /**
    * Die Staerke der Ritter Catans - ueber **alle** Spieler zusammen.
    *
    * Mitgeschickt und nicht im Browser gerechnet, obwohl `knights` daneben
@@ -129,6 +136,13 @@ export const PlayerViewSchema = z.object({
   deckLeft: z.number().int().min(0),
   /** Ob in diesem Zug schon eine Entwicklungskarte gespielt wurde. */
   developmentPlayed: z.boolean(),
+  /**
+   * Welche Sorte die Handelsflotte in diesem Zug 2:1 kostet, `null` ohne
+   * aktive Flotte. **Oeffentlich** - sie wirkt am Bankhandel, den jeder am
+   * Tisch sieht. `tradeRateFor` braucht das Feld aus demselben Grund wie
+   * `merchant`.
+   */
+  fleetSort: CardIdSchema.nullable().default(null),
   /**
    * Welche Entwicklungskarten der Empfaenger jetzt ausspielen koennte.
    *
@@ -234,6 +248,7 @@ export function playerViewOf(
     knights: state.knights,
     robber: state.robber,
     barbarians: state.barbarians,
+    merchant: state.merchant,
     defenders: catanStrength(state),
     bank: state.bank,
     longestRoad: state.longestRoad,
@@ -241,6 +256,7 @@ export function playerViewOf(
     // Nur die Anzahl: wer den Stapel kennt, weiss vor dem Kauf, was er bekommt.
     deckLeft: state.deck.length,
     developmentPlayed: state.developmentPlayed,
+    fleetSort: state.fleetSort,
     playableCards: playableDevelopmentCards(state, viewer),
     canOfferTrade: canOfferAnything(state, viewer),
     roadBuildingTargets: roadBuildingTargets(state, viewer),

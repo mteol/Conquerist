@@ -1,5 +1,5 @@
 import type { CardAmounts } from '../rules/index.js';
-import { isCommodity, type CardId } from '../scenario/index.js';
+import { isCommodity, terrainYield, type CardId } from '../scenario/index.js';
 import { boardOf } from './board.js';
 import { hasGuild, type TrackLevelSource } from './cities/tracks.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
@@ -25,25 +25,39 @@ const DEFAULT_RATE = 4;
 /** Der Kurs der Gilde fuer Handelswaren - eine 2 mit Namen. */
 const GUILD_RATE = 2;
 
+/** Der Kurs der Handelsflotte, bis Zugende - wieder eine 2. */
+const FLEET_RATE = 2;
+
+/** Der Kurs des Haendlers auf dem Rohstoff seines Feldes - ebenfalls eine 2. */
+const MERCHANT_RATE = 2;
+
 /**
  * Was `tradeRateFor` wirklich braucht.
  *
- * Nur Brett, Belegung und die Ausbaustufen der Spieler - keine Handkarten,
- * kein Zufall. Deshalb ein eigener Typ statt `GameState`: so kann auch eine
- * `PlayerView` den Kurs ausrechnen, und die Oberflaeche muss ihn nicht vom
- * Server erfragen. Es ist keine Regel, die hier zweimal ausgelegt wird - es
- * ist dieselbe Funktion.
+ * Nur Brett, Belegung, die Ausbaustufen der Spieler und die beiden
+ * Zugbindungen Handelsflotte und Haendler - keine Handkarten, kein Zufall.
+ * Deshalb ein eigener Typ statt `GameState`: so kann auch eine `PlayerView`
+ * den Kurs ausrechnen, und die Oberflaeche muss ihn nicht vom Server
+ * erfragen. Es ist keine Regel, die hier zweimal ausgelegt wird - es ist
+ * dieselbe Funktion.
  *
  * `players` traegt seit der Gilde nur, was `hasGuild` liest (`TrackLevelSource`)
  * und `id`, um den Spieler zu finden - nicht `readonly PlayerState[]`. So
  * geht sowohl `GameState['players']` als auch die Spielerliste einer
  * `PlayerView` durch, ohne dass eine der beiden Seiten mehr vortaeuschen
  * muesste, als sie hat.
+ *
+ * `fleetSort` und `merchant` sind hier als eigene Felder und nicht als
+ * `Pick<GameState, ...>` notiert, aber vom selben Typ wie in `GameState` -
+ * eine `PlayerView` traegt beide oeffentlich mit, aus demselben Grund wie
+ * `robber` und `barbarians`.
  */
 export interface HarborSource {
   readonly scenario: GameState['scenario'];
   readonly buildings: GameState['buildings'];
   readonly players: readonly (Pick<PlayerState, 'id'> & TrackLevelSource)[];
+  readonly fleetSort: GameState['fleetSort'];
+  readonly merchant: GameState['merchant'];
 }
 
 /**
@@ -64,8 +78,15 @@ export interface HarborSource {
  * haette jemand den Fall vergessen.
  *
  * Die Handelsflotte: eine Sorte (Rohstoff oder Handelsware) 2:1 bis Zugende.
- * Sie tritt gegen die Haefen und die Gilde an und gewinnt nur, wo sie besser
- * ist.
+ * Der Haendler: der Rohstoff seines Feldes 2:1, solange er dort steht und
+ * solange er diesem Spieler gehoert. Beide treten gegen die Haefen und die
+ * Gilde an und gewinnen nur, wo sie besser sind - dieselbe `Math.min`-Logik
+ * wie zwischen zwei Haefen.
+ *
+ * Alle vier Quellen stehen absichtlich in derselben Funktion: es gibt **eine**
+ * Stelle, die einen Kurs bestimmt, und `canTradeWithBank`/`applyTradeWithBank`
+ * werden dadurch automatisch korrekt, ohne von der Flotte oder dem Haendler zu
+ * wissen.
  */
 export function tradeRateFor(state: HarborSource, player: PlayerId, give: CardId): number {
   const board = boardOf(state.scenario);
@@ -95,20 +116,27 @@ export function tradeRateFor(state: HarborSource, player: PlayerId, give: CardId
     best = GUILD_RATE;
   }
 
-  return best;
-}
+  /*
+   * Die Handelsflotte traegt keinen Besitzer im Zustand - sie muss keinen,
+   * denn es ist immer nur einer am Zug, und `endTurn` raeumt `fleetSort`
+   * wieder ab (siehe `state.ts`). Wer auch immer hier nach seinem Kurs fragt,
+   * ist also implizit der, fuer den die Flotte gerade gilt.
+   */
+  if (state.fleetSort === give && FLEET_RATE < best) {
+    best = FLEET_RATE;
+  }
 
-/**
- * Ueberladen fuer Trade-Logik, die auch `fleetSort` liest.
- *
- * `HarborSource` reicht fuer Haefen und Gilde - dort steht kein `fleetSort`.
- * Wo die Handelsflotte zaehlen soll, wird die ganze `GameState` uebergeben.
- */
-export function tradeRateForWithFleet(state: GameState, player: PlayerId, give: CardId): number {
-  let best = tradeRateFor(state, player, give);
-
-  if (state.fleetSort === give && 2 < best) {
-    best = 2;
+  /*
+   * Der Haendler: 2:1 auf den Rohstoff seines Feldes, aber nur beim
+   * aktuellen Besitzer - er wandert, wenn jemand anders die Karte spielt,
+   * ohne dass der alte Besitzer etwas tut.
+   */
+  if (state.merchant !== null && state.merchant.owner === player) {
+    const placement = board.hexes.get(state.merchant.hex as any);
+    const resource = placement !== undefined ? terrainYield(placement.terrain) : null;
+    if (resource === give && MERCHANT_RATE < best) {
+      best = MERCHANT_RATE;
+    }
   }
 
   return best;
