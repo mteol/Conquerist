@@ -1,11 +1,16 @@
+import type { EdgeId } from '../../../geometry/index.js';
+import { boardOf } from '../../board.js';
+import { applyBuildRoad, canBuildRoad } from '../../build.js';
 import { countCards } from '../../cards.js';
 import { RuleViolationCode, violation, type RuleViolation } from '../../errors.js';
 import type { PlayerId } from '../../player.js';
-import { boardOf } from '../../board.js';
+import { canPlaceRobberAt, stealOneCard, victimsAt } from '../../robber.js';
+import { openRoads, recomputeLongestRoad } from '../../roads.js';
 import { victoryPointsOf } from '../../scoring.js';
-import { ok, rejected, type GameState, type ReduceResult } from '../../state.js';
+import { ok, rejected, withPlayer, type GameState, type ReduceResult } from '../../state.js';
 import { resolveDisplacement } from '../knightActions.js';
 import type { ProgressPlay } from './play.js';
+import { freeOfCharge, withoutCost } from './science.js';
 
 /**
  * Fuenf ausspielbare Politikkarten an diesem Tisch - Bischof, Diplomat,
@@ -44,6 +49,10 @@ export function canPolitics(
   play: ProgressPlay,
 ): RuleViolation | null {
   switch (play.card) {
+    case 'bishop':
+      return canBishop(state, player, play);
+    case 'diplomat':
+      return canDiplomat(state, player, play);
     case 'intrigue':
       return canIntrigue(state, player, play);
     default:
@@ -184,20 +193,147 @@ export function applyIntrigue(
   return ok(resolveDisplacement({ ...state, knights }, displaced, play.vertex));
 }
 
-export function applyBishop(
+/**
+ * Bischof: wohin der Raeuber darf - dieselbe Frage wie bei jedem Versetzen.
+ *
+ * `canPlaceRobberAt` beantwortet sie fuer beide Wege: Sperre bis zum ersten
+ * Barbarenueberfall, Feld auf dem Brett, nicht dasselbe Feld. Nach einem Opfer
+ * fragt der Bischof nicht - er nimmt von allen.
+ */
+export function canBishop(
   state: GameState,
   _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'bishop' }>,
-): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: Raeuber versetzen und Karten ziehen.
-  return ok(state);
+  play: Extract<ProgressPlay, { card: 'bishop' }>,
+): RuleViolation | null {
+  return canPlaceRobberAt(state, play.hex);
 }
 
+/**
+ * Setzt den Raeuber um und zieht von **jeder** Person am neuen Feld eine
+ * Handkarte - je Person nur eine, auch bei zwei Bauwerken.
+ *
+ * **Nicht ueber `robberPending`.** Diese Phase gibt es fuer die Opferwahl, und
+ * der Bischof hat keine zu treffen; sie zu oeffnen hiesse, den Tisch fuer eine
+ * Entscheidung anzuhalten, die niemand hat. Wen es trifft, sagt trotzdem
+ * `victimsAt` - dieselbe Liste, die auch der Raeuber liest, samt der Regel "je
+ * Person einmal" und "wer keine Karten hat, wird uebergangen".
+ *
+ * Welche Karte faellt, entscheidet der Zufall aus dem Zustand heraus: gleicher
+ * RNG-Zustand, gleiche Karten - wie beim Stehlen in `applyMoveRobber`.
+ */
+export function applyBishop(
+  state: GameState,
+  player: PlayerId,
+  play: Extract<ProgressPlay, { card: 'bishop' }>,
+): ReduceResult {
+  const problem = canBishop(state, player, play);
+  if (problem !== null) return rejected(problem);
+
+  let current: GameState = { ...state, robber: play.hex };
+
+  for (const victim of victimsAt(current, play.hex, player)) {
+    current = stealOneCard(current, player, victim);
+  }
+
+  return ok(current);
+}
+
+/**
+ * Das Brett ohne diese Strasse - die Kante frei, das Bauteil zurueck im
+ * Vorrat seines Besitzers.
+ *
+ * Eine Funktion fuer `canDiplomat` und `applyDiplomat`: die Pruefung des
+ * Neubaus muss auf demselben Brett rechnen, auf dem er stattfindet. Vor dem
+ * Entfernen gerechnet stuende die alte Strasse noch da - und sie kann der
+ * einzige Anschluss gewesen sein.
+ */
+function withoutRoad(state: GameState, edge: EdgeId, owner: PlayerId): GameState {
+  const roads = { ...state.roads };
+  delete roads[edge];
+
+  return {
+    ...state,
+    roads,
+    players: withPlayer(state, owner, (entry) => ({
+      ...entry,
+      piecesLeft: { ...entry.piecesLeft, road: entry.piecesLeft.road + 1 },
+    })),
+  };
+}
+
+/**
+ * Diplomat: eine beliebige **offene** Strasse entfernen; war es eine eigene,
+ * darf sie sofort neu gesetzt werden.
+ *
+ * Was offen heisst, rechnet `openRoads` in `roads.ts` - die Datei, die schon
+ * weiss, wie Strassen zusammenhaengen.
+ *
+ * Der Neubau steht als `rebuildAt` in derselben Aktion und nicht als zweite
+ * Phase: er laesst sich nicht aufschieben. Ein Feld, das mal erlaubt und mal
+ * verboten ist, gehoert damit hierher - dieselbe Begruendung wie bei
+ * `metropolisAt` in `canImproveCity`. Wo die neue Strasse liegen darf,
+ * entscheidet `canBuildRoad` und nicht diese Karte; nur bezahlt wird sie
+ * nicht.
+ */
+export function canDiplomat(
+  state: GameState,
+  player: PlayerId,
+  play: Extract<ProgressPlay, { card: 'diplomat' }>,
+): RuleViolation | null {
+  const owner = state.roads[play.edge];
+  if (owner === undefined) {
+    return violation(
+      RuleViolationCode.PROGRESS_HAS_NO_EFFECT,
+      `Auf ${play.edge} liegt keine Straße`,
+    );
+  }
+  if (!openRoads(state).includes(play.edge)) {
+    return violation(
+      RuleViolationCode.PROGRESS_HAS_NO_EFFECT,
+      `Die Straße auf ${play.edge} ist nicht offen`,
+    );
+  }
+
+  if (play.rebuildAt === undefined) return null;
+
+  if (owner !== player) {
+    return violation(
+      RuleViolationCode.PROGRESS_HAS_NO_EFFECT,
+      'Nur eine eigene entfernte Straße darf sofort neu gesetzt werden',
+    );
+  }
+
+  return canBuildRoad(
+    withoutCost(withoutRoad(state, play.edge, owner), 'road'),
+    player,
+    play.rebuildAt,
+  );
+}
+
+/**
+ * Entfernt die Strasse, gibt das Bauteil zurueck und setzt gegebenenfalls neu.
+ *
+ * **Die Laengste Handelsstrasse wird hier neu gerechnet**, obwohl `finalize`
+ * im Reducer das nach jedem Zug ohnehin tut: dies ist der einzige Zug, der
+ * eine Strasse vom Brett nimmt, und die Wirkung einer Karte darf nicht davon
+ * abhaengen, wer sie aufruft.
+ */
 export function applyDiplomat(
   state: GameState,
-  _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'diplomat' }>,
+  player: PlayerId,
+  play: Extract<ProgressPlay, { card: 'diplomat' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: eine offene Strasse entfernen.
-  return ok(state);
+  const problem = canDiplomat(state, player, play);
+  if (problem !== null) return rejected(problem);
+
+  const removed = withoutRoad(state, play.edge, state.roads[play.edge]!);
+
+  if (play.rebuildAt === undefined) return ok(recomputeLongestRoad(removed));
+
+  const rebuilt = freeOfCharge(removed, 'road', (priced) =>
+    applyBuildRoad(priced, player, play.rebuildAt!),
+  );
+  if (!rebuilt.ok) return rebuilt;
+
+  return ok(recomputeLongestRoad(rebuilt.state));
 }

@@ -46,19 +46,41 @@ function runWithCost(
   cost: CardAmounts,
   build: (priced: GameState) => ReduceResult,
 ): ReduceResult {
-  const priced: GameState = {
-    ...state,
-    rules: { ...state.rules, buildCosts: { ...state.rules.buildCosts, [piece]: cost } },
-  };
-
-  const result = build(priced);
+  const result = build(pricedWith(state, piece, cost));
   if (!result.ok) return result;
 
   return ok({ ...result.state, rules: state.rules });
 }
 
-/** Dasselbe wie `runWithCost`, aber zum Nulltarif - Strassenbau, Ingenieur, Schmied. */
-function freeOfCharge(
+/** Das kurzlebige Regelwerk aus `runWithCost` - dasselbe, nur mit diesem Preis. */
+function pricedWith(state: GameState, piece: BuildableId, cost: CardAmounts): GameState {
+  return {
+    ...state,
+    rules: { ...state.rules, buildCosts: { ...state.rules.buildCosts, [piece]: cost } },
+  };
+}
+
+/**
+ * Derselbe Zustand, in dem dieses Bauteil nichts kostet - fuer die `can…`-Seite.
+ *
+ * `freeOfCharge` fuehrt einen Bau aus und stellt danach das echte Regelwerk
+ * wieder her; eine Pruefung aendert nichts und braucht nur den Preis. Beide
+ * greifen auf `pricedWith` zu, damit "gratis" genau eine Auslegung hat.
+ */
+export function withoutCost(state: GameState, piece: BuildableId): GameState {
+  return pricedWith(state, piece, EMPTY_CARDS);
+}
+
+/**
+ * Dasselbe wie `runWithCost`, aber zum Nulltarif - Strassenbau, Ingenieur,
+ * Schmied und der Neubau des Diplomaten.
+ *
+ * **Exportiert** fuer `politics.ts`: der Diplomat setzt seine entfernte
+ * Strasse gratis neu, und das ist derselbe Handgriff. Ihn dort noch einmal zu
+ * schreiben waere eine zweite Stelle, an der das echte Regelwerk
+ * wiederhergestellt werden muesste.
+ */
+export function freeOfCharge(
   state: GameState,
   piece: BuildableId,
   build: (priced: GameState) => ReduceResult,

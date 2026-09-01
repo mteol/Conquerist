@@ -372,3 +372,257 @@ describe('Intrige', () => {
     );
   });
 });
+
+describe('Bischof', () => {
+  /** Das Zielfeld: Huegel mit der 6, sechs Ecken, nicht das Raeuberfeld. */
+  const TARGET = '1,-1';
+
+  /** Eine Ecke des Zielfelds ausserhalb des Rings. */
+  const OWN_CORNER = 'v:1,-2|1,-1|2,-2';
+
+  /*
+   * p2 steht mit einem Dorf am Zielfeld und haelt nur Wolle, p3 mit zwei
+   * Bauwerken und haelt nur Erz. p1 steht selbst mit einem Dorf da - vom
+   * eigenen Dorf zieht der Bischof nicht.
+   */
+  function bishopTable(overrides: Partial<GameState> = {}): GameState {
+    const base = citiesTable({
+      buildings: {
+        [CORNERS[1]!]: settlement('p2'),
+        [CORNERS[0]!]: settlement('p3'),
+        [OUTER]: city('p3'),
+        [OWN_CORNER]: settlement('p1'),
+      },
+      ...overrides,
+    });
+
+    return withHand(
+      {
+        ...base,
+        players: base.players.map((player) => {
+          if (player.id === 'p2') return { ...player, resources: { ...player.resources, wool: 3 } };
+          if (player.id === 'p3') return { ...player, resources: { ...player.resources, ore: 4 } };
+          return player;
+        }),
+      },
+      'p1',
+      ['bishop'],
+    );
+  }
+
+  it('zieht beim Bischof von jeder Person am Feld genau eine Karte', () => {
+    const state = bishopTable();
+    const before1 = handSize(state, 'p1');
+    const before3 = handSize(state, 'p3');
+
+    const result = applyPlayProgress(state, 'p1', { card: 'bishop', hex: TARGET });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(handSize(result.state, 'p1')).toBe(before1 + 2);
+      expect(handSize(result.state, 'p3')).toBe(before3 - 1);
+      expect(handSize(result.state, 'p2')).toBe(2);
+    }
+  });
+
+  /** Je Person eine - p3 steht zweimal am Feld und verliert trotzdem nur eine. */
+  it('nimmt jeder Person genau eine, auch bei zwei Bauwerken', () => {
+    const result = applyPlayProgress(bishopTable(), 'p1', { card: 'bishop', hex: TARGET });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(playerNamed(result.state, 'p1').resources.wool).toBe(1);
+      expect(playerNamed(result.state, 'p1').resources.ore).toBe(1);
+    }
+  });
+
+  it('setzt beim Bischof den Raeuber um und braucht kein Opfer', () => {
+    const result = applyPlayProgress(bishopTable(), 'p1', { card: 'bishop', hex: TARGET });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.state.robber).toBe(TARGET);
+      expect(result.state.phase.kind).toBe('main'); // keine robberPending-Nachfrage
+    }
+  });
+
+  it('geht an einer leeren Hand vorbei', () => {
+    const state = bishopTable();
+    const empty: GameState = {
+      ...state,
+      players: state.players.map((player) =>
+        player.id === 'p2' ? { ...player, resources: { ...player.resources, wool: 0 } } : player,
+      ),
+    };
+
+    const before1 = handSize(empty, 'p1');
+    const result = applyPlayProgress(empty, 'p1', { card: 'bishop', hex: TARGET });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(handSize(result.state, 'p1')).toBe(before1 + 1);
+  });
+
+  it('lehnt das Feld ab, auf dem der Raeuber schon steht', () => {
+    const state = bishopTable();
+    expect(canPlayProgress(state, 'p1', { card: 'bishop', hex: state.robber })?.code).toBe(
+      RuleViolationCode.ROBBER_SAME_HEX,
+    );
+  });
+
+  it('lehnt ein Feld ausserhalb des Bretts ab', () => {
+    expect(canPlayProgress(bishopTable(), 'p1', { card: 'bishop', hex: '9,9' })?.code).toBe(
+      RuleViolationCode.NOT_ON_BOARD,
+    );
+  });
+
+  /*
+   * Bis zum ersten Barbarenueberfall ruehrt sich der Raeuber nicht - auch
+   * nicht auf einer Karte.
+   */
+  it('laesst den Raeuber vor dem ersten Ueberfall stehen', () => {
+    const locked = bishopTable({ barbarians: { position: 0, attacks: 0 } });
+    expect(canPlayProgress(locked, 'p1', { card: 'bishop', hex: TARGET })?.code).toBe(
+      RuleViolationCode.ROBBER_LOCKED,
+    );
+  });
+});
+
+describe('Diplomat', () => {
+  /** Fuenf Strassen von p2, eine Kette ohne Beruehrung mit dem Ring. */
+  const RIVAL_CHAIN: readonly string[] = [
+    'e:0,-1|1,-2',
+    'e:1,-2|1,-1',
+    'e:1,-1|2,-2',
+    'e:1,-1|2,-1',
+    'e:1,0|2,-1',
+  ];
+
+  /** Das freie Ende der fremden Kette - offen, weil dort nichts weitergeht. */
+  const foreignOpen = RIVAL_CHAIN[0]!;
+
+  /** Mitten in der fremden Kette - an beiden Enden geht es weiter. */
+  const foreignClosed = RIVAL_CHAIN[2]!;
+
+  /** Die zweite Strasse von p1, deren Ende auf `CORNERS[2]` frei liegt. */
+  const ownOpen = 'e:0,-1|0,0';
+
+  /** Eine freie Kante an `CORNERS[0]`, wo p1 sein Dorf hat. */
+  const elsewhere = 'e:0,0|1,0';
+
+  /** Eine freie Kante weit weg vom eigenen Netz. */
+  const unconnected = 'e:-2,1|-1,1';
+
+  /*
+   * p1 haelt zwei Strassen mit einem Dorf auf `CORNERS[0]`, p2 die Kette von
+   * fuenf - und damit die Laengste Handelsstrasse.
+   */
+  function diplomatTable(overrides: Partial<GameState> = {}): GameState {
+    return withHand(
+      citiesTable({
+        roads: {
+          'e:0,0|1,-1': 'p1',
+          [ownOpen]: 'p1',
+          ...Object.fromEntries(RIVAL_CHAIN.map((edge) => [edge, 'p2'])),
+        },
+        buildings: { [CORNERS[0]!]: settlement('p1') },
+        longestRoad: { holder: 'p2', length: 5 },
+        ...overrides,
+      }),
+      'p1',
+      ['diplomat'],
+    );
+  }
+
+  it('entfernt beim Diplomaten eine offene Strasse und gibt sie in den Vorrat', () => {
+    const state = diplomatTable();
+    const beforeStock = playerNamed(state, 'p2').piecesLeft.road;
+
+    const result = applyPlayProgress(state, 'p1', { card: 'diplomat', edge: foreignOpen });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.state.roads[foreignOpen]).toBeUndefined();
+      expect(playerNamed(result.state, 'p2').piecesLeft.road).toBe(beforeStock + 1);
+    }
+  });
+
+  it('rechnet die Laengste Handelsroute nach dem Diplomaten neu', () => {
+    const result = applyPlayProgress(diplomatTable(), 'p1', {
+      card: 'diplomat',
+      edge: foreignOpen,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.state.longestRoad.holder).not.toBe('p2');
+      expect(result.state.longestRoad).toEqual({ holder: null, length: 0 });
+    }
+  });
+
+  it('laesst eine eigene entfernte Strasse sofort neu setzen', () => {
+    const state = diplomatTable();
+    const beforeStock = playerNamed(state, 'p1').piecesLeft.road;
+
+    const result = applyPlayProgress(state, 'p1', {
+      card: 'diplomat',
+      edge: ownOpen,
+      rebuildAt: elsewhere,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.state.roads[elsewhere]).toBe('p1');
+      expect(result.state.roads[ownOpen]).toBeUndefined();
+      expect(playerNamed(result.state, 'p1').piecesLeft.road).toBe(beforeStock);
+    }
+  });
+
+  /** Der Neubau ist gratis - die Karte bezahlt ihn, nicht die Hand. */
+  it('laesst den Neubau nichts kosten', () => {
+    const state = diplomatTable();
+    const before = playerNamed(state, 'p1').resources;
+
+    const result = applyPlayProgress(state, 'p1', {
+      card: 'diplomat',
+      edge: ownOpen,
+      rebuildAt: elsewhere,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(playerNamed(result.state, 'p1').resources).toEqual(before);
+  });
+
+  it('lehnt den Neubau nach einer fremden Strasse ab', () => {
+    const problem = canPlayProgress(diplomatTable(), 'p1', {
+      card: 'diplomat',
+      edge: foreignOpen,
+      rebuildAt: elsewhere,
+    });
+
+    expect(problem?.code).toBe(RuleViolationCode.PROGRESS_HAS_NO_EFFECT);
+    expect(problem?.message).toContain('eigene');
+  });
+
+  it('lehnt einen Neubau ohne Anschluss ab', () => {
+    expect(
+      canPlayProgress(diplomatTable(), 'p1', {
+        card: 'diplomat',
+        edge: ownOpen,
+        rebuildAt: unconnected,
+      })?.code,
+    ).toBe(RuleViolationCode.NOT_CONNECTED);
+  });
+
+  it('lehnt eine Strasse ab, die nicht offen ist', () => {
+    const state = diplomatTable();
+
+    // Dort liegt wirklich eine Strasse - abgelehnt wird, dass sie nicht offen ist.
+    expect(state.roads[foreignClosed]).toBe('p2');
+
+    const problem = canPlayProgress(state, 'p1', { card: 'diplomat', edge: foreignClosed });
+    expect(problem?.code).toBe(RuleViolationCode.PROGRESS_HAS_NO_EFFECT);
+    expect(problem?.message).toContain('nicht offen');
+  });
+
+  it('lehnt eine Kante ohne Strasse ab', () => {
+    const problem = canPlayProgress(diplomatTable(), 'p1', {
+      card: 'diplomat',
+      edge: unconnected,
+    });
+
+    expect(problem?.code).toBe(RuleViolationCode.PROGRESS_HAS_NO_EFFECT);
+    expect(problem?.message).toContain('liegt keine');
+  });
+});

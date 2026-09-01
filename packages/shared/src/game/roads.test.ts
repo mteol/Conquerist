@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { isEdgeId } from '../geometry/index.js';
 import { testGame } from './fixtures.js';
-import { longestRoadLength, recomputeLongestRoad } from './roads.js';
+import { longestRoadLength, openRoads, recomputeLongestRoad } from './roads.js';
 import type { GameState, Knight } from './state.js';
 
 /**
@@ -246,5 +246,68 @@ describe('recomputeLongestRoad', () => {
     );
 
     expect(state.longestRoad).toEqual({ holder: null, length: 0 });
+  });
+});
+
+describe('openRoads', () => {
+  /**
+   * Drei Strassen von p1 laengs des Rings: `RING[0]` von `CORNERS[0]` nach
+   * `CORNERS[1]`, `RING[1]` weiter nach `CORNERS[2]`, `RING[2]` weiter nach
+   * `CORNERS[3]`. Auf `CORNERS[0]` steht ein Dorf von p1, auf `CORNERS[1]`
+   * eines von p2.
+   */
+  function chainWithBuildings(overrides: Partial<GameState> = {}): GameState {
+    return testGame({
+      roads: roadsFor('p1', RING.slice(0, 3)),
+      buildings: {
+        [CORNERS[0]!]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+        [CORNERS[1]!]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+      },
+      ...overrides,
+    });
+  }
+
+  /** Das freie Ende der Kette: auf `CORNERS[3]` steht nichts und geht nichts weiter. */
+  const danglingEdge = RING[2]!;
+
+  /** Zwischen zwei Doerfern - an beiden Enden steht etwas. */
+  const edgeBetweenTwoSettlements = RING[0]!;
+
+  it('findet die offenen Strassen', () => {
+    const state = chainWithBuildings();
+    expect(openRoads(state)).toContain(danglingEdge);
+    expect(openRoads(state)).not.toContain(edgeBetweenTwoSettlements);
+  });
+
+  it('nennt in dieser Kette genau die eine', () => {
+    expect(openRoads(chainWithBuildings())).toEqual([danglingEdge]);
+  });
+
+  /*
+   * Im geschlossenen Ring geht an jeder Ecke eine weitere eigene Strasse
+   * weiter - keine einzige ist offen, auch ohne ein einziges Gebaeude.
+   */
+  it('findet im geschlossenen Ring keine', () => {
+    expect(openRoads(testGame({ roads: roadsFor('p1', RING) }))).toEqual([]);
+  });
+
+  /*
+   * Fortsetzen kann nur der Besitzer selbst: eine fremde Strasse am freien
+   * Ende macht die eigene nicht zu einer geschlossenen.
+   */
+  it('laesst sich von einer fremden Strasse am Ende nicht stoeren', () => {
+    const state = chainWithBuildings({
+      roads: { ...roadsFor('p1', RING.slice(0, 3)), ...roadsFor('p2', [RING[3]!]) },
+    });
+
+    expect(openRoads(state)).toContain(danglingEdge);
+  });
+
+  it('nennt die offenen Strassen aller Spieler', () => {
+    const state = testGame({
+      roads: { ...roadsFor('p1', [RING[0]!]), ...roadsFor('p2', [RING[3]!]) },
+    });
+
+    expect(openRoads(state).sort()).toEqual([RING[0]!, RING[3]!].sort());
   });
 });

@@ -173,18 +173,19 @@ export function victimsAt(state: GameState, hex: HexId, thief: PlayerId): Player
   return found;
 }
 
-/** Prueft das Versetzen samt Opferwahl. */
-export function canMoveRobber(
-  state: GameState,
-  player: PlayerId,
-  hex: HexId,
-  victim: PlayerId | null,
-): RuleViolation | null {
-  /*
-   * Zuerst die Sperre: bis zum ersten Barbarenueberfall ruehrt sich der
-   * Raeuber nicht. Vor allen anderen Pruefungen, weil sie den Zug an sich
-   * verbietet und nicht seine Einzelheiten.
-   */
+/**
+ * Ob der Raeuber ueberhaupt auf dieses Feld darf - ohne Frage nach dem Opfer.
+ *
+ * **Exportiert**, weil es zwei Wege gibt, ihn zu versetzen: der Zug nach einer
+ * Sieben und der Bischof in `cities/progress/politics.ts`. Der Bischof waehlt
+ * kein Opfer, er nimmt von allen - aber wohin der Raeuber darf, ist beide Male
+ * dieselbe Frage, und zwei Auslegungen davon liefen auseinander.
+ *
+ * Zuerst die Sperre: bis zum ersten Barbarenueberfall ruehrt er sich nicht.
+ * Vor allen anderen Pruefungen, weil sie den Zug an sich verbietet und nicht
+ * seine Einzelheiten.
+ */
+export function canPlaceRobberAt(state: GameState, hex: HexId): RuleViolation | null {
   if (!robberIsFree(state)) {
     return violation(
       RuleViolationCode.ROBBER_LOCKED,
@@ -206,6 +207,47 @@ export function canMoveRobber(
       'Der Räuber steht bereits auf diesem Feld und muss weiterziehen',
     );
   }
+
+  return null;
+}
+
+/**
+ * Nimmt dem Opfer eine zufaellige Handkarte und gibt sie dem Dieb.
+ *
+ * Die Hand wird durchnummeriert, der Zufall liefert den Index - so bleibt der
+ * Diebstahl aus Seed und Aktionsfolge rekonstruierbar.
+ *
+ * **Exportiert**, weil zwei Karten dieselbe Ziehung machen: der Raeuber hier
+ * und der Bischof in `cities/progress/politics.ts`. Das Opfer muss Karten
+ * halten - wer keine hat, steht gar nicht erst in `victimsAt`.
+ */
+export function stealOneCard(state: GameState, thief: PlayerId, victim: PlayerId): GameState {
+  const robbed = findPlayer(state, victim)!;
+
+  const [index, rng] = nextInt(state.rng, countCards(robbed.resources));
+  const taken = cardAt(robbed.resources, index);
+  const one: CardAmounts = { ...EMPTY_CARDS, [taken]: 1 };
+
+  return {
+    ...state,
+    rng,
+    players: state.players.map((entry) => {
+      if (entry.id === victim) return { ...entry, resources: subtractCards(entry.resources, one) };
+      if (entry.id === thief) return { ...entry, resources: addCards(entry.resources, one) };
+      return entry;
+    }),
+  };
+}
+
+/** Prueft das Versetzen samt Opferwahl. */
+export function canMoveRobber(
+  state: GameState,
+  player: PlayerId,
+  hex: HexId,
+  victim: PlayerId | null,
+): RuleViolation | null {
+  const placement = canPlaceRobberAt(state, hex);
+  if (placement !== null) return placement;
 
   const possible = victimsAt(state, hex, player);
   if (victim === null) {
@@ -242,26 +284,11 @@ export function applyMoveRobber(
   const moved: GameState = { ...state, robber: hex, phase: { kind: resume } };
   if (victim === null) return ok(moved);
 
-  const robbed = findPlayer(state, victim);
-  if (robbed === undefined) {
+  if (findPlayer(state, victim) === undefined) {
     return rejected(
       violation(RuleViolationCode.UNKNOWN_PLAYER, `${victim} sitzt nicht an diesem Tisch`),
     );
   }
 
-  // Die Hand wird durchnummeriert, der Zufall liefert den Index - so bleibt der
-  // Diebstahl aus Seed und Aktionsfolge rekonstruierbar.
-  const [index, rng] = nextInt(state.rng, countCards(robbed.resources));
-  const taken = cardAt(robbed.resources, index);
-  const one: CardAmounts = { ...EMPTY_CARDS, [taken]: 1 };
-
-  return ok({
-    ...moved,
-    rng,
-    players: moved.players.map((entry) => {
-      if (entry.id === victim) return { ...entry, resources: subtractCards(entry.resources, one) };
-      if (entry.id === player) return { ...entry, resources: addCards(entry.resources, one) };
-      return entry;
-    }),
-  });
+  return ok(stealOneCard(moved, player, victim));
 }

@@ -97,6 +97,38 @@ export function longestRoadLength(state: GameState, player: PlayerId): number {
 }
 
 /**
+ * Die **offenen** Strassen auf dem Brett - die, die der Diplomat entfernen darf.
+ *
+ * Offen heisst: an mindestens einem ihrer beiden Enden steht kein Gebaeude und
+ * geht keine weitere Strasse **desselben Besitzers** weiter. Eine Strasse
+ * mitten in einer Kette ist damit sicher, eine mit freiem Ende nicht.
+ *
+ * Sie steht hier und nicht bei der Karte, weil sie eine Frage an die Strassen
+ * ist: diese Datei weiss schon, wie Strassen zusammenhaengen, und die Antwort
+ * darf nicht davon abhaengen, wer gerade fragt.
+ *
+ * **Jedes** Gebaeude sperrt das Ende, nicht nur ein eigenes - gefragt ist, ob
+ * die Strasse dort an etwas anschliesst, und ein fremdes Dorf ist etwas.
+ * Ritter zaehlen nicht: sie stehen auf der Kreuzung, sie halten sie nicht.
+ */
+export function openRoads(state: GameState): EdgeId[] {
+  const board = boardOf(state.scenario);
+
+  return Object.entries(state.roads)
+    .filter(([edge, owner]) =>
+      (board.topology.edgeVertices.get(edge) ?? []).some((end) => {
+        if (state.buildings[end] !== undefined) return false;
+
+        const continues = (board.topology.vertexEdges.get(end) ?? []).some(
+          (other) => other !== edge && state.roads[other] === owner,
+        );
+        return !continues;
+      }),
+    )
+    .map(([edge]) => edge);
+}
+
+/**
  * Vergibt die Laengste Handelsstrasse neu.
  *
  * Ab der Mindestlaenge aus dem RuleSet, und der Wechsel verlangt echtes
