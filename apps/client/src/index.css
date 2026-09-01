@@ -4020,9 +4020,14 @@ body {
   font-weight: 700;
 }
 
-.progress__hand {
-  margin: 0;
-}
+/*
+ * Die Handkarten selbst tragen keine eigene Klasse mehr - sie liegen in
+ * `.devcards`/`.devcards__row`, derselben Huelle wie bei den
+ * Entwicklungskarten (`DevelopmentCards.tsx`), inklusive der Erklaerzeile
+ * `.devcards__hint` beim Darueberfahren oder Fokussieren (Fixrunde 1,
+ * WICHTIG 2). Eine zweite Fassung dieser Klassen fuer Fortschrittskarten
+ * waere die Mechanik zweimal - genau das, was der Befund vermeiden wollte.
+ */
 
 /*
  * Die kompakte Leiste am Tisch: derselbe Stand der anderen, in einer Zeile.

@@ -6,7 +6,7 @@ import {
   type PlayerView,
   type ProgressCardId,
 } from '@conquerist/shared';
-import { render, screen, userEvent } from '../test/dom';
+import { fireEvent, render, screen, userEvent } from '../test/dom';
 import { ProgressPanel } from './ProgressPanel';
 
 /**
@@ -151,5 +151,77 @@ describe('ProgressPanel', () => {
     render(<ProgressPanel view={withHandView(['engineer'])} />);
 
     expect(screen.getByRole('button', { name: /Ingenieur/ })).toHaveProperty('disabled', true);
+  });
+
+  /*
+   * Fixrunde 1, WICHTIG 2: eine gesperrte Karte muss sagen, WARUM sie nicht
+   * geht - nicht nur DASS. Geprueft wird die Mechanik aus `DevelopmentCards.tsx`
+   * (aria-describedby auf einen versteckten Satz, der IMMER da ist, nicht
+   * erst beim Darueberfahren) und die sichtbare Erklaerzeile beim
+   * Darueberfahren/Fokussieren.
+   */
+  it('nennt bei einer gesperrten Karte den Grund - fuer Vorlesewerkzeuge unbedingt vorhanden', () => {
+    render(<ProgressPanel view={withHandView(['engineer'])} />);
+
+    const button = screen.getByRole('button', { name: /Ingenieur/ });
+    const describedById = button.getAttribute('aria-describedby');
+    expect(describedById).not.toBeNull();
+
+    const reason = document.getElementById(describedById!);
+    expect(reason).not.toBeNull();
+    expect(reason!.textContent).toContain('Brett');
+    // Kein technischer Jargon wie "nicht verdrahtet" - ein Satz fuer den Spieler.
+    expect(reason!.textContent).not.toMatch(/verdrahtet/i);
+  });
+
+  it('zeigt den Grund einer gesperrten Karte auch beim Darueberfahren/Fokussieren an', () => {
+    render(<ProgressPanel view={withHandView(['engineer'])} />);
+
+    expect(screen.queryByTestId('progress-hint')).toBeNull();
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: /Ingenieur/ }).closest('li')!);
+
+    const hint = screen.getByTestId('progress-hint');
+    expect(hint.textContent).toContain('Ingenieur');
+    expect(hint.textContent).toContain('Brett');
+  });
+
+  it('nennt bei einer spielbaren Karte ebenfalls einen Satz - die eigene Wirkung, nicht den Sperrgrund', () => {
+    render(<ProgressPanel view={withHandView(['warlord'])} />);
+
+    const button = screen.getByRole('button', { name: /Heerführer/ });
+    const describedById = button.getAttribute('aria-describedby');
+    const reason = document.getElementById(describedById!);
+
+    expect(reason!.textContent).not.toBe('');
+    expect(reason!.textContent).not.toMatch(/Brett \(eine Kreuzung/);
+  });
+
+  /*
+   * Fixrunde 1, GERING 3: von den drei ResourcePickDialog-Aufrufen aus
+   * Ruling 28 war ausgerechnet commodityMonopoly - der Fall mit der
+   * kleinsten, dritten Wertemenge (CommodityIdSchema, 3 Sorten) - von keinem
+   * Test angesteuert.
+   */
+  it('fragt beim Handelsmonopol nach der Handelsware und meldet sie mit dem Feld commodity', async () => {
+    const onAction = vi.fn();
+    render(<ProgressPanel view={withHandView(['commodityMonopoly'])} onAction={onAction} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Handelsmonopol/ }));
+
+    const dialog = screen.getByRole('dialog', { name: /Sorte/ });
+    expect(dialog).toBeDefined();
+    // Die Handelsware-Menge, nicht die Rohstoff- oder die volle Sortenmenge.
+    expect(screen.getByTestId('pick-cloth')).toBeDefined();
+    expect(screen.queryByTestId('pick-ore')).toBeNull();
+
+    await userEvent.click(screen.getByTestId('pick-cloth'));
+    await userEvent.click(screen.getByRole('button', { name: 'Karte spielen' }));
+
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'playProgress',
+      player: 'p1',
+      play: { card: 'commodityMonopoly', commodity: 'cloth' },
+    });
   });
 });

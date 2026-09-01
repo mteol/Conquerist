@@ -3,6 +3,7 @@ import {
   CARD_IDS,
   COMMODITY_IDS,
   PROGRESS_NAMES,
+  PROGRESS_TEXTS,
   PROGRESS_TRACK,
   RESOURCE_IDS,
   TRACK_IDS,
@@ -94,6 +95,32 @@ function categoryOf(card: ProgressCardId): CardCategory {
   }
 }
 
+/**
+ * Warum die sieben `unwired`-Karten gesperrt sind - fuer den Spieler, nicht
+ * fuer die Technik. "Nicht verdrahtet" waere eine Auskunft ueber den Code;
+ * das hier ist eine ueber das Spiel, das er gerade vor sich hat.
+ */
+const UNWIRED_REASON =
+  'Diese Karte braucht eine Wahl auf dem Brett (eine Kreuzung, eine Kante oder ' +
+  'einen Zahlenchip) - die gibt es in dieser Fassung noch nicht.';
+
+/** Der erklaerende Satz zu einer Handkarte - Wirkung, oder bei gesperrten Karten der Grund. */
+function hintTextFor(card: ProgressCardId): string {
+  return categoryOf(card).kind === 'unwired' ? UNWIRED_REASON : PROGRESS_TEXTS[card];
+}
+
+/**
+ * Die Id, unter der eine Handkarte ihren Satz fuer Vorlesewerkzeuge ablegt.
+ *
+ * Mit dem Index, nicht nur der Kartenart: dieselbe Karte kann mehrfach auf
+ * der Hand liegen (Haendler etwa sechsfach im Stapel), und zwei Karten mit
+ * derselben Id waeren zwei Bedienelemente, die auf denselben Satz zeigen -
+ * `aria-describedby` verlangt eine eindeutige Ziel-Id.
+ */
+function progressHintId(card: ProgressCardId, index: number): string {
+  return `progress-hint-${card}-${index}`;
+}
+
 export interface ProgressPanelProps {
   readonly view: PlayerView;
   readonly onAction?: (action: GameAction) => void;
@@ -120,6 +147,8 @@ export function ProgressPanel({
   onBoardPick,
 }: ProgressPanelProps): JSX.Element | null {
   const [dialog, setDialog] = useState<DialogCard | null>(null);
+  /** Welche Handkarte gerade erklaert wird - eine Zeile fuer die ganze Reihe (wie `DevelopmentCards`). */
+  const [described, setDescribed] = useState<ProgressCardId | null>(null);
 
   if (Object.keys(view.rules.progressDecks).length === 0) return null;
 
@@ -158,6 +187,10 @@ export function ProgressPanel({
    */
   const hand = view.players.find((player) => player.id === view.you)?.progressCards ?? [];
 
+  const show = (card: ProgressCardId) => () => setDescribed(card);
+  const hide = (card: ProgressCardId) => () =>
+    setDescribed((current) => (current === card ? null : current));
+
   return (
     <section className="progress" aria-label="Fortschritt">
       <h2 className="progress__title">Fortschritt</h2>
@@ -178,35 +211,61 @@ export function ProgressPanel({
       </ul>
 
       {hand.length === 0 ? null : (
-        <ul className="devcards__row progress__hand" aria-label="Fortschrittskarten">
-          {hand.map((card, index) => {
-            const track = PROGRESS_TRACK[card];
-            return (
-              // Der Index steht mit im Schluessel: dieselbe Karte kann
-              // mehrfach auf der Hand liegen (Haendler etwa sechsfach im
-              // Stapel), und die Reihenfolge in `progressCards` bleibt sonst
-              // instabil zwischen zwei Renderns.
-              <li key={`${card}-${index}`}>
-                <button
-                  type="button"
-                  className="devcard"
-                  disabled={!isClickable(card)}
-                  onClick={() => onCardClick(card)}
+        <div className="devcards">
+          {described === null ? null : <ProgressHint card={described} />}
+
+          <ul className="devcards__row" aria-label="Fortschrittskarten">
+            {hand.map((card, index) => {
+              const track = PROGRESS_TRACK[card];
+              const hintId = progressHintId(card, index);
+              return (
+                /*
+                 * Der Index steht mit im Schluessel: dieselbe Karte kann
+                 * mehrfach auf der Hand liegen (Haendler etwa sechsfach im
+                 * Stapel), und die Reihenfolge in `progressCards` bleibt
+                 * sonst instabil zwischen zwei Renderns.
+                 *
+                 * Zeigen und Verbergen haengen am Listeneintrag, nicht am
+                 * Knopf - ein gesperrter Knopf feuert keine Mausereignisse,
+                 * und die gesperrte Karte ist genau die, deren Grund man
+                 * lesen will (dieselbe Begruendung wie in
+                 * `DevelopmentCards.tsx`, dieselbe Mechanik, nicht neu
+                 * erfunden).
+                 */
+                <li
+                  key={`${card}-${index}`}
+                  onPointerEnter={show(card)}
+                  onPointerLeave={hide(card)}
+                  onFocus={show(card)}
+                  onBlur={hide(card)}
                 >
-                  <span
-                    className="devcard__face"
-                    style={{
-                      background: TRACK_COLORS[track],
-                      color: TRACK_BUILT_WORD_COLORS[track],
-                    }}
+                  <button
+                    type="button"
+                    className="devcard"
+                    disabled={!isClickable(card)}
+                    aria-describedby={hintId}
+                    onClick={() => onCardClick(card)}
                   >
-                    <span className="devcard__name">{PROGRESS_NAMES[card]}</span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                    <span
+                      className="devcard__face"
+                      style={{
+                        background: TRACK_COLORS[track],
+                        color: TRACK_BUILT_WORD_COLORS[track],
+                      }}
+                    >
+                      <span className="devcard__name">{PROGRESS_NAMES[card]}</span>
+                    </span>
+
+                    {/* Derselbe Satz wie in `ProgressHint`, hier fest fuer Vorlesewerkzeuge. */}
+                    <span id={hintId} className="visually-hidden">
+                      {hintTextFor(card)}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
 
       {/*
@@ -274,5 +333,20 @@ export function ProgressPanel({
         />
       ) : null}
     </section>
+  );
+}
+
+/**
+ * Die Erklaerzeile ueber der Handreihe - dieselbe Komponente wie
+ * `DevelopmentCards.tsx#Hint`, hier fuer Fortschrittskarten: Name zuerst,
+ * dann der Satz. Bei den sieben gesperrten Karten steht dort `UNWIRED_REASON`
+ * statt der Wirkung - der Grund, nicht die Technik.
+ */
+function ProgressHint({ card }: { readonly card: ProgressCardId }): JSX.Element {
+  return (
+    <p className="devcards__hint" data-testid="progress-hint" aria-hidden="true">
+      <span className="devcards__hint-name">{PROGRESS_NAMES[card]}</span>
+      <span className="devcards__hint-text">{hintTextFor(card)}</span>
+    </p>
   );
 }
