@@ -435,7 +435,7 @@ describe('Der Ueberfall im Verlauf', () => {
 /**
  * Was der Durchgang im Browser gefunden hat.
  *
- * Jeder dieser Tests hält einen Befund fest, den kein bestehender Test
+ * Jeder dieser Tests haelt einen Befund fest, den kein bestehender Test
  * gesehen hat — und der Kommentar sagt, wie er im Bild aussah.
  */
 describe('Befunde aus dem Browser-Durchgang', () => {
@@ -447,7 +447,7 @@ describe('Befunde aus dem Browser-Durchgang', () => {
   }
 
   /* Am Bildschirm stand: „Spieler 1 und Spieler 2 und Spieler 3 verliert eine
-   * Stadt" - zweimal falsch, in der Aufzählung und im Verb. */
+   * Stadt" - zweimal falsch, in der Aufzaehlung und im Verb. */
   it('zaehlt mehrere Verlierer mit Komma auf und beugt das Verb', () => {
     const landed: GameState = gameWithCities({
       barbarians: { position: CITIES_RULES.barbarianTrack - 1, attacks: 0 },
@@ -498,8 +498,8 @@ describe('Befunde aus dem Browser-Durchgang', () => {
     throw new Error('kein Wurf mit Schiffsseite gefunden');
   });
 
-  /* Im Verlauf stand „setzt die Gründungssiedlung", auf dem Brett stand eine
-   * Stadt - die zweite Setzung ist in Städte & Ritter eine Stadt. */
+  /* Im Verlauf stand „setzt die Gruendungssiedlung", auf dem Brett stand eine
+   * Stadt - die zweite Setzung ist in Staedte & Ritter eine Stadt. */
   it('nennt die zweite Gruendungssetzung eine Stadt', () => {
     const table = gameWithCities({
       buildings: {},

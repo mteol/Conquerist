@@ -29,7 +29,7 @@ export * from './progress/cards.js';
 /*
  * Nur `canPlaceMerchant`, benannt und nicht mit Stern, aus `merchant.js`.
  *
- * Ein Stern brächte `applyMerchant` mit heraus - und `applyMerchant` heisst
+ * Ein Stern braechte `applyMerchant` mit heraus - und `applyMerchant` heisst
  * ein zweites Mal so in `progress/commerce.js`. Heute kollidiert das nicht,
  * weil `progress/` hier oben nur ueber `cards.js` hereinkommt; kaeme
  * `commerce.js` je dazu, waeren zwei `applyMerchant` im selben Sammelpunkt,

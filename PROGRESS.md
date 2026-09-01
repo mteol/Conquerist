@@ -6801,3 +6801,186 @@ innerhalb dieser Etappe entsteht und nicht in eine spätere verschoben wird — 
 **10d — Fortschrittskarten.** Die drei Stadttore des Ereigniswürfels bekommen Wirkung: die
 drei Stapel, das Ziehen bei Aquädukt, Metropolenkampf und Sieg, `defenderPending` und
 `aqueductPending` als echte Wahl statt einer festen Regel.
+
+---
+
+## Etappe 10d-1 — Fortschrittskarten: die drei Stapel und die zwanzig Karten des eigenen Zuges (2026-09-02, `etappe-10d-fortschrittskarten`)
+
+Achtunddreißig Commits von `0209003` (Fünfundzwanzig Karten auf drei Stapeln) bis `a26eab8`
+(merchantTargets liest jetzt die echte Regel statt sie nachzubauen), dazu die zwei
+Plan-Commits `c4e109f` und `61d75df` davor. Plan:
+`docs/superpowers/plans/2026-08-31-etappe-10d1-fortschrittskarten.md`, Entwurf weiterhin in
+`docs/superpowers/specs/2026-08-25-staedte-und-ritter-design.md` (Abschnitte 1.3, 4, 5.1–5.3,
+6, 9).
+
+Was jetzt geht: die Fortschrittskarten aus Städte & Ritter. Drei Stapel (Wissenschaft, Handel,
+Politik) liegen beim Aufbau gemischt bereit; ein rotes Stadttor auf dem Ereigniswürfel lässt
+den Spieler am Zug einen Stapel wählen und ziehen. Alle 25 Karten sind spielbar — als eine
+einzige Aktion `playProgress` mit einer eigenen diskriminierten Union, genau wie geplant. Das
+Handlimit von vier Fortschrittskarten wirkt über `progressDiscardPending`; wer beim
+Aquädukt-Bonus leer ausgeht, wählt jetzt selbst über `aqueductPending`, statt dass eine feste
+Regel entscheidet. `defenderPending` löst den Gleichstand beim Barbarenüberfall auf, ebenfalls
+als echte Wahl. Am Bildschirm zeigen die drei Stapel ihre Resthöhe, die eigene Hand liegt aus,
+und jede Karte lässt sich mit ein bis zwei Klicks spielen — Bischof, Diplomat, Intrige,
+Erfinder, Ingenieur, Medizin, Schmied und Straßenbau laufen über dieselbe „erst was, dann
+wo"-Abstraktion (`pickMode.ts`) wie zuvor schon Bau- und Rittermodus.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                          |
+| ------------------- | ----------------------------------------------------------------- |
+| `pnpm typecheck`    | grün                                                              |
+| `pnpm -r test`      | grün — shared 1151 (59 Dateien), server 211 (22), client 572 (53) |
+| `pnpm build`        | grün, Client-Bundle 515,85 kB (150,64 kB gzip), CSS 59,99 kB      |
+| `pnpm format:check` | grün                                                              |
+
+Gelaufen am 02.09.2026 auf `a26eab8`, danach vier Umlaut-Korrekturen (siehe unten) und alle
+vier Befehle ein zweites Mal grün auf demselben Stand bestätigt — die Zahlen ändern sich durch
+reine Kommentarkorrekturen nicht.
+
+Vorher (10c, Endstand `620a0f7`): shared 966, server 211, client 510. Neu also 185 Tests in
+`shared`, keiner im Server, 62 im Client — erwartungsgemäß: die gesamte Spiellogik der 25
+Karten und der Wurfkette liegt in `shared`, der Server kennt Fortschrittskarten nur als Teil
+des ohnehin generischen Aktionsstroms.
+
+Der in der Aufgabenstellung angekündigte flackernde Test
+(`apps/client/src/screens/GameScreen.test.tsx`, „löscht mit jeder neuen Absicht die vorige
+samt halbfertigem Ritterzug", ~1,94 s gegen ein 5-s-Budget) ist in keinem der beiden vollen
+Läufe umgefallen. Bekannte Altlast, siehe Offene Punkte.
+
+### Getroffene Entscheidungen
+
+**Die Kette der Wartephasen läuft über benannte Nachfolgerfunktionen, kein `rollStage`-Feld
+im Zustand.** `rollDice` reicht nach jedem Zwischenschritt an die nächste Funktion weiter
+(`afterDefenderPhase` → `afterDiscardPhase` → `afterAqueductPhase`), genau wie im Plan
+vorgegeben. Grund: jedes neue Pflichtfeld im `GameState` ohne Vorgabewert ließe jede
+gespeicherte Partie am Schema scheitern — seit Etappe 6 liegt der Zustand als JSON in der
+Datenbank.
+
+**`canPlaceMerchant` wird benannt exportiert, nicht mit Stern.** Ein Stern-Export aus
+`cities/index.ts` brächte `applyMerchant` mit heraus, das ein zweites Mal in
+`progress/commerce.ts` so heißt; ein mehrdeutiger Stern-Export verschwindet in ESM
+stillschweigend statt einen Fehler zu werfen. Der Client (`targets.ts`, `merchantTargets`)
+liest seither dieselbe Funktion statt sie nachzubauen — ein neuer Test vergleicht beide für
+jedes Feld des Testbretts und fand keinen Unterschied.
+
+**Sieben Karten mit Angabe teilen sich eine Bauform mit Händler und Bischof.** Erfinder,
+Ingenieur, Medizin, Schmied, Straßenbau, Diplomat und Intrige laufen über dieselbe sechste
+Absicht in `PickIntent` (`usePickMode`); die Zielmengen liest der Client ausschließlich aus
+den sieben vorgerechneten Feldern der Spielersicht, keine eigene Regelauslegung im Client.
+Die vier Karten mit bis zu zwei Angaben (Erfinder, Schmied, Straßenbau, Diplomat) führen
+einen zweiten Klick, außer die zweite Liste ist leer — dann ist die Karte mit einer Angabe
+schon fertig.
+
+**`CardCategory` kennt seit dem letzten Commit kein `unwired` mehr.** Mit der vollständigen
+Verdrahtung aller 25 Karten gibt es an diesem Tisch keine Handkarte mehr, die mit Angabe
+daläge und trotzdem gesperrt wäre: Buchdruck und Verfassung kommen laut `draw.ts` nie in die
+Hand (sie liegen sofort offen als Siegpunktkarten), und die fünf Arten, die auf eine fremde
+Antwort warten, fehlen an diesem Tisch ganz aus `CITIES_RULES.progressDecks` (siehe
+Abweichung 1). `hex` und die sieben neu verdrahteten Karten verschmelzen zu einer Kategorie
+`board`; die restlichen sieben werden zu `inert` — ein Zweig einzig für die Erschöpfung des
+Switches, den kein Test mehr erreichen kann, weil keine dieser Karten je auf der Hand liegt.
+
+**Drei strukturgleiche Zwei-Schritt-Felder in `GameScreen.tsx` sind jetzt eine
+Abstraktion.** `pickMode.ts` löst den in 10c als offener Punkt vermerkten dritten
+Zwei-Schritt-Block (nach `buildMode` und `knightMode`) auf, statt eine vierte eigene
+Variante zu bauen.
+
+**`aqueductPending` und `defenderPending` liegen in derselben Datei (`rollFlow.ts`) wie
+`progressDiscardPending`**, obwohl das Aquädukt selbst aus 10c stammt. Grund: alle drei sind
+Stationen derselben Wurfkette, und eine Wahl an einer Stelle offen zu lassen, an der die
+anderen beiden längst als echte Wahl gebaut sind, hätte dieselbe Baustelle zweimal aufgemacht
+(siehe Abweichung 3).
+
+### Bewußte Abweichungen von Spec und Regelwerk
+
+Vier Stellen weichen ab, alle mit Grund:
+
+1. **Auf den Stapeln liegen 43 Karten statt 54.** Das Regelwerk (11.1–11.3) kennt 54; die
+   fünf Arten, die auf eine fremde Antwort warten — Großhändler, Spionage, Deserteur,
+   Handelshafen, Hochzeit —, stehen in `CITIES_RULES.progressDecks` noch nicht und kommen
+   in 10d-2 dazu. Sie fehlen **im Regelwerk** und nicht als Sperre im Regelcode: „was
+   fehlt, gibt es an diesem Tisch nicht" ist die Zusage, die `developmentDeck` schon gibt,
+   und so kostet 10d-2 an dieser Stelle einen Tabelleneintrag statt einer Fallunterscheidung.
+   Bis dahin ist der Kartenmix gegenüber dem Brettspiel verschoben — eine gespielte Partie
+   sieht mehr Wissenschaft (18 von 43 statt 18 von 54) als vorgesehen.
+2. **Die Kartenmotive fehlen.** Die Spec nennt für 10d „Kartenmotive"; hier tragen die
+   Karten Grundton je Stapel und ihren Namen. Grund: fünfundzwanzig gezeichnete Motive
+   hängen an keiner Regel und wären der größte Einzelblock der größten Etappe der Reihe.
+   Sie kommen als eigene Runde, wie bei den Entwicklungskarten.
+3. **`aqueductPending` gehört nicht zu 10d.** Es ist der offene Punkt aus 10c. Es kommt
+   trotzdem hierher, weil diese Etappe die Wurfsequenz ohnehin aufmacht und
+   `defenderPending` dieselbe Bauform hat.
+4. **Der Kartenzug hat keine Frist.** `deadlineOf` kennt `progressDiscardPending`,
+   `defenderPending` und `aqueductPending` nicht — dieselbe Lücke wie bei den Ritter- und
+   Ausbauzügen aus 10b und 10c. Sie wird gemeinsam mit ihnen gelöst oder gar nicht.
+
+### Der Durchgang im Browser — hat nicht stattgefunden
+
+**Aufgabe 16 ist BLOCKED geblieben, nicht nur unvollständig.** Die
+Chrome-Erweiterung (`mcp__claude-in-chrome__*`) war an diesem Rechner an keinen Browser
+gebunden — drei Versuche von `tabs_context_mcp` lieferten jedes Mal „Browser extension is
+not connected". Kein einziger der zehn Messpunkte aus dem Prüfplan und keiner der beiden
+Viewport-Breakpoints wurde erreicht; keine Quelldatei wurde dabei angefasst
+(`task-16-report.md`).
+
+Das wiegt schwerer als eine übliche Fußnote: nach Etappe 10b hat derselbe Durchgang **elf
+Befunde** geliefert, von denen **keiner** durch einen Test gefallen wäre — Kontrastwerte,
+Trefferflächen und Layoutversatz sind genau die Klasse Fehler, die `pnpm -r test` grundsätzlich
+nicht sieht. Für 10d-1 heißt das: die zehn Messpunkte (drei Stapelhöhen, das Stadttor im
+Verlauf, eine angabefreie Karte, ein Monopol, der Händler auf dem Brett, die fünfte Karte und
+das Zurücklegen, das Aquädukt als echte Frage, Alchemie vor dem Wurf, **Kontrast jedes
+Kartennamens auf seinem Grundton** und **Trefferflächen der Kartenknöpfe ≥ 44 px**) sowie die
+zwei Viewport-Breakpoints (396 px und der mittlere) stehen komplett aus.
+
+**Damit das nachgeholt werden kann:** vor dem nächsten Anlauf prüfen, ob die Erweiterung
+installiert ist, ob sie läuft, und ob sie mit demselben `claude.ai`-Konto verbunden ist wie
+diese Sitzung (https://claude.ai/chrome) — die Fehlermeldung unterscheidet diese drei Fälle
+nicht. `pnpm dev` muss dafür laufen (Client auf 5173, WS-Proxy auf den Server auf 8080); ein
+alter Hintergrundprozess aus dem blockierten Anlauf kann dafür wiederverwendet oder neu
+gestartet werden. Für die Breakpoints gilt weiterhin die in 10c gefundene Umgehung: das
+Chrome-Fenster **vor** dem Durchgang aus der Maximierung lösen, sonst ändert `resize_window`
+die Fensterbreite nicht. Der volle Prüfplan mit allen Klick-Feinheiten (Fangfläche statt
+Bildkoordinaten, `await` zwischen zwei Klicks auf dasselbe Element, Schließkreuz im
+Opfer-Dialog) steht unverändert in `task-16-brief.md` und kann unverändert erneut abgearbeitet
+werden.
+
+### Offene Punkte
+
+- **Fünf Kartenarten fehlen dem Tisch**, weil sie auf eine fremde Antwort warten und noch
+  keinen Ort dafür haben: Großhändler, Spionage, Deserteur, Handelshafen, Hochzeit. Dazu
+  `progressPending` als der Wartezustand, den sie brauchen. Das ist 10d-2 (siehe Abweichung
+  1).
+- **Die 25 Kartenmotive fehlen** (Abweichung 2) — bis dahin tragen die Karten nur Grundton
+  und Namen.
+- **`deadlineOf` kennt die drei neuen Wartephasen nicht** — `progressDiscardPending`,
+  `defenderPending`, `aqueductPending` bleiben unbefristet, dieselbe Lücke wie bei den
+  Ritter- und Ausbauzügen aus 10b und 10c (Abweichung 4).
+- **Der Browser-Durchgang aus Aufgabe 16 hat nicht stattgefunden** — siehe eigener Abschnitt
+  oben. Zehn Messpunkte und zwei Viewport-Breakpoints stehen aus, darunter Kontrast der
+  Kartennamen auf ihrem Grundton und die Trefferflächen der Kartenknöpfe.
+- **`apps/client/src/screens/GameScreen.test.tsx` flackert unter Last.** Der Test „löscht mit
+  jeder neuen Absicht die vorige samt halbfertigem Ritterzug" liegt bei rund 1,94 s knapp an
+  der 5-s-Grenze der Suite und fällt gelegentlich unter Last um — eine bekannte Altlast, kein
+  Befund dieser Etappe. In beiden vollen Läufen dieser Abnahme grün geblieben.
+- **Zwei Testabdeckungslücken.** Straßenbau (die Fortschrittskarte) fehlt der Test „spielt mit
+  einer Angabe, wenn keine zweite geht" — Schmied und Diplomat haben ihn, Straßenbau (noch)
+  nicht. Medizin fehlt der Fall „leer ohne die Karte auf der Hand".
+- **Ein Lecktest prüft über Teilstrings statt über Schlüsselmengen.**
+  `packages/shared/src/game/playerView.test.ts:349-351` sichert die verdeckte Spielersicht
+  mit `expect(JSON.stringify(withoutRules)).not.toContain('bishop')` (und `'saboteur'`,
+  `'irrigation'`) ab. Das ist zerbrechlich: heißt ein künftiges Sichtfeld `bishop*` — in
+  10d-2 naheliegend, weil auch der Bischof (Intrige, im Original „Bischof"/`bishop`) ein
+  eigenes Ziel braucht —, fällt der Test grundlos um, ohne dass die Spielersicht tatsächlich
+  leckt. Eine Prüfung auf Schlüsselmengen (welche Felder `withoutRules` trägt, statt eine
+  Zeichenkette danach zu durchsuchen) wäre robuster.
+- Die offenen Punkte aus Etappe 9 (Volume, HTTPS, Sicherung, Drossel im Wartebereich) gelten
+  unverändert weiter.
+
+### Nächste Etappe
+
+**10d-2 — die fünf wartenden Kartenarten.** Großhändler, Spionage, Deserteur, Handelshafen
+und Hochzeit brauchen `progressPending` als eigenen Wartezustand für eine fremde Antwort,
+dazu ihren Platz in `CITIES_RULES.progressDecks` und in `legalActions`. Der nachgeholte
+Browser-Durchgang aus Aufgabe 16 dieser Etappe gehört ebenfalls dorthin, sofern er nicht vorher
+nachgeholt wird.

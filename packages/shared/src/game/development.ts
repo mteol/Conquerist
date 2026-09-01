@@ -33,7 +33,7 @@ export const DevelopmentCardIdSchema = z.enum(DEVELOPMENT_CARD_IDS);
  *
  * `boughtOnTurn` ist keine Zierde: eine Entwicklungskarte darf nicht in der
  * Runde gespielt werden, in der sie gekauft wurde. Ohne diesen Vermerk liesse
- * sich ein Ritter kaufen und sofort ausspielen, und die Sieben verlöre ihren
+ * sich ein Ritter kaufen und sofort ausspielen, und die Sieben verloere ihren
  * Schrecken.
  */
 export const DevelopmentCardSchema = z.object({
