@@ -3,7 +3,17 @@ import { CLASSIC_34 } from '../scenario/blueprints/classic34.js';
 import { generateScenario } from '../scenario/generator.js';
 import { CLASSIC_RULES } from '../rules/ruleset.js';
 import { seatColorAt } from '../seats.js';
-import { gameWithCities, testGame } from './fixtures.js';
+import {
+  ADJACENT_VERTEX,
+  CENTER_EDGE,
+  CENTER_VERTEX,
+  FAR_VERTEX,
+  HARBOR3_VERTEX,
+  NEXT_EDGE,
+  gameWithCities,
+  giving,
+  testGame,
+} from './fixtures.js';
 import { createGame, setupPlayer } from './setup.js';
 import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
@@ -313,7 +323,10 @@ describe('Die drei Fortschrittsstapel in der Sicht', () => {
       progressDecks: {
         science: ['mining', 'irrigation'],
         trade: ['merchant'],
-        politics: ['diplomat', 'saboteur'],
+        // 'bishop', nicht 'diplomat': seit dieser Etappe heisst ein eigenes
+        // Sichtfeld `diplomatTargets`, und der Teilstring-Test unten faende
+        // sich selbst - ein Feldname ist kein Leck des Stapelinhalts.
+        politics: ['bishop', 'saboteur'],
       },
     });
 
@@ -333,7 +346,7 @@ describe('Die drei Fortschrittsstapel in der Sicht', () => {
     const withoutRules = Object.fromEntries(
       Object.entries(view).filter(([key]) => key !== 'rules'),
     );
-    expect(JSON.stringify(withoutRules)).not.toContain('diplomat');
+    expect(JSON.stringify(withoutRules)).not.toContain('bishop');
     expect(JSON.stringify(withoutRules)).not.toContain('saboteur');
     expect(JSON.stringify(withoutRules)).not.toContain('irrigation');
   });
@@ -478,5 +491,123 @@ describe('Ritter in der Sicht', () => {
 
   it('geht durch das eigene Schema', () => {
     expect(() => PlayerViewSchema.parse(playerViewOf(board, 'p1', seats, 1))).not.toThrow();
+  });
+});
+
+describe('Ziele der Fortschrittskarten mit Angabe in der Sicht', () => {
+  /*
+   * Ein Tisch, an dem p1 alle sieben Karten haelt und fuer jede mindestens
+   * ein Ziel hat - Ingenieur und Schmied nutzen dieselbe Stadt/denselben
+   * Ritter, Diplomat und Intrige denselben Weg zur weit entfernten Kreuzung.
+   * p2 haelt keine einzige der sieben Karten.
+   */
+  function tableWithTargets(): GameState {
+    const base = gameWithCities({
+      buildings: {
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: null },
+        [HARBOR3_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+      },
+      roads: { [CENTER_EDGE]: 'p1', [NEXT_EDGE]: 'p1' },
+      knights: {
+        [ADJACENT_VERTEX]: {
+          owner: 'p1',
+          level: 1,
+          active: false,
+          activatedOnTurn: null,
+          upgradedThisTurn: false,
+        },
+        [FAR_VERTEX]: {
+          owner: 'p2',
+          level: 1,
+          active: false,
+          activatedOnTurn: null,
+          upgradedThisTurn: false,
+        },
+      },
+    });
+
+    const withOre = giving(base, 'p1', { ore: 2, grain: 1 });
+
+    return {
+      ...withOre,
+      players: withOre.players.map((player) => {
+        if (player.id === 'p1') {
+          return {
+            ...player,
+            progressCards: [
+              'inventor',
+              'engineer',
+              'medicine',
+              'smith',
+              'roadBuilding',
+              'diplomat',
+              'intrigue',
+            ],
+          };
+        }
+        return player;
+      }),
+    };
+  }
+
+  it('zeigt dem Empfaenger seine eigenen Ziele fuer alle sieben Karten', () => {
+    const view = playerViewOf(tableWithTargets(), 'p1', seats, 1);
+
+    expect(Object.keys(view.inventorTargets).length).toBeGreaterThan(0);
+    expect(view.engineerTargets.length).toBeGreaterThan(0);
+    expect(view.medicineTargets.length).toBeGreaterThan(0);
+    expect(Object.keys(view.smithTargets).length).toBeGreaterThan(0);
+    expect(Object.keys(view.progressRoadBuildingTargets).length).toBeGreaterThan(0);
+    expect(Object.keys(view.diplomatTargets).length).toBeGreaterThan(0);
+    expect(view.intrigueTargets.length).toBeGreaterThan(0);
+  });
+
+  /*
+   * Die Kehrseite: p2 sitzt am selben Tisch, an dem p1 fuer jede der sieben
+   * Karten ein Ziel haette - p2 haelt aber keine einzige davon. Zeigte die
+   * Sicht hier trotzdem Ziele, waere das ein Leck: p2 saehe, wo p1s naechster
+   * Zug hinginge, oder die Sicht rechnete versehentlich fuer den falschen
+   * Spieler.
+   */
+  it('zeigt einem Mitspieler ohne diese Karten nirgends fremde Ziele', () => {
+    const view = playerViewOf(tableWithTargets(), 'p2', seats, 1);
+
+    expect(view.inventorTargets).toEqual({});
+    expect(view.engineerTargets).toEqual([]);
+    expect(view.medicineTargets).toEqual([]);
+    expect(view.smithTargets).toEqual({});
+    expect(view.progressRoadBuildingTargets).toEqual({});
+    expect(view.diplomatTargets).toEqual({});
+    expect(view.intrigueTargets).toEqual([]);
+  });
+
+  it('geht durch das eigene Schema', () => {
+    expect(() =>
+      PlayerViewSchema.parse(playerViewOf(tableWithTargets(), 'p1', seats, 1)),
+    ).not.toThrow();
+  });
+
+  /*
+   * Eine Sicht aus einer gespeicherten Partie ohne diese Felder - dieselbe
+   * Falle wie beim Barbarenschiff oben. `.default(...)` haelt sie lesbar.
+   */
+  it('ergaenzt sich in einer gespeicherten Sicht ohne diese Felder', () => {
+    const view = playerViewOf(testGame(), 'p1', seats, 1) as Record<string, unknown>;
+    delete view['inventorTargets'];
+    delete view['engineerTargets'];
+    delete view['medicineTargets'];
+    delete view['smithTargets'];
+    delete view['progressRoadBuildingTargets'];
+    delete view['diplomatTargets'];
+    delete view['intrigueTargets'];
+
+    const parsed = PlayerViewSchema.parse(view);
+    expect(parsed.inventorTargets).toEqual({});
+    expect(parsed.engineerTargets).toEqual([]);
+    expect(parsed.medicineTargets).toEqual([]);
+    expect(parsed.smithTargets).toEqual({});
+    expect(parsed.progressRoadBuildingTargets).toEqual({});
+    expect(parsed.diplomatTargets).toEqual({});
+    expect(parsed.intrigueTargets).toEqual([]);
   });
 });

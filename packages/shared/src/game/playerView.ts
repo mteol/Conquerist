@@ -8,6 +8,15 @@ import { TRACK_IDS, TrackIdSchema } from './cities/tracks.js';
 import { DevelopmentCardIdSchema, DevelopmentCardSchema } from './development.js';
 import { RollSchema } from './dice.js';
 import { playableDevelopmentCards, roadBuildingTargets } from './legal.js';
+import {
+  diplomatTargets,
+  engineerTargets,
+  intrigueTargets,
+  inventorTargets,
+  medicineTargets,
+  progressRoadBuildingTargets,
+  smithTargets,
+} from './cities/progress/targets.js';
 import { canOfferAnything } from './playerTrade.js';
 import { PhaseSchema } from './phase.js';
 import { PlayerIdSchema } from './player.js';
@@ -196,6 +205,26 @@ export const PlayerViewSchema = z.object({
    * danach noch gingen. Gerechnet auf dem Server - Anschluss ist eine Regel.
    */
   roadBuildingTargets: z.record(z.string(), z.array(z.string())),
+  /**
+   * Wo die sieben Fortschrittskarten mit einer Angabe vom Brett hinkoennten -
+   * Erfinder, Ingenieur, Medizin, Schmied, Strassenbau, Diplomat, Intrige.
+   * Gerechnet auf dem Server, aus demselben Grund wie `roadBuildingTargets`:
+   * eine Ziehung ist eine Regel und keine Ableitung, die der Client selbst
+   * nachbauen sollte. `.default(...)` haelt eine gespeicherte Partie ohne
+   * diese Felder lesbar.
+   *
+   * Erfinder und Schmied liegen als eigenes Feld statt neben Strassenbau, weil
+   * ihre Kandidaten (Zahlenchips, Ritter) nichts mit Kanten zu tun haben; der
+   * gemeinsame Aufbau (erste Wahl -> gueltige zweite Wahlen) ist trotzdem
+   * derselbe.
+   */
+  inventorTargets: z.record(z.string(), z.array(z.string())).default({}),
+  engineerTargets: z.array(z.string()).default([]),
+  medicineTargets: z.array(z.string()).default([]),
+  smithTargets: z.record(z.string(), z.array(z.string())).default({}),
+  progressRoadBuildingTargets: z.record(z.string(), z.array(z.string())).default({}),
+  diplomatTargets: z.record(z.string(), z.array(z.string())).default({}),
+  intrigueTargets: z.array(z.string()).default([]),
   /** Der letzte Wurf, so wie er im Zustand steht - er ist oeffentlich. */
   lastRoll: RollSchema.nullable(),
   /** Wie oft welche Wurfsumme fiel - offenes Material, siehe `GameState`. */
@@ -297,6 +326,13 @@ export function playerViewOf(
     playableCards: playableDevelopmentCards(state, viewer),
     canOfferTrade: canOfferAnything(state, viewer),
     roadBuildingTargets: roadBuildingTargets(state, viewer),
+    inventorTargets: inventorTargets(state, viewer),
+    engineerTargets: engineerTargets(state, viewer),
+    medicineTargets: medicineTargets(state, viewer),
+    smithTargets: smithTargets(state, viewer),
+    progressRoadBuildingTargets: progressRoadBuildingTargets(state, viewer),
+    diplomatTargets: diplomatTargets(state, viewer),
+    intrigueTargets: intrigueTargets(state, viewer),
     lastRoll: state.lastRoll,
     rollTally: state.rollTally,
     turn: state.turn,
