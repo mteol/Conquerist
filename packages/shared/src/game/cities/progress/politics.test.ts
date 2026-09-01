@@ -595,6 +595,17 @@ describe('Diplomat', () => {
     expect(problem?.message).toContain('eigene');
   });
 
+  it('lehnt den Neubau auf derselben Kante ab', () => {
+    const result = applyPlayProgress(diplomatTable(), 'p1', {
+      card: 'diplomat',
+      edge: ownOpen,
+      rebuildAt: ownOpen,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe(RuleViolationCode.PROGRESS_HAS_NO_EFFECT);
+  });
+
   it('lehnt einen Neubau ohne Anschluss ab', () => {
     expect(
       canPlayProgress(diplomatTable(), 'p1', {

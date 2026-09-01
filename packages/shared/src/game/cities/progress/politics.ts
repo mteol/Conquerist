@@ -303,6 +303,16 @@ export function canDiplomat(
     );
   }
 
+  // canBuildRoad sieht die entfernte Kante nicht mehr belegt (withoutRoad
+  // hat sie schon geraeumt) und wuerde einen Rueckbau auf dieselbe Stelle
+  // durchwinken - ein Leerzug, der das Brett unveraendert liesse.
+  if (play.rebuildAt === play.edge) {
+    return violation(
+      RuleViolationCode.PROGRESS_HAS_NO_EFFECT,
+      'Die neue Straße darf nicht auf derselben Kante liegen',
+    );
+  }
+
   return canBuildRoad(
     withoutCost(withoutRoad(state, play.edge, owner), 'road'),
     player,
