@@ -24,7 +24,12 @@ import type { Phase } from './phase.js';
  */
 
 /**
- * Wie viele Karten dieser Spieler bei einer Sieben abwerfen muss.
+ * Wie viele Karten dieser Spieler jetzt abwerfen muss.
+ *
+ * **Zwei Wege, und der Zustand sagt welcher.** Steht die verlangte Menge in
+ * `discardPending.counts`, gilt sie - so schickt Sabotage die Haelfte los,
+ * ohne dass jemand ueber dem Handlimit liegen muesste. Sonst gilt die Regel
+ * der Sieben: die Haelfte, aber nur ueber dem Limit.
  *
  * **Das Limit ist keine Konstante mehr.** Jede Stadtmauer hebt es um zwei, und
  * die Zahl steht deshalb in `cities/walls.ts` und nicht hier - dort, wo die
@@ -34,21 +39,35 @@ export function discardCountFor(state: GameState, player: PlayerId): number {
   const owner = findPlayer(state, player);
   if (owner === undefined) return 0;
 
+  if (state.phase.kind === 'discardPending') {
+    const demanded = state.phase.counts[player];
+    if (demanded !== undefined) return demanded;
+  }
+
   const held = countCards(owner.resources);
   return held > handLimitOf(state, player) ? Math.floor(held / 2) : 0;
 }
 
 /**
- * Wohin es nach einer Sieben weitergeht.
+ * Wohin es nach dem Abwerfen weitergeht.
  *
- * Solange die Barbaren nicht gelandet sind, bleibt der Raeuber stehen - dann
- * ist mit dem Abwerfen alles getan. Eine Phase `robberPending`, in der jeder
- * Zug abgewiesen wird, waere ein Tisch, der auf nichts wartet.
+ * Nach einer Sieben zum Raeuber - solange die Barbaren nicht gelandet sind,
+ * bleibt der aber stehen, und dann ist mit dem Abwerfen alles getan. Eine
+ * Phase `robberPending`, in der jeder Zug abgewiesen wird, waere ein Tisch,
+ * der auf nichts wartet.
+ *
+ * Nach Sabotage geht es dagegen ohne Umweg in die Hauptphase zurueck - das
+ * sagt `resume` in der Phase, gelesen wie `resume` in `robberPending`. Steht
+ * gar keine Abwurfphase (der Wurf fragt, bevor er sie oeffnet), gilt die
+ * Sieben.
  *
  * Sie steht hier, weil die Sieben hier zu Hause ist, und **beide** Aufrufer
  * benutzen sie: der Wurf (wenn niemand abwerfen muss) und der letzte Abwurf.
  */
 export function afterDiscardPhase(state: GameState): Phase {
+  const resume = state.phase.kind === 'discardPending' ? state.phase.resume : 'seven';
+  if (resume === 'main') return { kind: 'main' };
+
   return robberIsFree(state) ? { kind: 'robberPending', resume: 'main' } : { kind: 'main' };
 }
 
@@ -67,7 +86,10 @@ export function continueAfterSeven(state: GameState): GameState {
 
   return {
     ...state,
-    phase: pending.length > 0 ? { kind: 'discardPending', pending } : afterDiscardPhase(state),
+    phase:
+      pending.length > 0
+        ? { kind: 'discardPending', pending, counts: {}, resume: 'seven' }
+        : afterDiscardPhase(state),
   };
 }
 
@@ -127,7 +149,10 @@ export function applyDiscard(
         : entry,
     ),
     bank: addCards(state.bank, resources),
-    phase: pending.length === 0 ? afterDiscardPhase(state) : { kind: 'discardPending', pending },
+    phase:
+      pending.length === 0
+        ? afterDiscardPhase(state)
+        : { kind: 'discardPending', pending, counts: phase.counts, resume: phase.resume },
   });
 }
 

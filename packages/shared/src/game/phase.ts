@@ -81,11 +81,31 @@ export const PhaseSchema = z.discriminatedUnion('kind', [
   /** Der Spieler am Zug muss wuerfeln, bevor er irgendetwas anderes tun darf. */
   z.object({ kind: z.literal('rollPending') }),
   /**
-   * Nach einer Sieben: `pending` haelt fest, wer noch abwerfen muss. Erst wenn
-   * die Liste leer ist, geht es weiter. Genau hier wartet Etappe 5 spaeter auf
-   * mehrere Spieler gleichzeitig.
+   * Abwerfen: `pending` haelt fest, wer noch dran ist. Erst wenn die Liste
+   * leer ist, geht es weiter - und alle werfen gleichzeitig ab.
+   *
+   * **Zwei Anlaesse, eine Phase.** Die Sieben schickt jeden ueber dem
+   * Handlimit hierher; Sabotage schickt jeden mit gleich vielen oder mehr
+   * Siegpunkten, unabhaengig vom Limit. Deshalb tragen `counts` und `resume`
+   * das, was die beiden Anlaesse unterscheidet:
+   *
+   *  - `counts` ist die verlangte Menge je Spieler, beim Oeffnen der Phase
+   *    gefuellt. Leer heisst "wie nach einer Sieben" - dann rechnet
+   *    `discardCountFor` sie aus dem Handlimit. Eine Menge im Zustand hat
+   *    genau eine Auslegung; ein Feld `reason` haette zwei Rechenwege.
+   *  - `resume` ist der Rueckweg, nach dem Vorbild von `robberPending.resume`:
+   *    nach einer Sieben geht es weiter zum Raeuber, nach Sabotage zurueck in
+   *    die Hauptphase.
+   *
+   * Beide mit Vorgabe: gespeicherte Partien kennen die Felder nicht, und dort
+   * war jedes Abwerfen eine Sieben.
    */
-  z.object({ kind: z.literal('discardPending'), pending: z.array(PlayerIdSchema) }),
+  z.object({
+    kind: z.literal('discardPending'),
+    pending: z.array(PlayerIdSchema),
+    counts: z.partialRecord(z.string(), z.number().int().min(0)).default({}),
+    resume: z.enum(['seven', 'main']).default('seven'),
+  }),
   /**
    * Der Spieler am Zug muss den Raeuber versetzen.
    *

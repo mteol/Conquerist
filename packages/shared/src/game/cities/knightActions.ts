@@ -84,6 +84,54 @@ export function displacementTargets(state: GameState, owner: PlayerId, from: Ver
   return [...reachableVertices(state, owner, from)].filter((vertex) => vertexIsFree(state, vertex));
 }
 
+/**
+ * Was mit einem vertriebenen Ritter geschieht: ausweichen oder in den Vorrat.
+ *
+ * `state` ist das Brett **nach** dem Angriff - der Vertriebene steht dort
+ * nicht mehr, und die Kreuzung, von der er kam, ist kein Ausweichziel mehr.
+ * Vor dem Zug gerechnet stuende sie noch frei da.
+ *
+ * Findet er keinen Platz, geht seine Figur in den Vorrat des Besitzers zurueck
+ * und der Tisch bleibt, wo er ist: eine Phase, die auf eine Wahl ohne
+ * Moeglichkeiten wartet, haelt den Tisch fuer nichts an. Sonst sucht der
+ * Besitzer selbst - sein Zustand reist vollstaendig mit, ihn trifft keine
+ * Schuld.
+ *
+ * **Exportiert**, weil es zwei Wege gibt, jemanden zu vertreiben: der
+ * Ritterzug hier und die Intrige in `progress/politics.ts`. Zwei Auslegungen
+ * davon, was mit dem Vertriebenen geschieht, liefen auseinander.
+ */
+export function resolveDisplacement(
+  state: GameState,
+  displaced: Knight,
+  from: VertexId,
+): GameState {
+  const targets = displacementTargets(state, displaced.owner, from);
+
+  if (targets.length === 0) {
+    const piece = knightPiece(displaced.level);
+    return {
+      ...state,
+      players: withPlayer(state, displaced.owner, (owner) => ({
+        ...owner,
+        piecesLeft: { ...owner.piecesLeft, [piece]: owner.piecesLeft[piece] + 1 },
+      })),
+    };
+  }
+
+  return {
+    ...state,
+    phase: {
+      kind: 'displacePending',
+      owner: displaced.owner,
+      level: displaced.level,
+      active: displaced.active,
+      activatedOnTurn: displaced.activatedOnTurn,
+      from,
+    },
+  };
+}
+
 /** Darf dieser Ritter dorthin ziehen - frei oder auf einen schwaecheren Gegner? */
 export function canMoveKnight(
   state: GameState,
@@ -151,35 +199,7 @@ export function applyMoveKnight(
 
   if (displaced === undefined) return ok(moved);
 
-  /*
-   * Die Ausweichwege werden **nach** dem Zug gerechnet: der Angreifer steht
-   * jetzt auf der Kreuzung, und sie ist damit kein Ziel mehr. Vor dem Zug
-   * gerechnet stuende sie noch frei da.
-   */
-  const targets = displacementTargets(moved, displaced.owner, to);
-
-  if (targets.length === 0) {
-    const piece = knightPiece(displaced.level);
-    return ok({
-      ...moved,
-      players: withPlayer(moved, displaced.owner, (owner) => ({
-        ...owner,
-        piecesLeft: { ...owner.piecesLeft, [piece]: owner.piecesLeft[piece] + 1 },
-      })),
-    });
-  }
-
-  return ok({
-    ...moved,
-    phase: {
-      kind: 'displacePending',
-      owner: displaced.owner,
-      level: displaced.level,
-      active: displaced.active,
-      activatedOnTurn: displaced.activatedOnTurn,
-      from: to,
-    },
-  });
+  return ok(resolveDisplacement(moved, displaced, to));
 }
 
 /** Darf dieser Spieler den Vertriebenen dorthin setzen? */

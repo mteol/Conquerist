@@ -21,6 +21,7 @@ import {
   applyIntrigue,
   applySaboteur,
   applyWarlord,
+  canPolitics,
 } from './politics.js';
 import {
   applyAlchemist,
@@ -110,7 +111,14 @@ export function canPlayProgress(
     );
   }
 
-  return null;
+  /*
+   * Zuletzt, was die einzelne Karte an ihrem Ziel verlangt - eine Kreuzung mit
+   * fremdem Ritter, ein Feld fuer den Raeuber, eine offene Strasse. Das steht
+   * hier und nicht nur in der Wirkung, weil `legalActions` und die
+   * Oberflaeche dieselbe Frage stellen, ohne den Zug probeweise auszufuehren;
+   * dieselbe Begruendung wie bei `metropolisAt` in `canImproveCity`.
+   */
+  return canPolitics(state, player, play);
 }
 
 /**

@@ -91,9 +91,13 @@ describe('legalActions', () => {
   });
 
   it('zaehlt das Abwerfen bewusst nicht auf', () => {
-    const state = giving(testGame({ phase: { kind: 'discardPending', pending: ['p1'] } }), 'p1', {
-      brick: 8,
-    });
+    const state = giving(
+      testGame({ phase: { kind: 'discardPending', pending: ['p1'], counts: {}, resume: 'seven' } }),
+      'p1',
+      {
+        brick: 8,
+      },
+    );
 
     expect(legalActions(state, 'p1')).toEqual([]);
   });

@@ -61,10 +61,16 @@ describe('playersMustDiscard', () => {
 
 describe('applyDiscard', () => {
   function discarding(): GameState {
-    return giving(testGame({ phase: { kind: 'discardPending', pending: ['p1', 'p3'] } }), 'p1', {
-      brick: 5,
-      ore: 5,
-    });
+    return giving(
+      testGame({
+        phase: { kind: 'discardPending', pending: ['p1', 'p3'], counts: {}, resume: 'seven' },
+      }),
+      'p1',
+      {
+        brick: 5,
+        ore: 5,
+      },
+    );
   }
 
   it('nimmt genau die Haelfte ab und gibt sie an die Bank', () => {
@@ -105,13 +111,23 @@ describe('applyDiscard', () => {
     const result = applyDiscard(discarding(), 'p1', hand({ brick: 5 }));
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.state.phase).toEqual({ kind: 'discardPending', pending: ['p3'] });
+    if (result.ok)
+      expect(result.state.phase).toEqual({
+        kind: 'discardPending',
+        pending: ['p3'],
+        counts: {},
+        resume: 'seven',
+      });
   });
 
   it('geht zum Raeuber ueber, sobald alle abgeworfen haben', () => {
-    const state = giving(testGame({ phase: { kind: 'discardPending', pending: ['p1'] } }), 'p1', {
-      brick: 8,
-    });
+    const state = giving(
+      testGame({ phase: { kind: 'discardPending', pending: ['p1'], counts: {}, resume: 'seven' } }),
+      'p1',
+      {
+        brick: 8,
+      },
+    );
 
     const result = applyDiscard(state, 'p1', hand({ brick: 4 }));
     expect(result.ok).toBe(true);
@@ -353,7 +369,10 @@ describe('Der Raeuber vor dem ersten Ueberfall', () => {
 
   it('laesst den letzten Abwerfenden in die Hauptphase durchgehen', () => {
     const state = giving(
-      gameWithCities({ barbarians: LOCKED, phase: { kind: 'discardPending', pending: ['p1'] } }),
+      gameWithCities({
+        barbarians: LOCKED,
+        phase: { kind: 'discardPending', pending: ['p1'], counts: {}, resume: 'seven' },
+      }),
       'p1',
       { brick: 8 },
     );

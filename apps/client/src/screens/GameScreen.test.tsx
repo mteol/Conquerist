@@ -418,7 +418,12 @@ describe('Abwerfen nach einer Sieben', () => {
 
     return {
       ...state,
-      phase: { kind: 'discardPending', pending: [seats[0]!.id, seats[2]!.id] },
+      phase: {
+        kind: 'discardPending',
+        pending: [seats[0]!.id, seats[2]!.id],
+        counts: {},
+        resume: 'seven',
+      },
       currentPlayerIndex: 0,
       players: state.players.map((player, index) =>
         index === 0

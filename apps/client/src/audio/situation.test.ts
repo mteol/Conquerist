@@ -105,7 +105,10 @@ describe('situationFromGame (Hotseat)', () => {
 
   it('meldet die Abwurfaufforderung nur beim Uebergang', () => {
     const rolled = afterSetup();
-    const pending: GameState = { ...rolled, phase: { kind: 'discardPending', pending: [ids[0]!] } };
+    const pending: GameState = {
+      ...rolled,
+      phase: { kind: 'discardPending', pending: [ids[0]!], counts: {}, resume: 'seven' },
+    };
     const action: GameAction = { type: 'rollDice', player: ids[0]! };
 
     expect(situationFromGame(rolled, pending, action).mustDiscard).toBe(true);

@@ -102,7 +102,10 @@ describe('reduce - Zugrecht und Phasen', () => {
 
   it('laesst beim Abwerfen jeden Betroffenen handeln, nicht nur den am Zug', () => {
     const state = giving(
-      testGame({ phase: { kind: 'discardPending', pending: ['p2'] }, currentPlayerIndex: 0 }),
+      testGame({
+        phase: { kind: 'discardPending', pending: ['p2'], counts: {}, resume: 'seven' },
+        currentPlayerIndex: 0,
+      }),
       'p2',
       { brick: 8 },
     );
@@ -152,7 +155,13 @@ describe('reduce - wuerfeln', () => {
     const result = reduce(state, { type: 'rollDice', player: 'p1' });
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.state.phase).toEqual({ kind: 'discardPending', pending: ['p2'] });
+    if (result.ok)
+      expect(result.state.phase).toEqual({
+        kind: 'discardPending',
+        pending: ['p2'],
+        counts: {},
+        resume: 'seven',
+      });
   });
 
   it('geht bei einer Sieben ohne Ueberzaehlige direkt zum Raeuber', () => {
