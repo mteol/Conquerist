@@ -428,3 +428,165 @@ export function bishopTargets(
 
   return targets;
 }
+
+/**
+ * Ingenieur, Medizin, Intrige: eine Kreuzung, ein Klick, eine Aktion -
+ * Aufgabe 15d.
+ *
+ * Anders als bei Haendler und Bischof steht die Zielmenge nicht als Geometrie
+ * hier, sondern kommt fertig aus der Sicht (`view.engineerTargets` und
+ * Geschwister, hergeleitet in `packages/shared/.../progress/targets.ts` ueber
+ * den echten Zug). Diese Funktion liest die Liste nur und baut die dazu
+ * passende Aktion - keine eigene Regelauslegung.
+ */
+export function progressVertexTargets(
+  vertices: readonly VertexId[],
+  card: 'engineer' | 'medicine' | 'intrigue',
+  player: PlayerId,
+): ReadonlyMap<VertexId, GameAction> {
+  const targets = new Map<VertexId, GameAction>();
+
+  for (const vertex of vertices) {
+    targets.set(vertex, { type: 'playProgress', player, play: { card, vertex } });
+  }
+
+  return targets;
+}
+
+/**
+ * Schmied: welche Ritter gerade anklickbar sind.
+ *
+ * Vor der ersten Wahl (`first === null`) sind das alle Schluessel aus
+ * `smithTargets` - jeder fuer sich schon ein gueltiger Zug mit nur einem
+ * Ritter, denn `smithTargets` in shared traegt einen Schluessel nur, wenn
+ * genau das gelingt. Ob ein Klick darauf sofort spielt oder auf eine zweite
+ * Wahl wartet, weil es zu diesem ersten noch eine gibt, entscheidet
+ * `GameScreen.tsx#commit` anhand derselben Zuordnung - diese Funktion sagt
+ * nur, was leuchtet und was ein Klick dort im jeweiligen Schritt ausloest.
+ *
+ * Nach der ersten Wahl (`first` gesetzt) sind es die moeglichen zweiten
+ * Ritter aus `smithTargets[first]`.
+ */
+export function smithBoardTargets(
+  smithTargets: Readonly<Record<VertexId, readonly VertexId[]>>,
+  player: PlayerId,
+  first: VertexId | null,
+): ReadonlyMap<VertexId, GameAction> {
+  const targets = new Map<VertexId, GameAction>();
+
+  if (first === null) {
+    for (const vertex of Object.keys(smithTargets)) {
+      targets.set(vertex, {
+        type: 'playProgress',
+        player,
+        play: { card: 'smith', vertices: [vertex] },
+      });
+    }
+    return targets;
+  }
+
+  for (const second of smithTargets[first] ?? []) {
+    targets.set(second, {
+      type: 'playProgress',
+      player,
+      play: { card: 'smith', vertices: [first, second] },
+    });
+  }
+
+  return targets;
+}
+
+/**
+ * Strassenbau (Fortschrittskarte): dieselbe Form wie beim Schmied, nur mit
+ * Kanten statt Kreuzungen - siehe `smithBoardTargets`.
+ */
+export function progressRoadBuildingBoardTargets(
+  roadBuildingTargets: Readonly<Record<EdgeId, readonly EdgeId[]>>,
+  player: PlayerId,
+  first: EdgeId | null,
+): ReadonlyMap<EdgeId, GameAction> {
+  const targets = new Map<EdgeId, GameAction>();
+
+  if (first === null) {
+    for (const edge of Object.keys(roadBuildingTargets)) {
+      targets.set(edge, {
+        type: 'playProgress',
+        player,
+        play: { card: 'roadBuilding', edges: [edge] },
+      });
+    }
+    return targets;
+  }
+
+  for (const second of roadBuildingTargets[first] ?? []) {
+    targets.set(second, {
+      type: 'playProgress',
+      player,
+      play: { card: 'roadBuilding', edges: [first, second] },
+    });
+  }
+
+  return targets;
+}
+
+/**
+ * Diplomat: dieselbe Form wie beim Schmied, aber die erste Wahl ist die zu
+ * entfernende Strasse und traegt fuer sich schon eine gueltige Aktion (ohne
+ * `rebuildAt`) - genau das, was ein leeres zweites Feld in `diplomatTargets`
+ * bedeutet (siehe dort).
+ */
+export function diplomatBoardTargets(
+  diplomatTargets: Readonly<Record<EdgeId, readonly EdgeId[]>>,
+  player: PlayerId,
+  first: EdgeId | null,
+): ReadonlyMap<EdgeId, GameAction> {
+  const targets = new Map<EdgeId, GameAction>();
+
+  if (first === null) {
+    for (const edge of Object.keys(diplomatTargets)) {
+      targets.set(edge, { type: 'playProgress', player, play: { card: 'diplomat', edge } });
+    }
+    return targets;
+  }
+
+  for (const rebuildAt of diplomatTargets[first] ?? []) {
+    targets.set(rebuildAt, {
+      type: 'playProgress',
+      player,
+      play: { card: 'diplomat', edge: first, rebuildAt },
+    });
+  }
+
+  return targets;
+}
+
+/**
+ * Erfinder: zwei Zahlenchips.
+ *
+ * Anders als bei Schmied und Strassenbau gibt es kein "eine Wahl reicht" -
+ * `inventorTargets` in shared traegt einen Schluessel nur, wenn es dazu
+ * mindestens eine gueltige zweite gibt (die Karte verlangt immer beide
+ * Felder, siehe dort). Die erste Wahl traegt deshalb keine eigene Aktion -
+ * nur die leere Liste, die sagt "hier leuchtet etwas, aber noch nichts
+ * Klickfertiges".
+ */
+export function inventorBoardTargets(
+  inventorTargets: Readonly<Record<HexId, readonly HexId[]>>,
+  player: PlayerId,
+  first: HexId | null,
+): ReadonlyMap<HexId, readonly GameAction[]> {
+  const targets = new Map<HexId, readonly GameAction[]>();
+
+  if (first === null) {
+    for (const hex of Object.keys(inventorTargets)) targets.set(hex, []);
+    return targets;
+  }
+
+  for (const second of inventorTargets[first] ?? []) {
+    targets.set(second, [
+      { type: 'playProgress', player, play: { card: 'inventor', a: first, b: second } },
+    ]);
+  }
+
+  return targets;
+}

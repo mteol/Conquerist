@@ -5,13 +5,22 @@ import {
   CITIES_RULES,
   CLASSIC_34,
   CLASSIC_RULES,
+  boardOf,
   createGame,
+  diplomatTargets,
   edgeVertices,
+  engineerTargets,
   generateScenario,
+  intrigueTargets,
+  inventorTargets,
   legalActions,
+  medicineTargets,
+  progressRoadBuildingTargets,
   reduce,
   setupPlayer,
+  smithTargets,
   type GameState,
+  type Knight,
 } from '@conquerist/shared';
 import { cardAmounts } from '@conquerist/shared';
 import { fireEvent, render, screen, userEvent, within } from '../test/dom';
@@ -1233,6 +1242,382 @@ describe('GameScreen mit Rittern', () => {
       // die Karte liegt nicht mehr auf der Hand.
       expect(screen.queryByTestId('progress-hex-mode')).toBeNull();
       expect(screen.queryByRole('button', { name: /Händler/ })).toBeNull();
+    });
+  });
+
+  /*
+   * Die sieben Fortschrittskarten mit Angabe (Aufgabe 15d) - bis dahin
+   * gesperrt, weil ihnen die Ziele fehlten. Jede Karte hier ueber den echten
+   * Pfad: `CitiesGame`/`useLocalGame` und den echten Reducer, nicht ueber
+   * einen nachgebauten Effekt (Falle "tote Funktion"). Erfolg zeigt sich
+   * daran, dass die Karte danach nicht mehr auf der Hand liegt UND das Brett
+   * die Wirkung traegt - beides zusammen, nicht nur das eine.
+   */
+  describe('die sieben Fortschrittskarten mit Angabe: Absicht sechs', () => {
+    const litEdges = (): string[] =>
+      screen
+        .getAllByTestId(/^edge-/)
+        .filter((node) => node.dataset['target'] === 'true')
+        .map((node) => node.dataset['testid'] ?? '');
+
+    const litHexes = (): string[] =>
+      screen
+        .getAllByTestId(/^hex-/)
+        .filter((node) => node.dataset['target'] === 'true')
+        .map((node) => node.dataset['testid'] ?? '');
+
+    function knightOf(owner: string, level: 1 | 2 | 3 = 1): Knight {
+      return { owner, level, active: false, activatedOnTurn: null, upgradedThisTurn: false };
+    }
+
+    it('Ingenieur: baut die gratis Mauer an der eigenen Stadt', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const state: GameState = {
+        ...base,
+        players: base.players.map((player) =>
+          player.id === me ? { ...player, progressCards: ['engineer'] } : player,
+        ),
+      };
+
+      // Aus der Gruendung an einem Staedte-&-Ritter-Tisch steht bereits eine
+      // eigene Stadt (die zweite Setzung ist dort eine Stadt) - ohne sie gaebe
+      // es fuer den Ingenieur nirgends ein Ziel.
+      const targets = engineerTargets(state, me);
+      expect(targets.length).toBeGreaterThan(0);
+
+      render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Ingenieur/ }));
+      expect(screen.getByTestId('progress-board-mode')).toBeDefined();
+      expect(new Set(litVertices())).toEqual(new Set(targets.map((v) => `vertex-${v}`)));
+
+      placeVertex(document.body, targets[0]!);
+
+      expect(screen.queryByTestId('progress-board-mode')).toBeNull();
+      expect(screen.queryByRole('button', { name: /Ingenieur/ })).toBeNull();
+      // Die Wirkung steht auf dem Brett: eine Mauer an genau dieser Stadt.
+      expect(screen.getByTestId(`wall-${targets[0]!}`)).toBeDefined();
+    });
+
+    it('Medizin: baut die Stadt an der eigenen Siedlung', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const state: GameState = {
+        ...base,
+        players: base.players.map((player) =>
+          player.id === me ? { ...player, progressCards: ['medicine'] } : player,
+        ),
+      };
+
+      const targets = medicineTargets(state, me);
+      expect(targets.length).toBeGreaterThan(0);
+
+      render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Medizin/ }));
+      expect(new Set(litVertices())).toEqual(new Set(targets.map((v) => `vertex-${v}`)));
+
+      placeVertex(document.body, targets[0]!);
+
+      expect(screen.queryByRole('button', { name: /Medizin/ })).toBeNull();
+      // Die Wirkung steht auf dem Brett: aus der Siedlung ist eine Stadt
+      // geworden (`BoardSvg.tsx` haengt die Bauwerksart als CSS-Klasse an -
+      // `getAttribute('class')` und nicht `.className`, das ist auf einem SVG-
+      // Knoten ein `SVGAnimatedString` und kein einfacher Text).
+      expect(screen.getByTestId(`vertex-${targets[0]!}`).getAttribute('class')).toContain(
+        'vertex--city',
+      );
+    });
+
+    it('Intrige: vertreibt den fremden Ritter an der eigenen Strasse', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const foe = base.players.find((player) => player.id !== me)!.id;
+      const own = Object.entries(base.roads).find(([, owner]) => owner === me)![0]!;
+      const vertex = edgeVertices(own)[0]!;
+
+      const state: GameState = {
+        ...base,
+        buildings: Object.fromEntries(
+          Object.entries(base.buildings).filter(([at]) => at !== vertex),
+        ),
+        knights: { [vertex]: knightOf(foe) },
+        players: base.players.map((player) =>
+          player.id === me ? { ...player, progressCards: ['intrigue'] } : player,
+        ),
+      };
+
+      const targets = intrigueTargets(state, me);
+      expect(targets).toContain(vertex);
+
+      render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Intrige/ }));
+      expect(litVertices()).toContain(`vertex-${vertex}`);
+
+      placeVertex(document.body, vertex);
+
+      expect(screen.queryByRole('button', { name: /Intrige/ })).toBeNull();
+    });
+
+    it('Schmied: wertet nacheinander zwei eigene Ritter auf', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const board = boardOf(base.scenario);
+      const [firstVertex, secondVertex] = board.topology.vertices;
+
+      const state: GameState = {
+        ...base,
+        buildings: Object.fromEntries(
+          Object.entries(base.buildings).filter(
+            ([at]) => at !== firstVertex && at !== secondVertex,
+          ),
+        ),
+        knights: {
+          [firstVertex!]: knightOf(me),
+          [secondVertex!]: knightOf(me),
+        },
+        players: base.players.map((player) =>
+          player.id === me ? { ...player, progressCards: ['smith'] } : player,
+        ),
+      };
+
+      const targets = smithTargets(state, me);
+      expect(Object.keys(targets)).toContain(firstVertex);
+      expect(targets[firstVertex!]).toContain(secondVertex);
+
+      render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Schmied/ }));
+      expect(screen.getByTestId('progress-board-mode').textContent).toContain(
+        'ersten Ritter wählen',
+      );
+      expect(new Set(litVertices())).toEqual(
+        new Set(Object.keys(targets).map((v) => `vertex-${v}`)),
+      );
+
+      placeVertex(document.body, firstVertex!);
+
+      expect(screen.getByTestId('progress-board-mode').textContent).toContain(
+        'zweiten Ritter wählen',
+      );
+      expect(litVertices()).toEqual([`vertex-${secondVertex}`]);
+
+      placeVertex(document.body, secondVertex!);
+
+      expect(screen.queryByTestId('progress-board-mode')).toBeNull();
+      expect(screen.queryByRole('button', { name: /Schmied/ })).toBeNull();
+      // Die Wirkung steht auf dem Brett: beide Ritter sind eine Stufe hoeher.
+      expect(screen.getByTestId(`knight-${firstVertex}`).getAttribute('data-level')).toBe('2');
+      expect(screen.getByTestId(`knight-${secondVertex}`).getAttribute('data-level')).toBe('2');
+    });
+
+    it('Schmied: spielt mit einem Ritter, wenn kein zweiter geht', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const board = boardOf(base.scenario);
+      const onlyVertex = board.topology.vertices[0]!;
+
+      const state: GameState = {
+        ...base,
+        buildings: Object.fromEntries(
+          Object.entries(base.buildings).filter(([at]) => at !== onlyVertex),
+        ),
+        // Der einzige Ritter am Tisch: nach ihm gibt es niemanden mehr fuer
+        // die zweite Wahl.
+        knights: { [onlyVertex]: knightOf(me) },
+        players: base.players.map((player) =>
+          player.id === me ? { ...player, progressCards: ['smith'] } : player,
+        ),
+      };
+
+      const targets = smithTargets(state, me);
+      expect(targets[onlyVertex]).toEqual([]);
+
+      render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Schmied/ }));
+      placeVertex(document.body, onlyVertex);
+
+      // Kein zweiter Schritt: die Karte ist mit der einen Angabe schon fertig.
+      expect(screen.queryByTestId('progress-board-mode')).toBeNull();
+      expect(screen.queryByRole('button', { name: /Schmied/ })).toBeNull();
+      expect(screen.getByTestId(`knight-${onlyVertex}`).getAttribute('data-level')).toBe('2');
+    });
+
+    it('Strassenbau: setzt nacheinander zwei gratis Strassen', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const state: GameState = {
+        ...base,
+        players: base.players.map((player) =>
+          player.id === me ? { ...player, progressCards: ['roadBuilding'] } : player,
+        ),
+      };
+
+      const targets = progressRoadBuildingTargets(state, me);
+      const firstEdge = Object.keys(targets).find((edge) => targets[edge]!.length > 0);
+      expect(firstEdge).toBeDefined();
+      const secondEdge = targets[firstEdge!]![0]!;
+
+      render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Straßenbau/ }));
+      expect(litEdges()).toContain(`edge-${firstEdge}`);
+
+      placeEdge(document.body, firstEdge!);
+      expect(screen.getByTestId('progress-board-mode').textContent).toContain(
+        'zweite Straße wählen',
+      );
+      expect(litEdges()).toContain(`edge-${secondEdge}`);
+
+      placeEdge(document.body, secondEdge);
+
+      expect(screen.queryByTestId('progress-board-mode')).toBeNull();
+      expect(screen.queryByRole('button', { name: /Straßenbau/ })).toBeNull();
+      // Die Wirkung steht auf dem Brett: beide Kanten tragen jetzt eine Strasse.
+      expect(screen.getByTestId(`edge-${firstEdge}`).getAttribute('class')).toContain(
+        'road--built',
+      );
+      expect(screen.getByTestId(`edge-${secondEdge}`).getAttribute('class')).toContain(
+        'road--built',
+      );
+    });
+
+    it('Diplomat: entfernt eine eigene Strasse und setzt sie sofort neu', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const state: GameState = {
+        ...base,
+        players: base.players.map((player) =>
+          player.id === me ? { ...player, progressCards: ['diplomat'] } : player,
+        ),
+      };
+
+      const targets = diplomatTargets(state, me);
+      const removable = Object.keys(targets).find(
+        (edge) => base.roads[edge] === me && targets[edge]!.length > 0,
+      );
+      expect(removable).toBeDefined();
+      const rebuildAt = targets[removable!]![0]!;
+
+      render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Diplomat/ }));
+      placeEdge(document.body, removable!);
+      expect(screen.getByTestId('progress-board-mode').textContent).toContain(
+        'Stelle für den Neubau',
+      );
+      expect(litEdges()).toContain(`edge-${rebuildAt}`);
+
+      placeEdge(document.body, rebuildAt);
+
+      expect(screen.queryByTestId('progress-board-mode')).toBeNull();
+      expect(screen.queryByRole('button', { name: /Diplomat/ })).toBeNull();
+      // Die Wirkung steht auf dem Brett: die alte Kante ist frei, die neue
+      // traegt jetzt die Strasse.
+      expect(screen.getByTestId(`edge-${removable!}`).getAttribute('class')).not.toContain(
+        'road--built',
+      );
+      expect(screen.getByTestId(`edge-${rebuildAt}`).getAttribute('class')).toContain(
+        'road--built',
+      );
+    });
+
+    it('Diplomat: entfernt eine fremde Strasse ohne Neubau, wenn keine eigene Kante dafuer geht', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const state: GameState = {
+        ...base,
+        players: base.players.map((player) =>
+          player.id === me ? { ...player, progressCards: ['diplomat'] } : player,
+        ),
+      };
+
+      const targets = diplomatTargets(state, me);
+      // Eine fremde Strasse darf entfernt, aber nie neu gesetzt werden
+      // (`canDiplomat` in shared) - ihre zweite Liste ist deshalb immer leer.
+      const foreignEdge = Object.keys(targets).find((edge) => base.roads[edge] !== me);
+      expect(foreignEdge).toBeDefined();
+      expect(targets[foreignEdge!]).toEqual([]);
+
+      render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Diplomat/ }));
+      placeEdge(document.body, foreignEdge!);
+
+      // Kein zweiter Schritt: die Karte ist mit dem Entfernen schon fertig.
+      expect(screen.queryByTestId('progress-board-mode')).toBeNull();
+      expect(screen.queryByRole('button', { name: /Diplomat/ })).toBeNull();
+      // Die Wirkung steht auf dem Brett: die Strasse ist weg, keine Bauklasse
+      // mehr an dieser Kante (`roadClass` in `BoardSvg.tsx`).
+      expect(screen.getByTestId(`edge-${foreignEdge!}`).getAttribute('class')).not.toContain(
+        'road--built',
+      );
+    });
+
+    it('Erfinder: vertauscht zwei Zahlenchips', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const state: GameState = {
+        ...base,
+        players: base.players.map((player) =>
+          player.id === me ? { ...player, progressCards: ['inventor'] } : player,
+        ),
+      };
+
+      const targets = inventorTargets(state, me);
+      const firstHex = Object.keys(targets).find((hex) => targets[hex]!.length > 0);
+      expect(firstHex).toBeDefined();
+      const secondHex = targets[firstHex!]![0]!;
+
+      render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Erfinder/ }));
+      expect(litHexes()).toContain(`hex-${firstHex}`);
+
+      placeHex(document.body, firstHex!);
+      expect(screen.getByTestId('progress-board-mode').textContent).toContain(
+        'zweiten Zahlenchip wählen',
+      );
+      expect(litHexes()).toContain(`hex-${secondHex}`);
+
+      placeHex(document.body, secondHex);
+
+      expect(screen.queryByTestId('progress-board-mode')).toBeNull();
+      expect(screen.queryByRole('button', { name: /Erfinder/ })).toBeNull();
+    });
+
+    it('bricht mit "Abbrechen" ab und leert die Hand nicht', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const board = boardOf(base.scenario);
+      const onlyVertex = board.topology.vertices[0]!;
+      const state: GameState = {
+        ...base,
+        buildings: Object.fromEntries(
+          Object.entries(base.buildings).filter(([at]) => at !== onlyVertex),
+        ),
+        knights: { [onlyVertex]: knightOf(me) },
+        players: base.players.map((player) =>
+          player.id === me ? { ...player, progressCards: ['smith'] } : player,
+        ),
+      };
+
+      render(<CitiesGame state={state} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /Schmied/ }));
+      expect(screen.getByTestId('progress-board-mode')).toBeDefined();
+
+      await userEvent.click(
+        within(screen.getByTestId('progress-board-mode')).getByRole('button', {
+          name: 'Abbrechen',
+        }),
+      );
+
+      expect(screen.queryByTestId('progress-board-mode')).toBeNull();
+      expect(screen.getByRole('button', { name: /Schmied/ })).toBeDefined();
     });
   });
 });

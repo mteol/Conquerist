@@ -23,8 +23,13 @@ import {
   EMPTY_TARGETS,
   bishopTargets,
   buildKindOf,
+  diplomatBoardTargets,
+  inventorBoardTargets,
   merchantTargets,
+  progressRoadBuildingBoardTargets,
+  progressVertexTargets,
   setupKindOf,
+  smithBoardTargets,
   targetsFrom,
   type ActionTargets,
   type BuildableKind,
@@ -210,6 +215,40 @@ const KNIGHT_HINTS: Readonly<Record<KnightMode | 'moveTo', string>> = {
 };
 
 /**
+ * Dieselbe Auskunft fuer die sieben Fortschrittskarten mit Angabe (Aufgabe
+ * 15d) - eine Funktion statt einer Tabelle, weil vier von ihnen (Erfinder,
+ * Schmied, Strassenbau, Diplomat) je nach Schritt einen anderen Satz zeigen
+ * und die anderen drei (Ingenieur, Medizin, Intrige) immer denselben, egal
+ * was `first` traegt.
+ */
+function progressBoardHint(card: ProgressBoardCard, first: string | null): string {
+  switch (card) {
+    case 'inventor':
+      return first === null
+        ? 'Erfinder: ersten Zahlenchip wählen'
+        : 'Erfinder: zweiten Zahlenchip wählen';
+    case 'engineer':
+      return 'Ingenieur: eigene Stadt für die gratis Mauer wählen';
+    case 'medicine':
+      return 'Medizin: eigene Siedlung für die Stadt wählen';
+    case 'intrigue':
+      return 'Intrige: fremden Ritter an eigener Straße wählen';
+    case 'smith':
+      return first === null
+        ? 'Schmied: ersten Ritter wählen'
+        : 'Schmied: zweiten Ritter wählen, falls einer geht';
+    case 'roadBuilding':
+      return first === null
+        ? 'Straßenbau: erste Straße wählen'
+        : 'Straßenbau: zweite Straße wählen, falls eine geht';
+    case 'diplomat':
+      return first === null
+        ? 'Diplomat: zu entfernende Straße wählen'
+        : 'Diplomat: Stelle für den Neubau wählen, falls eine geht';
+  }
+}
+
+/**
  * Was der Spieler gerade vorhat - erst „was“, dann „wo“.
  *
  * Drei Absichten, **ein** Feld. Bauwahl, Rittermodus und Metropolenwahl sind
@@ -230,12 +269,33 @@ const KNIGHT_HINTS: Readonly<Record<KnightMode | 'moveTo', string>> = {
  * dieselbe Vereinigung - nicht als eigenes `useState` daneben, aus genau dem
  * Grund, der oben schon steht. Ihre Ziele baut `merchantTargets` bzw.
  * `bishopTargets` in `targets.ts`.
+ *
+ * **Die sieben Fortschrittskarten mit Angabe sind die sechste Absicht
+ * (Aufgabe 15d): Erfinder, Ingenieur, Medizin, Schmied, Strassenbau,
+ * Diplomat, Intrige.** Eine Karte statt sieben, weil sie sich nur in der Art
+ * ihres Ziels unterscheiden (Feld, Kreuzung oder Kante) - dieselbe Frage,
+ * die `card` schon beantwortet, ohne dass jede ihr eigenes `PickIntent`
+ * bräuchte. `first` traegt den ersten Klick der vier Karten mit bis zu
+ * zweien (Erfinder, Schmied, Strassenbau, Diplomat) - bei den drei
+ * einfachen (Ingenieur, Medizin, Intrige) bleibt es immer `null`, genau wie
+ * `from` beim Rittermodus nur beim Versetzen etwas traegt. Ihre Ziele liest
+ * `progressVertexTargets`/`smithBoardTargets`/`progressRoadBuildingBoardTargets`/
+ * `diplomatBoardTargets`/`inventorBoardTargets` in `targets.ts` aus den
+ * sieben vorgerechneten Feldern der Sicht - keine eigene Regelauslegung.
  */
+type ProgressBoardCard =
+  'inventor' | 'engineer' | 'medicine' | 'smith' | 'roadBuilding' | 'diplomat' | 'intrigue';
+
 type PickIntent =
   | { readonly kind: 'build'; readonly build: BuildableKind }
   | { readonly kind: 'knight'; readonly mode: KnightMode; readonly from: VertexId | null }
   | { readonly kind: 'metropolis'; readonly track: TrackId }
-  | { readonly kind: 'progressHex'; readonly card: 'merchant' | 'bishop' };
+  | { readonly kind: 'progressHex'; readonly card: 'merchant' | 'bishop' }
+  | {
+      readonly kind: 'progressBoard';
+      readonly card: ProgressBoardCard;
+      readonly first: string | null;
+    };
 
 export function GameScreen({
   view,
@@ -364,6 +424,53 @@ export function GameScreen({
                 ? merchantTargets(view, view.you)
                 : bishopTargets(view, view.you),
           };
+        case 'progressBoard':
+          /*
+           * Die sieben Karten mit Angabe (Aufgabe 15d) lesen ihre Zielmenge
+           * aus den sieben vorgerechneten Feldern der Sicht - keine davon
+           * rechnet selbst nach, siehe `targets.ts`.
+           */
+          switch (intent.card) {
+            case 'engineer':
+              return {
+                ...EMPTY_TARGETS,
+                vertices: progressVertexTargets(view.engineerTargets, 'engineer', view.you),
+              };
+            case 'medicine':
+              return {
+                ...EMPTY_TARGETS,
+                vertices: progressVertexTargets(view.medicineTargets, 'medicine', view.you),
+              };
+            case 'intrigue':
+              return {
+                ...EMPTY_TARGETS,
+                vertices: progressVertexTargets(view.intrigueTargets, 'intrigue', view.you),
+              };
+            case 'smith':
+              return {
+                ...EMPTY_TARGETS,
+                vertices: smithBoardTargets(view.smithTargets, view.you, intent.first),
+              };
+            case 'roadBuilding':
+              return {
+                ...EMPTY_TARGETS,
+                edges: progressRoadBuildingBoardTargets(
+                  view.progressRoadBuildingTargets,
+                  view.you,
+                  intent.first,
+                ),
+              };
+            case 'diplomat':
+              return {
+                ...EMPTY_TARGETS,
+                edges: diplomatBoardTargets(view.diplomatTargets, view.you, intent.first),
+              };
+            case 'inventor':
+              return {
+                ...EMPTY_TARGETS,
+                hexes: inventorBoardTargets(view.inventorTargets, view.you, intent.first),
+              };
+          }
       }
     },
     [targets, buildTargets, view],
@@ -391,6 +498,7 @@ export function GameScreen({
   const movingFrom = intent?.kind === 'knight' ? intent.from : null;
   const metropolisFor = intent?.kind === 'metropolis' ? intent.track : null;
   const progressHexFor = intent?.kind === 'progressHex' ? intent.card : null;
+  const progressBoardFor = intent?.kind === 'progressBoard' ? intent : null;
 
   /*
    * Die Panels schalten ihre Knoepfe um und melden deshalb `null` fuer "aus".
@@ -571,11 +679,84 @@ export function GameScreen({
           return;
         }
 
+        /*
+         * Ingenieur, Medizin, Intrige (ein Klick) und Schmied (bis zu zwei) -
+         * Aufgabe 15d. Alle vier lesen ihre Aktion aus `pickTargets`, das
+         * `targetsFor` schon fuer den laufenden Schritt gebaut hat; nur beim
+         * Schmied entscheidet ein Blick in `view.smithTargets`, ob dieser
+         * Klick schon die ganze Karte ist oder erst den ersten Ritter merkt.
+         */
+        if (progressBoardFor !== null) {
+          if (
+            progressBoardFor.card === 'engineer' ||
+            progressBoardFor.card === 'medicine' ||
+            progressBoardFor.card === 'intrigue'
+          ) {
+            const action = pickTargets.vertices.get(place.id);
+            if (action !== undefined) onAct(action);
+            return;
+          }
+          if (progressBoardFor.card === 'smith') {
+            if (progressBoardFor.first === null) {
+              const seconds = view.smithTargets[place.id];
+              if (seconds === undefined) return;
+              if (seconds.length === 0) {
+                const action = pickTargets.vertices.get(place.id);
+                if (action !== undefined) onAct(action);
+              } else {
+                beginPick({ ...progressBoardFor, first: place.id });
+              }
+              return;
+            }
+            const action = pickTargets.vertices.get(place.id);
+            if (action !== undefined) onAct(action);
+            return;
+          }
+          // Erfinder, Strassenbau und Diplomat fragen ein Feld bzw. eine Kante
+          // - eine Kreuzung ist hier kein Ziel dieser Karte.
+          return;
+        }
+
         const action = targets.vertices.get(place.id);
         if (action !== undefined) onAct(action);
         return;
       }
       if (place.kind === 'edge') {
+        /*
+         * Strassenbau (Fortschrittskarte) und Diplomat - dieselbe
+         * Bis-zu-zwei-Form wie beim Schmied oben, nur mit Kanten. Bewusst vor
+         * `buildingRoads`: das ist die Entwicklungskarte gleichen Namens, eine
+         * andere Karte mit eigenem Feld in der Sicht (`roadBuildingTargets`
+         * gegen `progressRoadBuildingTargets`).
+         */
+        if (
+          progressBoardFor !== null &&
+          (progressBoardFor.card === 'roadBuilding' || progressBoardFor.card === 'diplomat')
+        ) {
+          if (progressBoardFor.first === null) {
+            const seconds =
+              progressBoardFor.card === 'roadBuilding'
+                ? view.progressRoadBuildingTargets[place.id]
+                : view.diplomatTargets[place.id];
+            if (seconds === undefined) return;
+            if (seconds.length === 0) {
+              const action = pickTargets.edges.get(place.id);
+              if (action !== undefined) onAct(action);
+            } else {
+              beginPick({ ...progressBoardFor, first: place.id });
+            }
+            return;
+          }
+          const action = pickTargets.edges.get(place.id);
+          if (action !== undefined) onAct(action);
+          return;
+        }
+        if (progressBoardFor !== null) {
+          // Erfinder fragt ein Feld, die uebrigen drei eine Kreuzung - eine
+          // Kante ist bei keiner der sieben Karten hier ein Ziel.
+          return;
+        }
+
         if (buildingRoads !== null) {
           const picked = [...buildingRoads, place.id];
           /*
@@ -606,6 +787,26 @@ export function GameScreen({
       }
 
       /*
+       * Erfinder (Aufgabe 15d): zwei Zahlenchips, dieselbe Bis-zu-zwei-Form
+       * wie Schmied/Strassenbau/Diplomat oben, nur mit Feldern. Anders als
+       * bei den anderen drei Doppelkarten gibt es kein "eine Wahl reicht" -
+       * `inventorTargets` in shared verlangt fuer einen Schluessel immer eine
+       * gueltige zweite (siehe `targets.ts`), der erste Klick fuehrt deshalb
+       * nie sofort zu einer Aktion, sondern immer erst zur zweiten Wahl.
+       */
+      if (progressBoardFor !== null && progressBoardFor.card === 'inventor') {
+        if (progressBoardFor.first === null) {
+          if (view.inventorTargets[place.id] !== undefined) {
+            beginPick({ ...progressBoardFor, first: place.id });
+          }
+          return;
+        }
+        const secondActions = pickTargets.hexes.get(place.id) ?? [];
+        if (secondActions.length === 1) onAct(secondActions[0]!);
+        return;
+      }
+
+      /*
        * Haendler und Bischof lesen ihr Feld aus `pickTargets` und nicht aus
        * `targets`: Letzteres kommt aus `legalActions` und kennt `moveRobber`
        * nur waehrend `robberPending` - in der Hauptphase, in der beide Karten
@@ -624,9 +825,14 @@ export function GameScreen({
       onAct,
       buildingRoads,
       intent,
+      progressBoardFor,
       beginPick,
       view.you,
       view.roadBuildingTargets,
+      view.smithTargets,
+      view.progressRoadBuildingTargets,
+      view.diplomatTargets,
+      view.inventorTargets,
     ],
   );
 
@@ -1042,7 +1248,11 @@ export function GameScreen({
           <ProgressPanel
             view={view}
             onAction={onAct}
-            onBoardPick={(card) => beginPick({ kind: 'progressHex', card })}
+            onBoardPick={(card) =>
+              card === 'merchant' || card === 'bishop'
+                ? beginPick({ kind: 'progressHex', card })
+                : beginPick({ kind: 'progressBoard', card, first: null })
+            }
           />
 
           {/*
@@ -1308,6 +1518,20 @@ export function GameScreen({
               ? 'Händler: Feld neben eigener Siedlung oder Stadt wählen'
               : 'Bischof: Feld für den Räuber wählen'}
           </span>
+          <button type="button" className="button button--ghost" onClick={cancelPick}>
+            Abbrechen
+          </button>
+        </div>
+      )}
+
+      {/*
+       * Dieselbe Leiste ein fuenftes Mal: die sieben Fortschrittskarten mit
+       * Angabe (Aufgabe 15d) - Erfinder, Ingenieur, Medizin, Schmied,
+       * Strassenbau, Diplomat, Intrige.
+       */}
+      {progressBoardFor === null ? null : (
+        <div className="mode" role="status" data-testid="progress-board-mode">
+          <span>{progressBoardHint(progressBoardFor.card, progressBoardFor.first)}</span>
           <button type="button" className="button button--ghost" onClick={cancelPick}>
             Abbrechen
           </button>
