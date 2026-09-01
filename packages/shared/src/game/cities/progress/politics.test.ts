@@ -222,12 +222,13 @@ describe('Sabotage', () => {
 
     const result = applyPlayProgress(withMore, 'p1', { card: 'saboteur' });
     expect(result.ok).toBe(true);
-    if (result.ok && result.state.phase.kind === 'discardPending') {
-      expect(result.state.phase.pending).toEqual(['p2', 'p3']);
-      expect(result.state.phase.counts).toEqual({ p2: 3, p3: 2 });
-    } else {
-      expect(result.ok && result.state.phase.kind).toBe('discardPending');
-    }
+    if (!result.ok) return;
+
+    expect(result.state.phase.kind).toBe('discardPending');
+    if (result.state.phase.kind !== 'discardPending') return;
+
+    expect(result.state.phase.pending).toEqual(['p2', 'p3']);
+    expect(result.state.phase.counts).toEqual({ p2: 3, p3: 2 });
   });
 
   /*
@@ -258,12 +259,13 @@ describe('Sabotage', () => {
 
     const result = applyPlayProgress(rich, 'p1', { card: 'saboteur' });
     expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(handSize(result.state, 'p1')).toBe(9);
-      if (result.state.phase.kind === 'discardPending') {
-        expect(result.state.phase.pending).not.toContain('p1');
-      }
-    }
+    if (!result.ok) return;
+
+    expect(handSize(result.state, 'p1')).toBe(9);
+    expect(result.state.phase.kind).toBe('discardPending');
+    if (result.state.phase.kind !== 'discardPending') return;
+
+    expect(result.state.phase.pending).not.toContain('p1');
   });
 
   /*
@@ -323,11 +325,14 @@ describe('Intrige', () => {
       vertex: CORNERS[0]!,
     });
     expect(result.ok).toBe(true);
-    if (result.ok && result.state.phase.kind === 'displacePending') {
-      expect(result.state.phase.owner).toBe('p2');
-      expect(result.state.phase.from).toBe(CORNERS[0]!);
-      expect(result.state.phase.active).toBe(false);
-    }
+    if (!result.ok) return;
+
+    expect(result.state.phase.kind).toBe('displacePending');
+    if (result.state.phase.kind !== 'displacePending') return;
+
+    expect(result.state.phase.owner).toBe('p2');
+    expect(result.state.phase.from).toBe(CORNERS[0]!);
+    expect(result.state.phase.active).toBe(false);
   });
 
   /*

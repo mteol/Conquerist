@@ -251,9 +251,15 @@ function phaseTextOf(view: PlayerView): string {
  * Wie viele Karten dieser Spieler abwerfen muss - aus der Sicht gerechnet.
  *
  * `discardCountFor` in `shared` braucht den vollen Zustand; die Sicht hat
- * `cardCount` und `rules`, und das genuegt. Ein Test haelt fest, dass beide
- * dasselbe sagen - hier entsteht zum ersten Mal eine Rechnung im Client, die
- * es auch in `shared` gibt.
+ * `cardCount`, `rules` und - seit Sabotage - die volle Phase, und das genuegt.
+ * Ein Test haelt fest, dass beide dasselbe sagen - hier entsteht zum ersten
+ * Mal eine Rechnung im Client, die es auch in `shared` gibt.
+ *
+ * **Zwei Wege, deckungsgleich mit `discardCountFor` in `shared`.** Ist
+ * `phase.counts` nicht leer, gilt sie fuer alle - so schickt Sabotage die
+ * Haelfte los, auch unterhalb des Handlimits, und wer nicht darin steht, hat
+ * nichts abzuwerfen (0). Ist `counts` leer, gilt die Regel der Sieben: die
+ * Haelfte, aber nur ueber dem Limit.
  *
  * **Das Limit ist seit den Stadtmauern keine Konstante mehr**, und deshalb
  * kommt es aus `handLimitOf` und nicht aus `rules.handLimitBeforeDiscard`. Die
@@ -261,6 +267,10 @@ function phaseTextOf(view: PlayerView): string {
  * dieselbe Funktion, nicht dieselbe Rechnung ein zweites Mal.
  */
 export function discardCountForView(view: PlayerView, player: PlayerId): number {
+  if (view.phase.kind === 'discardPending' && Object.keys(view.phase.counts).length > 0) {
+    return view.phase.counts[player] ?? 0;
+  }
+
   const held = view.players.find((entry) => entry.id === player)?.cardCount ?? 0;
   return held > handLimitOf(view, player) ? Math.floor(held / 2) : 0;
 }

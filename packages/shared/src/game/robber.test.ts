@@ -42,6 +42,20 @@ describe('discardCountFor', () => {
       expect(discardCountFor(state, 'p1')).toBe(expected);
     }
   });
+
+  it('verlangt nach Sabotage nichts von einem Nicht-Betroffenen, auch ueber dem Handlimit', () => {
+    // counts nennt nur p2; p1 haelt neun Karten (ueber dem Limit von 7) und
+    // steht trotzdem nicht in counts - er ist nicht betroffen und darf nicht
+    // auf die Handlimit-Rechnung zurueckfallen.
+    let state = giving(testGame(), 'p1', { brick: 9 });
+    state = {
+      ...state,
+      phase: { kind: 'discardPending', pending: ['p2'], counts: { p2: 3 }, resume: 'main' },
+    };
+
+    expect(discardCountFor(state, 'p1')).toBe(0);
+    expect(discardCountFor(state, 'p2')).toBe(3);
+  });
 });
 
 describe('playersMustDiscard', () => {

@@ -101,6 +101,27 @@ describe('Anzeigemodell', () => {
     }
   });
 
+  it('rechnet das Abwerfen nach Sabotage genauso wie shared - auch unterhalb des Handlimits', () => {
+    // Genau der Fall, fuer den `counts` eingefuehrt wurde: p1 haelt weniger
+    // als das Handlimit (7), muss nach Sabotage trotzdem abwerfen.
+    const base = afterSetup();
+    const state: GameState = {
+      ...base,
+      phase: {
+        kind: 'discardPending',
+        pending: [ids[0]!],
+        counts: { [ids[0]!]: 2 },
+        resume: 'main',
+      },
+    };
+    const view = playerViewOf(state, ids[0]!, seats, 1);
+
+    for (const player of state.players) {
+      expect(discardCountForView(view, player.id)).toBe(discardCountFor(state, player.id));
+    }
+    expect(discardCountForView(view, ids[0]!)).toBe(2);
+  });
+
   it('sagt in jeder Phase, was zu tun ist', () => {
     const auftakt = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
     expect(gameViewOf(playerViewOf(auftakt, ids[0]!, seats, 0)).phaseText).toContain('Auftakt');

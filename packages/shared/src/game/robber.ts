@@ -26,10 +26,12 @@ import type { Phase } from './phase.js';
 /**
  * Wie viele Karten dieser Spieler jetzt abwerfen muss.
  *
- * **Zwei Wege, und der Zustand sagt welcher.** Steht die verlangte Menge in
- * `discardPending.counts`, gilt sie - so schickt Sabotage die Haelfte los,
- * ohne dass jemand ueber dem Handlimit liegen muesste. Sonst gilt die Regel
- * der Sieben: die Haelfte, aber nur ueber dem Limit.
+ * **Zwei Wege, und der Zustand sagt welcher.** Ist `discardPending.counts`
+ * nicht leer, gilt sie fuer alle - so schickt Sabotage die Haelfte los, ohne
+ * dass jemand ueber dem Handlimit liegen muesste, und wer nicht in `counts`
+ * steht, hat nichts abzuwerfen (0), statt in die Handlimit-Rechnung
+ * durchzufallen. Ist `counts` leer, gilt die Regel der Sieben: die Haelfte,
+ * aber nur ueber dem Limit.
  *
  * **Das Limit ist keine Konstante mehr.** Jede Stadtmauer hebt es um zwei, und
  * die Zahl steht deshalb in `cities/walls.ts` und nicht hier - dort, wo die
@@ -39,9 +41,8 @@ export function discardCountFor(state: GameState, player: PlayerId): number {
   const owner = findPlayer(state, player);
   if (owner === undefined) return 0;
 
-  if (state.phase.kind === 'discardPending') {
-    const demanded = state.phase.counts[player];
-    if (demanded !== undefined) return demanded;
+  if (state.phase.kind === 'discardPending' && Object.keys(state.phase.counts).length > 0) {
+    return state.phase.counts[player] ?? 0;
   }
 
   const held = countCards(owner.resources);
