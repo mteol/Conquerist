@@ -29,7 +29,7 @@ export function canPlaceMerchant(
   if (resource === null) {
     return violation(
       RuleViolationCode.NOT_ON_BOARD,
-      `Der Haendler darf nicht auf der Wueste oder der See stehen`,
+      `Der Händler darf nicht auf der Wüste oder der See stehen`,
     );
   }
 
