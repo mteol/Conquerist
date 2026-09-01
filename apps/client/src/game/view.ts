@@ -180,6 +180,22 @@ export function actingPlayers(view: PhaseSource): readonly PlayerId[] {
     }
     case 'discardPending':
       return view.phase.pending;
+    /*
+     * Die drei Wartestationen eines Wurfs (Staedte & Ritter, Ruling 27).
+     *
+     * Alle drei tragen `pending: PlayerId[]` und sind ausdruecklich "der
+     * Reihe nach" kommentiert (`phase.ts`), weil Stapel und Bank endlich
+     * sind - anders als beim Abwerfen nach einer Sieben handelt hier nicht
+     * die ganze Liste gleichzeitig, sondern nur ihr Vorderster. Vorher fiel
+     * jede der drei Phasen in den `default`-Zweig unten und gab
+     * `players[currentPlayerIndex]` zurueck - am Hotseat-Tisch deckte der
+     * Bildschirm dann den Spieler am Zug auf, waehrend in Wahrheit ein
+     * anderer handeln musste, und dieser kam nie an seinen Zug.
+     */
+    case 'progressDiscardPending':
+    case 'defenderPending':
+    case 'aqueductPending':
+      return view.phase.pending.slice(0, 1);
     case 'tradePending': {
       const { offer, responses } = view.phase;
       /*

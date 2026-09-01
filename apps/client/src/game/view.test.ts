@@ -167,6 +167,62 @@ describe('actingPlayers in tradePending', () => {
   });
 });
 
+describe('actingPlayers in den drei Wartephasen eines Wurfs (Ruling 27)', () => {
+  /*
+   * Dieselbe schlanke Form wie `offerPhase` oben: `PhaseSource` braucht nur
+   * `phase`, `players` und `currentPlayerIndex`. `currentPlayerIndex` steht
+   * hier bewusst auf `ids[0]`, waehrend die Warteschlange mit einem ANDEREN
+   * Spieler anfaengt - das ist genau der Fall, den `actingPlayers` bisher
+   * falsch beantwortet hat: der `default`-Zweig lieferte den Spieler am Zug
+   * statt den Vordersten der Schlange.
+   */
+  const source = (phase: unknown) => ({
+    phase,
+    players: ids.map((id) => ({ id })),
+    currentPlayerIndex: 0,
+  });
+
+  it('laesst beim Stapelwahl-Gleichstand den Vordersten der Warteschlange handeln, nicht den Spieler am Zug', () => {
+    const state = source({ kind: 'defenderPending', pending: [ids[1]!, ids[2]!] });
+    expect(actingPlayers(state as never)).toEqual([ids[1]]);
+  });
+
+  it('laesst bei mehr als vier Fortschrittskarten den Vordersten abgeben, nicht den Spieler am Zug', () => {
+    const state = source({ kind: 'progressDiscardPending', pending: [ids[2]!] });
+    expect(actingPlayers(state as never)).toEqual([ids[2]]);
+  });
+
+  it('laesst am Aquaedukt den Vordersten waehlen, nicht den Spieler am Zug', () => {
+    const state = source({ kind: 'aqueductPending', pending: [ids[1]!] });
+    expect(actingPlayers(state as never)).toEqual([ids[1]]);
+  });
+
+  it('bleibt leer, wenn die Warteschlange schon geleert ist', () => {
+    const state = source({ kind: 'defenderPending', pending: [] });
+    expect(actingPlayers(state as never)).toEqual([]);
+  });
+
+  /*
+   * `phaseTextOf` nennt fuer alle drei Phasen bereits `pending[0]` und nicht
+   * `currentPlayerIndex` - anders als `actingPlayers` fiel sie hier nicht in
+   * einen `default`-Zweig. Dieser Test haelt das fest, statt es nur zu
+   * behaupten: `currentPlayerIndex` zeigt auf `ids[0]`, die Warteschlange
+   * beginnt mit `ids[1]` - im Satz darf nur Letzterer stehen.
+   */
+  it('nennt im Verlaufssatz ebenfalls den Vordersten der Warteschlange, nicht den Spieler am Zug', () => {
+    const base = afterSetup();
+    const state: GameState = {
+      ...base,
+      currentPlayerIndex: 0,
+      phase: { kind: 'defenderPending', pending: [ids[1]!, ids[2]!] },
+    };
+    const text = gameViewOf(playerViewOf(state, ids[0]!, seats, 1)).phaseText;
+
+    expect(text).toContain('Spieler 2');
+    expect(text).not.toContain('Spieler 1');
+  });
+});
+
 describe('der Auftakt im Anzeigemodell', () => {
   const start = createGame(scenario, CLASSIC_RULES, ids, 'view-probe');
   const viewOf = (state: GameState) => playerViewOf(state, ids[0]!, seats, 1);
