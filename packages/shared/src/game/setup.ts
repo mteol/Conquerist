@@ -93,6 +93,7 @@ export function createGame(
     progressDecks,
     developmentPlayed: false,
     craneDiscount: [],
+    fleetSort: null,
     // Kein Vorsatz aus Alchemie - der erste Wurf faellt normal.
     alchemistRoll: null,
     rng,

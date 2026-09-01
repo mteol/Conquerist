@@ -1,15 +1,24 @@
 import { describe, expect, it } from 'vitest';
 
 import { CITIES_RULES } from '../../../rules/index.js';
-import { testGame, giving } from '../../fixtures.js';
+import { testGame } from '../../fixtures.js';
 import type { GameState } from '../../state.js';
 import { applyPlayProgress } from './progressRules.js';
 import { tradeRateFor } from '../../trade.js';
-import { reduce } from '../../reducer.js';
+import type { ProgressCardId } from './cards.js';
 
 /** Ein Staedte-&-Ritter-Tisch in der Hauptphase - p1 ist am Zug. */
 function citiesTable(overrides: Partial<GameState> = {}): GameState {
   return testGame({ rules: CITIES_RULES, ...overrides });
+}
+
+function withProgressCards(state: GameState, id: string, cards: ProgressCardId[]): GameState {
+  return {
+    ...state,
+    players: state.players.map((player) =>
+      player.id === id ? { ...player, progressCards: cards } : player,
+    ),
+  };
 }
 
 /** Wieviel Wolle ein Spieler hat. */
@@ -39,23 +48,26 @@ function rateFor(state: GameState, player: string, sort: string): number {
 describe('Aufgabe 9 - Monopole und Handelsflotte', () => {
   describe('Rohstoffmonopol', () => {
     it('nimmt jedem anderen zwei Karten der genannten Sorte', () => {
-      const state = citiesTable({
-        players: [
-          { ...testGame().players[0], id: 'p1', resources: { ...testGame().players[0].resources, wool: 0 } },
-          { ...testGame().players[1], id: 'p2', resources: { ...testGame().players[1].resources, wool: 2 } },
-          { ...testGame().players[2], id: 'p3', resources: { ...testGame().players[2].resources, wool: 2 } },
-        ],
-      });
-      const before1 = woolOf(state, 'p1');
-      const state_with_hand = giving(state, 'p1', { wool: before1 });
-      const state_with_card = {
-        ...state_with_hand,
-        players: state_with_hand.players.map((p) =>
-          p.id === 'p1' ? { ...p, progressCards: ['resourceMonopoly'] } : p,
+      const state = citiesTable();
+      const state_with_resources = {
+        ...state,
+        players: state.players.map((p) =>
+          p.id === 'p1'
+            ? { ...p, resources: { ...p.resources, wool: 5 } }
+            : p.id === 'p2'
+              ? { ...p, resources: { ...p.resources, wool: 2 } }
+              : p.id === 'p3'
+                ? { ...p, resources: { ...p.resources, wool: 2 } }
+                : p,
         ),
       };
+      const state_with_card = withProgressCards(state_with_resources, 'p1', ['resourceMonopoly']);
 
-      const result = applyPlayProgress(state_with_card, 'p1', { card: 'resourceMonopoly', resource: 'wool' });
+      const before1 = woolOf(state_with_card, 'p1');
+      const result = applyPlayProgress(state_with_card, 'p1', {
+        card: 'resourceMonopoly',
+        resource: 'wool',
+      });
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(woolOf(result.state, 'p1')).toBe(before1 + 4); // zwei Mitspieler, je 2 Karten
@@ -66,22 +78,19 @@ describe('Aufgabe 9 - Monopole und Handelsflotte', () => {
 
     it('nimmt nur, was einer hat', () => {
       const state = citiesTable();
-      const state_with_hand = giving(state, 'p1', { wool: 0 });
-      const state_with_thin_p2 = {
-        ...state_with_hand,
-        players: state_with_hand.players.map((p) =>
+      const state_with_resources = {
+        ...state,
+        players: state.players.map((p) =>
           p.id === 'p2' ? { ...p, resources: { ...p.resources, wool: 1 } } : p,
         ),
       };
-      const state_with_card = {
-        ...state_with_thin_p2,
-        players: state_with_thin_p2.players.map((p) =>
-          p.id === 'p1' ? { ...p, progressCards: ['resourceMonopoly'] } : p,
-        ),
-      };
+      const state_with_card = withProgressCards(state_with_resources, 'p1', ['resourceMonopoly']);
 
       const before1 = woolOf(state_with_card, 'p1');
-      const result = applyPlayProgress(state_with_card, 'p1', { card: 'resourceMonopoly', resource: 'wool' });
+      const result = applyPlayProgress(state_with_card, 'p1', {
+        card: 'resourceMonopoly',
+        resource: 'wool',
+      });
       if (result.ok) {
         // p1 hatte before1, p2 gibt 1 (hat nur 1), p3 gibt 0 (hat nicht, aber würde 2 geben)
         expect(woolOf(result.state, 'p1')).toBe(before1 + 1);
@@ -91,22 +100,26 @@ describe('Aufgabe 9 - Monopole und Handelsflotte', () => {
 
   describe('Handelsmonopol', () => {
     it('nimmt beim Handelsmonopol nur eine Karte je Person', () => {
-      const state = citiesTable({
-        players: [
-          { ...testGame().players[0], id: 'p1', resources: { ...testGame().players[0].resources, cloth: 0 } },
-          { ...testGame().players[1], id: 'p2', resources: { ...testGame().players[1].resources, cloth: 5 } },
-          { ...testGame().players[2], id: 'p3', resources: { ...testGame().players[2].resources, cloth: 5 } },
-        ],
-      });
-      const before = clothOf(state, 'p1');
-      const state_with_card = {
+      const state = citiesTable();
+      const state_with_resources = {
         ...state,
         players: state.players.map((p) =>
-          p.id === 'p1' ? { ...p, progressCards: ['commodityMonopoly'] } : p,
+          p.id === 'p1'
+            ? { ...p, resources: { ...p.resources, cloth: 0 } }
+            : p.id === 'p2'
+              ? { ...p, resources: { ...p.resources, cloth: 5 } }
+              : p.id === 'p3'
+                ? { ...p, resources: { ...p.resources, cloth: 5 } }
+                : p,
         ),
       };
+      const state_with_card = withProgressCards(state_with_resources, 'p1', ['commodityMonopoly']);
 
-      const result = applyPlayProgress(state_with_card, 'p1', { card: 'commodityMonopoly', commodity: 'cloth' });
+      const before = clothOf(state_with_card, 'p1');
+      const result = applyPlayProgress(state_with_card, 'p1', {
+        card: 'commodityMonopoly',
+        commodity: 'cloth',
+      });
       if (result.ok) {
         expect(clothOf(result.state, 'p1')).toBe(before + 2); // zwei Mitspieler, je 1 Karte
       }
@@ -116,14 +129,12 @@ describe('Aufgabe 9 - Monopole und Handelsflotte', () => {
   describe('Handelsflotte', () => {
     it('tauscht mit der Flotte zwei zu eins bis Zugende', () => {
       const state = citiesTable();
-      const state_with_card = {
-        ...state,
-        players: state.players.map((p) =>
-          p.id === 'p1' ? { ...p, progressCards: ['merchantFleet'] } : p,
-        ),
-      };
+      const state_with_card = withProgressCards(state, 'p1', ['merchantFleet']);
 
-      const played = applyPlayProgress(state_with_card, 'p1', { card: 'merchantFleet', sort: 'wool' });
+      const played = applyPlayProgress(state_with_card, 'p1', {
+        card: 'merchantFleet',
+        sort: 'wool',
+      });
       if (!played.ok) {
         expect(played.ok).toBe(true);
         return;

@@ -120,6 +120,7 @@ export function testGame(overrides: Partial<GameState> = {}): GameState {
     progressDecks: {},
     developmentPlayed: false,
     craneDiscount: [],
+    fleetSort: null,
     alchemistRoll: null,
     rng: createRng('fixture'),
     lastRoll: null,

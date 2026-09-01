@@ -104,11 +104,7 @@ export function tradeRateFor(state: HarborSource, player: PlayerId, give: CardId
  * `HarborSource` reicht fuer Haefen und Gilde - dort steht kein `fleetSort`.
  * Wo die Handelsflotte zaehlen soll, wird die ganze `GameState` uebergeben.
  */
-export function tradeRateForWithFleet(
-  state: GameState,
-  player: PlayerId,
-  give: CardId,
-): number {
+export function tradeRateForWithFleet(state: GameState, player: PlayerId, give: CardId): number {
   let best = tradeRateFor(state, player, give);
 
   if (state.fleetSort === give && 2 < best) {

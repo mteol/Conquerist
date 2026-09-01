@@ -54,6 +54,16 @@ export function publicVictoryPointsOf(state: GameState, player: PlayerId): numbe
    */
   points += (hand?.openProgressCards.length ?? 0) * values.progressCard;
 
+  /*
+   * Der Haendler sitzt auf dem Brett und gehoert diesem Spieler - sein Punkt ist
+   * oeffentlich wie die Belegung aller anderen Felder. Nur der aktuelle Besitzer
+   * zaehlt den Punkt, auch wenn der Haendler irgendwann von jemand anderem auf
+   * ein neues Feld gezogen wird.
+   */
+  if (state.merchant?.owner === player) {
+    points += values.merchant;
+  }
+
   return points;
 }
 

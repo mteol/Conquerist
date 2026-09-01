@@ -2,6 +2,7 @@ import type { PlayerId } from '../../player.js';
 import { addCards, EMPTY_CARDS, subtractCards } from '../../cards.js';
 import { ok, type GameState, type ReduceResult } from '../../state.js';
 import type { ProgressPlay } from './play.js';
+import { applyMerchant as applyMerchantImpl } from '../merchant.js';
 
 /**
  * Die vier Handelskarten, die an diesem Tisch liegen - Haendler bis
@@ -19,11 +20,10 @@ import type { ProgressPlay } from './play.js';
 
 export function applyMerchant(
   state: GameState,
-  _player: PlayerId,
-  _play: Extract<ProgressPlay, { card: 'merchant' }>,
+  player: PlayerId,
+  play: Extract<ProgressPlay, { card: 'merchant' }>,
 ): ReduceResult {
-  // Wirkung folgt in einer spaeteren Aufgabe: Haendlerfigur setzen.
-  return ok(state);
+  return applyMerchantImpl(state, player, play);
 }
 
 export function applyResourceMonopoly(
