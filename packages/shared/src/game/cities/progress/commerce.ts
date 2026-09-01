@@ -1,3 +1,4 @@
+import type { CardId } from '../../../scenario/index.js';
 import type { PlayerId } from '../../player.js';
 import { addCards, EMPTY_CARDS, subtractCards } from '../../cards.js';
 import { ok, type GameState, type ReduceResult } from '../../state.js';
@@ -26,35 +27,38 @@ export function applyMerchant(
   return applyMerchantImpl(state, player, play);
 }
 
-export function applyResourceMonopoly(
+/**
+ * Ein Monopol: jeder andere Spieler gibt bis zu `takePerPlayer` Karten der
+ * genannten Sorte ab (oder weniger, wenn er nicht so viele hat), der
+ * Ausspieler bekommt sie alle.
+ *
+ * Gemeinsame Grundlage fuer `applyResourceMonopoly` (Rohstoffmonopol, zwei
+ * Karten) und `applyCommodityMonopoly` (Handelsmonopol, eine Karte) - beide
+ * Karten unterscheiden sich nur in der Sorte und in dieser einen Zahl.
+ */
+function applyMonopoly(
   state: GameState,
   player: PlayerId,
-  play: Extract<ProgressPlay, { card: 'resourceMonopoly' }>,
+  card: CardId,
+  takePerPlayer: number,
 ): ReduceResult {
-  const resource = play.resource;
   let newState = state;
 
-  // Jeder andere Spieler gibt 2 Karten dieser Sorte ab (oder was er hat)
   for (const other of state.players) {
     if (other.id === player) continue;
 
-    const hasCount = other.resources[resource] ?? 0;
-    const takeCount = Math.min(hasCount, 2);
+    const hasCount = other.resources[card] ?? 0;
+    const takeCount = Math.min(hasCount, takePerPlayer);
 
     if (takeCount > 0) {
-      const taken: typeof EMPTY_CARDS = { ...EMPTY_CARDS, [resource]: takeCount };
+      const moved: typeof EMPTY_CARDS = { ...EMPTY_CARDS, [card]: takeCount };
       newState = {
         ...newState,
-        players: newState.players.map((p) =>
-          p.id === other.id ? { ...p, resources: subtractCards(p.resources, taken) } : p,
-        ),
-      };
-      const giver: typeof EMPTY_CARDS = { ...EMPTY_CARDS, [resource]: takeCount };
-      newState = {
-        ...newState,
-        players: newState.players.map((p) =>
-          p.id === player ? { ...p, resources: addCards(p.resources, giver) } : p,
-        ),
+        players: newState.players.map((p) => {
+          if (p.id === other.id) return { ...p, resources: subtractCards(p.resources, moved) };
+          if (p.id === player) return { ...p, resources: addCards(p.resources, moved) };
+          return p;
+        }),
       };
     }
   }
@@ -62,40 +66,20 @@ export function applyResourceMonopoly(
   return ok(newState);
 }
 
+export function applyResourceMonopoly(
+  state: GameState,
+  player: PlayerId,
+  play: Extract<ProgressPlay, { card: 'resourceMonopoly' }>,
+): ReduceResult {
+  return applyMonopoly(state, player, play.resource, 2);
+}
+
 export function applyCommodityMonopoly(
   state: GameState,
   player: PlayerId,
   play: Extract<ProgressPlay, { card: 'commodityMonopoly' }>,
 ): ReduceResult {
-  const commodity = play.commodity;
-  let newState = state;
-
-  // Jeder andere Spieler gibt 1 Karte dieser Ware ab (oder was er hat)
-  for (const other of state.players) {
-    if (other.id === player) continue;
-
-    const hasCount = other.resources[commodity] ?? 0;
-    const takeCount = Math.min(hasCount, 1);
-
-    if (takeCount > 0) {
-      const taken: typeof EMPTY_CARDS = { ...EMPTY_CARDS, [commodity]: takeCount };
-      newState = {
-        ...newState,
-        players: newState.players.map((p) =>
-          p.id === other.id ? { ...p, resources: subtractCards(p.resources, taken) } : p,
-        ),
-      };
-      const giver: typeof EMPTY_CARDS = { ...EMPTY_CARDS, [commodity]: takeCount };
-      newState = {
-        ...newState,
-        players: newState.players.map((p) =>
-          p.id === player ? { ...p, resources: addCards(p.resources, giver) } : p,
-        ),
-      };
-    }
-  }
-
-  return ok(newState);
+  return applyMonopoly(state, player, play.commodity, 1);
 }
 
 export function applyMerchantFleet(
