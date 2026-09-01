@@ -50,6 +50,15 @@ function baseView(
     playableCards: [],
     canOfferTrade: false,
     roadBuildingTargets: {},
+    // Die sieben Zielableitungen aus Aufgabe 15c - hier nur mit leeren
+    // Vorgaben, weil ProgressPanel sie noch nicht liest (eigene Folgeaufgabe).
+    inventorTargets: {},
+    engineerTargets: [],
+    medicineTargets: [],
+    smithTargets: {},
+    progressRoadBuildingTargets: {},
+    diplomatTargets: {},
+    intrigueTargets: [],
     lastRoll: null,
     rollTally: {},
     turn: 1,
