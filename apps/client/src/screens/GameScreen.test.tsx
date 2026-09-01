@@ -14,7 +14,7 @@ import {
   type GameState,
 } from '@conquerist/shared';
 import { cardAmounts } from '@conquerist/shared';
-import { fireEvent, render, screen, userEvent } from '../test/dom';
+import { fireEvent, render, screen, userEvent, within } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { useLocalGame } from '../game/useLocalGame';
 import { GameScreen } from './GameScreen';
@@ -904,6 +904,121 @@ describe('GameScreen mit Rittern', () => {
 
     expect(screen.queryByTestId('build-wall')).not.toBeNull();
     expect(screen.queryByTestId('knight-activate')).not.toBeNull();
+  });
+
+  /*
+   * Der gegenseitige Ausschluß der Absichten - eine Invariante und kein
+   * Zufall: zwei gleichzeitig leuchtende Absichten wären genau das Raten,
+   * gegen das der zweite Schritt überhaupt eingeführt wurde. Geprüft wird sie
+   * am Bildschirm, weil sie dort sichtbar ist: jede der drei Leisten steht für
+   * eine Absicht, und es darf immer nur eine stehen.
+   *
+   * Durchgegangen werden alle sechs Übergänge (jede Absicht löscht jede
+   * andere) und dazu der halbfertige Ritterzug: die gemerkte Kreuzung gehört
+   * zur Ritterabsicht, also fällt sie mit ihr - sonst fragte die Leiste nach
+   * dem Ziel eines Ritters, den niemand mehr gewählt hat.
+   */
+  it('loescht mit jeder neuen Absicht die vorige samt halbfertigem Ritterzug', async () => {
+    const base = citiesMainPhase({ turn: 3 });
+    const me = base.players[base.currentPlayerIndex]!.id;
+    const own = Object.entries(base.roads).find(([, owner]) => owner === me)![0];
+    const vertex = edgeVertices(own)[0]!;
+
+    const state: GameState = {
+      ...base,
+      players: base.players.map((player) =>
+        player.id === me
+          ? {
+              ...player,
+              resources: cardAmounts({
+                brick: 4,
+                lumber: 4,
+                wool: 4,
+                grain: 4,
+                ore: 4,
+                cloth: 4,
+              }),
+              // Stufe 3 -> 4 bringt den Aufsatz, also die Metropolenwahl.
+              improvements: { trade: 3 },
+            }
+          : player,
+      ),
+      // Derselbe Aufbau wie beim Versetzen weiter oben: ein handlungsbereiter
+      // Ritter an einer eigenen Straße, und die Kreuzung dafür geräumt.
+      buildings: Object.fromEntries(Object.entries(base.buildings).filter(([at]) => at !== vertex)),
+      knights: {
+        [vertex]: {
+          owner: me,
+          level: 1 as const,
+          active: true,
+          activatedOnTurn: 1,
+          upgradedThisTurn: false,
+        },
+      },
+    };
+
+    const ownFreeCities = Object.values(state.buildings).filter(
+      (building) =>
+        building.owner === me && building.kind === 'city' && building.metropolis === null,
+    );
+
+    // Ohne eigene freie Stadt gäbe es keine Metropolenwahl, und der Test
+    // prüfte nur zwei der drei Absichten.
+    expect(ownFreeCities.length).toBeGreaterThan(0);
+
+    render(<CitiesGame state={state} />);
+
+    const knightBar = () => screen.queryByTestId('knight-mode');
+    const buildBar = () => screen.queryByTestId('build-mode');
+    const metropolisBar = () => screen.queryByTestId('metropolis-mode');
+
+    // Bauwahl an.
+    await userEvent.click(screen.getByTestId('build-knight'));
+    expect(buildBar()).not.toBeNull();
+
+    // Bauwahl -> Rittermodus.
+    await userEvent.click(screen.getByTestId('knight-move'));
+    expect(buildBar()).toBeNull();
+    expect(knightBar()?.textContent).toContain('eigenen Ritter wählen');
+
+    // Der erste Klick merkt den Ritter - die Leiste fragt nach dem Ziel.
+    tapVertex(document.body, vertex);
+    expect(knightBar()?.textContent).toContain('Zielkreuzung wählen');
+
+    // Abbrechen vergißt ihn wieder.
+    await userEvent.click(within(knightBar()!).getByRole('button', { name: 'Abbrechen' }));
+    expect(knightBar()).toBeNull();
+    await userEvent.click(screen.getByTestId('knight-move'));
+    expect(knightBar()?.textContent).toContain('eigenen Ritter wählen');
+
+    // Rittermodus -> Bauwahl, und der gemerkte Ritter geht mit.
+    tapVertex(document.body, vertex);
+    expect(knightBar()?.textContent).toContain('Zielkreuzung wählen');
+    await userEvent.click(screen.getByTestId('build-knight'));
+    expect(knightBar()).toBeNull();
+    expect(buildBar()).not.toBeNull();
+    await userEvent.click(screen.getByTestId('knight-move'));
+    expect(knightBar()?.textContent).toContain('eigenen Ritter wählen');
+
+    // Rittermodus -> Metropolenwahl.
+    await userEvent.click(screen.getByTestId('track-trade-4'));
+    expect(knightBar()).toBeNull();
+    expect(metropolisBar()).not.toBeNull();
+
+    // Metropolenwahl -> Bauwahl.
+    await userEvent.click(screen.getByTestId('build-knight'));
+    expect(metropolisBar()).toBeNull();
+    expect(buildBar()).not.toBeNull();
+
+    // Bauwahl -> Metropolenwahl.
+    await userEvent.click(screen.getByTestId('track-trade-4'));
+    expect(buildBar()).toBeNull();
+    expect(metropolisBar()).not.toBeNull();
+
+    // Metropolenwahl -> Rittermodus.
+    await userEvent.click(screen.getByTestId('knight-move'));
+    expect(metropolisBar()).toBeNull();
+    expect(knightBar()?.textContent).toContain('eigenen Ritter wählen');
   });
 
   /*

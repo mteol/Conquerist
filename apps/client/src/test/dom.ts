@@ -23,5 +23,13 @@ afterEach(cleanup);
  */
 afterEach(() => vi.unstubAllGlobals());
 
-export { render, screen, within, fireEvent, act, waitFor } from '@testing-library/react';
+export {
+  render,
+  renderHook,
+  screen,
+  within,
+  fireEvent,
+  act,
+  waitFor,
+} from '@testing-library/react';
 export { default as userEvent } from '@testing-library/user-event';

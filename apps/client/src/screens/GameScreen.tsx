@@ -22,8 +22,10 @@ import {
   buildKindOf,
   setupKindOf,
   targetsFrom,
+  type ActionTargets,
   type BuildableKind,
 } from '../game/targets';
+import { usePickMode } from '../game/pickMode';
 import { awardsHeldBy, openAwards } from '../game/awards';
 import { discardCountForView, gameViewOf, type PlayerRow } from '../game/view';
 import { ActionPanel } from '../panels/ActionPanel';
@@ -201,6 +203,27 @@ const KNIGHT_HINTS: Readonly<Record<KnightMode | 'moveTo', string>> = {
   chase: 'Räuber vertreiben: eigenen Ritter am Räuberfeld wählen',
 };
 
+/**
+ * Was der Spieler gerade vorhat - erst „was“, dann „wo“.
+ *
+ * Drei Absichten, **ein** Feld. Bauwahl, Rittermodus und Metropolenwahl sind
+ * dieselbe Form (`pickMode.ts`), und sie schließen einander aus: zwei
+ * gleichzeitig leuchtende Absichten wären genau das Raten, gegen das der
+ * zweite Schritt eingeführt wurde. Bis 10c stand jede als eigenes `useState`
+ * da, und drei handgeschriebene Setzer leerten sich gegenseitig - eine
+ * Invariante, an die man beim vierten Fall denken muß. Als Vereinigung ist
+ * sie keine Invariante mehr, sondern eine Selbstverständlichkeit: ein Feld
+ * hält einen Wert.
+ *
+ * `from` steht **in** der Ritterabsicht und nicht daneben: die gemerkte
+ * Kreuzung ist der zweite Schritt genau dieser Absicht. Fällt die Absicht,
+ * fällt sie mit - ohne daß jemand daran denken muß.
+ */
+type PickIntent =
+  | { readonly kind: 'build'; readonly build: BuildableKind }
+  | { readonly kind: 'knight'; readonly mode: KnightMode; readonly from: VertexId | null }
+  | { readonly kind: 'metropolis'; readonly track: TrackId };
+
 export function GameScreen({
   view,
   actions,
@@ -231,66 +254,135 @@ export function GameScreen({
    * Modus ist aus; ein leeres Feld heisst, die erste Kante fehlt noch.
    */
   const [buildingRoads, setBuildingRoads] = useState<readonly EdgeId[] | null>(null);
-  /**
-   * Was gerade gebaut werden soll - der erste der beiden Schritte.
-   *
-   * Bis zum ersten Playtest gab es diesen Schritt nicht: das Brett leuchtete an
-   * jeder Stelle, an der irgendetwas moeglich war, und was ein Klick brachte,
-   * ergab sich aus dem Ort. Bei drei Bauteilen gleichzeitig ist das ein Raten
-   * mit Ansage. `null` heisst: das Brett ist ruhig.
-   */
-  const [buildMode, setBuildModeRaw] = useState<BuildableKind | null>(null);
-  /**
-   * Welcher Rittermodus laeuft - dasselbe Zwei-Schritt-Muster wie beim Bauen.
-   *
-   * Erst die Frage ("was tun"), dann die Stelle. Vier Knoepfe an einer Figur
-   * von zwanzig Pixeln waeren vier Trefferflaechen unter Fingergroesse.
-   */
-  const [knightMode, setKnightModeRaw] = useState<KnightMode | null>(null);
-  /**
-   * Welcher Ritter versetzt wird - der erste von zwei Klicks.
-   *
-   * `null` heisst: es leuchten noch die Ritter, nicht ihre Ziele.
-   */
-  const [movingFrom, setMovingFrom] = useState<VertexId | null>(null);
-  /**
-   * Welcher Bereich gerade seine Metropole sucht - dasselbe Zwei-Schritt-Muster
-   * wie beim Bauen und bei den Rittern, nur mit einem Bereich statt einem
-   * Bauteil oder einer Frage als erstem Schritt.
-   *
-   * `null` heißt: es leuchtet nichts. Gesetzt wird er nur, wenn der Ausbau
-   * tatsächlich den Aufsatz bringt - sonst schickt das `onImprove` der
-   * `TrackPanel` den Zug sofort, und dieser Zustand bleibt unberührt.
-   */
-  const [metropolisFor, setMetropolisForRaw] = useState<TrackId | null>(null);
 
   /*
-   * Bauwahl, Rittermodus und Metropolenwahl schließen einander aus. Zwei
-   * gleichzeitig leuchtende Absichten wären genau das Raten, gegen das der
-   * zweite Schritt eingeführt wurde - und mit dem Stadtausbau ist daraus eine
-   * Dreiheit geworden statt eines Paars: dieselbe Regel, ein drittes Mal
-   * angewandt.
+   * Welches Bauteil die Gruendung setzt, entscheidet der Tisch: in Staedte &
+   * Ritter ist die zweite Setzung eine Stadt. Ohne diese Auskunft stand
+   * "Siedlung" am Knopf, waehrend auf dem Brett eine Stadt entstand.
+   *
+   * Steht hier oben, weil die Absicht darunter ihre Ziele daraus zieht.
    */
-  const setBuildMode = useCallback((kind: BuildableKind | null) => {
-    setBuildModeRaw(kind);
-    setKnightModeRaw(null);
-    setMovingFrom(null);
-    setMetropolisForRaw(null);
-  }, []);
+  const setupKind = useMemo(() => setupKindOf(view), [view]);
+  const targets = useMemo(() => targetsFrom(actions, setupKind), [actions, setupKind]);
 
-  const setKnightMode = useCallback((mode: KnightMode | null) => {
-    setKnightModeRaw(mode);
-    setBuildModeRaw(null);
-    setMovingFrom(null);
-    setMetropolisForRaw(null);
-  }, []);
+  /**
+   * Die gewoehnlichen Ziele, auf ein Bauteil gefiltert.
+   *
+   * `null` heisst: keins gewaehlt - dann bleiben genau die Zuege stehen, die
+   * gar keines sind. Die Gruendung und der Raeuber gehoeren dazu: beide sind
+   * keine Wahl, und ein Knopf davor waere ein Schritt, der nichts entscheidet.
+   */
+  const buildTargets = useCallback(
+    (kind: BuildableKind | null): ActionTargets => {
+      const shown = (action: GameAction): boolean => {
+        const of = buildKindOf(action, setupKind);
+        return of === null || of === kind;
+      };
 
-  const setMetropolisFor = useCallback((track: TrackId | null) => {
-    setMetropolisForRaw(track);
-    setBuildModeRaw(null);
-    setKnightModeRaw(null);
-    setMovingFrom(null);
-  }, []);
+      return {
+        ...targets,
+        vertices: new Map([...targets.vertices].filter(([, action]) => shown(action))),
+        edges: new Map([...targets.edges].filter(([, action]) => shown(action))),
+      };
+    },
+    [targets, setupKind],
+  );
+
+  /**
+   * Was zu einer Absicht leuchtet.
+   *
+   * Die Reihenfolge der Faelle traegt hier nichts mehr. Bis 10c standen
+   * dieselben Zweige als `if`-Kette hintereinander, und welcher zuerst kam,
+   * war eine stille Regel - eine Vereinigung hat genau einen Fall.
+   */
+  const targetsFor = useCallback(
+    (intent: PickIntent): ActionTargets => {
+      switch (intent.kind) {
+        case 'build':
+          /*
+           * Ritter und Mauer liegen in eigenen Karten (siehe `targets.ts`),
+           * also werden sie eingesetzt und nicht gefiltert.
+           */
+          if (intent.build === 'knight' || intent.build === 'wall') {
+            const map = intent.build === 'knight' ? targets.knightBuild : targets.wallBuild;
+            return { ...EMPTY_TARGETS, vertices: new Map(map) };
+          }
+          return buildTargets(intent.build);
+        case 'knight': {
+          /*
+           * Die Ritterzuege liegen ebenfalls in eigenen Karten. Beim Versetzen
+           * leuchten erst die Ritter, nach dem ersten Klick nur noch deren
+           * Ziele.
+           */
+          const map =
+            intent.mode === 'activate'
+              ? targets.activate
+              : intent.mode === 'upgrade'
+                ? targets.upgrade
+                : intent.mode === 'chase'
+                  ? targets.chase
+                  : intent.from === null
+                    ? new Map([...targets.moves].map(([from, to]) => [from, [...to.values()][0]!]))
+                    : (targets.moves.get(intent.from) ?? new Map());
+
+          return { ...EMPTY_TARGETS, vertices: new Map(map) };
+        }
+        case 'metropolis':
+          /*
+           * Dieselbe eigene Karte, aus demselben Grund (`targets.ts`): der
+           * fällige Aufsatz sucht eine eigene Stadt, und die stehen in
+           * `targets.metropolis`, nicht in `vertices`.
+           */
+          return {
+            ...EMPTY_TARGETS,
+            vertices: new Map(targets.metropolis.get(intent.track) ?? []),
+          };
+      }
+    },
+    [targets, buildTargets],
+  );
+
+  /** Was leuchtet, solange nichts gewaehlt ist. */
+  const nothingPicked = useMemo(() => buildTargets(null), [buildTargets]);
+
+  /**
+   * Erst „was“, dann „wo“ - einmal fuer alle drei Absichten (`pickMode.ts`).
+   */
+  const {
+    intent,
+    begin: beginPick,
+    cancel: cancelPick,
+    targets: pickTargets,
+  } = usePickMode<PickIntent, ActionTargets>(targetsFor, nothingPicked);
+
+  /*
+   * Die drei Absichten, wie die Leisten und Panels sie lesen - abgeleitet und
+   * nicht gehalten. Gehalten wird `intent`, und darin steckt immer genau eine.
+   */
+  const buildMode = intent?.kind === 'build' ? intent.build : null;
+  const knightMode = intent?.kind === 'knight' ? intent.mode : null;
+  const movingFrom = intent?.kind === 'knight' ? intent.from : null;
+  const metropolisFor = intent?.kind === 'metropolis' ? intent.track : null;
+
+  /*
+   * Die Panels schalten ihre Knoepfe um und melden deshalb `null` fuer "aus".
+   * Das ist ihre Sprache und nicht die der Absicht - hier wird uebersetzt.
+   */
+  const setBuildMode = useCallback(
+    (kind: BuildableKind | null) => {
+      if (kind === null) cancelPick();
+      else beginPick({ kind: 'build', build: kind });
+    },
+    [beginPick, cancelPick],
+  );
+
+  const setKnightMode = useCallback(
+    (mode: KnightMode | null) => {
+      if (mode === null) cancelPick();
+      else beginPick({ kind: 'knight', mode, from: null });
+    },
+    [beginPick, cancelPick],
+  );
 
   const [revealed, setRevealed] = useState(!concealBetweenTurns);
 
@@ -339,25 +431,12 @@ export function GameScreen({
   useEffect(() => {
     setBuildingRoads(null);
     setPicking(null);
-    // Auch die Bauwahl: nach dem Bauen ist sie erledigt, und nach einem fremden
+    // Auch die Absicht: nach dem Bauen ist sie erledigt, und nach einem fremden
     // Zug stimmt sie vielleicht nicht mehr - was eben noch ging, kann jetzt am
-    // Vorrat oder am Nachbarn scheitern. Fuer den Rittermodus gilt derselbe
-    // Satz woertlich, und der halbfertige Ritterzug faellt mit ihm.
-    setBuildModeRaw(null);
-    setKnightModeRaw(null);
-    setMovingFrom(null);
-    // Dasselbe gilt für die Metropolenwahl: nach dem Ausbau ist sie erledigt,
-    // und nach einem fremden Zug stimmt sie vielleicht nicht mehr.
-    setMetropolisForRaw(null);
-  }, [view.version]);
-
-  /*
-   * Welches Bauteil die Gruendung setzt, entscheidet der Tisch: in Staedte &
-   * Ritter ist die zweite Setzung eine Stadt. Ohne diese Auskunft stand
-   * "Siedlung" am Knopf, waehrend auf dem Brett eine Stadt entstand.
-   */
-  const setupKind = useMemo(() => setupKindOf(view), [view]);
-  const targets = useMemo(() => targetsFrom(actions, setupKind), [actions, setupKind]);
+    // Vorrat oder am Nachbarn scheitern. Der halbfertige Ritterzug faellt mit
+    // ihr, weil er zu ihr gehoert.
+    cancelPick();
+  }, [view.version, cancelPick]);
 
   /**
    * Der Preis einer Entwicklungskarte - `undefined`, wenn dieser Tisch keine
@@ -369,18 +448,18 @@ export function GameScreen({
   /**
    * Was auf dem Brett leuchtet.
    *
-   * Drei Faelle, in dieser Reihenfolge:
+   * Drei Faelle, in dieser Reihenfolge - und die Reihenfolge traegt, anders
+   * als frueher innerhalb der Absichten:
    *
    * 1. **Strassenbau-Karte.** Dann nicht die gewoehnlichen Ziele, sondern die,
    *    die der Server fuer diese Karte ausgerechnet hat - und nach der ersten
    *    Kante nur noch die, die danach ueberhaupt noch gehen. Der Anschluss ist
    *    eine Regel, und die steht nicht im Browser.
-   * 2. **Ein Bauteil ist gewaehlt.** Dann nur dessen Stellen.
-   * 3. **Nichts gewaehlt.** Dann bleibt das Brett ruhig, was das Bauen angeht -
-   *    aber die Gruendung und der Raeuber leuchten weiter. Beide sind keine
-   *    Wahl: in der Gruendung gibt es genau eine Sache zu setzen, und der
-   *    Raeuber muss versetzt werden. Ein Knopf davor waere ein Schritt, der
-   *    nichts entscheidet.
+   * 2. **Ein vertriebener Ritter.** Eine Pflicht, keine Wahl - sie geht jeder
+   *    Absicht vor.
+   * 3. **Sonst: was die Absicht zeigt** (`pickMode.ts`). Ist keine gefasst,
+   *    bleibt das Brett ruhig, was das Bauen angeht - aber die Gruendung und
+   *    der Raeuber leuchten weiter, weil beide keine Wahl sind.
    */
   const boardTargets = useMemo(() => {
     if (buildingRoads !== null) {
@@ -410,61 +489,8 @@ export function GameScreen({
       return { ...EMPTY_TARGETS, vertices: new Map(targets.displace) };
     }
 
-    /*
-     * Die Ritterzuege liegen in eigenen Karten (siehe `targets.ts`), also
-     * werden sie hier eingesetzt und nicht gefiltert. Beim Versetzen leuchten
-     * erst die Ritter, nach dem ersten Klick nur noch deren Ziele.
-     */
-    if (knightMode !== null) {
-      const map =
-        knightMode === 'activate'
-          ? targets.activate
-          : knightMode === 'upgrade'
-            ? targets.upgrade
-            : knightMode === 'chase'
-              ? targets.chase
-              : movingFrom === null
-                ? new Map([...targets.moves].map(([from, to]) => [from, [...to.values()][0]!]))
-                : (targets.moves.get(movingFrom) ?? new Map());
-
-      return { ...EMPTY_TARGETS, vertices: new Map(map) };
-    }
-
-    if (buildMode === 'knight' || buildMode === 'wall') {
-      const map = buildMode === 'knight' ? targets.knightBuild : targets.wallBuild;
-      return { ...EMPTY_TARGETS, vertices: new Map(map) };
-    }
-
-    /*
-     * Die Metropolenwahl - dieselbe eigene Karte wie bei den Rittern, aus
-     * demselben Grund (`targets.ts`): der fällige Aufsatz sucht eine eigene
-     * Stadt, und die stehen in `targets.metropolis`, nicht in `vertices`.
-     */
-    if (metropolisFor !== null) {
-      return { ...EMPTY_TARGETS, vertices: new Map(targets.metropolis.get(metropolisFor) ?? []) };
-    }
-
-    const shown = (action: GameAction): boolean => {
-      const kind = buildKindOf(action, setupKind);
-      return kind === null || kind === buildMode;
-    };
-
-    return {
-      ...targets,
-      vertices: new Map([...targets.vertices].filter(([, action]) => shown(action))),
-      edges: new Map([...targets.edges].filter(([, action]) => shown(action))),
-    };
-  }, [
-    targets,
-    buildMode,
-    knightMode,
-    movingFrom,
-    metropolisFor,
-    setupKind,
-    buildingRoads,
-    view.roadBuildingTargets,
-    view.you,
-  ]);
+    return pickTargets;
+  }, [targets, pickTargets, buildingRoads, view.roadBuildingTargets, view.you]);
 
   const commit = useCallback(
     (place: Place) => {
@@ -476,22 +502,26 @@ export function GameScreen({
           return;
         }
 
-        if (knightMode === 'move') {
-          if (movingFrom === null) {
-            // Erster Klick: den Ritter merken, das Brett zeigt danach seine Ziele.
-            if (targets.moves.has(place.id)) setMovingFrom(place.id);
+        if (intent?.kind === 'knight') {
+          if (intent.mode === 'move') {
+            if (intent.from === null) {
+              /*
+               * Erster Klick: den Ritter merken, das Brett zeigt danach seine
+               * Ziele. Das ist dieselbe Absicht einen Schritt weiter und
+               * deshalb ein `begin` - kein zweites Feld daneben.
+               */
+              if (targets.moves.has(place.id)) beginPick({ ...intent, from: place.id });
+              return;
+            }
+            const move = targets.moves.get(intent.from)?.get(place.id);
+            if (move !== undefined) onAct(move);
             return;
           }
-          const move = targets.moves.get(movingFrom)?.get(place.id);
-          if (move !== undefined) onAct(move);
-          return;
-        }
 
-        if (knightMode !== null) {
           const map =
-            knightMode === 'activate'
+            intent.mode === 'activate'
               ? targets.activate
-              : knightMode === 'upgrade'
+              : intent.mode === 'upgrade'
                 ? targets.upgrade
                 : targets.chase;
           const knightAction = map.get(place.id);
@@ -499,16 +529,16 @@ export function GameScreen({
           return;
         }
 
-        if (buildMode === 'knight' || buildMode === 'wall') {
-          const build = (buildMode === 'knight' ? targets.knightBuild : targets.wallBuild).get(
+        if (intent?.kind === 'build' && (intent.build === 'knight' || intent.build === 'wall')) {
+          const build = (intent.build === 'knight' ? targets.knightBuild : targets.wallBuild).get(
             place.id,
           );
           if (build !== undefined) onAct(build);
           return;
         }
 
-        if (metropolisFor !== null) {
-          const build = targets.metropolis.get(metropolisFor)?.get(place.id);
+        if (intent?.kind === 'metropolis') {
+          const build = targets.metropolis.get(intent.track)?.get(place.id);
           if (build !== undefined) onAct(build);
           return;
         }
@@ -551,17 +581,7 @@ export function GameScreen({
       if (options.length === 1) onAct(options[0]!);
       else if (options.length > 1) setRobberHex(place.id);
     },
-    [
-      targets,
-      onAct,
-      buildingRoads,
-      buildMode,
-      knightMode,
-      movingFrom,
-      metropolisFor,
-      view.you,
-      view.roadBuildingTargets,
-    ],
+    [targets, onAct, buildingRoads, intent, beginPick, view.you, view.roadBuildingTargets],
   );
 
   /*
@@ -947,7 +967,7 @@ export function GameScreen({
                   return;
                 }
                 if ((targets.metropolis.get(track)?.size ?? 0) > 0) {
-                  setMetropolisFor(track);
+                  beginPick({ kind: 'metropolis', track });
                 }
               }}
             />
@@ -1127,7 +1147,7 @@ export function GameScreen({
           <span>
             {view.phase.kind === 'setup' ? setupHint(buildMode, setupKind) : BUILD_HINTS[buildMode]}
           </span>
-          <button type="button" className="button button--ghost" onClick={() => setBuildMode(null)}>
+          <button type="button" className="button button--ghost" onClick={cancelPick}>
             Abbrechen
           </button>
         </div>
@@ -1149,11 +1169,7 @@ export function GameScreen({
               ? KNIGHT_HINTS.moveTo
               : KNIGHT_HINTS[knightMode]}
           </span>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => setKnightMode(null)}
-          >
+          <button type="button" className="button button--ghost" onClick={cancelPick}>
             Abbrechen
           </button>
         </div>
@@ -1167,11 +1183,7 @@ export function GameScreen({
       {metropolisFor === null ? null : (
         <div className="mode" role="status" data-testid="metropolis-mode">
           <span>Wohin kommt die Metropole?</span>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => setMetropolisFor(null)}
-          >
+          <button type="button" className="button button--ghost" onClick={cancelPick}>
             Abbrechen
           </button>
         </div>
