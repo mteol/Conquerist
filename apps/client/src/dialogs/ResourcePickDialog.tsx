@@ -24,6 +24,15 @@ import { CloseButton } from './CloseButton';
  * Wie beim Abwerfen trifft der Spieler die Auswahl selbst, und `legalActions`
  * zaehlt sie deshalb nicht auf. Die Sperre am Knopf ist Bedienkomfort - ob die
  * Wahl zulaessig war, prueft der Reducer.
+ *
+ * **`onClose` ist optional, fuer Pflichtwahlen ohne Ausweg (Fixrunde 1,
+ * Aquaedukt).** Fehlt es, gibt es weder das X (`CloseButton`) noch
+ * "Abbrechen" noch - da beides am selben Kreuz haengt - den Escape-Pfad. Ein
+ * X, das ein `aria-label` "schließen" traegt und nichts tut, waere eine
+ * falsche Zusage an Vorlesewerkzeuge; richtig ist, das Bedienelement gar
+ * nicht erst anzubieten. Bestehende Aufrufer (Erfindung, Monopol der
+ * Entwicklungskarten; die drei Sortenkarten in `ProgressPanel`) reichen
+ * `onClose` weiterhin durch und verhalten sich unveraendert.
  */
 export interface ResourcePickDialogProps<T extends CardId = CardId> {
   readonly title: string;
@@ -33,7 +42,8 @@ export interface ResourcePickDialogProps<T extends CardId = CardId> {
   /** Wie viele Karten gewaehlt werden - 2 bei Erfindung, sonst 1. */
   readonly count: number;
   readonly onConfirm: (picks: readonly T[]) => void;
-  readonly onClose: () => void;
+  /** Fehlt bei einer Pflichtwahl - siehe Kopfkommentar. */
+  readonly onClose?: () => void;
 }
 
 export function ResourcePickDialog<T extends CardId = CardId>({
@@ -49,7 +59,7 @@ export function ResourcePickDialog<T extends CardId = CardId>({
   return (
     <div className="modal" role="dialog" aria-label={title}>
       <div className="modal__box">
-        <CloseButton onClose={onClose} label={title} />
+        {onClose === undefined ? null : <CloseButton onClose={onClose} label={title} />}
         <h2>{title}</h2>
         <p className="modal__hint">{hint}</p>
 
@@ -85,9 +95,11 @@ export function ResourcePickDialog<T extends CardId = CardId>({
           >
             Auswahl zurücksetzen
           </button>
-          <button type="button" className="button button--ghost" onClick={onClose}>
-            Abbrechen
-          </button>
+          {onClose === undefined ? null : (
+            <button type="button" className="button button--ghost" onClick={onClose}>
+              Abbrechen
+            </button>
+          )}
           <button
             type="button"
             className="button button--go"

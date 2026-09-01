@@ -1120,13 +1120,15 @@ export function GameScreen({
       ) : null}
 
       {isFrontOfQueue('aqueductPending') ? (
+        // Kein onClose: das Aquaedukt ist eine Pflichtwahl wie PickDeckDialog
+        // und ProgressDiscardDialog daneben - nichts abzubrechen, also kein
+        // Kreuz, das etwas verspraeche, das es nicht haelt (Fixrunde 1).
         <ResourcePickDialog
           key={view.you}
           title="Aquädukt: welcher Rohstoff?"
           hint="Bei diesem Wurf leer ausgegangen — einen Rohstoff deiner Wahl aus der Bank."
           pool={RESOURCE_IDS}
           count={1}
-          onClose={() => {}}
           onConfirm={(picks) =>
             onAct({ type: 'pickAqueduct', player: view.you, resource: picks[0]! })
           }

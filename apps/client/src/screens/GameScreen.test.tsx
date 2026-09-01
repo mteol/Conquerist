@@ -1166,12 +1166,41 @@ describe('GameScreen mit Rittern', () => {
 
       render(<CitiesGame state={state} />);
 
-      expect(screen.getByRole('dialog', { name: 'Aquädukt: welcher Rohstoff?' })).toBeDefined();
+      const dialog = screen.getByRole('dialog', { name: 'Aquädukt: welcher Rohstoff?' });
+      expect(dialog).toBeDefined();
 
       await userEvent.click(screen.getByTestId('pick-ore'));
       await userEvent.click(screen.getByRole('button', { name: 'Karte spielen' }));
 
       expect(screen.queryByRole('dialog', { name: 'Aquädukt: welcher Rohstoff?' })).toBeNull();
+    });
+
+    /*
+     * Fixrunde 1, WICHTIG 1: das Aquaedukt ist eine Pflichtwahl - es darf am
+     * echten Bildschirm kein Bedienelement geben, das einen Schliessweg
+     * verspricht (weder das X aus CloseButton noch "Abbrechen" noch Escape).
+     */
+    it('bietet am Aquaedukt-Dialog keinen Schliessweg - es gibt nichts abzubrechen', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[0]!.id;
+      const state: GameState = {
+        ...base,
+        phase: { kind: 'aqueductPending', pending: [me] },
+      };
+
+      render(<CitiesGame state={state} />);
+
+      const dialog = screen.getByRole('dialog', { name: 'Aquädukt: welcher Rohstoff?' });
+
+      expect(within(dialog).queryByTestId('modal-close')).toBeNull();
+      expect(within(dialog).queryByRole('button', { name: 'Abbrechen' })).toBeNull();
+      expect(within(dialog).queryByRole('button', { name: /schließen/i })).toBeNull();
+
+      await userEvent.keyboard('{Escape}');
+
+      // Escape haengt an CloseButton, das hier gar nicht gerendert wird -
+      // der Dialog steht unveraendert.
+      expect(screen.getByRole('dialog', { name: 'Aquädukt: welcher Rohstoff?' })).toBeDefined();
     });
   });
 
