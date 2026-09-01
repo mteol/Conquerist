@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { CITIES_RULES } from '../../../rules/index.js';
-import { testGame } from '../../fixtures.js';
+import { RuleViolationCode } from '../../errors.js';
+import { giving, testGame } from '../../fixtures.js';
 import type { GameState } from '../../state.js';
 import { applyPlayProgress } from './progressRules.js';
-import { tradeRateFor } from '../../trade.js';
+import { applyTradeWithBank } from '../../trade.js';
 import type { ProgressCardId } from './cards.js';
 
 /** Ein Staedte-&-Ritter-Tisch in der Hauptphase - p1 ist am Zug. */
@@ -27,22 +28,16 @@ function woolOf(state: GameState, player: string): number {
   return p?.resources.wool ?? 0;
 }
 
+/** Wieviel Erz ein Spieler hat. */
+function oreOf(state: GameState, player: string): number {
+  const p = state.players.find((candidate) => candidate.id === player);
+  return p?.resources.ore ?? 0;
+}
+
 /** Wieviel Tuch ein Spieler hat. */
 function clothOf(state: GameState, player: string): number {
   const p = state.players.find((candidate) => candidate.id === player);
   return p?.resources.cloth ?? 0;
-}
-
-/** Der Tauschkurs fuer eine Sorte. */
-function rateFor(state: GameState, player: string, sort: string): number {
-  let best = tradeRateFor(state, player as any, sort as any);
-
-  // Handelsflotte gilt bis Zugende
-  if (state.fleetSort === sort && 2 < best) {
-    best = 2;
-  }
-
-  return best;
 }
 
 describe('Aufgabe 9 - Monopole und Handelsflotte', () => {
@@ -91,8 +86,9 @@ describe('Aufgabe 9 - Monopole und Handelsflotte', () => {
         card: 'resourceMonopoly',
         resource: 'wool',
       });
+      expect(result.ok).toBe(true);
       if (result.ok) {
-        // p1 hatte before1, p2 gibt 1 (hat nur 1), p3 gibt 0 (hat nicht, aber würde 2 geben)
+        // p1 hatte before1, p2 gibt 1 (hat nur 1), p3 gibt 0 (hat nicht, aber wuerde 2 geben)
         expect(woolOf(result.state, 'p1')).toBe(before1 + 1);
       }
     });
@@ -120,6 +116,7 @@ describe('Aufgabe 9 - Monopole und Handelsflotte', () => {
         card: 'commodityMonopoly',
         commodity: 'cloth',
       });
+      expect(result.ok).toBe(true);
       if (result.ok) {
         expect(clothOf(result.state, 'p1')).toBe(before + 2); // zwei Mitspieler, je 1 Karte
       }
@@ -127,6 +124,12 @@ describe('Aufgabe 9 - Monopole und Handelsflotte', () => {
   });
 
   describe('Handelsflotte', () => {
+    /*
+     * Der Kurs wird nicht mehr in einer eigenen Testhilfe nachgebaut - das
+     * pruefte nur eine Kopie von `tradeRateFor` und nicht den echten Pfad.
+     * Stattdessen laeuft der Tausch ueber `applyTradeWithBank`: dieselbe
+     * Funktion, die auch der Reducer fuer die Aktion `tradeWithBank` ruft.
+     */
     it('tauscht mit der Flotte zwei zu eins bis Zugende', () => {
       const state = citiesTable();
       const state_with_card = withProgressCards(state, 'p1', ['merchantFleet']);
@@ -141,11 +144,22 @@ describe('Aufgabe 9 - Monopole und Handelsflotte', () => {
       }
       // Waehrend des Zuges gilt die Flotte
       expect(played.state.fleetSort).toBe('wool');
-      expect(rateFor(played.state, 'p1', 'wool')).toBe(2);
 
-      // Nach dem Zug ist die Flotte weg
-      const after = { ...played.state, fleetSort: null };
-      expect(rateFor(after, 'p1', 'wool')).toBe(4);
+      const stocked = giving(played.state, 'p1', { wool: 2 });
+      const traded = applyTradeWithBank(stocked, 'p1', 'wool', 'ore');
+      expect(traded.ok).toBe(true);
+      if (traded.ok) {
+        expect(woolOf(traded.state, 'p1')).toBe(0);
+        expect(oreOf(traded.state, 'p1')).toBe(1);
+      }
+
+      // Nach dem Zug ist die Flotte weg - zwei Wolle reichen dann nicht mehr
+      const after = giving({ ...played.state, fleetSort: null }, 'p1', { wool: 2 });
+      const rejectedTrade = applyTradeWithBank(after, 'p1', 'wool', 'ore');
+      expect(rejectedTrade.ok).toBe(false);
+      if (!rejectedTrade.ok) {
+        expect(rejectedTrade.error.code).toBe(RuleViolationCode.INSUFFICIENT_RESOURCES);
+      }
     });
   });
 });

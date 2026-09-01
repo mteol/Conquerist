@@ -287,3 +287,82 @@ describe('Die Gilde', () => {
     // entscheidet.
   });
 });
+
+/*
+ * Die Handelsflotte und der Haendler laufen durch dieselbe Funktion wie
+ * Haefen und Gilde - `tradeRateFor` kennt keine zweite Fassung mehr, die nur
+ * fuer Tests nachgebaut waere. Jeder Test hier prueft deshalb zusaetzlich zum
+ * Kurs auch den echten Tausch ueber `applyTradeWithBank`: ein Kurs, der nie
+ * am echten Bankgeschaeft ankommt, sichert nichts zu.
+ */
+describe('Die Handelsflotte', () => {
+  it('senkt den Kurs der genannten Sorte auf zwei, bis Zugende', () => {
+    const state = testGame({ fleetSort: 'wool' });
+
+    expect(tradeRateFor(state, 'p1', 'wool')).toBe(2);
+    // Jede andere Sorte bleibt beim Standardkurs.
+    expect(tradeRateFor(state, 'p1', 'grain')).toBe(4);
+  });
+
+  it('gilt zusaetzlich zum besten Hafen, nicht anstelle davon', () => {
+    const state = testGame({
+      fleetSort: 'ore',
+      buildings: {
+        [HARBOR3_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+      },
+    });
+
+    // Ohne Flotte gaebe der 3:1-Hafen nur drei - die Flotte schlaegt ihn.
+    expect(tradeRateFor(state, 'p1', 'ore')).toBe(2);
+    // Eine Sorte, die die Flotte nicht nennt, bleibt beim Hafenkurs.
+    expect(tradeRateFor(state, 'p1', 'wool')).toBe(3);
+  });
+
+  it('tauscht ueber applyTradeWithBank tatsaechlich zwei zu eins', () => {
+    const state = giving(testGame({ fleetSort: 'wool' }), 'p1', { wool: 2 });
+    const result = applyTradeWithBank(state, 'p1', 'wool', 'ore');
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(resourcesOf(result.state, 'p1')).toEqual(hand({ ore: 1 }));
+  });
+
+  it('reicht nach Zugende nicht mehr - `endTurn` raeumt `fleetSort` ab', () => {
+    // `fleetSort: null` steht hier fuer den Zustand nach `endTurn` (siehe
+    // `reducer.ts`) und nicht fuer einen eigenen Aufruf des Reducers - der
+    // Abbau selbst ist nicht Gegenstand dieses Tests.
+    const state = giving(testGame({ fleetSort: null }), 'p1', { wool: 2 });
+    const result = applyTradeWithBank(state, 'p1', 'wool', 'ore');
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe(RuleViolationCode.INSUFFICIENT_RESOURCES);
+  });
+});
+
+describe('Der Haendler', () => {
+  /** Der Haendler auf dem Wald `0,1` aus `TEST_SCENARIO` - Rohstoff Holz. */
+  function withMerchant(state: GameState, owner: string): GameState {
+    return { ...state, merchant: { hex: '0,1', owner } };
+  }
+
+  it('gibt seinem Besitzer zwei zu eins auf den Rohstoff seines Feldes', () => {
+    const state = withMerchant(testGame(), 'p1');
+
+    expect(tradeRateFor(state, 'p1', 'lumber')).toBe(2);
+    // Eine andere Sorte bleibt beim Standardkurs.
+    expect(tradeRateFor(state, 'p1', 'ore')).toBe(4);
+  });
+
+  it('nuetzt nur seinem aktuellen Besitzer', () => {
+    const state = withMerchant(testGame(), 'p2');
+
+    expect(tradeRateFor(state, 'p1', 'lumber')).toBe(4);
+  });
+
+  it('tauscht ueber applyTradeWithBank tatsaechlich zwei zu eins', () => {
+    const state = giving(withMerchant(testGame(), 'p1'), 'p1', { lumber: 2 });
+    const result = applyTradeWithBank(state, 'p1', 'lumber', 'brick');
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(resourcesOf(result.state, 'p1')).toEqual(hand({ brick: 1 }));
+  });
+});
