@@ -4,7 +4,7 @@ import { CardAmountsSchema, RuleSetSchema } from '../rules/index.js';
 import { CardIdSchema, ScenarioDefinitionSchema } from '../scenario/index.js';
 import type { Seat } from '../seats.js';
 import { ProgressCardIdSchema } from './cities/progress/cards.js';
-import { TrackIdSchema } from './cities/tracks.js';
+import { TRACK_IDS, TrackIdSchema } from './cities/tracks.js';
 import { DevelopmentCardIdSchema, DevelopmentCardSchema } from './development.js';
 import { RollSchema } from './dice.js';
 import { playableDevelopmentCards, roadBuildingTargets } from './legal.js';
@@ -58,6 +58,13 @@ export const PlayerInViewSchema = z.object({
    * Handkarten.
    */
   openProgressCards: z.array(ProgressCardIdSchema).default([]),
+  /**
+   * Verdeckte Fortschrittskarten auf der Hand - **nur beim Empfaenger**, sonst
+   * `null`. Dieselbe Grenze wie bei `developmentCards`: wer sieht, dass ein
+   * Mitspieler den Diplomaten haelt, weiss, welche Strasse ihm gleich droht.
+   * Fuer alle anderen bleibt nur die Anzahl (`progressCardCount`).
+   */
+  progressCards: z.array(ProgressCardIdSchema).nullable().default(null),
   /** Wie viele verdeckte Fortschrittskarten dieser Mitspieler haelt. */
   progressCardCount: z.number().int().min(0).default(0),
   /** Ausgespielte Ritter. Oeffentlich - sie liegen offen. */
@@ -134,6 +141,13 @@ export const PlayerViewSchema = z.object({
   }),
   /** Wie viele Karten der Stapel noch hergibt. Der Inhalt bleibt geheim. */
   deckLeft: z.number().int().min(0),
+  /**
+   * Wie viele Karten die drei Fortschrittsstapel je Bereich noch hergeben.
+   * Nur die Resthoehe, aus demselben Grund wie bei `deckLeft`: der Inhalt und
+   * die Reihenfolge bleiben geheim - wer den Stapel kennt, weiss vor dem
+   * Ziehen, was er bekommt.
+   */
+  progressDeckSizes: z.partialRecord(TrackIdSchema, z.number().int().min(0)).default({}),
   /** Ob in diesem Zug schon eine Entwicklungskarte gespielt wurde. */
   developmentPlayed: z.boolean(),
   /**
@@ -143,6 +157,23 @@ export const PlayerViewSchema = z.object({
    * `merchant`.
    */
   fleetSort: CardIdSchema.nullable().default(null),
+  /**
+   * Die beiden Augen, die Alchemie fuer den naechsten Wurf festlegt, `null`
+   * ohne aktiven Vorsatz. **Oeffentlich** - die Karte wird beim Ausspielen
+   * angesagt, genau wie `merchant` und `fleetSort` sichtbar am Tisch wirken.
+   */
+  alchemistRoll: z
+    .object({ first: z.number().int().min(1), second: z.number().int().min(1) })
+    .nullable()
+    .default(null),
+  /**
+   * Fuer welche Bereiche der naechste Ausbau in diesem Zug eine Handelsware
+   * weniger kostet - der Kran-Vermerk. **Oeffentlich**, aus demselben Grund
+   * wie `fleetSort`: beide sind Zustandsfelder, die nur fuer den laufenden
+   * Zug gelten und die `endTurn` abraeumt, und keines verraet eine geheime
+   * Handkarte - der Rabatt zeigt sich ohnehin, sobald ausgebaut wird.
+   */
+  craneDiscount: z.array(TrackIdSchema).default([]),
   /**
    * Welche Entwicklungskarten der Empfaenger jetzt ausspielen koennte.
    *
@@ -226,6 +257,7 @@ export function playerViewOf(
         developmentCount: player.developmentCards.length,
         // Oeffentlich fuer alle - sie liegen offen vor dem Spieler.
         openProgressCards: player.openProgressCards,
+        progressCards: player.id === viewer ? player.progressCards : null,
         progressCardCount: player.progressCards.length,
         playedKnights: player.playedKnights,
         defenderPoints: player.defenderPoints,
@@ -255,8 +287,13 @@ export function playerViewOf(
     largestArmy: state.largestArmy,
     // Nur die Anzahl: wer den Stapel kennt, weiss vor dem Kauf, was er bekommt.
     deckLeft: state.deck.length,
+    progressDeckSizes: Object.fromEntries(
+      TRACK_IDS.map((track) => [track, (state.progressDecks[track] ?? []).length]),
+    ),
     developmentPlayed: state.developmentPlayed,
     fleetSort: state.fleetSort,
+    alchemistRoll: state.alchemistRoll,
+    craneDiscount: state.craneDiscount,
     playableCards: playableDevelopmentCards(state, viewer),
     canOfferTrade: canOfferAnything(state, viewer),
     roadBuildingTargets: roadBuildingTargets(state, viewer),

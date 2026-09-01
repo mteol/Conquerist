@@ -239,6 +239,148 @@ describe('Offene Fortschrittskarten in der Sicht', () => {
   });
 });
 
+describe('Verdeckte Fortschrittskarten in der eigenen Hand', () => {
+  it('zeigt die eigene Fortschrittskartenhand vollstaendig', () => {
+    const state = gameWithCities();
+    const withCards: GameState = {
+      ...state,
+      players: state.players.map((player) =>
+        player.id === 'p1' ? { ...player, progressCards: ['crane', 'mining'] } : player,
+      ),
+    };
+
+    const view = playerViewOf(withCards, 'p1', seats, 1);
+    const own = view.players.find((player) => player.id === 'p1')!;
+
+    expect(own.progressCards).toEqual(['crane', 'mining']);
+  });
+
+  it('zeigt von fremden Fortschrittskartenhaenden nichts', () => {
+    const state = gameWithCities();
+    const withCards: GameState = {
+      ...state,
+      players: state.players.map((player) =>
+        player.id === 'p1' ? { ...player, progressCards: ['diplomat', 'saboteur'] } : player,
+      ),
+    };
+
+    const view = playerViewOf(withCards, 'p2', seats, 1);
+    const foreign = view.players.find((player) => player.id === 'p1')!;
+
+    // Weder die Karten noch ihre Namen duerfen die Sicht des Mitspielers
+    // erreichen - nur die Anzahl bleibt (progressCardCount).
+    //
+    // Geprueft an `view.players` und nicht am ganzen `view`: `rules.progressDecks`
+    // nennt ohnehin jede Kartenart des Spiels (die volle Stapelzusammensetzung
+    // ist oeffentlich) - eine Suche ueber die ganze Sicht faende "diplomat"
+    // immer, egal ob die Hand leckt.
+    expect(foreign.progressCards).toBeNull();
+    expect(foreign.progressCardCount).toBe(2);
+    expect(JSON.stringify(view.players)).not.toContain('diplomat');
+    expect(JSON.stringify(view.players)).not.toContain('saboteur');
+  });
+
+  it('haelt das eigene Schema ein', () => {
+    const state = gameWithCities();
+    const withCards: GameState = {
+      ...state,
+      players: state.players.map((player) =>
+        player.id === 'p1' ? { ...player, progressCards: ['crane'] } : player,
+      ),
+    };
+
+    expect(() => PlayerViewSchema.parse(playerViewOf(withCards, 'p1', seats, 1))).not.toThrow();
+  });
+});
+
+describe('Die drei Fortschrittsstapel in der Sicht', () => {
+  it('nennt nur die Resthoehe der drei Stapel', () => {
+    const state = gameWithCities({
+      progressDecks: {
+        science: ['mining', 'irrigation'],
+        trade: ['merchant'],
+        politics: [],
+      },
+    });
+
+    const view = playerViewOf(state, 'p1', seats, 1);
+
+    expect(view.progressDeckSizes).toEqual({ science: 2, trade: 1, politics: 0 });
+  });
+
+  it('gibt den Inhalt und die Reihenfolge der Stapel nirgends heraus', () => {
+    const state = gameWithCities({
+      progressDecks: {
+        science: ['mining', 'irrigation'],
+        trade: ['merchant'],
+        politics: ['diplomat', 'saboteur'],
+      },
+    });
+
+    const view = playerViewOf(state, 'p1', seats, 1);
+
+    // Nur die Groesse. Die Reihenfolge ist das Geheimnis - dieselbe
+    // Begruendung wie bei `deckLeft` fuer den Entwicklungskartenstapel.
+    expect(Object.keys(view)).not.toContain('progressDecks');
+
+    /*
+     * Der JSON-Vergleich laeuft ohne `rules`: `rules.progressDecks` nennt die
+     * volle Zusammensetzung jedes Stapels (wie viele Karten jeder Art es im
+     * Spiel insgesamt gibt) - das ist oeffentliches Regelwissen, keine
+     * Reihenfolge der tatsaechlichen Stapel, und enthaelt deshalb ohnehin
+     * jeden Kartennamen. Ausserhalb von `rules` duerfen sie nicht auftauchen.
+     */
+    const withoutRules = Object.fromEntries(
+      Object.entries(view).filter(([key]) => key !== 'rules'),
+    );
+    expect(JSON.stringify(withoutRules)).not.toContain('diplomat');
+    expect(JSON.stringify(withoutRules)).not.toContain('saboteur');
+    expect(JSON.stringify(withoutRules)).not.toContain('irrigation');
+  });
+
+  it('haelt das eigene Schema ein', () => {
+    const state = gameWithCities({
+      progressDecks: { science: ['mining'], trade: [], politics: [] },
+    });
+
+    expect(() => PlayerViewSchema.parse(playerViewOf(state, 'p1', seats, 1))).not.toThrow();
+  });
+});
+
+describe('Alchemie in der Sicht', () => {
+  it('zeigt die vorab gesetzten Augenzahlen jedem Spieler - sie wurden angesagt', () => {
+    const state = gameWithCities({ alchemistRoll: { first: 3, second: 5 } });
+
+    const own = playerViewOf(state, 'p1', seats, 1);
+    const foreign = playerViewOf(state, 'p2', seats, 1);
+
+    expect(own.alchemistRoll).toEqual({ first: 3, second: 5 });
+    expect(foreign.alchemistRoll).toEqual({ first: 3, second: 5 });
+  });
+
+  it('bleibt leer ohne aktive Alchemie', () => {
+    const view = playerViewOf(gameWithCities(), 'p1', seats, 1);
+    expect(view.alchemistRoll).toBeNull();
+  });
+});
+
+describe('Der Kranrabatt in der Sicht', () => {
+  it('zeigt den Kranrabatt jedem Spieler', () => {
+    const state = gameWithCities({ craneDiscount: ['science'] });
+
+    const own = playerViewOf(state, 'p1', seats, 1);
+    const foreign = playerViewOf(state, 'p2', seats, 1);
+
+    expect(own.craneDiscount).toEqual(['science']);
+    expect(foreign.craneDiscount).toEqual(['science']);
+  });
+
+  it('bleibt leer ohne aktiven Kranrabatt', () => {
+    const view = playerViewOf(gameWithCities(), 'p1', seats, 1);
+    expect(view.craneDiscount).toEqual([]);
+  });
+});
+
 describe('Ausbaustufen in der Sicht', () => {
   it('traegt improvements bei jedem Spieler, nicht nur beim Empfaenger', () => {
     const state = afterSetup();
