@@ -156,54 +156,52 @@ describe('ProgressPanel', () => {
     expect(onAction).not.toHaveBeenCalled();
   });
 
-  it('sperrt Karten, deren Brettwahl diese Aufgabe nicht verdrahtet', () => {
-    render(<ProgressPanel view={withHandView(['engineer'])} />);
-
-    expect(screen.getByRole('button', { name: /Ingenieur/ })).toHaveProperty('disabled', true);
-  });
-
   /*
-   * Fixrunde 1, WICHTIG 2: eine gesperrte Karte muss sagen, WARUM sie nicht
-   * geht - nicht nur DASS. Geprueft wird die Mechanik aus `DevelopmentCards.tsx`
-   * (aria-describedby auf einen versteckten Satz, der IMMER da ist, nicht
-   * erst beim Darueberfahren) und die sichtbare Erklaerzeile beim
-   * Darueberfahren/Fokussieren.
+   * Aufgabe 15d: die sieben Karten mit Angabe, deren Brettwahl bis dahin
+   * fehlte, sind jetzt genauso verdrahtet wie Haendler und Bischof - ein
+   * Klick beginnt die Wahl auf dem Brett, statt die Karte selbst zu spielen.
+   * Ingenieur steht stellvertretend fuer alle sieben; `categoryOf` fasst sie
+   * in derselben `board`-Kategorie zusammen wie Haendler und Bischof, und der
+   * echte Weg je Karte - Zielmenge, ein bzw. zwei Klicks, Wirkung - steht in
+   * `GameScreen.test.tsx`.
    */
-  it('nennt bei einer gesperrten Karte den Grund - fuer Vorlesewerkzeuge unbedingt vorhanden', () => {
-    render(<ProgressPanel view={withHandView(['engineer'])} />);
+  it('beginnt beim Ingenieur ebenfalls die Brettwahl, statt selbst zu spielen', async () => {
+    const onAction = vi.fn();
+    const onBoardPick = vi.fn();
+    render(
+      <ProgressPanel
+        view={withHandView(['engineer'])}
+        onAction={onAction}
+        onBoardPick={onBoardPick}
+      />,
+    );
 
-    const button = screen.getByRole('button', { name: /Ingenieur/ });
-    const describedById = button.getAttribute('aria-describedby');
-    expect(describedById).not.toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /Ingenieur/ }));
 
-    const reason = document.getElementById(describedById!);
-    expect(reason).not.toBeNull();
-    expect(reason!.textContent).toContain('Brett');
-    // Kein technischer Jargon wie "nicht verdrahtet" - ein Satz fuer den Spieler.
-    expect(reason!.textContent).not.toMatch(/verdrahtet/i);
+    expect(onBoardPick).toHaveBeenCalledWith('engineer');
+    expect(onAction).not.toHaveBeenCalled();
   });
 
-  it('zeigt den Grund einer gesperrten Karte auch beim Darueberfahren/Fokussieren an', () => {
-    render(<ProgressPanel view={withHandView(['engineer'])} />);
-
-    expect(screen.queryByTestId('progress-hint')).toBeNull();
-
-    fireEvent.pointerEnter(screen.getByRole('button', { name: /Ingenieur/ }).closest('li')!);
-
-    const hint = screen.getByTestId('progress-hint');
-    expect(hint.textContent).toContain('Ingenieur');
-    expect(hint.textContent).toContain('Brett');
-  });
-
-  it('nennt bei einer spielbaren Karte ebenfalls einen Satz - die eigene Wirkung, nicht den Sperrgrund', () => {
+  it('nennt bei jeder Karte auf der Hand die eigene Wirkung als Satz', () => {
     render(<ProgressPanel view={withHandView(['warlord'])} />);
 
     const button = screen.getByRole('button', { name: /Heerführer/ });
     const describedById = button.getAttribute('aria-describedby');
     const reason = document.getElementById(describedById!);
 
-    expect(reason!.textContent).not.toBe('');
-    expect(reason!.textContent).not.toMatch(/Brett \(eine Kreuzung/);
+    expect(reason!.textContent).toBe('Alle eigenen Ritter gratis aktivieren.');
+  });
+
+  it('zeigt die Erklaerzeile beim Darueberfahren/Fokussieren an', () => {
+    render(<ProgressPanel view={withHandView(['warlord'])} />);
+
+    expect(screen.queryByTestId('progress-hint')).toBeNull();
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: /Heerführer/ }).closest('li')!);
+
+    const hint = screen.getByTestId('progress-hint');
+    expect(hint.textContent).toContain('Heerführer');
+    expect(hint.textContent).toContain('Alle eigenen Ritter gratis aktivieren.');
   });
 
   /*

@@ -21,12 +21,32 @@ type ProgressPlay = Extract<GameAction, { type: 'playProgress' }>['play'];
 type DialogCard =
   'alchemist' | 'crane' | 'resourceMonopoly' | 'commodityMonopoly' | 'merchantFleet';
 
+/**
+ * Die neun Karten, deren Angabe das Brett braucht - Haendler und Bischof
+ * (Etappe 10c) sowie die sieben aus Aufgabe 15d: Erfinder, Ingenieur,
+ * Medizin, Schmied, Strassenbau, Diplomat, Intrige. `GameScreen.tsx`
+ * unterscheidet die ersten beiden von den restlichen sieben (ein Feld reicht
+ * dort mit einem Klick, die sieben brauchen bis zu zwei und teils eine
+ * andere Ortsart) - hier am Panel ist der Unterschied keiner: ein Klick sagt
+ * in jedem Fall nur "die Wahl beginnt jetzt auf dem Brett".
+ */
+type BoardCard =
+  | 'merchant'
+  | 'bishop'
+  | 'inventor'
+  | 'engineer'
+  | 'medicine'
+  | 'smith'
+  | 'roadBuilding'
+  | 'diplomat'
+  | 'intrigue';
+
 /** Was ein Klick auf diese Karte tut. */
 type CardCategory =
   | { readonly kind: 'direct' }
   | { readonly kind: 'dialog'; readonly card: DialogCard }
-  | { readonly kind: 'hex'; readonly card: 'merchant' | 'bishop' }
-  | { readonly kind: 'unwired' };
+  | { readonly kind: 'board'; readonly card: BoardCard }
+  | { readonly kind: 'inert' };
 
 /**
  * Wozu ein Klick auf diese Karte fuehrt - **erschoepfend ueber alle 25
@@ -35,26 +55,16 @@ type CardCategory =
  * lautlos durch einen `default`-Zweig - dieselbe Vorsicht, die `phaseTextOf`
  * in `view.ts` schon fuer die Phasen zeigt.
  *
- * **`unwired`** sind die sieben Karten, deren Angabe das Brett braucht und
- * die diese Aufgabe (15b: "Die Stapel, die Hand und die Dialoge") nicht
- * verdrahtet: Ingenieur, Medizin, Intrige, Straßenbau, Schmied, Diplomat,
- * Erfinder. Sie liegen sichtbar mit ihrem Namen auf der Hand (Designregel 7),
- * ihr Knopf ist aber gesperrt. Grund: anders als bei Haendler und Bischof
- * (`targets.ts#merchantTargets/bishopTargets`, reine Brettgeometrie aus
- * oeffentlichen Angaben) braeuchte ein Zielset fuer diese sieben Karten
- * Wissen, das `PlayerView` nicht traegt und `legalActions` nicht aufzaehlt
- * (offene Strassen, erreichbare Kreuzungen ohne eigenen Ritter, freie
- * Zahlenchips ausser 2/12/6/8, eigene Staedte ohne Mauer) - der Client
- * muesste die Regel selbst nachrechnen, um eine ehrliche Zielmenge
- * anzubieten. Siehe Bericht (task-15b-report.md) fuer die Abwaegung.
- *
- * Die restlichen sieben (`printer`, `constitution`, `tradeHarbor`,
- * `masterMerchant`, `spy`, `deserter`, `wedding`) erscheinen nie in
- * `progressCards`: die ersten beiden liegen laut `draw.ts` sofort offen in
- * `openProgressCards`, die uebrigen fuenf warten auf eine fremde Antwort und
- * kommen laut Kopfkommentar in `play.ts` erst mit 10d-2 - an diesem Tisch
- * (`CITIES_RULES.progressDecks`) liegen sie nicht. Trotzdem ein eigener
- * Zweig statt `default`, aus demselben Grund wie oben.
+ * **`inert`** sind die sieben Karten, die an diesem Tisch nie auf der Hand
+ * liegen koennen: Buchdruck und Verfassung legt `draw.ts#receiveProgressCard`
+ * sofort offen in `openProgressCards` ab, nie in `progressCards`; Spionage,
+ * Deserteur, Hochzeit, Handelshafen und Grosshaendler fehlen ganz aus
+ * `CITIES_RULES.progressDecks` (sie warten auf eine fremde Antwort und kommen
+ * mit ihrer Phase erst in 10d-2). Der Zweig existiert nur fuer die
+ * Erschoepfung oben - `hand.map` unten kann ihn nie erreichen, und deshalb
+ * gibt es dafuer auch keinen eigenen Test (ein Test, der eine dieser sieben
+ * Karten von Hand auf die Hand legt, pruefte einen Zustand, den das Spiel nie
+ * herstellt).
  */
 function categoryOf(card: ProgressCardId): CardCategory {
   switch (card) {
@@ -73,8 +83,6 @@ function categoryOf(card: ProgressCardId): CardCategory {
 
     case 'merchant':
     case 'bishop':
-      return { kind: 'hex', card };
-
     case 'inventor':
     case 'engineer':
     case 'medicine':
@@ -82,7 +90,7 @@ function categoryOf(card: ProgressCardId): CardCategory {
     case 'roadBuilding':
     case 'diplomat':
     case 'intrigue':
-      return { kind: 'unwired' };
+      return { kind: 'board', card };
 
     case 'printer':
     case 'constitution':
@@ -91,22 +99,13 @@ function categoryOf(card: ProgressCardId): CardCategory {
     case 'spy':
     case 'deserter':
     case 'wedding':
-      return { kind: 'unwired' };
+      return { kind: 'inert' };
   }
 }
 
-/**
- * Warum die sieben `unwired`-Karten gesperrt sind - fuer den Spieler, nicht
- * fuer die Technik. "Nicht verdrahtet" waere eine Auskunft ueber den Code;
- * das hier ist eine ueber das Spiel, das er gerade vor sich hat.
- */
-const UNWIRED_REASON =
-  'Diese Karte braucht eine Wahl auf dem Brett (eine Kreuzung, eine Kante oder ' +
-  'einen Zahlenchip) - die gibt es in dieser Fassung noch nicht.';
-
-/** Der erklaerende Satz zu einer Handkarte - Wirkung, oder bei gesperrten Karten der Grund. */
+/** Der erklaerende Satz zu einer Handkarte - immer die eigene Wirkung. */
 function hintTextFor(card: ProgressCardId): string {
-  return categoryOf(card).kind === 'unwired' ? UNWIRED_REASON : PROGRESS_TEXTS[card];
+  return PROGRESS_TEXTS[card];
 }
 
 /**
@@ -124,8 +123,8 @@ function progressHintId(card: ProgressCardId, index: number): string {
 export interface ProgressPanelProps {
   readonly view: PlayerView;
   readonly onAction?: (action: GameAction) => void;
-  /** Haendler und Bischof brauchen das Brett - der Klick beginnt dort die Wahl. */
-  readonly onBoardPick?: (card: 'merchant' | 'bishop') => void;
+  /** Die neun Karten mit Angabe brauchen das Brett - der Klick beginnt dort die Wahl. */
+  readonly onBoardPick?: (card: BoardCard) => void;
 }
 
 /**
@@ -167,17 +166,17 @@ export function ProgressPanel({
       case 'dialog':
         setDialog(category.card);
         return;
-      case 'hex':
+      case 'board':
         onBoardPick?.(category.card);
         return;
-      case 'unwired':
+      case 'inert':
         // Der Knopf ist gesperrt (siehe `categoryOf`) - ein Klick kommt hier
-        // nie an.
+        // nie an, denn keine dieser sieben Karten liegt je auf der Hand.
         return;
     }
   };
 
-  const isClickable = (card: ProgressCardId): boolean => categoryOf(card).kind !== 'unwired';
+  const isClickable = (card: ProgressCardId): boolean => categoryOf(card).kind !== 'inert';
 
   /*
    * Die eigene Hand steht am eigenen Sitz in `view.players`, nicht direkt an
@@ -339,8 +338,7 @@ export function ProgressPanel({
 /**
  * Die Erklaerzeile ueber der Handreihe - dieselbe Komponente wie
  * `DevelopmentCards.tsx#Hint`, hier fuer Fortschrittskarten: Name zuerst,
- * dann der Satz. Bei den sieben gesperrten Karten steht dort `UNWIRED_REASON`
- * statt der Wirkung - der Grund, nicht die Technik.
+ * dann die Wirkung.
  */
 function ProgressHint({ card }: { readonly card: ProgressCardId }): JSX.Element {
   return (
