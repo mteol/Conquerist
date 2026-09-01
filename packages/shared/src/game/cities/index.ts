@@ -26,6 +26,22 @@ export * from './knights.js';
  * ausserhalb des Pakets nicht erreichbar.
  */
 export * from './progress/cards.js';
+/*
+ * Nur `canPlaceMerchant`, benannt und nicht mit Stern, aus `merchant.js`.
+ *
+ * Ein Stern brächte `applyMerchant` mit heraus - und `applyMerchant` heisst
+ * ein zweites Mal so in `progress/commerce.js`. Heute kollidiert das nicht,
+ * weil `progress/` hier oben nur ueber `cards.js` hereinkommt; kaeme
+ * `commerce.js` je dazu, waeren zwei `applyMerchant` im selben Sammelpunkt,
+ * und ein mehrdeutiger Stern-Export verschwindet in ESM stillschweigend statt
+ * einen Fehler zu werfen - ein Import, der heute geht, ginge dann
+ * kommentarlos ins Leere. `applyMerchant` selbst gehoert ohnehin nicht hier
+ * heraus: es wendet einen Zug an, und das bleibt nach der Regel oben Sache
+ * des Reducers. `canPlaceMerchant` ist dagegen eine reine Regelfrage, kein
+ * Zug, und passt zu dieser Regel wie `canPlaceRobberAt` aus `robber.js`
+ * (siehe `game/index.ts`).
+ */
+export { canPlaceMerchant } from './merchant.js';
 export * from './rollFlow.js';
 export * from './tracks.js';
 export * from './turn.js';

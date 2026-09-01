@@ -1,8 +1,8 @@
 import {
   boardOf,
+  canPlaceMerchant,
   legalActions,
   setupBuildingKind,
-  terrainYield,
   type Building,
   type EdgeId,
   type GameAction,
@@ -370,12 +370,19 @@ export function setupKindOf(source: {
  * (siehe `GameScreen.tsx`) - `legalActions` zaehlt sie nicht auf, denn
  * `merchant` und `bishop` brauchen ein Feld, und das waere dieselbe
  * Aufzaehlung wie beim Strassenbau der Entwicklungskarten (siehe die
- * Begruendung in `legal.ts`). Diese Funktion baut deshalb, was das Brett
- * anbietet - **keine Spielregel, reine Brettgeometrie**: Feldnachbarschaft
- * und wem ein Bauwerk gehoert sind beides oeffentliche Angaben aus der Sicht,
- * dieselbe Art Ableitung wie `setupKindOf` oben. Ob ein Klick am Ende
- * zulaessig war (`canPlaceMerchant` in shared), entscheidet weiterhin der
- * Reducer.
+ * Begruendung in `legal.ts`).
+ *
+ * Diese Funktion probiert jedes Feld gegen die echte Regel,
+ * `canPlaceMerchant` aus shared (Aufgabe 15d, Fixrunde 2 - vorher stand hier
+ * eine eigene Nachbildung von "Terrain nicht Wueste/See UND eigenes Bauwerk
+ * angrenzend", eine zweite, unabhaengige Auslegung derselben Regel). Der
+ * Cast auf `GameState` ist keine Annahme ueber Felder, die `canPlaceMerchant`
+ * nicht liest: die Funktion fragt ausschliesslich `state.scenario` und
+ * `state.buildings` ab (siehe `merchant.ts`), und genau die traegt `source`
+ * schon - `PlayerView` wie `GameState` haben beide Felder. Ein enger
+ * `Pick<GameState, ...>`-Parameter an `canPlaceMerchant` selbst waere ein
+ * zweiter Eingriff in `packages/shared` gewesen, den diese Aufgabe nicht
+ * verlangt.
  */
 export function merchantTargets(
   source: {
@@ -386,14 +393,10 @@ export function merchantTargets(
 ): ReadonlyMap<HexId, readonly GameAction[]> {
   const board = boardOf(source.scenario);
   const targets = new Map<HexId, readonly GameAction[]>();
+  const asState = source as GameState;
 
-  for (const [hex, placement] of board.hexes) {
-    // Wueste und See fallen heraus - dort gibt es nichts zu handeln.
-    if (terrainYield(placement.terrain) === null) continue;
-
-    const vertices = board.topology.hexVertices.get(hex) ?? [];
-    const hasOwnBuilding = vertices.some((vertex) => source.buildings[vertex]?.owner === player);
-    if (!hasOwnBuilding) continue;
+  for (const hex of board.hexes.keys()) {
+    if (canPlaceMerchant(asState, player, hex) !== null) continue;
 
     targets.set(hex, [{ type: 'playProgress', player, play: { card: 'merchant', hex } }]);
   }

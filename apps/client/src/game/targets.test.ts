@@ -3,6 +3,7 @@ import {
   CITIES_RULES,
   CLASSIC_34,
   CLASSIC_RULES,
+  canPlaceMerchant,
   createGame,
   generateScenario,
   legalActions,
@@ -293,6 +294,39 @@ describe('merchantTargets', () => {
     const targets = merchantTargets(state, 'niemand-hier');
 
     expect(targets.size).toBe(0);
+  });
+
+  /*
+   * Fixrunde 2 (Aufgabe 15d): `merchantTargets` fragt jetzt `canPlaceMerchant`
+   * aus shared statt die Regel nachzubauen. Dieser Test ist der Beweis dafuer
+   * - nicht nur, dass `merchantTargets` irgendetwas Plausibles liefert,
+   * sondern dass es fuer **jedes** Feld genau dieselbe Antwort gibt wie die
+   * echte Regel, fuer einen Besitzer UND fuer jemanden ohne Bauwerk.
+   *
+   * Ueber alle sieben Felder des Testbretts, mit zwei Spielern (Besitzer und
+   * Nicht-Besitzer) ergeben sich 14 Vergleiche - eine gezielte Suche nach
+   * einer Stelle, an der die alte Nachbildung ("Terrain nicht Wueste/See UND
+   * eigenes Bauwerk angrenzend") und `canPlaceMerchant` auseinanderliefen,
+   * fand keine: `canPlaceMerchant` prueft exakt dieselben zwei Bedingungen
+   * und nichts weiter (siehe `merchant.ts`) - die alte Nachbildung lag heute
+   * fuer jedes Feld richtig. Das ist kein Gegenargument gegen die
+   * Bereinigung (eine zweite, unabhaengige Auslegung derselben Regel kann
+   * driften, auch wenn sie es heute nicht tut), aber es waere unehrlich, hier
+   * einen abweichenden Fall zu behaupten, den es nicht gibt.
+   */
+  it('stimmt fuer jedes Feld mit der echten Regel canPlaceMerchant ueberein', () => {
+    const state = afterCitySetup();
+    const board = boardOf(cityScenario);
+    const owner = state.buildings[CENTER_VERTEX]!.owner;
+
+    for (const player of [owner, 'niemand-hier']) {
+      const targets = merchantTargets(state, player);
+
+      for (const hex of board.hexes.keys()) {
+        const allowed = canPlaceMerchant(state, player, hex) === null;
+        expect(targets.has(hex)).toBe(allowed);
+      }
+    }
   });
 });
 
