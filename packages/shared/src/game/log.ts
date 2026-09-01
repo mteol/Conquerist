@@ -221,8 +221,9 @@ function describeAction(
 
     case 'playProgress':
       // Welche Wahl die Karte getroffen hat (Feld, Ritter, Ware, ...) steht
-      // bewusst nicht im Satz: die Wirkung selbst kommt erst in den Aufgaben 6
-      // bis 12, und der Verlauf soll nicht mehr behaupten, als heute passiert.
+      // bewusst nicht im Satz: der Verlauf nennt die gespielte Karte, nicht
+      // die Entscheidung dahinter - dieselbe Zurueckhaltung wie bei
+      // pickProgressDeck unten, das eine gezogene Karte auch nicht verraet.
       return `${who} spielt ${PROGRESS_NAMES[action.play.card]}`;
 
     case 'pickProgressDeck': {
