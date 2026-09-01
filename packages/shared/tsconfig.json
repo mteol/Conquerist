@@ -11,5 +11,7 @@
     "outDir": "dist",
     "tsBuildInfoFile": "dist/.tsbuildinfo"
   },
-  "include": ["src"]
+  // "src" allein greift nur .ts/.tsx - fuer den JSON-Import der Fixture in
+  // game.integration.test.ts (Aufgabe 13) braucht es das Muster extra.
+  "include": ["src", "src/**/*.json"]
 }

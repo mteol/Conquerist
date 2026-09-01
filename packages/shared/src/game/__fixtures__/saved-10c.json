@@ -1,0 +1,288 @@
+{
+  "scenario": {
+    "id": "test7",
+    "name": "Testbrett mit sieben Feldern",
+    "hexes": [
+      {
+        "hex": "0,0",
+        "terrain": "desert"
+      },
+      {
+        "hex": "1,0",
+        "terrain": "forest",
+        "chip": 5
+      },
+      {
+        "hex": "1,-1",
+        "terrain": "hills",
+        "chip": 6
+      },
+      {
+        "hex": "0,-1",
+        "terrain": "pasture",
+        "chip": 8
+      },
+      {
+        "hex": "-1,0",
+        "terrain": "fields",
+        "chip": 9
+      },
+      {
+        "hex": "-1,1",
+        "terrain": "mountains",
+        "chip": 4
+      },
+      {
+        "hex": "0,1",
+        "terrain": "forest",
+        "chip": 10
+      }
+    ],
+    "harbors": [
+      {
+        "edge": "e:1,0|2,0",
+        "ratio": 3
+      },
+      {
+        "edge": "e:1,-1|2,-2",
+        "ratio": 2,
+        "resource": "ore"
+      }
+    ],
+    "robberStart": "0,0",
+    "minPlayers": 2,
+    "maxPlayers": 4
+  },
+  "rules": {
+    "id": "cities",
+    "cards": ["brick", "lumber", "wool", "grain", "ore", "paper", "cloth", "coin"],
+    "buildCosts": {
+      "road": {
+        "brick": 1,
+        "lumber": 1,
+        "wool": 0,
+        "grain": 0,
+        "ore": 0,
+        "paper": 0,
+        "cloth": 0,
+        "coin": 0
+      },
+      "settlement": {
+        "brick": 1,
+        "lumber": 1,
+        "wool": 1,
+        "grain": 1,
+        "ore": 0,
+        "paper": 0,
+        "cloth": 0,
+        "coin": 0
+      },
+      "city": {
+        "brick": 0,
+        "lumber": 0,
+        "wool": 0,
+        "grain": 2,
+        "ore": 3,
+        "paper": 0,
+        "cloth": 0,
+        "coin": 0
+      },
+      "wall": {
+        "brick": 2,
+        "lumber": 0,
+        "wool": 0,
+        "grain": 0,
+        "ore": 0,
+        "paper": 0,
+        "cloth": 0,
+        "coin": 0
+      },
+      "knight": {
+        "brick": 0,
+        "lumber": 0,
+        "wool": 1,
+        "grain": 0,
+        "ore": 1,
+        "paper": 0,
+        "cloth": 0,
+        "coin": 0
+      },
+      "knightUpgrade": {
+        "brick": 0,
+        "lumber": 0,
+        "wool": 1,
+        "grain": 0,
+        "ore": 1,
+        "paper": 0,
+        "cloth": 0,
+        "coin": 0
+      },
+      "knightActivation": {
+        "brick": 0,
+        "lumber": 0,
+        "wool": 0,
+        "grain": 1,
+        "ore": 0,
+        "paper": 0,
+        "cloth": 0,
+        "coin": 0
+      }
+    },
+    "pieceStock": {
+      "road": 15,
+      "settlement": 5,
+      "city": 4,
+      "wall": 3,
+      "knight1": 2,
+      "knight2": 2,
+      "knight3": 2
+    },
+    "resourceBank": {
+      "brick": 19,
+      "lumber": 19,
+      "wool": 19,
+      "grain": 19,
+      "ore": 19,
+      "paper": 12,
+      "cloth": 12,
+      "coin": 12
+    },
+    "victoryPointGoal": 13,
+    "victoryPoints": {
+      "settlement": 1,
+      "city": 2,
+      "longestRoad": 2,
+      "largestArmy": 0,
+      "developmentCard": 0,
+      "defender": 1,
+      "metropolis": 2
+    },
+    "longestRoadMinimum": 5,
+    "largestArmyMinimum": 3,
+    "developmentDeck": {},
+    "handLimitBeforeDiscard": 7,
+    "handLimitPerWall": 2,
+    "tradeOfferMs": 60000,
+    "barbarianTrack": 7,
+    "castleTurns": false,
+    "dice": [
+      {
+        "id": "first",
+        "faces": 6,
+        "countsTowardYield": true,
+        "render": "pips"
+      },
+      {
+        "id": "second",
+        "faces": 6,
+        "countsTowardYield": true,
+        "render": "pips"
+      },
+      {
+        "id": "event",
+        "faces": 6,
+        "countsTowardYield": false,
+        "render": "event"
+      }
+    ],
+    "robberRoll": 7
+  },
+  "players": [
+    {
+      "id": "p1",
+      "resources": {
+        "brick": 0,
+        "lumber": 0,
+        "wool": 0,
+        "grain": 0,
+        "ore": 0,
+        "paper": 0,
+        "cloth": 0,
+        "coin": 0
+      },
+      "piecesLeft": {
+        "road": 15,
+        "settlement": 5,
+        "city": 4,
+        "wall": 3,
+        "knight1": 2,
+        "knight2": 2,
+        "knight3": 2
+      },
+      "developmentCards": [],
+      "playedKnights": 0,
+      "defenderPoints": 0,
+      "improvements": {}
+    },
+    {
+      "id": "p2",
+      "resources": {
+        "brick": 0,
+        "lumber": 0,
+        "wool": 0,
+        "grain": 0,
+        "ore": 0,
+        "paper": 0,
+        "cloth": 0,
+        "coin": 0
+      },
+      "piecesLeft": {
+        "road": 15,
+        "settlement": 5,
+        "city": 4,
+        "wall": 3,
+        "knight1": 2,
+        "knight2": 2,
+        "knight3": 2
+      },
+      "developmentCards": [],
+      "playedKnights": 0,
+      "defenderPoints": 0,
+      "improvements": {}
+    }
+  ],
+  "currentPlayerIndex": 0,
+  "phase": {
+    "kind": "opening",
+    "rolls": {},
+    "pending": ["p1", "p2"],
+    "round": 0
+  },
+  "buildings": {},
+  "roads": {},
+  "knights": {},
+  "robber": "0,0",
+  "barbarians": {
+    "position": 0,
+    "attacks": 0
+  },
+  "bank": {
+    "brick": 19,
+    "lumber": 19,
+    "wool": 19,
+    "grain": 19,
+    "ore": 19,
+    "paper": 12,
+    "cloth": 12,
+    "coin": 12
+  },
+  "longestRoad": {
+    "holder": null,
+    "length": 0
+  },
+  "largestArmy": {
+    "holder": null,
+    "size": 0
+  },
+  "deck": [],
+  "rng": {
+    "a": 2978261082,
+    "b": 2684388794,
+    "c": 144274338,
+    "d": 744834062
+  },
+  "developmentPlayed": false,
+  "lastRoll": null,
+  "rollTally": {},
+  "turn": 0
+}

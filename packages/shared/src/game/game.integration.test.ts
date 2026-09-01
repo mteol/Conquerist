@@ -10,10 +10,23 @@ import { EMPTY_CARDS, countCards } from './cards.js';
 import { discardCountFor } from './robber.js';
 import { victoryPointsOf } from './scoring.js';
 import { robberIsFree } from './cities/barbarians.js';
-import { METROPOLIS_LEVEL, TRACK_IDS, levelOf } from './cities/tracks.js';
-import { giving, hand, testGame } from './fixtures.js';
+import { METROPOLIS_LEVEL, TRACK_IDS, levelOf, type TrackId } from './cities/tracks.js';
+import type { ProgressCardId } from './cities/progress/cards.js';
+import type { ProgressPlay } from './cities/progress/play.js';
+import { giving, hand, testGame, TEST_SCENARIO } from './fixtures.js';
 import { createGame } from './setup.js';
-import type { GameState } from './state.js';
+import { GameStateSchema, type GameState } from './state.js';
+import type { PlayerId, PlayerState } from './player.js';
+/*
+ * Aufloesung gegen das Modul statt gegen das Arbeitsverzeichnis - ein
+ * `readFileSync('src/game/...')` waere je nach Startort (Repo-Wurzel oder
+ * `packages/shared`) mal richtig, mal falsch. Der JSON-Import loest das
+ * gegen den Modulgraphen auf, unabhaengig vom cwd. `readFileSync` selbst
+ * kaeme dazu ohnehin nicht in Frage: `tsconfig.json` setzt hier bewusst
+ * `types: []`, `shared` hat keine Node-Typen im Blick (siehe Kommentar dort)
+ * - ein Import von `node:fs` liesse sich also gar nicht typpruefen.
+ */
+import saved10c from './__fixtures__/saved-10c.json' with { type: 'json' };
 
 /**
  * Eine vollstaendige Partie auf dem erzeugten Basisbrett, von `createGame` bis
@@ -639,5 +652,243 @@ describe('Eine Partie bis zur ersten Metropole', () => {
 
   it('haelt den Kartenbestand ueber die ganze Strecke', () => {
     expect(totalCards(state)).toBe(totalCards(initial));
+  });
+});
+
+/**
+ * Eine Partie nach Staedte-&-Ritter-Regeln bis zur ersten gespielten
+ * Fortschrittskarte (Abschnitt 10 der Spec verlangt genau diesen Beleg je
+ * Etappe): Gruendung, dann so lange wuerfeln, bis ein Stadttor faellt und
+ * jemand ueber die Schwelle kommt, dann die gezogene Karte wirklich
+ * ausspielen - statt die Kette zu stellen.
+ *
+ * Anders als die drei Partien oben braucht dieser Lauf ein Brett fuer zwei
+ * Personen: `SCENARIO` oben ist mit `CLASSIC_34` fuer drei bis vier gebaut,
+ * die Aufgabe verlangt woertlich `players: ['p1', 'p2']`. `TEST_SCENARIO`
+ * aus `fixtures.ts` ist das einzige Brett im Paket, das das hergibt.
+ *
+ * **Die beiden Gruendungssetzungen von p1 sind gezielt gewaehlt, nicht dem
+ * Zufall der Prioritaetsliste ueberlassen.** Mit diesem Seed und diesem
+ * Brett zieht p1 als erste Fortschrittskarte den Schmied - und der braucht
+ * einen eigenen Ritter, sonst hat er keine Wirkung (`science.ts`,
+ * `applySmith`). Ein Ritter kostet Wolle und Erz; auf diesem Brett gibt es
+ * je ein Feld von beidem, und die beiden liegen so, dass keine Kreuzung
+ * beide beruehrt (siehe die Nachbarschaft im generierten Radius-1-Ring).
+ * Die erste Setzung liegt an der Schafsweide (Wolle), die zweite - die als
+ * Stadt sofort Ertrag abwirft, `setupBuildingKind` - am Gebirge (Erz).
+ * Zusammen mit `buildKnight` weit vorn in der Prioritaet steht der Ritter
+ * damit lange vor der ersten Fortschrittskarte. Welche Karte tatsaechlich
+ * faellt, haengt daran nicht: die Wuerfelfolge kommt allein aus dem Seed und
+ * der Zahl der vergangenen Zuege, nicht aus Bauentscheidungen - dieselbe
+ * Karte faellt so oder so, nur ohne Ritter waere sie unspielbar.
+ */
+describe('Eine Partie bis zur ersten gespielten Fortschrittskarte', () => {
+  const FORTSCHRITT_PLAYERS = ['p1', 'p2'] as const;
+
+  /** Erste Gruendungssetzung von p1: Schafsweide, Ziffer 8 - liefert Wolle. */
+  const WOOL_VERTEX = 'v:0,-1|0,0|1,-1';
+  /** Zweite Gruendungssetzung von p1 (eine Stadt): Gebirge, Ziffer 4 - liefert Erz. */
+  const ORE_VERTEX = 'v:-1,1|-1,2|0,1';
+
+  const LIMIT = 20_000;
+
+  const FORTSCHRITT_PRIORITY: readonly GameAction['type'][] = [
+    'placeSetupSettlement',
+    'placeSetupRoad',
+    'rollDice',
+    'moveRobber',
+    'placeDisplacedKnight',
+    'pickProgressDeck',
+    'discardProgressCard',
+    'pickAqueduct',
+    // Weit vorn, aus demselben Grund wie `improveCity` beim Metropolen-Lauf
+    // oben: ein Ritter muss stehen, bevor der Schmied faellt, sonst kommt er
+    // nie an die Reihe und die Karte unten waere unspielbar.
+    'buildKnight',
+    'buildCity',
+    'buildSettlement',
+    'activateKnight',
+    'upgradeKnight',
+    'moveKnight',
+    'buildWall',
+    'buildRoad',
+    'tradeWithBank',
+    'endTurn',
+  ];
+
+  function chooseFortschrittAction(state: GameState, player: PlayerId): GameAction | null {
+    if (state.phase.kind === 'discardPending') {
+      return { type: 'discard', player, resources: chooseDiscard(state, player) };
+    }
+
+    const options = legalActions(state, player);
+
+    // Die Gruendungssetzungen von p1 sind gezielt - siehe Blockkommentar.
+    if (player === 'p1' && state.phase.kind === 'setup' && state.phase.settlement === null) {
+      const preferred = state.phase.placement === 0 ? WOOL_VERTEX : ORE_VERTEX;
+      const chosen = options.find(
+        (action) => action.type === 'placeSetupSettlement' && action.vertex === preferred,
+      );
+      if (chosen !== undefined) return chosen;
+    }
+
+    for (const type of FORTSCHRITT_PRIORITY) {
+      const match = options.find((action) => action.type === type);
+      if (match !== undefined) return match;
+    }
+
+    return null;
+  }
+
+  /** Den Vertriebenen setzt sein Besitzer um, nicht der Spieler am Zug. */
+  function fortschrittActor(state: GameState): PlayerId | null {
+    if (state.phase.kind === 'displacePending') return state.phase.owner;
+    return nextActor(state);
+  }
+
+  /**
+   * Treibt mit der Strategie oben voran, bis `until` zutrifft - hoechstens
+   * `LIMIT` Zuege, danach ein Fehlschlag mit Ursache statt ein Haenger.
+   */
+  function playUntil(state: GameState, until: (current: GameState) => boolean): GameState {
+    let current = state;
+    let steps = 0;
+
+    while (!until(current)) {
+      if (steps >= LIMIT) {
+        throw new Error(`playUntil: Bedingung auch nach ${LIMIT} Zuegen nicht erfuellt`);
+      }
+
+      const actor = fortschrittActor(current);
+      if (actor === null) throw new Error('playUntil: niemand ist am Zug');
+
+      const action = chooseFortschrittAction(current, actor);
+      if (action === null) throw new Error(`playUntil: kein Zug fuer ${actor} verfuegbar`);
+
+      const result = reduce(current, action);
+      if (!result.ok) {
+        throw new Error(
+          `Zug ${steps} (${action.type}, ${actor}) abgelehnt: ${result.error.code} - ${result.error.message}`,
+        );
+      }
+
+      current = result.state;
+      steps += 1;
+    }
+
+    return current;
+  }
+
+  /** Treibt bis nach der Gruendung: Auftakt und Gruendungsphase komplett durchlaufen. */
+  function afterOpening(state: GameState): GameState {
+    return playUntil(
+      state,
+      (current) => current.phase.kind !== 'opening' && current.phase.kind !== 'setup',
+    );
+  }
+
+  /** Treibt weiter, bis `player` in der Hauptphase am Zug ist. */
+  function inMainPhase(state: GameState, player: PlayerId): GameState {
+    return playUntil(
+      state,
+      (current) =>
+        current.phase.kind === 'main' && current.players[current.currentPlayerIndex]?.id === player,
+    );
+  }
+
+  /**
+   * Setzt eine Ausbaustufe direkt, ohne sie zu erspielen - derselbe Griff wie
+   * `withImprovements` in `cities/progress/draw.test.ts`. Wissenschaft bis
+   * Stufe 1 zu erspielen braeuchte auf diesem kleinen Brett viele Zuege mehr,
+   * ohne dass die Regel dabei etwas zeigt, was die Ausbau-Tests nicht schon
+   * zeigen - hier geht es um die Kette danach.
+   */
+  function improveTo(state: GameState, player: PlayerId, track: TrackId, level: number): GameState {
+    return {
+      ...state,
+      players: state.players.map((entry) =>
+        entry.id === player
+          ? { ...entry, improvements: { ...entry.improvements, [track]: level } }
+          : entry,
+      ),
+    };
+  }
+
+  function playerNamed(state: GameState, player: PlayerId): PlayerState {
+    const found = state.players.find((entry) => entry.id === player);
+    if (found === undefined) throw new Error(`playerNamed: ${player} sitzt nicht an diesem Tisch`);
+    return found;
+  }
+
+  const initial = createGame(TEST_SCENARIO, CITIES_RULES, [...FORTSCHRITT_PLAYERS], 'fortschritt');
+
+  let state = afterOpening(initial);
+  // Wissenschaft auf Stufe 1 bringen, damit die Schwelle 2 statt 1 ist.
+  state = improveTo(state, 'p1', 'science', 1);
+
+  const played = playUntil(state, (current) => playerNamed(current, 'p1').progressCards.length > 0);
+  const readyToPlay = inMainPhase(played, 'p1');
+  const card = playerNamed(played, 'p1').progressCards[0]!;
+
+  /**
+   * Baut die Kartenwahl fuer **diesen** Lauf - nicht allgemein fuer alle
+   * fuenfundzwanzig Karten. Mit diesem Seed, diesem Brett und der Strategie
+   * oben zieht p1 immer den Schmied zuerst (siehe Blockkommentar); jede
+   * andere Karte waere ein Zeichen, dass sich an Seed, Brett oder Strategie
+   * etwas geaendert hat, und soll den Test laut scheitern lassen statt still
+   * eine falsche Wahl zu treffen.
+   */
+  function playFor(chosenCard: ProgressCardId): ProgressPlay {
+    if (chosenCard !== 'smith') {
+      throw new Error(`playFor: keine Testwahl fuer die Karte '${chosenCard}' hinterlegt`);
+    }
+
+    const knightVertex = Object.entries(readyToPlay.knights).find(
+      ([, knight]) => knight.owner === 'p1',
+    )?.[0];
+
+    return { card: 'smith', vertices: knightVertex !== undefined ? [knightVertex] : [] };
+  }
+
+  it('spielt eine Staedte-Partie bis zur ersten gespielten Fortschrittskarte', () => {
+    // Gruendung, dann so lange wuerfeln, bis ein Stadttor faellt und jemand
+    // ueber die Schwelle kommt. Der Seed ist fest, also ist der Lauf
+    // reproduzierbar.
+    expect(playerNamed(played, 'p1').progressCards.length).toBeGreaterThan(0);
+
+    const result = reduce(readyToPlay, {
+      type: 'playProgress',
+      player: 'p1',
+      play: playFor(card),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(playerNamed(result.state, 'p1').progressCards).not.toContain(card);
+  });
+});
+
+/*
+ * Der Regressionstest aus der Spec (Abschnitt 10): eine gespeicherte Partie
+ * ohne die neuen Felder muss weiter einlesen. Das ist die Falle, die in
+ * diesem Repo schon zweimal jede laufende Partie gekostet haette.
+ *
+ * `saved-10c.json` stammt nicht aus dem heutigen Code, sondern aus dem Stand
+ * vor dieser Etappe (`c4e109f`, "Wie 10d geschnitten wird") - erzeugt mit
+ * `createGame(TEST_SCENARIO, CITIES_RULES, ['p1', 'p2'], 'fortschritt')` in
+ * einem voruebergehenden `git worktree` an diesem Commit, als JSON
+ * ausgegeben und unveraendert hierher kopiert. Ein `createGame` von heute
+ * pruefte die neue Fassung nur gegen sich selbst und bewiese nichts - erst
+ * die alte Form faengt eine Feldform, die sich seither geaendert hat, nicht
+ * nur ein Feld, das seither dazugekommen ist.
+ */
+describe('Eine gespeicherte Partie von vor Etappe 10d', () => {
+  it('liest eine gespeicherte Partie ohne progressDecks weiter ein', () => {
+    const parsed = GameStateSchema.safeParse(saved10c);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.progressDecks).toEqual({});
+      expect(parsed.data.merchant).toBeNull();
+      expect(parsed.data.players[0]!.progressCards).toEqual([]);
+    }
   });
 });
