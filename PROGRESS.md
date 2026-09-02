@@ -6843,6 +6843,11 @@ Vorher (10c, Endstand `620a0f7`): shared 966, server 211, client 510. Neu also 1
 Karten und der Wurfkette liegt in `shared`, der Server kennt Fortschrittskarten nur als Teil
 des ohnehin generischen Aktionsstroms.
 
+**Aufgabe 16 (der Browser-Durchgang und seine Behebung, siehe eigener Abschnitt unten) fügt
+danach elf weitere Tests hinzu:** `pnpm -r test` grün mit shared 1154 (59 Dateien), server
+211 (22, unverändert), client 580 (53) — `pnpm typecheck` und `pnpm format:check` beide
+weiterhin grün.
+
 Der in der Aufgabenstellung angekündigte flackernde Test
 (`apps/client/src/screens/GameScreen.test.tsx`, „löscht mit jeder neuen Absicht die vorige
 samt halbfertigem Ritterzug", ~1,94 s gegen ein 5-s-Budget) ist in keinem der beiden vollen
@@ -6915,35 +6920,54 @@ Vier Stellen weichen ab, alle mit Grund:
    `defenderPending` und `aqueductPending` nicht — dieselbe Lücke wie bei den Ritter- und
    Ausbauzügen aus 10b und 10c. Sie wird gemeinsam mit ihnen gelöst oder gar nicht.
 
-### Der Durchgang im Browser — hat nicht stattgefunden
+### Der Durchgang im Browser — vier Befunde, drei behoben
 
-**Aufgabe 16 ist BLOCKED geblieben, nicht nur unvollständig.** Die
-Chrome-Erweiterung (`mcp__claude-in-chrome__*`) war an diesem Rechner an keinen Browser
-gebunden — drei Versuche von `tabs_context_mcp` lieferten jedes Mal „Browser extension is
-not connected". Kein einziger der zehn Messpunkte aus dem Prüfplan und keiner der beiden
-Viewport-Breakpoints wurde erreicht; keine Quelldatei wurde dabei angefasst
-(`task-16-report.md`).
+Der erste Anlauf war BLOCKED (Chrome-Erweiterung ohne Verbindung); der nachgeholte Durchgang
+hat stattgefunden. Neun der zehn Messpunkte sind mit Zahl oder Log-Beleg abgenommen, beide
+Viewport-Breakpoints geprüft (392 px effektiv und 636 px effektiv) — Belege in
+`task-16-report.md`.
 
-Das wiegt schwerer als eine übliche Fußnote: nach Etappe 10b hat derselbe Durchgang **elf
-Befunde** geliefert, von denen **keiner** durch einen Test gefallen wäre — Kontrastwerte,
-Trefferflächen und Layoutversatz sind genau die Klasse Fehler, die `pnpm -r test` grundsätzlich
-nicht sieht. Für 10d-1 heißt das: die zehn Messpunkte (drei Stapelhöhen, das Stadttor im
-Verlauf, eine angabefreie Karte, ein Monopol, der Händler auf dem Brett, die fünfte Karte und
-das Zurücklegen, das Aquädukt als echte Frage, Alchemie vor dem Wurf, **Kontrast jedes
-Kartennamens auf seinem Grundton** und **Trefferflächen der Kartenknöpfe ≥ 44 px**) sowie die
-zwei Viewport-Breakpoints (396 px und der mittlere) stehen komplett aus.
+**Messpunkt 7 (Aquädukt) wurde nicht erreicht.** Wissenschaft kam über mehr als 60
+Spielrunden nie über Stufe 1 hinaus, weil wiederholte Barbarenniederlagen den Spielern die
+Stadt schneller nahmen, als sie neu gebaut werden konnte — kein Software-Befund, sondern
+Partieverlauf dieser einen Testpartie, aber der Prüfpunkt selbst steht damit weiter aus
+(siehe Offene Punkte).
 
-**Damit das nachgeholt werden kann:** vor dem nächsten Anlauf prüfen, ob die Erweiterung
-installiert ist, ob sie läuft, und ob sie mit demselben `claude.ai`-Konto verbunden ist wie
-diese Sitzung (https://claude.ai/chrome) — die Fehlermeldung unterscheidet diese drei Fälle
-nicht. `pnpm dev` muss dafür laufen (Client auf 5173, WS-Proxy auf den Server auf 8080); ein
-alter Hintergrundprozess aus dem blockierten Anlauf kann dafür wiederverwendet oder neu
-gestartet werden. Für die Breakpoints gilt weiterhin die in 10c gefundene Umgehung: das
-Chrome-Fenster **vor** dem Durchgang aus der Maximierung lösen, sonst ändert `resize_window`
-die Fensterbreite nicht. Der volle Prüfplan mit allen Klick-Feinheiten (Fangfläche statt
-Bildkoordinaten, `await` zwischen zwei Klicks auf dasselbe Element, Schließkreuz im
-Opfer-Dialog) steht unverändert in `task-16-brief.md` und kann unverändert erneut abgearbeitet
-werden.
+Vier Befunde, drei davon behoben (`task-16-fix-report.md` trägt Ursache, Behebung, die
+nachgerechneten Kontrastwerte und die deckenden Tests je Befund):
+
+**B (hoch) — Kartennamen auf Politik und Wissenschaft kaum lesbar.**
+`apps/client/src/index.css` überschrieb mit `.devcard__name { color: var(--ink-base); }` die
+vom Elternelement (`.devcard__face`, `ProgressPanel.tsx`) geerbte, pro Bereich passende
+Tinte — ein Spezifitätsfehler, keine Designentscheidung. Gemessen vorher: Politik 2,39:1,
+Wissenschaft 2,58:1 (beide unter WCAG-AA 4,5:1). Kur: `.devcard__face` trägt jetzt die
+dunkle Grundtinte als eigene, überschreibbare Regel, `.devcard__name` erbt sie
+(`color: inherit`) statt sie zu erzwingen. Nachgerechnet aus den tatsächlichen
+`--track-*`/`--on-sea`-Werten: Politik 5,29:1, Wissenschaft 4,91:1 — beide über der Schwelle,
+Handel unverändert bei 5,40:1.
+
+**A (mittel) — die Stadttor-Ziehung fehlte im Verlauf.** `describeGains` in
+`packages/shared/src/game/log.ts` zählte nur `player.resources`; der Ziehpfad am
+Ereigniswürfel-Stadttor (`drawProgressCards`) ändert `progressCards` und blieb damit
+unerwähnt, obwohl der Stapel sichtbar sank. Kur: `describeProgressDraw` meldet jetzt, wer
+gezogen hat und aus welchem Bereich (z. B. „p1 zieht eine Wissenschaftskarte"), redigiert um
+die gezogene Karte selbst — die bleibt wie beim Entwicklungskartenkauf nicht öffentlich.
+
+**C (mittel) — der Abwerfen-Dialog konnte sich festfressen.** `DiscardDialog.tsx` prüfte die
+Bestandsgrenze außerhalb des funktionalen `setChosen`-Updaters, gegen den Stand aus dem
+laufenden Rendering. Landeten zwei `+`-Klicks auf derselben Sorte im selben Schub (Doppel-
+Klick, oder ein Browser, der für eine Geste zwei `click`-Ereignisse ausliefert), sahen beide
+denselben veralteten Stand und ließen beide Erhöhungen durch — eine Sorte stand über dem
+Bestand, „Abwerfen (7/7)" blieb bedienbar, jeder Klick wurde vom Server lautlos abgelehnt.
+Kur, beide Hälften: die Grenzprüfung sitzt jetzt im Updater selbst und sieht dadurch
+garantiert den zuletzt angewandten Stand statt eines veralteten Schnappschusses (Vorauswahl
+kann so gar nicht mehr über den Bestand steigen); zusätzlich sperrt der Knopf unabhängig
+davon, sobald irgendeine gewählte Sorte den Bestand übersteigt — unabhängig davon, wodurch.
+Ein Test je Hälfte reproduziert den jeweils alten Fehler exakt (rohe Doppel-`click`-Events im
+selben `act`, bzw. ein von außen schrumpfender Bestand bei stehender Auswahl) und hält ihn
+fest.
+
+**D (gering) — nicht behoben, siehe Offene Punkte.**
 
 ### Offene Punkte
 
@@ -6956,9 +6980,15 @@ werden.
 - **`deadlineOf` kennt die drei neuen Wartephasen nicht** — `progressDiscardPending`,
   `defenderPending`, `aqueductPending` bleiben unbefristet, dieselbe Lücke wie bei den
   Ritter- und Ausbauzügen aus 10b und 10c (Abweichung 4).
-- **Der Browser-Durchgang aus Aufgabe 16 hat nicht stattgefunden** — siehe eigener Abschnitt
-  oben. Zehn Messpunkte und zwei Viewport-Breakpoints stehen aus, darunter Kontrast der
-  Kartennamen auf ihrem Grundton und die Trefferflächen der Kartenknöpfe.
+- **Messpunkt 7 (Aquädukt als echte Frage) ist ungeprüft geblieben** — siehe Abschnitt oben.
+  Kein Software-Befund; ein künftiger Durchgang braucht eine Partie, in der mindestens ein
+  Spieler Wissenschaft über Stufe 1 hinaus ausbaut (etwa mit gebauten Rittern gegen die
+  Barbaren, damit keine Stadt verlorengeht).
+- **Befund D — die Auszeichnungskarte „Rittermacht" überlappt das Spielbrett bei rund 396 px
+  Breite** (`.awardcard__name`), bewusst zurückgestellt: rein kosmetisch, tritt nur im sehr
+  schmalen Hochformat auf, und das Spiel zeigt für genau dieses Format bereits einen „Quer
+  halten"-Hinweis (`index.css:6933`). Nachstellen: `iframe` mit `width: 396px` auf
+  `localhost:5173`, Gründungsphase mit „Wer beginnt?"-Dialog betrachten.
 - **`apps/client/src/screens/GameScreen.test.tsx` flackert unter Last.** Der Test „löscht mit
   jeder neuen Absicht die vorige samt halbfertigem Ritterzug" liegt bei rund 1,94 s knapp an
   der 5-s-Grenze der Suite und fällt gelegentlich unter Last um — eine bekannte Altlast, kein
@@ -6981,6 +7011,6 @@ werden.
 
 **10d-2 — die fünf wartenden Kartenarten.** Großhändler, Spionage, Deserteur, Handelshafen
 und Hochzeit brauchen `progressPending` als eigenen Wartezustand für eine fremde Antwort,
-dazu ihren Platz in `CITIES_RULES.progressDecks` und in `legalActions`. Der nachgeholte
-Browser-Durchgang aus Aufgabe 16 dieser Etappe gehört ebenfalls dorthin, sofern er nicht vorher
-nachgeholt wird.
+dazu ihren Platz in `CITIES_RULES.progressDecks` und in `legalActions`. Messpunkt 7
+(Aquädukt als echte Frage) gehört ebenfalls dorthin, sofern nicht vorher eine eigene Partie
+das nachholt (siehe Offene Punkte).
