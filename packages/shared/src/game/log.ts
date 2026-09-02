@@ -7,12 +7,13 @@ import {
   resourceList,
 } from './labels.js';
 import { barbarianStrength } from './cities/barbarians.js';
+import { eventFaceOf } from './cities/event.js';
 import { PROGRESS_NAMES } from './cities/progress/cards.js';
 import { metropolisHolder } from './cities/improvements.js';
 import { catanStrength } from './cities/knights.js';
 import { TRACK_CARD_LABELS, stepInAccusative } from './cities/tracks.js';
 import type { GameAction } from './actions.js';
-import { yieldTotal } from './dice.js';
+import { yieldTotal, type Roll } from './dice.js';
 import type { PlayerId } from './player.js';
 import { countCards } from './cards.js';
 import { setupBuildingKind } from './setup.js';
@@ -99,12 +100,14 @@ function describeAction(
       }
 
       const attack = describeAttack(before, after, nameOf);
+      const draw = describeProgressDraw(before, after, roll, nameOf);
       const gains = describeGains(before, after, nameOf);
       const total = yieldTotal(after.rules.dice, roll);
 
-      // Der Ueberfall steht vor den Ertraegen, weil er ihnen vorausgeht - eine
-      // gefallene Stadt schuettet im selben Wurf nichts mehr aus.
-      const tail = [attack, gains === '' ? null : gains].filter((part) => part !== null);
+      // Der Ueberfall steht vor der Ziehung, die vor den Ertraegen steht -
+      // dieselbe Reihenfolge wie im Wurf selbst (`resolveEvent` vor
+      // `distributeYield`, siehe `reducer.ts`).
+      const tail = [attack, draw, gains === '' ? null : gains].filter((part) => part !== null);
       return `${who} würfelt ${total}${tail.length === 0 ? '' : ` - ${tail.join(' - ')}`}`;
     }
 
@@ -294,6 +297,52 @@ function cityCount(state: GameState, player: PlayerId): number {
   return Object.values(state.buildings).filter(
     (building) => building.owner === player && building.kind === 'city',
   ).length;
+}
+
+/**
+ * Wer am Stadttor gezogen hat - Befund A, Aufgabe 16.
+ *
+ * `drawProgressCards` (`cities/progress/draw.ts`) veraendert `progressCards`
+ * bzw. `openProgressCards`, nicht `resources` - `describeGains` sieht das
+ * also nicht, und der Verlauf schwieg bislang komplett zu diesem
+ * Kernvorgang der Etappe, obwohl der Stapel sichtbar sank und die Karte in
+ * der Hand erschien.
+ *
+ * **Redaktionsgrenze:** der Verlauf ist oeffentlich, die gezogene Karte
+ * nicht (derselbe Grundsatz wie bei `buyDevelopmentCard` oben). Genannt wird
+ * nur, wer gezogen hat und aus welchem Bereich - beides liegt ohnehin offen:
+ * jeder am Tisch sieht den sinkenden Stapel im `FORTSCHRITT`-Panel und die
+ * neue Karte in der fremden Hand (verdeckt, aber gezaehlt). *Welche* Karte
+ * es war, bleibt aussen vor.
+ */
+function describeProgressDraw(
+  before: GameState,
+  after: GameState,
+  roll: Roll,
+  nameOf: (id: PlayerId) => string,
+): string | null {
+  const face = eventFaceOf(roll);
+  if (face === null || face === 'ship') return null;
+
+  const drawers = after.players
+    .filter((player, index) => {
+      const previous = before.players[index];
+      if (previous === undefined) return false;
+
+      const gained =
+        player.progressCards.length +
+        player.openProgressCards.length -
+        (previous.progressCards.length + previous.openProgressCards.length);
+      return gained > 0;
+    })
+    .map((player) => nameOf(player.id));
+
+  if (drawers.length === 0) return null;
+
+  const cardWord = TRACK_CARD_LABELS[face];
+  return drawers.length === 1
+    ? `${drawers[0]} zieht eine ${cardWord}`
+    : `${nameList(drawers)} ziehen je eine ${cardWord}`;
 }
 
 /** Wer beim Wurf wie viele Karten bekommen hat - aus dem Unterschied gelesen. */

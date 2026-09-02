@@ -547,3 +547,93 @@ describe('Befunde aus dem Browser-Durchgang', () => {
     expect(setupBuildingKind(basis, 3)).toBe('settlement');
   });
 });
+
+/*
+ * Befund A, Aufgabe 16: die Stadttor-Ziehung erschien nirgends im Verlauf.
+ * `describeGains` sah nur `player.resources` - `drawProgressCards` aendert
+ * `progressCards`, und der Verlauf schwieg dazu, obwohl der Stapel sichtbar
+ * sank und die Karte in der Hand erschien.
+ *
+ * Wie beim Ueberfall oben (`landingSentence`) laeuft der Test ueber den
+ * echten Reducer und probiert Seeds durch, statt einen Ziehvorgang
+ * nachzubauen - ein Test, der den Effekt nur nachbaut statt ihn ueber den
+ * echten Pfad aufzurufen, waere hier gerade die falsche Machart (dieselbe
+ * Falle, vor der der Auftrag warnt).
+ */
+describe('Die Stadttor-Ziehung im Verlauf (Befund A, Aufgabe 16)', () => {
+  /** Setzt die Wissenschaftsstufe einer oder mehrerer Personen - wie `giving()` fuer Handkarten. */
+  function withScienceLevel(state: GameState, ids: readonly string[]): GameState {
+    return {
+      ...state,
+      players: state.players.map((player) =>
+        ids.includes(player.id) ? { ...player, improvements: { science: 1 } } : player,
+      ),
+    };
+  }
+
+  /** Ein Tisch, an dem p1 Wissenschaft Stufe 1 hat und der Stapel eine Karte hergibt. */
+  function tableAtScienceGate(): GameState {
+    return withScienceLevel(
+      testGame({
+        rules: CITIES_RULES,
+        progressDecks: { science: ['medicine'] },
+        phase: { kind: 'rollPending' },
+      }),
+      ['p1'],
+    );
+  }
+
+  /**
+   * Sucht einen Seed, dessen Wurf den Wissenschafts-Torso trifft (Ereigniswuerfel
+   * "science") und dessen roter Wuerfel unter der Schwelle von Stufe 1 (2) liegt
+   * - genau die Bedingung aus `drawersFor`, Regel 8.1.
+   */
+  function scienceGateSentence(state: GameState): string | null {
+    for (let seed = 0; seed < 400; seed += 1) {
+      const ready: GameState = { ...state, rng: createRng(`stadttor-${seed}`) };
+      const action = { type: 'rollDice', player: 'p1' } as const;
+      const result = reduce(ready, action);
+      if (!result.ok) continue;
+
+      const face = result.state.lastRoll?.find((e) => e.die === 'event')?.value ?? 0;
+      const red = result.state.lastRoll?.find((e) => e.die === 'second')?.value ?? 0;
+      if (face !== 6 || red > 2) continue;
+
+      return describeTransition(ready, action, result.state, testSeats);
+    }
+    return null;
+  }
+
+  it('nennt die Ziehung mit Namen und Bereich, ohne die gezogene Karte zu verraten', () => {
+    const sentence = scienceGateSentence(tableAtScienceGate());
+
+    expect(sentence).not.toBeNull();
+    expect(sentence).toContain('p1 zieht eine Wissenschaftskarte');
+    // Redaktionsgrenze: der Verlauf ist oeffentlich, welche Karte es war, nicht.
+    expect(sentence).not.toContain('Medizin');
+  });
+
+  it('sagt nichts zur Ziehung, wenn der Stapel schon leer ist', () => {
+    const empty = { ...tableAtScienceGate(), progressDecks: { science: [] } };
+    const sentence = scienceGateSentence(empty);
+
+    expect(sentence).not.toBeNull();
+    expect(sentence).not.toContain('zieht eine Wissenschaftskarte');
+  });
+
+  it('beugt Verb und Aufzaehlung, wenn mehrere am selben Tor ziehen', () => {
+    const both = withScienceLevel(
+      testGame({
+        rules: CITIES_RULES,
+        progressDecks: { science: ['medicine', 'medicine'] },
+        phase: { kind: 'rollPending' },
+      }),
+      ['p1', 'p2'],
+    );
+
+    const sentence = scienceGateSentence(both);
+
+    expect(sentence).not.toBeNull();
+    expect(sentence).toContain('p1 und p2 ziehen je eine Wissenschaftskarte');
+  });
+});
