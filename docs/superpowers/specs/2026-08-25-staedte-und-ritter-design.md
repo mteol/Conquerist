@@ -537,20 +537,109 @@ z.object({
   /** Wer die Karte gespielt hat — an ihn geht der Ertrag. */
   by: PlayerIdSchema,
   /** Was schon geantwortet wurde. */
-  answers: z.record(z.string(), CardAmountsSchema),
+  answers: z.record(z.string(), ProgressAnswerSchema),
+  /** Was zwischen zwei Runden feststeht — je Karte, siehe unten. */
+  payload: ProgressPendingPayloadSchema,
 });
 ```
+
+**Korrektur vom 2026-09-02.** Die erste Fassung dieser Skizze schrieb
+`answers: z.record(z.string(), CardAmountsSchema)` und unterstellte damit, jede
+Antwort sei ein Kartenbündel. Das stimmt für zwei der fünf Karten. Die Spionage
+antwortet mit einer `ProgressCardId`, der Deserteur mit einer Kreuzung, und beim
+Großhändler antwortet nicht das Opfer, sondern der Spielende selbst. Die
+Antworten bekommen deshalb eine **eigene diskriminierte Union** unter **einer**
+neuen Aktion `answerProgress` — dieselbe Grenze und dasselbe Muster wie
+`playProgress`/`ProgressPlay` aus 10d-1, und `tsc` prüft sie ebenso erschöpfend:
+
+| Karte            | wer antwortet                 | Antwort                                    |
+| ---------------- | ----------------------------- | ------------------------------------------ |
+| `wedding`        | jede Person mit mehr Punkten  | `gift: CardAmounts` — genau 2, sonst alles |
+| `tradeHarbor`    | jede Person mit ≥1 Ware       | `commodity: CommodityId`                   |
+| `spy`            | der Spielende, nach dem Blick | `take: ProgressCardId`                     |
+| `masterMerchant` | der Spielende, nach dem Blick | `take: CardAmounts` — genau 2, sonst alles |
+| `deserter`       | erst das Opfer, dann er       | `vertex: string` — beide Male              |
+
+Der Deserteur ist die einzige mit **zwei Runden**: nach der Antwort des Opfers
+wird `pending = [by]` neu gesetzt, statt die Phase zu schließen. Dafür trägt
+`payload`, was zwischen den Runden feststeht — beim Deserteur Stufe und Zustand
+des gefallenen Ritters, beim Handelshafen die angebotene Rohstoffsorte, bei
+Spionage und Großhändler das Opfer.
 
 Beim Großhändler und bei der Spionage steht `pending` auf dem Spielenden selbst,
 und die `PlayerView` deckt ihm für die Dauer dieser Phase **genau die eine**
 fremde Hand auf. Das ist die einzige Stelle der ganzen Erweiterung, an der die
 Geheimhaltungsgrenze aus Regel 4 sich öffnet — sie öffnet sich für eine Person,
 für eine Hand, für eine Phase, und `playerViewOf` bekommt dafür einen
-ausdrücklichen Zweig mit Test.
+ausdrücklichen Zweig mit Test. Heute steht dort zweimal dieselbe Zeile
+(`player.id === viewer ? … : null` für `resources` und für `progressCards`);
+daraus wird ein benanntes `revealsTo(state, viewer, player)`, und es öffnet **je
+ein** Feld: der Großhändler sieht keine Fortschrittskarten, die Spionage keine
+Rohstoffe.
 
-Eine Frist bekommen diese Phasen **nicht** — anders als das Angebot. Wer nicht
-antwortet, hält den Tisch auf; das ist derselbe offene Punkt wie bei den
-Ritterzügen (Abschnitt 11) und wird gemeinsam mit ihnen gelöst oder gar nicht.
+Eine Frist bekommen diese Phasen **doch** — siehe 5.5, entschieden am
+2026-09-02. Der Satz „gemeinsam mit den Ritterzügen gelöst oder gar nicht" stand
+hier seit dem 25. August; gelöst wird jetzt, und zwar für alle Wartephasen
+zugleich statt siebenmal einzeln.
+
+### 5.5 Fristen für die Wartephasen
+
+Bis 10d-1 hatte genau **eine** Phase eine Uhr: `tradePending`, mit `expiresAt`
+im Zustand und `deadlineOf` als einziger Quelle für den Wecker im Server. Jede
+andere Wartephase — `discardPending`, `robberPending`, `displacePending`,
+`progressDiscardPending`, `defenderPending`, `aqueductPending` und jetzt
+`progressPending` — hält den Tisch unbefristet an, wenn jemand nicht antwortet.
+
+**Der Zeitpunkt steht nicht im Zustand.** `expiresAt` nachzubauen hieße, `at` an
+ein Dutzend Aktionen zu hängen und ein Pflichtfeld in gespeicherte Phasen zu
+bringen — genau die Falle, die in diesem Repo schon zweimal zugeschnappt ist:
+ein neues Pflichtfeld ohne `.default(…)` läßt `GameStateSchema.safeParse` an
+jeder seit Etappe 6 in SQLite liegenden Partie scheitern. Statt dessen liefert
+`deadlineOf` für diese Phasen eine **Dauer**, und der Wecker rechnet `now + ms`
+selbst. Keine Schemaänderung, kein Risiko für gespeicherte Partien.
+
+Der übliche Einwand dagegen — der Reducer kann dann nicht prüfen, ob die Frist
+wirklich abgelaufen ist — greift hier nicht: `timeout` steht in
+`SYSTEM_ACTION_TYPES` und kommt ausschließlich vom Server. Kein Client kann sie
+schicken. Beim Angebot bleibt es beim gespeicherten `expiresAt`, weil dort ein
+Neustart die Frist nicht verlängern darf.
+
+**Was beim Ablauf geschieht, folgt aus einem Satz: ein Geschenk verfällt, eine
+Pflicht wird abgenommen.** Wer auf eine Gabe wartet und schweigt, verzichtet;
+wer etwas schuldet, bekommt es deterministisch abgenommen. Sonst wäre
+Abwesenheit ein Zug: wer sich der Hochzeit durch Wegbleiben entzöge, spielte
+besser als wer antwortet — und nach einer Sieben bliebe das Handkartenlimit
+verletzt.
+
+| Phase                                  | verfällt / wird beantwortet                              |
+| -------------------------------------- | -------------------------------------------------------- |
+| `aqueductPending`                      | verfällt — kein Rohstoff                                 |
+| `defenderPending`                      | verfällt — keine Karte                                   |
+| `progressPending` / `spy`              | verfällt — der Spielende nimmt nichts                    |
+| `progressPending` / `masterMerchant`   | verfällt — der Spielende nimmt nichts                    |
+| `progressPending` / `deserter` Runde 2 | verfällt — kein Ersatzritter                             |
+| `discardPending`                       | beantwortet — vom größten Stapel abwärts                 |
+| `progressDiscardPending`               | beantwortet — erste zählende Karte in fester Ordnung     |
+| `progressPending` / `wedding`          | beantwortet — die zwei häufigsten Karten                 |
+| `progressPending` / `tradeHarbor`      | beantwortet — die häufigste Handelsware                  |
+| `progressPending` / `deserter` Runde 1 | beantwortet — der schwächste Ritter                      |
+| `robberPending`                        | beantwortet — Wüste, sonst ein Feld ohne fremdes Bauwerk |
+| `displacePending`                      | beantwortet — erste legale Kreuzung, sonst vom Brett     |
+
+Jede dieser Antworten ist **rein und deterministisch** — kein `Math.random`,
+keine Uhr, dieselbe Partie aus demselben Seed. Wo „am häufigsten" oder „der
+erste" steht, entscheidet bei Gleichstand die kanonische Reihenfolge aus
+`CARD_IDS` bzw. die Kreuzungs-Id, damit die Regel eine einzige Auslegung hat.
+
+`applyTimeout` steht heute in `playerTrade.ts` und endet fest mit
+`phase: { kind: 'main' }`. Es wird zum Verteiler über die Phasen und zieht
+deshalb in ein eigenes `game/timeout.ts` um; der Handel behält seinen Zweig,
+verliert aber die Zuständigkeit für alles andere.
+
+**Was ausdrücklich keine Frist bekommt:** `main` und `rollPending`. Eine Zugzeit
+ist eine andere Sache als eine Antwortfrist — sie beträfe jeden Zug statt einer
+Wartephase, sie braucht eine Anzeige am Tisch, und sie hat mit den
+Fortschrittskarten nichts zu tun. Sie bleibt offener Punkt.
 
 ### 5.4 Was der Reducer zusätzlich tut
 
@@ -626,10 +715,15 @@ Flach wäre `game/` danach zur Hälfte Erweiterung, und die Frage „was gehört
 Städte & Ritter" hätte keine Antwort mehr im Dateisystem.
 
 Im Server ändert sich nichts an der Struktur. `applySystemAction` bekommt keinen
-neuen Fall; die neuen Phasen haben keine Fristen. **Offen und bewußt: Ritter- und
-Ausbauzüge sind unbefristet** — wer im Ausbau trödelt, hält den Tisch auf.
-`deadlineOf` wäre die Stelle, an der eine Zugzeit ansetzt; sie kommt nicht in
-dieser Etappenreihe.
+neuen Fall, und der Wecker in `rooms/clock.ts` keine Zeile: er liest weiterhin
+nur `deadlineOf`, so wie es dort seit Etappe 9 als ausdrückliche Zusage steht.
+
+_Nachtrag 2026-09-02:_ der Satz „die neuen Phasen haben keine Fristen" galt bis
+10d-1 und gilt nicht mehr. In 10d-2 bekommt **jede** Wartephase eine Frist, an
+einer Stelle für alle statt siebenmal einzeln — siehe 5.5. Was offen bleibt, ist
+die **Zugzeit**: `main` und `rollPending`, also der Spieler am Zug, der trödelt.
+Das ist eine andere Sache als eine Antwortfrist, und sie kommt nicht in dieser
+Etappenreihe.
 
 ---
 
@@ -822,11 +916,88 @@ Deserteur, Handelshafen, Hochzeit, und mit ihnen der ausdrückliche Zweig in
 `playerViewOf`, der die Geheimhaltungsgrenze für eine Person, eine Hand und eine
 Phase öffnet.
 
+#### Der Zuschnitt von 10d-2, entschieden am 2026-09-02
+
+**Die Regelauslegung, vollständig.** Sie steht hier und nicht im Kopf des
+Umsetzers — die Lehre aus 10d-1, wo zweimal ein Regelfehler im Plan steckte,
+weil die Regelstelle nur in ihrer Kurzfassung zitiert war:
+
+- **„Mehr Siegpunkte"** (Hochzeit, Großhändler) heißt `victoryPointsOf`. An
+  einem Städte-&-Ritter-Tisch ist `developmentDeck` nicht gesetzt, und Buchdruck
+  und Verfassung liegen offen — `publicVictoryPointsOf` und `victoryPointsOf`
+  sind hier **gleich**. Das ist kein Zufall, auf den man sich verläßt, sondern
+  ein Satz, der in den Code gehört.
+- **Hochzeit:** wer weniger als zwei Karten hat, schenkt was er hat; wer keine
+  hat, steht gar nicht erst in `pending`. Spielbar nur, wenn überhaupt jemand
+  mehr Punkte hat.
+- **Großhändler:** das Ziel braucht mehr Punkte **und** mindestens eine Karte.
+  Hat es weniger als zwei, nimmt der Spielende, was da ist.
+- **Spionage:** jede Person, kein Punktevergleich. „Keine Siegpunktkarten" fällt
+  aus dem Modell heraus — Buchdruck und Verfassung liegen in
+  `openProgressCards`, wählbar sind nur `progressCards`. Das Ziel braucht
+  mindestens eine davon.
+- **Handelshafen:** der Spielende nennt beim Ausspielen **eine** Rohstoffsorte
+  für alle. `canPlayProgress` verlangt, daß er davon so viele hat, wie es
+  Mitspieler mit mindestens einer Handelsware gibt — sonst ist die Karte nicht
+  spielbar. Danach ist jede Antwort gedeckt: kein Teilerfolg, keine
+  Reihenfolgeabhängigkeit, und die Antwort braucht kein `null`, weil wer keine
+  Ware hat gar nicht in `pending` steht.
+- **Deserteur:** das Ziel braucht mindestens einen Ritter. Die Ersatzstufe ist
+  **erzwungen** und keine Wahl — dieselbe wie die gefallene, falls der eigene
+  Vorrat sie hergibt, sonst die höchste freie darunter; „ersatzweise" ist im
+  Wortlaut keine Wahl. `active` reist mit, `activatedOnTurn` wird auf den
+  laufenden Zug gesetzt: übernommen heißt angekommen, nicht sofort
+  handlungsfähig. Ist kein Vorrat frei oder keine Kreuzung legal, öffnet die
+  zweite Runde gar nicht — der Ritter ist einfach weg.
+- **Die Reihenfolge in `pending`** ist der Uhrzeigersinn ab dem Spieler am Zug.
+  `inTurnOrder` liegt privat in `progress/draw.ts` und wird dafür herausgezogen.
+
+**Der Client.** Vieles steht schon: `ResourcePickDialog<T>`, `pickMode.ts` und
+`targets.ts` für Brettziele, der Zählerdialog aus `DiscardDialog`. Neu sind drei
+Dinge. Eine **Personenwahl** — Großhändler, Spionage und Deserteur brauchen beim
+Ausspielen ein Ziel, und das ist das erste Mal in diesem Spiel, daß ein Dialog
+eine _Person_ erfragt statt ein Feld, eine Kreuzung oder eine Karte; sie trägt
+Name, Farbe und Punktestand, weil beim Großhändler „mehr Punkte" die Bedingung
+ist. Zwei **Aufdeckdialoge**, die sagen, daß das Gezeigte nur jetzt und nur hier
+zu sehen ist. Und eine **Wartezeile**, die nennt, auf wen der Tisch wartet und
+wie lange noch — den Countdown gibt es beim Angebot schon, er bekommt eine
+zweite Fundstelle und keine zweite Umsetzung.
+
+**Die Blöcke, in dieser Reihenfolge:**
+
+| Nr. | Block                                                                                       |
+| --- | ------------------------------------------------------------------------------------------- |
+| 1   | Phase, `ProgressAnswer`, Aktion `answerProgress`, `actorFor`/`PHASE_ACTIONS`/`legalActions` |
+| 2   | `revealsTo` in `playerViewOf` samt Lecktest auf Schlüsselmengen                             |
+| 3–7 | Hochzeit · Handelshafen · Spionage · Großhändler · Deserteur (zwei Runden)                  |
+| 8   | Fristen: `timeout.ts` als Verteiler, `deadlineOf` mit Dauer, die zwölf Zeilen aus 5.5       |
+| 9   | Client: Personenwahl, fünf Dialoge, Wartezeile mit Countdown                                |
+| 10  | Verlauf: fünf Kartensätze und der Fristablauf                                               |
+| 11  | Die zwei Testlücken aus 10d-1 (Straßenbau, Medizin)                                         |
+| 12  | Die 25 Kartenmotive — **letzter Block, abtrennbar**                                         |
+| 13  | Browser-Durchgang inklusive Meßpunkt 7, dann Abnahme und `PROGRESS.md`                      |
+
+Die Reihenfolge ist nicht beliebig: 1 und 2 stehen vor jeder Karte, sonst
+entsteht fünfmal dieselbe Phase; 8 steht **nach** 3–7, weil jede automatische
+Antwort die Karte kennt, für die sie antwortet.
+
+**Meßpunkt 7 (Aquädukt als echte Frage) gehört in den Durchgang von 10d-2.** Er
+blieb in 10d-1 ungeprüft, weil die Wissenschaft in über sechzig Spielrunden nie
+über Stufe 1 kam — wiederholte Barbarenniederlagen nahmen die Stadt schneller,
+als sie neu gebaut werden konnte. Kein Softwarebefund, sondern Partieverlauf;
+der Durchgang braucht deshalb eine Partie mit gebauten Rittern gegen die
+Barbaren.
+
 **Die Kartenmotive kommen später.** In 10d-1 tragen die Karten den Kartenkörper
 der Entwicklungskarten, einen Grundton je Stapel und ihren Namen. Fünfundzwanzig
 gezeichnete Motive wären in der ohnehin größten Etappe der Reihe der größte
 Einzelblock, und sie hängen an keiner Regel — dieselbe Reihenfolge wie bei den
 Entwicklungskarten, die ihren Körper erst lange nach ihrer Wirkung bekamen.
+
+_Nachtrag 2026-09-02:_ „später" heißt 10d-2, als **letzter und abtrennbarer**
+Block. Sie hängen weiterhin an keiner Regel — deshalb stehen sie am Ende und
+nicht am Anfang, und wenn der Lauf zu lang wird, fallen sie heraus, ohne daß
+irgend etwas anderes aufgetrennt werden muß.
 
 **`aqueductPending` kommt in 10d-1 mit.** Es ist keine Fortschrittskarte,
 sondern der offene Punkt aus 10c: `grantAqueduct` wählt den Rohstoff bisher
@@ -900,8 +1071,11 @@ angepaßten Zug hat, und was im angepaßten Zug fehlt.
 
 ## 11. Offene Punkte
 
-- **Zugzeit.** Ritter- und Ausbauzüge sind unbefristet. `deadlineOf` wäre die
-  Stelle; nicht Teil dieser Reihe.
+- **Zugzeit.** `main` und `rollPending` bleiben unbefristet: wer am Zug ist und
+  trödelt, hält den Tisch auf. Eine Zugzeit beträfe jeden Zug statt einer
+  Wartephase und bräuchte eine eigene Anzeige am Tisch; nicht Teil dieser Reihe.
+  Die **Wartephasen** sind seit 10d-2 befristet (5.5) — dort ist `deadlineOf`
+  bereits die Stelle, an der eine Zugzeit später ansetzen würde.
 - **Die Variante „mehr Taktik"** (jeder entscheidet, wie viele Ritter er
   einsetzt) ist nicht vorgesehen. Sie wäre eine weitere Phase nach der Landung
   und ein Feld im RuleSet.
