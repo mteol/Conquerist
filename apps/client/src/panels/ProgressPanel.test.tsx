@@ -3,11 +3,17 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   CITIES_RULES,
   CLASSIC_RULES,
+  TRACK_IDS,
   type PlayerView,
   type ProgressCardId,
 } from '@conquerist/shared';
 import { fireEvent, render, screen, userEvent } from '../test/dom';
 import { ProgressPanel } from './ProgressPanel';
+import { TRACK_BUILT_WORD_COLORS } from '../game/labels';
+// Roher Dateiinhalt statt `node:fs`, wie in `AccountCorner.test.tsx` und
+// `TrackPanel.test.tsx`: das Client-Paket haelt sich bewusst frei von
+// Node-Typen.
+import css from '../index.css?raw';
 
 /**
  * Eine minimale Sicht - so viel `PlayerView`, wie `ProgressPanel` wirklich
@@ -230,5 +236,127 @@ describe('ProgressPanel', () => {
       player: 'p1',
       play: { card: 'commodityMonopoly', commodity: 'cloth' },
     });
+  });
+});
+
+/*
+ * Befund B, Aufgabe 16: `.devcard__name { color: var(--ink-base); }` schlug
+ * die vom Elternelement `.devcard__face` geerbte, pro Bereich passende Tinte
+ * - Politik und Wissenschaft landeten immer bei 2,39:1 bzw. 2,58:1, weit
+ * unter den geforderten 4,5:1 (WCAG AA), obwohl `TRACK_BUILT_WORD_COLORS` die
+ * richtige Farbe die ganze Zeit auslieferte.
+ *
+ * Ein Test, der nur prueft, dass `.devcard__face` die richtige Variable
+ * traegt, haette diesen Fehler NICHT gefangen - genau das stand schon vorher
+ * so da, waehrend der Fehler bestand (`ProgressPanel.tsx` setzt
+ * `TRACK_BUILT_WORD_COLORS[track]` unveraendert seit Etappe 10d-1). Die
+ * beiden Tests unten pruefen deshalb das Ergebnis: erstens strukturell, dass
+ * `.devcard__name` keine eigene Farbe mehr setzt, die die geerbte ueberschreiben
+ * koennte; zweitens rechnerisch, aus den tatsaechlichen `--track-*`/`--ink`/
+ * `--on-sea`-Werten in `index.css`, den WCAG-Kontrast jedes Bereichs nach -
+ * jsdom rechnet kein Layout und keine Kaskade ueber verlinkte Stylesheets,
+ * das CSS selbst ist die einzig pruefbare Quelle (dieselbe Grenze wie in
+ * `TrackPanel.test.tsx` und `AccountCorner.test.tsx`).
+ */
+
+/** Liefert den Inhalt der ersten Regel `selector { ... }` ab `fromIndex`. */
+function ruleBody(selector: string, fromIndex = 0): string {
+  const needle = `${selector} {`;
+  const start = css.indexOf(needle, fromIndex);
+  if (start === -1) throw new Error(`Regel nicht gefunden: ${selector}`);
+  const openBrace = start + needle.length - 1;
+  let depth = 1;
+  let i = openBrace + 1;
+  while (depth > 0) {
+    if (css[i] === '{') depth += 1;
+    else if (css[i] === '}') depth -= 1;
+    i += 1;
+  }
+  return css.slice(openBrace + 1, i - 1);
+}
+
+/** Liest `--name: #rrggbb;` aus dem `:root`-Block. */
+function rootHex(name: string): string {
+  const match = new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})\\s*;`).exec(css);
+  if (!match) throw new Error(`Variable nicht gefunden: ${name}`);
+  return requiredGroup(match, 1);
+}
+
+function requiredGroup(match: RegExpExecArray, index: number): string {
+  const value = match[index];
+  if (value === undefined) throw new Error(`Fanggruppe ${index} fehlt in „${match[0]}"`);
+  return value;
+}
+
+/** Relative Luminanz nach WCAG 2.x, aus einem `#rrggbb`-Hexwert. */
+function relativeLuminance(hex: string): number {
+  const channel = (twoHexDigits: string) => {
+    const c = parseInt(twoHexDigits, 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const r = channel(hex.slice(1, 3));
+  const g = channel(hex.slice(3, 5));
+  const b = channel(hex.slice(5, 7));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG-Kontrastverhaeltnis zweier Farben, `(L1+0.05)/(L2+0.05)` mit L1 >= L2. */
+function wcagContrast(hexA: string, hexB: string): number {
+  const lA = relativeLuminance(hexA);
+  const lB = relativeLuminance(hexB);
+  const lighter = Math.max(lA, lB);
+  const darker = Math.min(lA, lB);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/** Loest `var(--x)` einmal auf `#rrggbb` auf - `--ink`/`--on-sea` sind hier keine Ketten. */
+function resolveVarToHex(varExpression: string): string {
+  const match = /^var\(--([a-z0-9-]+)\)$/.exec(varExpression);
+  if (!match) throw new Error(`Kein einfacher var()-Ausdruck: ${varExpression}`);
+  const name = requiredGroup(match, 1);
+  // `--ink` selbst ist ein Alias auf `--ink-base` (siehe `index.css` :root,
+  // Zeile ~41) - im Sitz des Fortschritt-Panels (heller Grund, kein
+  // `--ink: var(--on-sea)`-Umschalter darueber) gilt dieser Alias.
+  const resolved = name === 'ink' ? 'ink-base' : name;
+  return rootHex(`--${resolved}`);
+}
+
+const WCAG_AA_TEXT_MINIMUM = 4.5;
+
+describe('Kontrast der Kartennamen auf ihrem Grundton (Befund B, Aufgabe 16)', () => {
+  it('".devcard__name" erzwingt keine eigene Farbe mehr, die die geerbte Bereichstinte schlagen koennte', () => {
+    const nameBody = ruleBody('.devcard__name');
+    expect(nameBody).toMatch(/color:\s*inherit/);
+    expect(nameBody).not.toMatch(/color:\s*var\(--ink-base\)/);
+  });
+
+  it('".devcard__face" traegt die dunkle Grundtinte als Vorgabe, die Fortschrittskarten ueberschreiben sie per Inline-Style', () => {
+    expect(ruleBody('.devcard__face')).toMatch(/color:\s*var\(--ink-base\)/);
+  });
+
+  it.each(TRACK_IDS)(
+    'Bereich "%s": der tatsaechliche Kontrast von Name auf Grundton erreicht WCAG AA (4.5:1)',
+    (track) => {
+      const background = rootHex(`--track-${track}`);
+      const text = resolveVarToHex(TRACK_BUILT_WORD_COLORS[track]);
+
+      const contrast = wcagContrast(background, text);
+
+      expect(contrast).toBeGreaterThanOrEqual(WCAG_AA_TEXT_MINIMUM);
+    },
+  );
+
+  it('Politik und Wissenschaft lagen vor der Behebung unter 4.5:1 - derselbe Grundton mit dunkler statt geerbter Tinte', () => {
+    const darkInk = rootHex('--ink-base');
+
+    const politicsWithDarkInk = wcagContrast(rootHex('--track-politics'), darkInk);
+    const scienceWithDarkInk = wcagContrast(rootHex('--track-science'), darkInk);
+
+    expect(politicsWithDarkInk).toBeLessThan(WCAG_AA_TEXT_MINIMUM);
+    expect(scienceWithDarkInk).toBeLessThan(WCAG_AA_TEXT_MINIMUM);
+    // Deckt sich mit dem im Browser gemessenen Wert aus dem Durchgangsbericht
+    // (task-16-report.md, Messpunkt 9): 2.39:1 bzw. 2.58:1.
+    expect(politicsWithDarkInk).toBeCloseTo(2.39, 1);
+    expect(scienceWithDarkInk).toBeCloseTo(2.58, 1);
   });
 });

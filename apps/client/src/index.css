@@ -1910,6 +1910,14 @@ body {
   height: 5.8rem;
   border: 1px solid rgb(22 32 42 / 65%);
   border-radius: 7px;
+  /*
+   * Vorgabewert fuer die Entwicklungskarten (`DevelopmentCards.tsx`), die hier
+   * keine eigene Tinte setzen. Die Fortschrittskarten (`ProgressPanel.tsx`)
+   * ueberschreiben ihn je Bereich per Inline-`style` auf demselben Element -
+   * `.devcard__name` erbt unten davon, statt selbst eine feste Tinte zu setzen
+   * (Befund B, Aufgabe 16: die geerbte Farbe kam vorher gar nicht erst an).
+   */
+  color: var(--ink-base);
   background: var(--parchment-2);
   box-shadow: var(--lift);
   transition:
@@ -1938,7 +1946,10 @@ body {
 .devcard__name {
   max-width: 100%;
   padding: 0 0.15rem;
-  color: var(--ink-base);
+  /* Erbt von `.devcard__face` statt eine eigene Tinte zu erzwingen - sonst
+     gewinnt diese Regel immer gegen die pro-Bereich-Farbe des Elternelements,
+     egal was dort steht (Befund B, Aufgabe 16). */
+  color: inherit;
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.01em;
