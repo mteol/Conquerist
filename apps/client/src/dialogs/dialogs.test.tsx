@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RESOURCE_IDS, type CardId } from '@conquerist/shared';
 import { cardAmounts, pieceCounts } from '@conquerist/shared';
-import { render, screen, userEvent } from '../test/dom';
+import { act, fireEvent, render, screen, userEvent } from '../test/dom';
 import { RESOURCE_LABELS } from '../game/labels';
 import type { PlayerRow } from '../game/view';
 import { AccountDialog } from './AccountDialog';
@@ -90,6 +90,69 @@ describe('DiscardDialog', () => {
     expect(screen.getByLabelText('Korn mehr')).toHaveProperty('disabled', true);
     // Zuruecknehmen bleibt offen.
     expect(screen.getByLabelText('Holz weniger')).toHaveProperty('disabled', false);
+  });
+});
+
+/*
+ * Aus dem Durchgangsbericht (Aufgabe 16, Befund C): bei einer Sieben stand
+ * der Dialog manchmal mit einer Sorte da, die mehr enthielt, als vorhanden
+ * war ("Holz von 1" bei ausgewaehlten 2) - der "Abwerfen"-Knopf blieb
+ * bedienbar (die Summe stimmte), aber jeder Klick wurde vom Server
+ * stillschweigend abgelehnt. Zwei Haelften, zwei Tests: die Auswahl darf so
+ * gar nicht erst entstehen, und der Knopf muss gesperrt bleiben, falls sie
+ * es doch tut (etwa weil der Bestand von aussen schrumpft, waehrend die
+ * Auswahl steht).
+ */
+describe('DiscardDialog, Befund C (Aufgabe 16)', () => {
+  it('laesst eine Sorte nicht ueber den Bestand steigen, wenn zwei Klicks im selben Schub landen', () => {
+    render(<DiscardDialog player={player} cards={RESOURCE_IDS} required={4} onConfirm={vi.fn()} />);
+
+    // Korn liegt genau einmal auf der Hand (siehe `player` oben).
+    const plus = screen.getByLabelText('Korn mehr');
+
+    /*
+     * Zwei rohe `click`-Ereignisse in einem einzigen `act`, statt zwei
+     * einzeln erwarteter `userEvent.click`s: Letztere flushen dazwischen
+     * neu - das simuliert also nicht die Lage aus dem Durchgang, in der
+     * zwei `click`-Ereignisse im selben Schub landeten (Doppel-Klick, oder
+     * ein Browser, der fuer eine Geste zwei Ereignisse ausliefert). Vor der
+     * Behebung liess das `chosen.grain` auf 2 klettern, obwohl nur eine
+     * Kornkarte auf der Hand lag.
+     */
+    act(() => {
+      plus.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      plus.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    expect(screen.getByTestId('chosen-grain').textContent).toBe('1');
+  });
+
+  it('sperrt "Abwerfen", solange eine gewaehlte Sorte ueber dem Bestand steht', () => {
+    const onConfirm = vi.fn();
+    const { rerender } = render(
+      <DiscardDialog player={player} cards={RESOURCE_IDS} required={1} onConfirm={onConfirm} />,
+    );
+
+    // Ein Lehm gewaehlt, waehrend drei auf der Hand liegen - gueltig.
+    fireEvent.click(screen.getByLabelText('Lehm mehr'));
+    expect(screen.getByRole('button', { name: /Abwerfen/ })).toHaveProperty('disabled', false);
+
+    /*
+     * Der Bestand schrumpft von aussen (derselbe Sitz bleibt gerendert,
+     * kein neuer `key` - wie in `GameScreen.tsx`, solange `view.you`
+     * gleich bleibt), waehrend die Auswahl stehen bleibt: genau die Lage,
+     * in der ein Klick auf "Abwerfen" bislang lautlos ins Leere lief.
+     */
+    const poorer: PlayerRow = {
+      ...player,
+      resources: cardAmounts({ ...player.resources, brick: 0 }),
+    };
+    rerender(
+      <DiscardDialog player={poorer} cards={RESOURCE_IDS} required={1} onConfirm={onConfirm} />,
+    );
+
+    expect(screen.getByRole('button', { name: /Abwerfen/ })).toHaveProperty('disabled', true);
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 });
 

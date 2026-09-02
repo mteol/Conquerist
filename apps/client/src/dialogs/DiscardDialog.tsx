@@ -60,9 +60,47 @@ export function DiscardDialog({
     return !(delta > 0 && total >= required);
   };
 
+  /*
+   * Ob eine gewaehlte Sorte mehr enthaelt, als tatsaechlich auf der Hand
+   * liegt - unabhaengig davon, wie sie dorthin kam.
+   *
+   * **Befund C, Aufgabe 16.** Zwei `+`-Klicks auf dieselbe Sorte, die im
+   * selben Schub verarbeitet werden (ein Doppel-Klick, oder ein Browser, der
+   * fuer eine Geste zwei `click`-Ereignisse ausliefert), lasen bislang beide
+   * denselben Stand von `chosen`/`total` aus dem Rendering, in dem sie
+   * ausgeloest wurden - `canStep` erlaubte beide, weil keiner der beiden vom
+   * jeweils anderen wusste. Das Ergebnis: eine Sorte stand ueber dem
+   * Bestand, der Knopf blieb trotzdem bedienbar (die *Summe* stimmte ja), und
+   * jeder Klick auf "Abwerfen" wurde vom Server lautlos abgelehnt.
+   *
+   * `excess` ist die zweite Haelfte der Behebung: eine Sperre, die nicht
+   * danach fragt, *wie* eine Sorte ueber den Bestand kam, sondern nur, *ob*
+   * sie es gerade ist - unabhaengig von der ersten Haelfte unten
+   * (`change`), die genau das an der Quelle verhindert. Ein Bedienelement,
+   * das zusagt zu funktionieren und es nicht tut, war in dieser Etappe schon
+   * einmal ein Befund.
+   */
+  const excess = cards.find((resource) => (chosen[resource] ?? 0) > (held[resource] ?? 0));
+
   const change = (resource: CardId, delta: number): void => {
-    if (!canStep(resource, delta)) return;
-    setChosen((current) => ({ ...current, [resource]: (current[resource] ?? 0) + delta }));
+    /*
+     * Die Grenze wird hier innerhalb des funktionalen Updaters neu
+     * ausgewertet, nicht vorab gegen `chosen`/`total` aus dem Rendering
+     * geprueft (das war `canStep`s Job, und genau der stand `change` bisher
+     * im Weg - siehe `excess` oben). Landen zwei Klicks im selben Schub,
+     * sieht der zweite Aufruf hier garantiert das Ergebnis des ersten, weil
+     * React funktionale Updates innerhalb eines Schubs der Reihe nach
+     * anwendet - nie den Stand von vor dem Schub zweimal.
+     */
+    setChosen((current) => {
+      const currentTotal = cards.reduce((sum, card) => sum + (current[card] ?? 0), 0);
+      const next = (current[resource] ?? 0) + delta;
+
+      if (next < 0 || next > (held[resource] ?? 0)) return current;
+      if (delta > 0 && currentTotal >= required) return current;
+
+      return { ...current, [resource]: next };
+    });
   };
 
   return (
@@ -107,7 +145,7 @@ export function DiscardDialog({
         <button
           type="button"
           className="button button--go"
-          disabled={total !== required}
+          disabled={total !== required || excess !== undefined}
           onClick={() => onConfirm(chosen)}
         >
           Abwerfen ({total}/{required})
