@@ -261,3 +261,52 @@ describe('der Auftakt im Anzeigemodell', () => {
     expect(gameViewOf(viewOf(afterSetup())).opening).toBeNull();
   });
 });
+
+describe('Eine wartende Fortschrittskarte im Anzeigemodell', () => {
+  const source = (phase: unknown) => ({
+    phase,
+    players: ids.map((id) => ({ id })),
+    currentPlayerIndex: 0,
+  });
+
+  it('laesst alle Wartenden gleichzeitig handeln', () => {
+    const state = source({
+      kind: 'progressPending',
+      by: ids[0],
+      pending: [ids[1], ids[2]],
+      payload: { card: 'wedding' },
+    });
+    expect(actingPlayers(state as never)).toEqual([ids[1], ids[2]]);
+  });
+
+  it('sagt bei der Spionage, wer bei wem hinsieht', () => {
+    const state = afterSetup();
+    const phase = {
+      kind: 'progressPending' as const,
+      by: ids[0]!,
+      pending: [ids[0]!],
+      payload: { card: 'spy' as const, victim: ids[1]! },
+    };
+    const view = gameViewOf(playerViewOf({ ...state, phase }, ids[0]!, seats, 1));
+
+    expect(view.phaseText).toBe('Spionage: Spieler 1 sieht sich Spieler 2s Fortschrittskarten an');
+  });
+
+  it('unterscheidet beim Deserteur die beiden Runden', () => {
+    const state = afterSetup();
+    const round = (replacement: { level: 1; active: boolean } | null) => ({
+      kind: 'progressPending' as const,
+      by: ids[0]!,
+      pending: [replacement === null ? ids[1]! : ids[0]!],
+      payload: { card: 'deserter' as const, victim: ids[1]!, replacement },
+    });
+
+    expect(gameViewOf(playerViewOf({ ...state, phase: round(null) }, ids[1]!, seats, 1)).phaseText).toBe(
+      'Deserteur: Spieler 2 gibt einen Ritter auf',
+    );
+    expect(
+      gameViewOf(playerViewOf({ ...state, phase: round({ level: 1, active: false }) }, ids[0]!, seats, 1))
+        .phaseText,
+    ).toBe('Deserteur: Spieler 1 stellt den Überläufer auf');
+  });
+});

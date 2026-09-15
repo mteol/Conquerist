@@ -1,7 +1,6 @@
 import {
   handLimitOf,
   nameList,
-  PROGRESS_NAMES,
   setupPlayerIndex,
   yieldTotal,
   type DiceSpec,
@@ -197,6 +196,13 @@ export function actingPlayers(view: PhaseSource): readonly PlayerId[] {
     case 'defenderPending':
     case 'aqueductPending':
       return view.phase.pending.slice(0, 1);
+    /*
+     * Eine wartende Fortschrittskarte: alle, die noch antworten müssen, und
+     * gleichzeitig wie beim Abwerfen. Lokal wandert der Bildschirm damit von
+     * selbst durch die Warteliste.
+     */
+    case 'progressPending':
+      return view.phase.pending;
     case 'tradePending': {
       const { offer, responses } = view.phase;
       /*
@@ -259,9 +265,27 @@ function phaseTextOf(view: PlayerView): string {
       return `${nameOf(view.phase.pending[0] ?? null)} wählt einen Fortschrittsstapel`;
     case 'aqueductPending':
       return `${nameOf(view.phase.pending[0] ?? null)} nimmt einen Rohstoff aus dem Aquädukt`;
-    case 'progressPending':
-      // Der Satz je Karte kommt in Aufgabe 12.
-      return `${nameOf(view.phase.pending[0] ?? null)} antwortet auf ${PROGRESS_NAMES[view.phase.payload.card]}`;
+    case 'progressPending': {
+      const phase = view.phase;
+      const by = nameOf(phase.by);
+      const waiting = phase.pending.map((id) => nameOf(id));
+      const payload = phase.payload;
+
+      switch (payload.card) {
+        case 'wedding':
+          return `Hochzeit: ${nameList(waiting)} ${waiting.length === 1 ? 'schenkt' : 'schenken'} ${by} Karten`;
+        case 'tradeHarbor':
+          return `Handelshafen: ${nameList(waiting)} ${waiting.length === 1 ? 'wählt' : 'wählen'} eine Handelsware`;
+        case 'spy':
+          return `Spionage: ${by} sieht sich ${nameOf(payload.victim)}s Fortschrittskarten an`;
+        case 'masterMerchant':
+          return `Großhändler: ${by} sieht sich ${nameOf(payload.victim)}s Handkarten an`;
+        case 'deserter':
+          return payload.replacement === null
+            ? `Deserteur: ${nameOf(payload.victim)} gibt einen Ritter auf`
+            : `Deserteur: ${by} stellt den Überläufer auf`;
+      }
+    }
     case 'finished':
       return `${nameOf(view.phase.winner)} hat gewonnen`;
   }

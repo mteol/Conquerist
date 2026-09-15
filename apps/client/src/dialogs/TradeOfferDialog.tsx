@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react';
+import { useState, type JSX } from 'react';
 import {
   EMPTY_CARDS,
   resourceList,
@@ -7,6 +7,7 @@ import {
   type CardAmounts,
   type TradeResponse,
 } from '@conquerist/shared';
+import { useCountdown } from '../game/useCountdown';
 import { ResourceRow } from '../panels/ResourceCard';
 import { NO_AMOUNTS, TradeAmounts, isTradeShapeValid } from './TradeAmounts';
 
@@ -35,11 +36,6 @@ export interface TradeOfferDialogProps {
    */
   readonly clockOffset: number;
   readonly onAct: (action: GameAction) => void;
-}
-
-/** Verbleibende Sekunden, nie negativ. */
-function secondsLeft(expiresAt: number, offset: number): number {
-  return Math.max(0, Math.ceil((expiresAt - (Date.now() + offset)) / 1000));
 }
 
 /**
@@ -89,25 +85,13 @@ export function TradeOfferDialog({
   onAct,
 }: TradeOfferDialogProps): JSX.Element | null {
   const trade = view.phase.kind === 'tradePending' ? view.phase : null;
-  const expiresAt = trade?.expiresAt ?? 0;
 
-  const [left, setLeft] = useState(() => secondsLeft(expiresAt, clockOffset));
+  const left = useCountdown(view, clockOffset) ?? 0;
   const [counterGive, setCounterGive] = useState<CardAmounts>(NO_AMOUNTS);
   const [counterWant, setCounterWant] = useState<CardAmounts>(NO_AMOUNTS);
   const [countering, setCountering] = useState(false);
   /** Das Angebot, zu dem die drei Werte darueber gehoeren. Siehe unten. */
   const [answeredOffer, setAnsweredOffer] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLeft(secondsLeft(expiresAt, clockOffset));
-    const handle = setInterval(() => {
-      setLeft(secondsLeft(expiresAt, clockOffset));
-    }, 1000);
-
-    return () => {
-      clearInterval(handle);
-    };
-  }, [expiresAt, clockOffset]);
 
   /*
    * Ein angefangenes Gegenangebot gehoert dem Angebot, auf das es antwortet -

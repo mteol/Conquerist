@@ -48,6 +48,7 @@ import { AwardCards, OpenAwards } from '../panels/Awards';
 import { ResourcePickDialog } from '../dialogs/ResourcePickDialog';
 import { LogPanel } from '../panels/LogPanel';
 import { StatusPanel } from '../panels/StatusPanel';
+import { WaitingClock } from '../panels/WaitingClock';
 import { OpeningPanel } from '../panels/OpeningPanel';
 import { TablePanel } from '../panels/TablePanel';
 import { DiscardDialog } from '../dialogs/DiscardDialog';
@@ -1073,7 +1074,9 @@ export function GameScreen({
           <DoorMark />
           <span className="visually-hidden">Zum Startbildschirm</span>
         </button>
-        <StatusPanel view={display} />
+        <StatusPanel view={display}>
+          <WaitingClock view={view} clockOffset={clockOffset} />
+        </StatusPanel>
         <LogPanel entries={log} />
       </div>
 

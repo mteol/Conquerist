@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 import type { GameView } from '../game/view';
 
 /**
@@ -18,7 +18,13 @@ import type { GameView } from '../game/view';
  * handeln darf, und der kann sie ohne Verbindung nicht schicken. Hier wird
  * also nichts angehalten - hier wird gesagt, dass es steht.
  */
-export function StatusPanel({ view }: { readonly view: GameView }): JSX.Element {
+export function StatusPanel({
+  view,
+  children,
+}: {
+  readonly view: GameView;
+  readonly children?: ReactNode;
+}): JSX.Element {
   const waiting = view.waitingFor;
   const away = view.disconnected.filter((player) => !waiting.includes(player));
 
@@ -26,6 +32,7 @@ export function StatusPanel({ view }: { readonly view: GameView }): JSX.Element 
     <section className="panel panel--status">
       <div className="status__phase">{view.phaseText}</div>
       <div className="status__turn">Runde {view.turn}</div>
+      {children}
 
       {waiting.length > 0 ? (
         <p className="status__waiting" role="status" data-testid="waiting-for">
