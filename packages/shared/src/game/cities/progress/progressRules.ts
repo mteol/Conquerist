@@ -34,6 +34,7 @@ import {
   applyProgressRoadBuilding,
   applySmith,
 } from './science.js';
+import { applyWedding, canWedding } from './wedding.js';
 
 /**
  * Die Aktion `playProgress` und ihr Verteiler.
@@ -118,7 +119,25 @@ export function canPlayProgress(
    * Oberflaeche dieselbe Frage stellen, ohne den Zug probeweise auszufuehren;
    * dieselbe Begruendung wie bei `metropolisAt` in `canImproveCity`.
    */
-  return canPolitics(state, player, play);
+  return canPolitics(state, player, play) ?? canWaitingCard(state, player, play);
+}
+
+/**
+ * Was eine der fuenf wartenden Karten vor dem Ausspielen verlangt - dieselbe
+ * Rolle wie `canPolitics`: `legalActions` und die Oberflaeche stellen die Frage,
+ * ohne den Zug probeweise auszufuehren.
+ */
+function canWaitingCard(
+  state: GameState,
+  player: PlayerId,
+  play: ProgressPlay,
+): RuleViolation | null {
+  switch (play.card) {
+    case 'wedding':
+      return canWedding(state, player, play);
+    default:
+      return null;
+  }
 }
 
 /**
@@ -196,5 +215,7 @@ export function applyPlayProgress(
       return applyIntrigue(discarded, player, play);
     case 'saboteur':
       return applySaboteur(discarded, player, play);
+    case 'wedding':
+      return applyWedding(discarded, player, play);
   }
 }

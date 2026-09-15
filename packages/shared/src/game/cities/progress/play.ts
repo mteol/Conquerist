@@ -11,10 +11,8 @@ import { TrackIdSchema } from '../tracks.js';
  * eigene Union unter **einer** Aktion (`playProgress`) - dieselbe Grenze wie
  * bei den Entwicklungskarten in `developmentRules.ts`.
  *
- * Die fuenf Karten, die auf eine fremde Antwort warten, fehlen hier: sie
- * kommen mit ihrer Phase erst in 10d-2 (`masterMerchant`, `spy`, `deserter`,
- * `tradeHarbor`, `wedding`). An diesem Tisch (`CITIES_RULES.progressDecks`)
- * liegen sie ohnehin nicht.
+ * Die fuenf Karten, die auf eine fremde Antwort warten, kommen in 10d-2 dazu -
+ * ihre Antwort steht in `answer.ts`.
  *
  * **Buchdruck und Verfassung fehlen ebenfalls, und zwar dauerhaft.** Beide
  * liegen laut Anleitung (Abschnitt 11) sofort beim Ziehen offen -
@@ -69,6 +67,7 @@ export const ProgressPlaySchema = z.discriminatedUnion('card', [
   /** Intrige: welcher fremde Ritter vertrieben wird. */
   z.object({ card: z.literal('intrigue'), vertex: z.string() }),
   z.object({ card: z.literal('saboteur') }),
+  z.object({ card: z.literal('wedding') }),
 ]);
 
 export type ProgressPlay = z.infer<typeof ProgressPlaySchema>;

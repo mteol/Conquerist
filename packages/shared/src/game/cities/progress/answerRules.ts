@@ -1,8 +1,9 @@
 import { RuleViolationCode, violation, type RuleViolation } from '../../errors.js';
 import type { PlayerId } from '../../player.js';
-import { rejected, type GameState, type ReduceResult } from '../../state.js';
+import { ok, rejected, type GameState, type ReduceResult } from '../../state.js';
 import type { ProgressAnswer, WaitingCard } from './answer.js';
 import { PROGRESS_NAMES } from './cards.js';
+import { answerWedding, canAnswerWedding } from './wedding.js';
 
 /**
  * Die Aktion `answerProgress` und ihr Verteiler - das Gegenstueck zu
@@ -49,7 +50,7 @@ export function canAnswerProgress(
   switch (answer.card) {
     case 'wedding':
       if (payload.card !== 'wedding') return wrongCard(payload.card);
-      return notWiredYet(answer.card);
+      return canAnswerWedding(state, phase, player, answer);
     case 'tradeHarbor':
       if (payload.card !== 'tradeHarbor') return wrongCard(payload.card);
       return notWiredYet(answer.card);
@@ -79,6 +80,7 @@ export function applyAnswerProgress(
 
   switch (answer.card) {
     case 'wedding':
+      return ok(answerWedding(state, phase, player, answer));
     case 'tradeHarbor':
     case 'spy':
     case 'masterMerchant':

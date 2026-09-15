@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { CardAmountsSchema, type CardAmounts } from '../rules/ruleset.js';
+import { CARD_IDS, COMMODITY_IDS } from '../scenario/index.js';
 import {
   EMPTY_CARDS,
   addCards,
@@ -9,6 +10,7 @@ import {
   cardAt,
   scaleCards,
   subtractCards,
+  takeMostHeld,
 } from './cards.js';
 
 /**
@@ -146,6 +148,25 @@ describe('cardAt', () => {
     expect(() => cardAt(HAND, 6)).toThrow(RangeError);
     expect(() => cardAt(HAND, -1)).toThrow(RangeError);
     expect(() => cardAt(EMPTY_CARDS, 0)).toThrow(RangeError);
+  });
+});
+
+describe('takeMostHeld', () => {
+  it('nimmt immer von der gerade haeufigsten Sorte', () => {
+    // Erz 5, Wolle 3: Erz, Erz, dann Gleichstand 3:3 -> Wolle (steht frueher), dann Erz.
+    expect(takeMostHeld(hand({ ore: 5, wool: 3 }), CARD_IDS, 4)).toEqual(hand({ ore: 3, wool: 1 }));
+  });
+
+  it('entscheidet Gleichstand nach der Reihenfolge im Vorrat', () => {
+    expect(takeMostHeld(hand({ grain: 1, ore: 1 }), CARD_IDS, 1)).toEqual(hand({ grain: 1 }));
+  });
+
+  it('nimmt nur aus dem genannten Vorrat', () => {
+    expect(takeMostHeld(hand({ ore: 4, cloth: 1 }), COMMODITY_IDS, 1)).toEqual(hand({ cloth: 1 }));
+  });
+
+  it('nimmt nicht mehr, als da ist', () => {
+    expect(takeMostHeld(hand({ wool: 1 }), CARD_IDS, 3)).toEqual(hand({ wool: 1 }));
   });
 });
 

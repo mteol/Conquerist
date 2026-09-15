@@ -344,6 +344,8 @@ function zeroArgumentProgressPlay(card: ProgressCardId): ProgressPlay | null {
       return { card };
     case 'saboteur':
       return { card };
+    case 'wedding':
+      return { card };
     default:
       return null;
   }

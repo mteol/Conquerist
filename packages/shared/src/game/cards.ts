@@ -77,6 +77,35 @@ export function canAfford(have: CardAmounts, cost: CardAmounts): boolean {
 }
 
 /**
+ * Waehlt `count` Karten aus einer Hand - immer von der gerade haeufigsten Sorte
+ * in `pool`, bei Gleichstand von der frueher genannten.
+ *
+ * Die eine Auslegung von "die haeufigsten Karten" fuer jede automatische
+ * Antwort nach einem Fristablauf (Spec 5.5): rein und deterministisch, damit
+ * dieselbe Partie aus demselben Seed dieselben Karten verliert.
+ */
+export function takeMostHeld(
+  hand: CardAmounts,
+  pool: readonly CardId[],
+  count: number,
+): CardAmounts {
+  const left = { ...hand };
+  const taken = { ...EMPTY_CARDS };
+
+  for (let step = 0; step < count; step += 1) {
+    let best: CardId | null = null;
+    for (const card of pool) {
+      if (left[card] > 0 && (best === null || left[card] > left[best])) best = card;
+    }
+    if (best === null) break;
+    left[best] -= 1;
+    taken[best] += 1;
+  }
+
+  return taken;
+}
+
+/**
  * Die `index`-te Karte einer Hand, in fester Ressourcenreihenfolge.
  *
  * Ein Griff in eine fremde Hand ist ein Ziehen aus einem verdeckten Stapel: die
