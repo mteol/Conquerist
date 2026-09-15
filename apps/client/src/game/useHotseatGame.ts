@@ -11,9 +11,10 @@ import { hotseatReducer, startHotseat, type HotseatEvent, type HotseatState } fr
  *
  * **Die Uhr steht hier und nicht in der Logik.** Der Reducer ist rein und liest
  * keine Zeit (Regel 2); Fristen entstehen aus einem `at`, das die Aktion
- * mitbringt, und laufen ab, wenn jemand `timeout` einwirft. Online tut das der
- * Wecker im Server, lokal dieser Haken - sonst zeigte die lokale Partie einen
- * Countdown, der nie ausloest, und das waere eine Anzeige, die luegt.
+ * mitbringt - oder sind eine Dauer, die mit jedem Stand neu beginnt (10d-2) - und
+ * laufen ab, wenn jemand `timeout` einwirft. Online tut das der Wecker im Server,
+ * lokal dieser Haken - sonst zeigte die lokale Partie einen Countdown, der nie
+ * ausloest, und das waere eine Anzeige, die luegt.
  */
 export interface HotseatGame {
   readonly state: HotseatState;

@@ -57,6 +57,20 @@ function withOpenOffer(): GameState {
   return offered.state;
 }
 
+function withDiscard(): GameState {
+  const state = createGame(generateScenario(CLASSIC_34, 'uhr'), CLASSIC_RULES, ids, 'uhr');
+  return {
+    ...state,
+    phase: { kind: 'discardPending', pending: [ids[1]!], counts: {}, resume: 'seven' },
+    currentPlayerIndex: 0,
+    players: state.players.map((player) =>
+      player.id === ids[1]
+        ? { ...player, resources: cardAmounts({ brick: 0, lumber: 8, wool: 0, grain: 0, ore: 0 }) }
+        : player,
+    ),
+  };
+}
+
 function Probe({ game }: { readonly game: GameState }) {
   const hotseat = useHotseatGame(game, seats);
   return <span data-testid="phase">{hotseat.state.game.phase.kind}</span>;
@@ -91,6 +105,39 @@ describe('die lokale Uhr', () => {
       });
 
       expect(screen.getByTestId('phase').textContent).toBe('tradePending');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('die lokale Uhr in einer Wartephase', () => {
+  it('nimmt nach der Antwortfrist das Abwerfen ab', () => {
+    vi.useFakeTimers();
+    try {
+      render(<Probe game={withDiscard()} />);
+      expect(screen.getByTestId('phase').textContent).toBe('discardPending');
+
+      act(() => {
+        vi.advanceTimersByTime(CLASSIC_RULES.pendingAnswerMs + 1_000);
+      });
+
+      expect(screen.getByTestId('phase').textContent).toBe('robberPending');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('wartet vor Ablauf', () => {
+    vi.useFakeTimers();
+    try {
+      render(<Probe game={withDiscard()} />);
+
+      act(() => {
+        vi.advanceTimersByTime(CLASSIC_RULES.pendingAnswerMs - 5_000);
+      });
+
+      expect(screen.getByTestId('phase').textContent).toBe('discardPending');
     } finally {
       vi.useRealTimers();
     }

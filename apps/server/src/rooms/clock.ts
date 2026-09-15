@@ -8,8 +8,10 @@ import { applySystemAction } from './room.js';
  *
  * Der Wecker kennt keine Regel: er liest `deadlineOf` und wirft, wenn die Zeit
  * um ist, `timeout` ein. Was das bedeutet, entscheidet der Reducer - hier steht
- * nur, wann jemand nachfragen muss. Ein zweites Zeitlimit spaeter (Abwurffrist,
- * Zugzeit) braucht hier keine Zeile, weil `deadlineOf` die einzige Quelle ist.
+ * nur, wann jemand nachfragen muss. Seit 10d-2 hat jede Wartephase eine Frist,
+ * und hier hat sich dafuer genau eine Zeile geaendert (`msUntil`): `deadlineOf`
+ * ist die einzige Quelle. Eine Dauer beginnt mit jedem `arm` neu - die Frist
+ * gilt je Stand, nach jedem Zug.
  *
  * Uhr und Zeitgeber kommen von aussen herein, damit die Tests nicht warten.
  */
@@ -83,9 +85,8 @@ export function createRoomClock(deps: RoomClockDeps): RoomClock {
     if (due === null) return;
 
     /*
-     * Eine beim Laden laengst abgelaufene Frist ist sofort faellig statt
-     * negativ: nach einem Serverneustart raeumt der erste Lauf das Angebot ab,
-     * das dort seit dem Absturz liegt.
+     * Ein gespeicherter Zeitpunkt, der beim Laden laengst vorbei ist, ist
+     * sofort faellig - das rechnet `msUntil`.
      */
     timers.set(
       code,

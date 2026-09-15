@@ -68,6 +68,24 @@ function registryWithOffer(at: number): { registry: RoomRegistry; room: Room } {
   return { registry, room: acted.room };
 }
 
+/** Registry mit einem Raum, in dem u2 nach einer Sieben acht Karten abwerfen muss. */
+function registryWithDiscard(): RoomRegistry {
+  const registry = new RoomRegistry({ randomCode: () => 'K7X2' });
+  registry.create('u1', 'Anna', 3, 'wecker-probe', 10);
+
+  const base = inMainPhase();
+  const game = base.game!;
+  const discarding: GameState = {
+    ...game,
+    phase: { kind: 'discardPending', pending: ['u2'], counts: {}, resume: 'seven' },
+    players: game.players.map((player) =>
+      player.id === 'u2' ? { ...player, resources: cardAmounts({ lumber: 8 }) } : player,
+    ),
+  };
+  registry.update('K7X2', { ...base, game: discarding });
+  return registry;
+}
+
 function clockFor(registry: RoomRegistry, now: number) {
   const schedule = vi.fn((_run: () => void, _ms: number) => 1 as unknown as NodeJS.Timeout);
   const cancel = vi.fn();
@@ -158,5 +176,41 @@ describe('createRoomClock', () => {
 
     expect(schedule).toHaveBeenCalledTimes(2);
     expect(cancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('createRoomClock in einer Wartephase', () => {
+  it('stellt den Wecker auf die volle Antwortfrist', () => {
+    const registry = registryWithDiscard();
+    const { clock, schedule } = clockFor(registry, 123_456);
+
+    clock.arm('K7X2');
+
+    const total = registry.get('K7X2')!.game!.rules.pendingAnswerMs;
+    expect(schedule.mock.calls[0]![1]).toBe(total);
+  });
+
+  it('nimmt beim Klingeln die Pflicht ab und stellt fuer die naechste Phase neu', () => {
+    const registry = registryWithDiscard();
+    const runs: (() => void)[] = [];
+    const clock = createRoomClock({
+      registry,
+      sinks: new SinkHub(),
+      now: () => 0,
+      schedule: (run) => {
+        runs.push(run);
+        return 1 as unknown as NodeJS.Timeout;
+      },
+      cancel: () => undefined,
+    });
+
+    clock.arm('K7X2');
+    runs[0]!();
+
+    const game = registry.get('K7X2')!.game!;
+    expect(game.players.find((player) => player.id === 'u2')!.resources.lumber).toBe(4);
+    // Nach der Sieben kommt der Raeuber - mit eigener Frist, also ein zweiter Wecker.
+    expect(game.phase.kind).toBe('robberPending');
+    expect(runs).toHaveLength(2);
   });
 });
