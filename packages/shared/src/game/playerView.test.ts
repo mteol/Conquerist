@@ -18,8 +18,9 @@ import { createGame, setupPlayer } from './setup.js';
 import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
 import { countCards } from './cards.js';
-import { PlayerViewSchema, playerViewOf } from './playerView.js';
+import { PlayerViewSchema, playerViewOf, revealsTo } from './playerView.js';
 import type { GameState } from './state.js';
+import type { ProgressPendingPayload } from './cities/progress/answer.js';
 
 const scenario = generateScenario(CLASSIC_34, 'view-geheim');
 const seats = ['p1', 'p2', 'p3'].map((id, index) => ({
@@ -57,6 +58,22 @@ function allKeys(value: unknown, found: Set<string> = new Set()): Set<string> {
       found.add(key);
       allKeys(inner, found);
     }
+  }
+  return found;
+}
+
+/** Sammelt alle Zeichenketten-Werte eines Objektbaums - Schluessel zaehlen nicht. */
+function allStrings(value: unknown, found: Set<string> = new Set()): Set<string> {
+  if (typeof value === 'string') {
+    found.add(value);
+    return found;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) allStrings(item, found);
+    return found;
+  }
+  if (typeof value === 'object' && value !== null) {
+    for (const inner of Object.values(value)) allStrings(inner, found);
   }
   return found;
 }
@@ -323,32 +340,28 @@ describe('Die drei Fortschrittsstapel in der Sicht', () => {
       progressDecks: {
         science: ['mining', 'irrigation'],
         trade: ['merchant'],
-        // 'bishop', nicht 'diplomat': seit dieser Etappe heisst ein eigenes
-        // Sichtfeld `diplomatTargets`, und der Teilstring-Test unten faende
-        // sich selbst - ein Feldname ist kein Leck des Stapelinhalts.
         politics: ['bishop', 'saboteur'],
       },
     });
 
     const view = playerViewOf(state, 'p1', seats, 1);
 
-    // Nur die Groesse. Die Reihenfolge ist das Geheimnis - dieselbe
-    // Begruendung wie bei `deckLeft` fuer den Entwicklungskartenstapel.
     expect(Object.keys(view)).not.toContain('progressDecks');
 
     /*
-     * Der JSON-Vergleich laeuft ohne `rules`: `rules.progressDecks` nennt die
-     * volle Zusammensetzung jedes Stapels (wie viele Karten jeder Art es im
-     * Spiel insgesamt gibt) - das ist oeffentliches Regelwissen, keine
-     * Reihenfolge der tatsaechlichen Stapel, und enthaelt deshalb ohnehin
-     * jeden Kartennamen. Ausserhalb von `rules` duerfen sie nicht auftauchen.
+     * Geprueft wird auf **Werte**, nicht auf Teilstrings im JSON. Der alte Test
+     * suchte `'bishop'` in der ganzen Zeichenkette und waere am ersten Feld
+     * namens `bishopTargets` grundlos umgefallen - ein Schluessel ist kein Leck.
+     * `rules` bleibt aussen vor: `rules.progressDecks` nennt die Zusammensetzung
+     * aller Stapel, das ist oeffentliches Regelwissen.
      */
     const withoutRules = Object.fromEntries(
       Object.entries(view).filter(([key]) => key !== 'rules'),
     );
-    expect(JSON.stringify(withoutRules)).not.toContain('bishop');
-    expect(JSON.stringify(withoutRules)).not.toContain('saboteur');
-    expect(JSON.stringify(withoutRules)).not.toContain('irrigation');
+    const values = allStrings(withoutRules);
+    for (const card of ['mining', 'irrigation', 'merchant', 'bishop', 'saboteur']) {
+      expect(values.has(card)).toBe(false);
+    }
   });
 
   it('haelt das eigene Schema ein', () => {
@@ -609,5 +622,78 @@ describe('Ziele der Fortschrittskarten mit Angabe in der Sicht', () => {
     expect(parsed.progressRoadBuildingTargets).toEqual({});
     expect(parsed.diplomatTargets).toEqual({});
     expect(parsed.intrigueTargets).toEqual([]);
+  });
+});
+
+describe('revealsTo - die eine geoeffnete Hand', () => {
+  /** p2 haelt Karten beider Arten; p1 hat eine Karte gespielt und schaut. */
+  function looking(payload: ProgressPendingPayload): GameState {
+    const base = gameWithCities({
+      phase: { kind: 'progressPending', by: 'p1', pending: ['p1'], payload },
+    });
+    return {
+      ...base,
+      players: base.players.map((player) =>
+        player.id === 'p2'
+          ? { ...player, resources: { ...player.resources, ore: 2 }, progressCards: ['bishop' as const] }
+          : player,
+      ),
+    };
+  }
+
+  it('zeigt dem Grosshaendler die fremden Handkarten und keine Fortschrittskarten', () => {
+    const state = looking({ card: 'masterMerchant', victim: 'p2' });
+    const p2 = playerViewOf(state, 'p1', seats, 1).players.find((player) => player.id === 'p2')!;
+
+    expect(p2.resources?.ore).toBe(2);
+    expect(p2.progressCards).toBeNull();
+  });
+
+  it('zeigt der Spionage die fremden Fortschrittskarten und keine Handkarten', () => {
+    const state = looking({ card: 'spy', victim: 'p2' });
+    const p2 = playerViewOf(state, 'p1', seats, 1).players.find((player) => player.id === 'p2')!;
+
+    expect(p2.progressCards).toEqual(['bishop']);
+    expect(p2.resources).toBeNull();
+  });
+
+  it('oeffnet nur die Hand des Opfers und nur dem Spielenden', () => {
+    const state = looking({ card: 'spy', victim: 'p2' });
+
+    expect(revealsTo(state, 'p1', 'p3')).toEqual({ resources: false, progressCards: false });
+    expect(revealsTo(state, 'p3', 'p2')).toEqual({ resources: false, progressCards: false });
+  });
+
+  it('schliesst sie wieder, sobald die Phase vorbei ist', () => {
+    const state = { ...looking({ card: 'spy', victim: 'p2' }), phase: { kind: 'main' as const } };
+    expect(revealsTo(state, 'p1', 'p2')).toEqual({ resources: false, progressCards: false });
+  });
+
+  it('oeffnet nichts, solange der Spielende nicht selbst wartet', () => {
+    const base = looking({ card: 'spy', victim: 'p2' });
+    const state = {
+      ...base,
+      phase: { kind: 'progressPending' as const, by: 'p1', pending: ['p2'], payload: { card: 'spy' as const, victim: 'p2' } },
+    };
+    expect(revealsTo(state, 'p1', 'p2')).toEqual({ resources: false, progressCards: false });
+  });
+
+  it('oeffnet bei Hochzeit und Deserteur nichts', () => {
+    expect(revealsTo(looking({ card: 'wedding' }), 'p1', 'p2')).toEqual({
+      resources: false,
+      progressCards: false,
+    });
+    expect(
+      revealsTo(looking({ card: 'deserter', victim: 'p2', replacement: null }), 'p1', 'p2'),
+    ).toEqual({ resources: false, progressCards: false });
+  });
+
+  it('zeigt jedem die eigene Hand ganz', () => {
+    expect(revealsTo(gameWithCities(), 'p2', 'p2')).toEqual({ resources: true, progressCards: true });
+  });
+
+  it('haelt waehrend der offenen Hand das eigene Schema ein', () => {
+    const state = looking({ card: 'masterMerchant', victim: 'p2' });
+    expect(() => PlayerViewSchema.parse(playerViewOf(state, 'p1', seats, 1))).not.toThrow();
   });
 });

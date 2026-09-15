@@ -20,6 +20,7 @@ import {
 import { canOfferAnything } from './playerTrade.js';
 import { PhaseSchema } from './phase.js';
 import { PlayerIdSchema } from './player.js';
+import type { PlayerId } from './player.js';
 import { countCards } from './cards.js';
 import { publicVictoryPointsOf, victoryPointsOf } from './scoring.js';
 import { catanStrength } from './cities/knights.js';
@@ -237,6 +238,43 @@ export type PlayerView = z.infer<typeof PlayerViewSchema>;
 /** Verbindungszustand je Spieler; was fehlt, gilt als verbunden. */
 export type ConnectedMap = ReadonlyMap<string, boolean>;
 
+/** Welche verdeckten Felder eines Sitzes der Empfaenger sehen darf. */
+export interface Reveal {
+  readonly resources: boolean;
+  readonly progressCards: boolean;
+}
+
+const HIDDEN: Reveal = { resources: false, progressCards: false };
+
+/**
+ * Die einzige Stelle der ganzen Erweiterung, an der sich die Grenze aus Regel 4
+ * oeffnet - fuer **eine** Person, **eine** Hand, **eine** Phase.
+ *
+ * Grosshaendler und Spionage lassen den Spielenden in eine fremde Hand sehen,
+ * bevor er waehlt. Geoeffnet wird genau dann, wenn die Karte wartet, der
+ * Empfaenger sie gespielt hat **und** selbst an der Reihe ist - und je Karte nur
+ * das eine Feld, um das es geht: der Grosshaendler sieht keine
+ * Fortschrittskarten, die Spionage keine Rohstoffe. Entwicklungskarten bleiben
+ * immer beim Besitzer.
+ */
+export function revealsTo(state: GameState, viewer: PlayerId, player: PlayerId): Reveal {
+  if (player === viewer) return { resources: true, progressCards: true };
+
+  const phase = state.phase;
+  if (phase.kind !== 'progressPending' || phase.by !== viewer || !phase.pending.includes(viewer)) {
+    return HIDDEN;
+  }
+
+  const payload = phase.payload;
+  if (payload.card === 'masterMerchant' && payload.victim === player) {
+    return { resources: true, progressCards: false };
+  }
+  if (payload.card === 'spy' && payload.victim === player) {
+    return { resources: false, progressCards: true };
+  }
+  return HIDDEN;
+}
+
 /**
  * Baut die Sicht eines Spielers.
  *
@@ -275,18 +313,19 @@ export function playerViewOf(
     rules: state.rules,
     players: state.players.map((player): PlayerInView => {
       const seat = seatOf.get(player.id);
+      const reveal = revealsTo(state, viewer, player.id);
       return {
         id: player.id,
         name: seat?.name ?? player.id,
         color: seat?.color ?? '#8b93a3',
         connected: connected.get(player.id) ?? true,
         cardCount: countCards(player.resources),
-        resources: player.id === viewer ? player.resources : null,
+        resources: reveal.resources ? player.resources : null,
         developmentCards: player.id === viewer ? player.developmentCards : null,
         developmentCount: player.developmentCards.length,
         // Oeffentlich fuer alle - sie liegen offen vor dem Spieler.
         openProgressCards: player.openProgressCards,
-        progressCards: player.id === viewer ? player.progressCards : null,
+        progressCards: reveal.progressCards ? player.progressCards : null,
         progressCardCount: player.progressCards.length,
         playedKnights: player.playedKnights,
         defenderPoints: player.defenderPoints,
