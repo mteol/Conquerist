@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { CardIdSchema, CommodityIdSchema, ResourceIdSchema } from '../../../scenario/index.js';
+import { PlayerIdSchema } from '../../player.js';
 import { TrackIdSchema } from '../tracks.js';
 
 /**
@@ -69,6 +70,8 @@ export const ProgressPlaySchema = z.discriminatedUnion('card', [
   z.object({ card: z.literal('saboteur') }),
   z.object({ card: z.literal('wedding') }),
   z.object({ card: z.literal('tradeHarbor'), resource: ResourceIdSchema }),
+  /** Spionage: wessen Fortschrittskarten angesehen werden. */
+  z.object({ card: z.literal('spy'), victim: PlayerIdSchema }),
 ]);
 
 export type ProgressPlay = z.infer<typeof ProgressPlaySchema>;

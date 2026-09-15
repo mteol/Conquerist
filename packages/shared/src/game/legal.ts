@@ -286,7 +286,7 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
        * zwei gleiche Karten ergaeben sonst jeden Zug doppelt.
        */
       for (const card of new Set(state.players[state.currentPlayerIndex]?.progressCards ?? [])) {
-        for (const play of enumerableProgressPlays(card)) {
+        for (const play of enumerableProgressPlays(state, player, card)) {
           if (canPlayProgress(state, player, play) === null) {
             actions.push({ type: 'playProgress', player, play });
           }
@@ -335,7 +335,13 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
  * `{ card }` fuer mehrere Literale zugleich waere fuer `tsc` kein Mitglied der
  * Union.
  */
-function enumerableProgressPlays(card: ProgressCardId): ProgressPlay[] {
+function enumerableProgressPlays(
+  state: GameState,
+  player: PlayerId,
+  card: ProgressCardId,
+): ProgressPlay[] {
+  const others = state.players.map((entry) => entry.id).filter((id) => id !== player);
+
   switch (card) {
     case 'mining':
       return [{ card }];
@@ -349,6 +355,8 @@ function enumerableProgressPlays(card: ProgressCardId): ProgressPlay[] {
       return [{ card }];
     case 'tradeHarbor':
       return RESOURCE_IDS.map((resource): ProgressPlay => ({ card: 'tradeHarbor', resource }));
+    case 'spy':
+      return others.map((victim): ProgressPlay => ({ card: 'spy', victim }));
     default:
       return [];
   }
@@ -433,10 +441,15 @@ function progressAnswerCandidates(state: GameState): ProgressAnswer[] {
   switch (payload.card) {
     case 'wedding':
     case 'masterMerchant':
-    case 'spy':
     case 'deserter':
       return [];
     case 'tradeHarbor':
       return COMMODITY_IDS.map((commodity): ProgressAnswer => ({ card: 'tradeHarbor', commodity }));
+    case 'spy': {
+      const victim = state.players.find((entry) => entry.id === payload.victim);
+      return [...new Set(victim?.progressCards ?? [])].map(
+        (take): ProgressAnswer => ({ card: 'spy', take }),
+      );
+    }
   }
 }

@@ -34,6 +34,7 @@ import {
   applyProgressRoadBuilding,
   applySmith,
 } from './science.js';
+import { applySpy, canSpy } from './spy.js';
 import { applyTradeHarbor, canTradeHarbor } from './tradeHarbor.js';
 import { applyWedding, canWedding } from './wedding.js';
 
@@ -138,6 +139,8 @@ function canWaitingCard(
       return canWedding(state, player, play);
     case 'tradeHarbor':
       return canTradeHarbor(state, player, play);
+    case 'spy':
+      return canSpy(state, player, play);
     default:
       return null;
   }
@@ -222,5 +225,7 @@ export function applyPlayProgress(
       return applyWedding(discarded, player, play);
     case 'tradeHarbor':
       return applyTradeHarbor(discarded, player, play);
+    case 'spy':
+      return applySpy(discarded, player, play);
   }
 }
