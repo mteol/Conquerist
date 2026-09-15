@@ -3,6 +3,7 @@ import type { PlayerId } from '../../player.js';
 import { ok, rejected, type GameState, type ReduceResult } from '../../state.js';
 import type { ProgressAnswer, WaitingCard } from './answer.js';
 import { PROGRESS_NAMES } from './cards.js';
+import { answerMasterMerchant, canAnswerMasterMerchant } from './masterMerchant.js';
 import { answerSpy, canAnswerSpy } from './spy.js';
 import { answerTradeHarbor, canAnswerTradeHarbor } from './tradeHarbor.js';
 import { answerWedding, canAnswerWedding } from './wedding.js';
@@ -61,7 +62,7 @@ export function canAnswerProgress(
       return canAnswerSpy(state, phase, payload, player, answer);
     case 'masterMerchant':
       if (payload.card !== 'masterMerchant') return wrongCard(payload.card);
-      return notWiredYet(answer.card);
+      return canAnswerMasterMerchant(state, phase, payload, player, answer);
     case 'deserter':
       if (payload.card !== 'deserter') return wrongCard(payload.card);
       return notWiredYet(answer.card);
@@ -93,7 +94,11 @@ export function applyAnswerProgress(
       if (payload.card !== 'spy') return rejected(wrongCard(payload.card));
       return ok(answerSpy(state, phase, payload, player, answer));
     }
-    case 'masterMerchant':
+    case 'masterMerchant': {
+      const payload = phase.payload;
+      if (payload.card !== 'masterMerchant') return rejected(wrongCard(payload.card));
+      return ok(answerMasterMerchant(state, phase, payload, player, answer));
+    }
     case 'deserter':
       return rejected(notWiredYet(answer.card));
   }

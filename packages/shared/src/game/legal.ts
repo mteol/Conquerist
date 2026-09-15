@@ -357,6 +357,8 @@ function enumerableProgressPlays(
       return RESOURCE_IDS.map((resource): ProgressPlay => ({ card: 'tradeHarbor', resource }));
     case 'spy':
       return others.map((victim): ProgressPlay => ({ card: 'spy', victim }));
+    case 'masterMerchant':
+      return others.map((victim): ProgressPlay => ({ card: 'masterMerchant', victim }));
     default:
       return [];
   }
