@@ -60,7 +60,8 @@ export function createRoomClock(deps: RoomClockDeps): RoomClock {
 
     const acted = applySystemAction(room, action);
     // Abgelehnt heisst: die Frist wurde inzwischen anders beendet, etwa durch
-    // einen Zuschlag. Dann gibt es nichts mehr abzulaeuten.
+    // einen Zuschlag oder die eigene Antwort in einer Wartephase. Dann gibt es
+    // nichts mehr abzulaeuten.
     if (!acted.ok) return;
 
     deps.registry.update(acted.room.code, acted.room, action);
