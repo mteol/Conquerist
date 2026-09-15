@@ -13,6 +13,7 @@ import { CITIES_RULES } from '../rules/cities.js';
 import { createRng } from '../random/index.js';
 import type { GameAction } from './actions.js';
 import type { GameState } from './state.js';
+import type { PlayerId, PlayerState } from './player.js';
 
 const scenario = generateScenario(CLASSIC_34, 'log-probe');
 const seats: Seat[] = ['p1', 'p2', 'p3'].map((id, index) => ({
@@ -635,5 +636,118 @@ describe('Die Stadttor-Ziehung im Verlauf (Befund A, Aufgabe 16)', () => {
 
     expect(sentence).not.toBeNull();
     expect(sentence).toContain('p1 und p2 ziehen je eine Wissenschaftskarte');
+  });
+});
+
+describe('Verlaufssaetze der wartenden Karten', () => {
+  function patch(state: GameState, id: PlayerId, change: Partial<PlayerState>): GameState {
+    return {
+      ...state,
+      players: state.players.map((player) => (player.id === id ? { ...player, ...change } : player)),
+    };
+  }
+
+  function sentence(before: GameState, action: GameAction): string {
+    return describeTransition(before, action, apply(before, action), testSeats);
+  }
+
+  const cities = (overrides: Partial<GameState> = {}): GameState =>
+    testGame({ rules: CITIES_RULES, ...overrides });
+
+  it('nennt das Opfer von Spionage und Deserteur', () => {
+    const spy = patch(patch(cities(), 'p1', { progressCards: ['spy'] }), 'p2', {
+      progressCards: ['bishop'],
+    });
+    expect(
+      sentence(spy, { type: 'playProgress', player: 'p1', play: { card: 'spy', victim: 'p2' } }),
+    ).toBe('p1 spielt Spionage bei p2');
+  });
+
+  it('nennt beim Handelshafen den angebotenen Rohstoff', () => {
+    let state = patch(cities(), 'p1', { progressCards: ['tradeHarbor'], resources: hand({ wool: 1 }) });
+    state = patch(state, 'p2', { resources: hand({ cloth: 1 }) });
+    expect(
+      sentence(state, {
+        type: 'playProgress',
+        player: 'p1',
+        play: { card: 'tradeHarbor', resource: 'wool' },
+      }),
+    ).toBe('p1 spielt Handelshafen und bietet Wolle');
+  });
+
+  it('nennt beim Schenken die Anzahl und nicht die Karten', () => {
+    const state = patch(
+      cities({
+        phase: { kind: 'progressPending', by: 'p1', pending: ['p2'], payload: { card: 'wedding' } },
+      }),
+      'p2',
+      { resources: hand({ ore: 2 }) },
+    );
+    const text = sentence(state, {
+      type: 'answerProgress',
+      player: 'p2',
+      answer: { card: 'wedding', gift: hand({ ore: 2 }) },
+    });
+    expect(text).toBe('p2 schenkt p1 zwei Karten');
+    expect(text).not.toContain('Erz');
+  });
+
+  it('nennt beim Handelshafen den Tausch', () => {
+    let state = cities({
+      phase: {
+        kind: 'progressPending',
+        by: 'p1',
+        pending: ['p2'],
+        payload: { card: 'tradeHarbor', resource: 'wool' },
+      },
+    });
+    state = patch(patch(state, 'p1', { resources: hand({ wool: 1 }) }), 'p2', {
+      resources: hand({ cloth: 1 }),
+    });
+    expect(
+      sentence(state, {
+        type: 'answerProgress',
+        player: 'p2',
+        answer: { card: 'tradeHarbor', commodity: 'cloth' },
+      }),
+    ).toBe('p2 gibt p1 Tuch für Wolle');
+  });
+
+  it('verraet bei der Spionage nicht, welche Karte genommen wurde', () => {
+    const state = patch(
+      cities({
+        phase: { kind: 'progressPending', by: 'p1', pending: ['p1'], payload: { card: 'spy', victim: 'p2' } },
+      }),
+      'p2',
+      { progressCards: ['bishop'] },
+    );
+    expect(
+      sentence(state, { type: 'answerProgress', player: 'p1', answer: { card: 'spy', take: 'bishop' } }),
+    ).toBe('p1 nimmt p2 eine Fortschrittskarte');
+  });
+
+  it('sagt beim Abwerfen nach Fristablauf, wen es getroffen hat', () => {
+    let state = testGame({
+      phase: { kind: 'discardPending', pending: ['p2', 'p3'], counts: {}, resume: 'seven' },
+    });
+    state = patch(patch(state, 'p2', { resources: hand({ ore: 8 }) }), 'p3', {
+      resources: hand({ grain: 8 }),
+    });
+    expect(sentence(state, { type: 'timeout', player: 'p2', at: 0 })).toBe(
+      'Die Zeit ist abgelaufen - p2 und p3 werfen von selbst ab',
+    );
+  });
+
+  it('nennt beim Fristablauf einer wartenden Karte die Karte', () => {
+    const state = patch(
+      cities({
+        phase: { kind: 'progressPending', by: 'p1', pending: ['p2'], payload: { card: 'wedding' } },
+      }),
+      'p2',
+      { resources: hand({ ore: 1 }) },
+    );
+    expect(sentence(state, { type: 'timeout', player: 'p2', at: 0 })).toBe(
+      'Die Zeit für Hochzeit ist abgelaufen',
+    );
   });
 });

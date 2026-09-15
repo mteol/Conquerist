@@ -9,6 +9,7 @@ import {
 import { barbarianStrength } from './cities/barbarians.js';
 import { eventFaceOf } from './cities/event.js';
 import { PROGRESS_NAMES } from './cities/progress/cards.js';
+import type { ProgressPlay } from './cities/progress/play.js';
 import { metropolisHolder } from './cities/improvements.js';
 import { catanStrength } from './cities/knights.js';
 import { TRACK_CARD_LABELS, stepInAccusative } from './cities/tracks.js';
@@ -161,7 +162,7 @@ function describeAction(
       return `${who} nimmt das Angebot zurück`;
 
     case 'timeout':
-      return `Die Zeit für ${who}s Angebot ist abgelaufen`;
+      return describeTimeout(before, nameOf);
 
     case 'dropFromTrade':
       return `${who} ist nicht mehr da und antwortet nicht`;
@@ -223,11 +224,11 @@ function describeAction(
     }
 
     case 'playProgress':
-      // Welche Wahl die Karte getroffen hat (Feld, Ritter, Ware, ...) steht
-      // bewusst nicht im Satz: der Verlauf nennt die gespielte Karte, nicht
-      // die Entscheidung dahinter - dieselbe Zurueckhaltung wie bei
-      // pickProgressDeck unten, das eine gezogene Karte auch nicht verraet.
-      return `${who} spielt ${PROGRESS_NAMES[action.play.card]}`;
+      // Welche Wahl die Karte getroffen hat, steht nur, wo sie am Tisch
+      // ohnehin offen liegt: das Opfer einer Karte muss antworten oder wird
+      // aufgedeckt, der Rohstoff des Handelshafens wird allen angeboten.
+      // Feld, Ritter und Sorte der uebrigen Karten bleiben ungenannt.
+      return describeProgressPlay(action.play, who, nameOf);
 
     case 'pickProgressDeck': {
       // Was gezogen wurde, steht **nachher** auf der Hand - und es bleibt
@@ -241,8 +242,7 @@ function describeAction(
       return `${who} nimmt ${RESOURCE_LABELS[action.resource]} aus dem Aquädukt`;
 
     case 'answerProgress':
-      // Die Saetze je Karte kommen in Aufgabe 11.
-      return `${who} antwortet auf ${PROGRESS_NAMES[action.answer.card]}`;
+      return describeProgressAnswer(action, before, nameOf);
 
     case 'endTurn':
       return `${who} beendet den Zug`;
@@ -366,4 +366,104 @@ function describeGains(
   });
 
   return parts.join(', ');
+}
+
+/** "eine Karte", "zwei Karten", "3 Karten". */
+function cardCount(count: number): string {
+  if (count === 1) return 'eine Karte';
+  if (count === 2) return 'zwei Karten';
+  return `${count} Karten`;
+}
+
+function describeProgressPlay(
+  play: ProgressPlay,
+  who: string,
+  nameOf: (id: PlayerId) => string,
+): string {
+  const card = PROGRESS_NAMES[play.card];
+  switch (play.card) {
+    case 'spy':
+    case 'masterMerchant':
+      return `${who} spielt ${card} bei ${nameOf(play.victim)}`;
+    case 'deserter':
+      return `${who} spielt ${card} gegen ${nameOf(play.victim)}`;
+    case 'tradeHarbor':
+      return `${who} spielt ${card} und bietet ${RESOURCE_LABELS[play.resource]}`;
+    default:
+      return `${who} spielt ${card}`;
+  }
+}
+
+/**
+ * Die Antwort auf eine wartende Karte - aus dem Zustand **vor** dem Zug, denn
+ * danach ist die Phase oft schon zu.
+ */
+function describeProgressAnswer(
+  action: Extract<GameAction, { type: 'answerProgress' }>,
+  before: GameState,
+  nameOf: (id: PlayerId) => string,
+): string {
+  const who = nameOf(action.player);
+  if (before.phase.kind !== 'progressPending') return `${who} antwortet`;
+
+  const by = nameOf(before.phase.by);
+  const payload = before.phase.payload;
+  const answer = action.answer;
+
+  switch (answer.card) {
+    case 'wedding':
+      return `${who} schenkt ${by} ${cardCount(countCards(answer.gift))}`;
+    case 'tradeHarbor':
+      return payload.card === 'tradeHarbor'
+        ? `${who} gibt ${by} ${CARD_LABELS[answer.commodity]} für ${RESOURCE_LABELS[payload.resource]}`
+        : `${who} gibt ${by} ${CARD_LABELS[answer.commodity]}`;
+    case 'spy':
+      return payload.card === 'spy'
+        ? `${who} nimmt ${nameOf(payload.victim)} eine Fortschrittskarte`
+        : `${who} nimmt eine Fortschrittskarte`;
+    case 'masterMerchant':
+      return payload.card === 'masterMerchant'
+        ? `${who} nimmt ${nameOf(payload.victim)} ${cardCount(countCards(answer.take))}`
+        : `${who} nimmt ${cardCount(countCards(answer.take))}`;
+    case 'deserter':
+      return payload.card === 'deserter' && payload.replacement !== null
+        ? `${who} stellt einen Überläufer auf`
+        : `${who} gibt einen Ritter auf`;
+  }
+}
+
+/**
+ * Wessen Frist abgelaufen ist und was das bewirkt hat - aus der Phase **vor**
+ * dem Ablauf. Die automatische Wahl selbst bleibt ungenannt, aus demselben
+ * Grund wie bei jeder Antwort von Hand.
+ */
+function describeTimeout(before: GameState, nameOf: (id: PlayerId) => string): string {
+  const phase = before.phase;
+  switch (phase.kind) {
+    case 'tradePending':
+      return `Die Zeit für ${nameOf(phase.offer.from)}s Angebot ist abgelaufen`;
+    case 'discardPending': {
+      const names = phase.pending.map(nameOf);
+      const verb = names.length === 1 ? 'wirft' : 'werfen';
+      return `Die Zeit ist abgelaufen - ${nameList(names)} ${verb} von selbst ab`;
+    }
+    case 'robberPending':
+      return 'Die Zeit ist abgelaufen - der Räuber zieht von selbst weiter';
+    case 'displacePending':
+      return `Die Zeit ist abgelaufen - ${nameOf(phase.owner)}s Ritter weicht von selbst aus`;
+    case 'progressDiscardPending':
+      return `Die Zeit ist abgelaufen - ${nameOf(phase.pending[0] ?? '')} gibt von selbst eine Fortschrittskarte ab`;
+    case 'defenderPending':
+      return `Die Zeit ist abgelaufen - ${nameOf(phase.pending[0] ?? '')} zieht keine Karte`;
+    case 'aqueductPending':
+      return `Die Zeit ist abgelaufen - ${nameOf(phase.pending[0] ?? '')} nimmt nichts aus dem Aquädukt`;
+    case 'progressPending':
+      return `Die Zeit für ${PROGRESS_NAMES[phase.payload.card]} ist abgelaufen`;
+    case 'opening':
+    case 'setup':
+    case 'rollPending':
+    case 'main':
+    case 'finished':
+      return 'Die Zeit ist abgelaufen';
+  }
 }
