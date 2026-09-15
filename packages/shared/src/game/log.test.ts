@@ -8,7 +8,18 @@ import { legalActions } from './legal.js';
 import { reduce } from './reducer.js';
 import { describeTransition } from './log.js';
 import { yieldTotal } from './dice.js';
-import { afterOpening, CENTER_VERTEX, gameWithCities, giving, hand, testGame } from './fixtures.js';
+import {
+  ADJACENT_VERTEX,
+  afterOpening,
+  CENTER_EDGE,
+  CENTER_VERTEX,
+  FAR_VERTEX,
+  gameWithCities,
+  giving,
+  hand,
+  NEXT_EDGE,
+  testGame,
+} from './fixtures.js';
 import { CITIES_RULES } from '../rules/cities.js';
 import { createRng } from '../random/index.js';
 import type { GameAction } from './actions.js';
@@ -142,8 +153,8 @@ describe('Verlaufssaetze zum Spielerhandel', () => {
     const offered = step(table(), offer);
     const due = offered.state.phase.kind === 'tradePending' ? offered.state.phase.expiresAt : 0;
 
-    expect(step(offered.state, { type: 'timeout', player: 'p1', at: due }).entry).toContain(
-      'abgelaufen',
+    expect(step(offered.state, { type: 'timeout', player: 'p1', at: due }).entry).toBe(
+      'Die Zeit für p1s Angebot ist abgelaufen',
     );
   });
 
@@ -661,6 +672,55 @@ describe('Verlaufssaetze der wartenden Karten', () => {
     expect(
       sentence(spy, { type: 'playProgress', player: 'p1', play: { card: 'spy', victim: 'p2' } }),
     ).toBe('p1 spielt Spionage bei p2');
+
+    const deserter = patch(
+      cities({
+        roads: { [CENTER_EDGE]: 'p1' },
+        knights: {
+          [FAR_VERTEX]: { owner: 'p2', level: 1, active: false, activatedOnTurn: null, upgradedThisTurn: false },
+        },
+      }),
+      'p1',
+      { progressCards: ['deserter'] },
+    );
+    expect(
+      sentence(deserter, {
+        type: 'playProgress',
+        player: 'p1',
+        play: { card: 'deserter', victim: 'p2' },
+      }),
+    ).toBe('p1 spielt Deserteur gegen p2');
+  });
+
+  it('nennt beim Grosshaendler das Opfer', () => {
+    let state = cities({
+      buildings: {
+        [FAR_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+        [CENTER_VERTEX]: { owner: 'p2', kind: 'city', wall: false, metropolis: null },
+      },
+    });
+    state = patch(state, 'p1', { progressCards: ['masterMerchant'] });
+    state = patch(state, 'p2', { resources: hand({ ore: 2 }) });
+    expect(
+      sentence(state, {
+        type: 'playProgress',
+        player: 'p1',
+        play: { card: 'masterMerchant', victim: 'p2' },
+      }),
+    ).toBe('p1 spielt Großhändler bei p2');
+  });
+
+  it('nennt das Spielen der Hochzeit ohne weitere Angabe', () => {
+    const state = patch(
+      cities({
+        buildings: { [FAR_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null } },
+      }),
+      'p1',
+      { progressCards: ['wedding'] },
+    );
+    expect(sentence(state, { type: 'playProgress', player: 'p1', play: { card: 'wedding' } })).toBe(
+      'p1 spielt Hochzeit',
+    );
   });
 
   it('nennt beim Handelshafen den angebotenen Rohstoff', () => {
@@ -748,6 +808,122 @@ describe('Verlaufssaetze der wartenden Karten', () => {
     );
     expect(sentence(state, { type: 'timeout', player: 'p2', at: 0 })).toBe(
       'Die Zeit für Hochzeit ist abgelaufen',
+    );
+  });
+
+  it('nennt beim Grosshaendler die Anzahl beim Nehmen', () => {
+    const state = patch(
+      cities({
+        phase: {
+          kind: 'progressPending',
+          by: 'p1',
+          pending: ['p1'],
+          payload: { card: 'masterMerchant', victim: 'p2' },
+        },
+      }),
+      'p2',
+      { resources: hand({ ore: 2 }) },
+    );
+    expect(
+      sentence(state, {
+        type: 'answerProgress',
+        player: 'p1',
+        answer: { card: 'masterMerchant', take: hand({ ore: 2 }) },
+      }),
+    ).toBe('p1 nimmt p2 zwei Karten');
+  });
+
+  it('nennt beim Deserteur die Antwort des Opfers in Runde 1', () => {
+    const state = cities({
+      roads: { [CENTER_EDGE]: 'p1' },
+      knights: {
+        [FAR_VERTEX]: { owner: 'p2', level: 1, active: false, activatedOnTurn: null, upgradedThisTurn: false },
+      },
+      phase: {
+        kind: 'progressPending',
+        by: 'p1',
+        pending: ['p2'],
+        payload: { card: 'deserter', victim: 'p2', replacement: null },
+      },
+    });
+    expect(
+      sentence(state, {
+        type: 'answerProgress',
+        player: 'p2',
+        answer: { card: 'deserter', vertex: FAR_VERTEX },
+      }),
+    ).toBe('p2 gibt einen Ritter auf');
+  });
+
+  it('nennt beim Deserteur die Antwort des Spielenden in Runde 2', () => {
+    const state = cities({
+      roads: { [CENTER_EDGE]: 'p1' },
+      phase: {
+        kind: 'progressPending',
+        by: 'p1',
+        pending: ['p1'],
+        payload: {
+          card: 'deserter',
+          victim: 'p2',
+          replacement: { level: 1, active: false },
+        },
+      },
+    });
+    expect(
+      sentence(state, {
+        type: 'answerProgress',
+        player: 'p1',
+        answer: { card: 'deserter', vertex: ADJACENT_VERTEX },
+      }),
+    ).toBe('p1 stellt einen Überläufer auf');
+  });
+
+  it('nennt beim Fristablauf der Stapelwahl nur den Vordersten der Warteschlange', () => {
+    const state = patch(
+      cities({ phase: { kind: 'progressDiscardPending', pending: ['p2', 'p3'] } }),
+      'p2',
+      { progressCards: ['bishop'] },
+    );
+    expect(sentence(state, { type: 'timeout', player: 'p2', at: 0 })).toBe(
+      'Die Zeit ist abgelaufen - p2 gibt von selbst eine Fortschrittskarte ab',
+    );
+  });
+
+  it('nennt beim Fristablauf der Verteidigung nur den Vordersten der Warteschlange', () => {
+    const state = cities({ phase: { kind: 'defenderPending', pending: ['p2', 'p3'] } });
+    expect(sentence(state, { type: 'timeout', player: 'p2', at: 0 })).toBe(
+      'Die Zeit ist abgelaufen - p2 zieht keine Karte',
+    );
+  });
+
+  it('nennt beim Fristablauf am Aquaedukt nur den Vordersten der Warteschlange', () => {
+    const state = cities({ phase: { kind: 'aqueductPending', pending: ['p2', 'p3'] } });
+    expect(sentence(state, { type: 'timeout', player: 'p2', at: 0 })).toBe(
+      'Die Zeit ist abgelaufen - p2 nimmt nichts aus dem Aquädukt',
+    );
+  });
+
+  it('nennt beim Fristablauf des Raeubers den festen Satz', () => {
+    const state = cities({ phase: { kind: 'robberPending', resume: 'main' } });
+    expect(sentence(state, { type: 'timeout', player: 'p1', at: 0 })).toBe(
+      'Die Zeit ist abgelaufen - der Räuber zieht von selbst weiter',
+    );
+  });
+
+  it('nennt beim Fristablauf des Ausweichens den Besitzer', () => {
+    const state = cities({
+      roads: { [NEXT_EDGE]: 'p2' },
+      phase: {
+        kind: 'displacePending',
+        owner: 'p2',
+        level: 1,
+        active: false,
+        activatedOnTurn: null,
+        from: FAR_VERTEX,
+      },
+    });
+    expect(sentence(state, { type: 'timeout', player: 'p2', at: 0 })).toBe(
+      'Die Zeit ist abgelaufen - p2s Ritter weicht von selbst aus',
     );
   });
 });
