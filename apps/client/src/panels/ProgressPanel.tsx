@@ -14,12 +14,16 @@ import {
 import { TRACK_BUILT_WORD_COLORS, TRACK_COLORS, TRACK_NAMES } from '../game/labels';
 import { ProgressPlayDialog } from '../dialogs/ProgressPlayDialog';
 import { ResourcePickDialog } from '../dialogs/ResourcePickDialog';
+import { PersonPickDialog, type PersonOption } from '../dialogs/PersonPickDialog';
 
 /** Was `playProgress` traegt - lokal aus `GameAction` gezogen statt neu exportiert. */
 type ProgressPlay = Extract<GameAction, { type: 'playProgress' }>['play'];
 
 type DialogCard =
-  'alchemist' | 'crane' | 'resourceMonopoly' | 'commodityMonopoly' | 'merchantFleet';
+  'alchemist' | 'crane' | 'resourceMonopoly' | 'commodityMonopoly' | 'merchantFleet' | 'tradeHarbor';
+
+/** Die drei Karten, die eine Person als Ziel brauchen. */
+type PersonCard = 'spy' | 'masterMerchant' | 'deserter';
 
 /**
  * Die neun Karten, deren Angabe das Brett braucht - Haendler und Bischof
@@ -46,7 +50,24 @@ type CardCategory =
   | { readonly kind: 'direct' }
   | { readonly kind: 'dialog'; readonly card: DialogCard }
   | { readonly kind: 'board'; readonly card: BoardCard }
+  | { readonly kind: 'person'; readonly card: PersonCard }
   | { readonly kind: 'inert' };
+
+/** Titel und Hinweis der Personenwahl - eine Karte, ein Satzpaar. */
+const PERSON_TEXTS: Readonly<Record<PersonCard, { readonly title: string; readonly hint: string }>> = {
+  spy: {
+    title: 'Spionage: bei wem?',
+    hint: 'Du siehst die Fortschrittskarten dieser Person und nimmst eine davon.',
+  },
+  masterMerchant: {
+    title: 'Großhändler: bei wem?',
+    hint: 'Nur wer mehr Siegpunkte hat. Du siehst die Handkarten und nimmst zwei.',
+  },
+  deserter: {
+    title: 'Deserteur: gegen wen?',
+    hint: 'Die Person gibt einen Ritter auf, und du stellst einen gleichwertigen auf.',
+  },
+};
 
 /**
  * Wozu ein Klick auf diese Karte fuehrt - **erschoepfend ueber alle 25
@@ -55,15 +76,12 @@ type CardCategory =
  * lautlos durch einen `default`-Zweig - dieselbe Vorsicht, die `phaseTextOf`
  * in `view.ts` schon fuer die Phasen zeigt.
  *
- * **`inert`** sind die sieben Karten, die an diesem Tisch nie auf der Hand
- * liegen koennen: Buchdruck und Verfassung legt `draw.ts#receiveProgressCard`
- * sofort offen in `openProgressCards` ab, nie in `progressCards`; Spionage,
- * Deserteur, Hochzeit, Handelshafen und Grosshaendler fehlen ganz aus
- * `CITIES_RULES.progressDecks` (sie warten auf eine fremde Antwort und kommen
- * mit ihrer Phase erst in 10d-2). Der Zweig existiert nur fuer die
- * Erschoepfung oben - `hand.map` unten kann ihn nie erreichen, und deshalb
- * gibt es dafuer auch keinen eigenen Test (ein Test, der eine dieser sieben
- * Karten von Hand auf die Hand legt, pruefte einen Zustand, den das Spiel nie
+ * **`inert`** sind nur noch Buchdruck und Verfassung, die nie auf der Hand
+ * liegen können: `draw.ts#receiveProgressCard` legt sie sofort offen in
+ * `openProgressCards` ab, nie in `progressCards`. Der Zweig existiert nur für
+ * die Erschöpfung oben - `hand.map` unten kann ihn nie erreichen, und deshalb
+ * gibt es dafür auch keinen eigenen Test (ein Test, der eine dieser beiden
+ * Karten von Hand auf die Hand legt, prüfte einen Zustand, den das Spiel nie
  * herstellt).
  */
 function categoryOf(card: ProgressCardId): CardCategory {
@@ -72,6 +90,7 @@ function categoryOf(card: ProgressCardId): CardCategory {
     case 'irrigation':
     case 'warlord':
     case 'saboteur':
+    case 'wedding':
       return { kind: 'direct' };
 
     case 'alchemist':
@@ -79,6 +98,7 @@ function categoryOf(card: ProgressCardId): CardCategory {
     case 'resourceMonopoly':
     case 'commodityMonopoly':
     case 'merchantFleet':
+    case 'tradeHarbor':
       return { kind: 'dialog', card };
 
     case 'merchant':
@@ -92,13 +112,13 @@ function categoryOf(card: ProgressCardId): CardCategory {
     case 'intrigue':
       return { kind: 'board', card };
 
+    case 'spy':
+    case 'masterMerchant':
+    case 'deserter':
+      return { kind: 'person', card };
+
     case 'printer':
     case 'constitution':
-    case 'tradeHarbor':
-    case 'masterMerchant':
-    case 'spy':
-    case 'deserter':
-    case 'wedding':
       return { kind: 'inert' };
   }
 }
@@ -125,6 +145,8 @@ export interface ProgressPanelProps {
   readonly onAction?: (action: GameAction) => void;
   /** Die neun Karten mit Angabe brauchen das Brett - der Klick beginnt dort die Wahl. */
   readonly onBoardPick?: (card: BoardCard) => void;
+  /** Die erlaubten Züge - aus ihnen liest das Panel, welche Personen und Rohstoffe es anbietet. */
+  readonly actions?: readonly GameAction[];
 }
 
 /**
@@ -144,15 +166,48 @@ export function ProgressPanel({
   view,
   onAction,
   onBoardPick,
+  actions = [],
 }: ProgressPanelProps): JSX.Element | null {
   const [dialog, setDialog] = useState<DialogCard | null>(null);
   /** Welche Handkarte gerade erklaert wird - eine Zeile fuer die ganze Reihe (wie `DevelopmentCards`). */
   const [described, setDescribed] = useState<ProgressCardId | null>(null);
+  const [personFor, setPersonFor] = useState<PersonCard | null>(null);
 
   if (Object.keys(view.rules.progressDecks).length === 0) return null;
 
   const play = (payload: ProgressPlay): void => {
     onAction?.({ type: 'playProgress', player: view.you, play: payload });
+  };
+
+  /** Die erlaubten Ausspielzüge einer Karte - aus der Aktionsliste, nie aus einer eigenen Rechnung. */
+  const playsOf = (card: ProgressCardId) =>
+    actions.flatMap((action) =>
+      action.type === 'playProgress' && action.play.card === card ? [action.play] : [],
+    );
+
+  const peopleFor = (card: PersonCard): PersonOption[] =>
+    playsOf(card).flatMap((payload) => {
+      if (!('victim' in payload)) return [];
+      const person = view.players.find((player) => player.id === payload.victim);
+      return person === undefined
+        ? []
+        : [{ id: person.id, name: person.name, color: person.color, victoryPoints: person.victoryPoints }];
+    });
+
+  const tradeHarborPool = RESOURCE_IDS.filter((resource) =>
+    playsOf('tradeHarbor').some((payload) => 'resource' in payload && payload.resource === resource),
+  );
+
+  /** Eine Karte mit Person spielen - je Karte ein Zweig, damit `tsc` die Union trifft. */
+  const playOn = (card: PersonCard, victim: string): ProgressPlay => {
+    switch (card) {
+      case 'spy':
+        return { card, victim };
+      case 'masterMerchant':
+        return { card, victim };
+      case 'deserter':
+        return { card, victim };
+    }
   };
 
   const onCardClick = (card: ProgressCardId): void => {
@@ -169,14 +224,27 @@ export function ProgressPanel({
       case 'board':
         onBoardPick?.(category.card);
         return;
+      case 'person':
+        setPersonFor(category.card);
+        return;
       case 'inert':
         // Der Knopf ist gesperrt (siehe `categoryOf`) - ein Klick kommt hier
-        // nie an, denn keine dieser sieben Karten liegt je auf der Hand.
+        // nie an, denn keine dieser beiden Karten liegt je auf der Hand.
         return;
     }
   };
 
-  const isClickable = (card: ProgressCardId): boolean => categoryOf(card).kind !== 'inert';
+  const isClickable = (card: ProgressCardId): boolean => {
+    const category = categoryOf(card);
+    if (category.kind === 'inert') return false;
+    /*
+     * Personenwahl und Handelshafen bieten an, was die Aktionsliste nennt. Ohne
+     * einen einzigen erlaubten Zug öffnete der Klick eine leere Wahl - der Knopf
+     * ist dann gesperrt, und der Satz zur Karte steht trotzdem darüber.
+     */
+    if (category.kind === 'person' || card === 'tradeHarbor') return playsOf(card).length > 0;
+    return true;
+  };
 
   /*
    * Die eigene Hand steht am eigenen Sitz in `view.players`, nicht direkt an
@@ -330,7 +398,32 @@ export function ProgressPanel({
             setDialog(null);
           }}
         />
+      ) : dialog === 'tradeHarbor' ? (
+        <ResourcePickDialog
+          title="Handelshafen: Rohstoff wählen"
+          hint="Jede Person mit einer Handelsware bekommt davon einen und gibt dir eine Handelsware ihrer Wahl."
+          pool={tradeHarborPool}
+          count={1}
+          onClose={() => setDialog(null)}
+          onConfirm={(picks) => {
+            play({ card: 'tradeHarbor', resource: picks[0]! });
+            setDialog(null);
+          }}
+        />
       ) : null}
+
+      {personFor === null ? null : (
+        <PersonPickDialog
+          title={PERSON_TEXTS[personFor].title}
+          hint={PERSON_TEXTS[personFor].hint}
+          people={peopleFor(personFor)}
+          onClose={() => setPersonFor(null)}
+          onChoose={(victim) => {
+            play(playOn(personFor, victim));
+            setPersonFor(null);
+          }}
+        />
+      )}
     </section>
   );
 }

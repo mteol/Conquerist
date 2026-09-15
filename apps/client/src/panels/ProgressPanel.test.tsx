@@ -4,10 +4,11 @@ import {
   CITIES_RULES,
   CLASSIC_RULES,
   TRACK_IDS,
+  type GameAction,
   type PlayerView,
   type ProgressCardId,
 } from '@conquerist/shared';
-import { fireEvent, render, screen, userEvent } from '../test/dom';
+import { fireEvent, render, screen, userEvent, within } from '../test/dom';
 import { ProgressPanel } from './ProgressPanel';
 import { TRACK_BUILT_WORD_COLORS } from '../game/labels';
 // Roher Dateiinhalt statt `node:fs`, wie in `AccountCorner.test.tsx` und
@@ -236,6 +237,76 @@ describe('ProgressPanel', () => {
       player: 'p1',
       play: { card: 'commodityMonopoly', commodity: 'cloth' },
     });
+  });
+});
+
+/** Wie `baseView`, aber mit dem, was die Personenwahl liest: Farbe und Punkte. */
+function personView(hand: readonly ProgressCardId[]): PlayerView {
+  return baseView({
+    players: [
+      { id: 'p1', name: 'Spieler 1', color: 'red', victoryPoints: 3, progressCards: hand } as never,
+      { id: 'p2', name: 'Spieler 2', color: 'blue', victoryPoints: 5, progressCards: null } as never,
+      { id: 'p3', name: 'Spieler 3', color: 'green', victoryPoints: 2, progressCards: null } as never,
+    ],
+  });
+}
+
+describe('Die fünf wartenden Karten am Panel', () => {
+  it('spielt die Hochzeit mit einem Klick', async () => {
+    const onAction = vi.fn();
+    render(<ProgressPanel view={withHandView(['wedding'])} onAction={onAction} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Hochzeit/ }));
+
+    expect(onAction).toHaveBeenCalledWith({
+      type: 'playProgress',
+      player: 'p1',
+      play: { card: 'wedding' },
+    });
+  });
+
+  it('bietet beim Handelshafen nur die Rohstoffe aus der Aktionsliste an', async () => {
+    const onAction = vi.fn();
+    const actions: GameAction[] = [
+      { type: 'playProgress', player: 'p1', play: { card: 'tradeHarbor', resource: 'wool' } },
+    ];
+    render(
+      <ProgressPanel view={withHandView(['tradeHarbor'])} actions={actions} onAction={onAction} />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /Handelshafen/ }));
+    expect(screen.queryByTestId('pick-ore')).toBeNull();
+    await userEvent.click(screen.getByTestId('pick-wool'));
+    await userEvent.click(screen.getByRole('button', { name: 'Karte spielen' }));
+
+    expect(onAction).toHaveBeenCalledWith(actions[0]);
+  });
+
+  it('fragt bei der Spionage nach der Person, nur unter den erlaubten Zielen', async () => {
+    const onAction = vi.fn();
+    const actions: GameAction[] = [
+      { type: 'playProgress', player: 'p1', play: { card: 'spy', victim: 'p2' } },
+    ];
+    render(<ProgressPanel view={personView(['spy'])} actions={actions} onAction={onAction} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Spionage/ }));
+    const dialog = screen.getByRole('dialog', { name: /Spionage/ });
+    expect(within(dialog).queryByRole('button', { name: /Spieler 3/ })).toBeNull();
+    await userEvent.click(within(dialog).getByRole('button', { name: /Spieler 2/ }));
+
+    expect(onAction).toHaveBeenCalledWith(actions[0]);
+  });
+
+  /*
+   * Ein Knopf, der eine leere Wahl öffnet, verspricht eine Wirkung, die es
+   * nicht gibt (CLAUDE.md, „Ein Bedienelement lügt in beide Richtungen").
+   */
+  it('sperrt eine Personenkarte, zu der es kein erlaubtes Ziel gibt', () => {
+    render(<ProgressPanel view={personView(['masterMerchant'])} actions={[]} />);
+
+    expect(
+      (screen.getByRole('button', { name: /Großhändler/ }) as HTMLButtonElement).disabled,
+    ).toBe(true);
   });
 });
 

@@ -1250,6 +1250,7 @@ export function GameScreen({
            */}
           <ProgressPanel
             view={view}
+            actions={actions}
             onAction={onAct}
             onBoardPick={(card) =>
               card === 'merchant' || card === 'bishop'
