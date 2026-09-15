@@ -319,6 +319,17 @@ export const RuleSetSchema = z.object({
    */
   tradeOfferMs: z.number().int().min(1_000).default(60_000),
 
+  /**
+   * Wie lange eine Wartephase auf eine Antwort wartet, in Millisekunden -
+   * Abwerfen, Raeuber, Ausweichen, Stapelwahl, Aquaedukt, Abgeben und die
+   * wartenden Fortschrittskarten (Spec 5.5).
+   *
+   * Eine Dauer und kein Zeitpunkt im Zustand: der Wecker rechnet `now + ms`
+   * selbst, und keine gespeicherte Phase bekommt ein Pflichtfeld. Mit Vorgabe
+   * aus demselben Grund wie `tradeOfferMs`.
+   */
+  pendingAnswerMs: z.number().int().min(1_000).default(60_000),
+
   /*
    * Die beiden Wuerfelfelder tragen einen Vorgabewert, und der ist keine
    * Bequemlichkeit: seit Etappe 6 liegt der Startzustand einer Partie samt
@@ -404,6 +415,7 @@ export const CLASSIC_RULES: RuleSet = {
   handLimitBeforeDiscard: 7,
   handLimitPerWall: 0,
   tradeOfferMs: 60_000,
+  pendingAnswerMs: 60_000,
 
   barbarianTrack: 0,
   castleTurns: false,

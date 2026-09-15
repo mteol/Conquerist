@@ -1,4 +1,5 @@
-import { canAfford, countCards } from '../../cards.js';
+import { CARD_IDS } from '../../../scenario/index.js';
+import { canAfford, countCards, takeMostHeld } from '../../cards.js';
 import { RuleViolationCode, violation, type RuleViolation } from '../../errors.js';
 import type { PlayerId } from '../../player.js';
 import { victoryPointsOf } from '../../scoring.js';
@@ -100,4 +101,10 @@ export function answerWedding(
 ): GameState {
   const given = transferCards(state, giver, phase.by, answer.gift);
   return withPending(given, phase, phase.pending.filter((id) => id !== giver));
+}
+
+/** Nach Fristablauf: die zwei haeufigsten Karten, bei Gleichstand in `CARD_IDS`-Ordnung. */
+export function autoAnswerWedding(state: GameState, giver: PlayerId): WeddingAnswer {
+  const held = findPlayer(state, giver)!.resources;
+  return { card: 'wedding', gift: takeMostHeld(held, CARD_IDS, twoCardsOrAll(countCards(held))) };
 }

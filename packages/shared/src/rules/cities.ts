@@ -145,6 +145,7 @@ export const CITIES_RULES: RuleSet = {
   /* Jede Stadtmauer hebt das Limit um zwei: 7, 9, 11, 13. */
   handLimitPerWall: 2,
   tradeOfferMs: 60_000,
+  pendingAnswerMs: 60_000,
 
   barbarianTrack: 7,
   castleTurns: false,

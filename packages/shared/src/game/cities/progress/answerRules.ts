@@ -3,11 +3,12 @@ import type { PlayerId } from '../../player.js';
 import { ok, rejected, type GameState, type ReduceResult } from '../../state.js';
 import type { ProgressAnswer, WaitingCard } from './answer.js';
 import { PROGRESS_NAMES } from './cards.js';
-import { answerDeserter, canAnswerDeserter } from './deserter.js';
+import { answerDeserter, autoAnswerDeserter, canAnswerDeserter } from './deserter.js';
 import { answerMasterMerchant, canAnswerMasterMerchant } from './masterMerchant.js';
+import type { ProgressPendingPhase } from './pending.js';
 import { answerSpy, canAnswerSpy } from './spy.js';
-import { answerTradeHarbor, canAnswerTradeHarbor } from './tradeHarbor.js';
-import { answerWedding, canAnswerWedding } from './wedding.js';
+import { answerTradeHarbor, autoAnswerTradeHarbor, canAnswerTradeHarbor } from './tradeHarbor.js';
+import { answerWedding, autoAnswerWedding, canAnswerWedding } from './wedding.js';
 
 /**
  * Die Aktion `answerProgress` und ihr Verteiler - das Gegenstueck zu
@@ -98,4 +99,58 @@ export function applyAnswerProgress(
       return ok(answerDeserter(state, phase, payload, player, answer));
     }
   }
+}
+
+/**
+ * Die automatische Antwort fuer eine Person - `null` heisst: das Geschenk
+ * verfaellt, die Karte endet ohne Wirkung.
+ */
+function autoAnswerFor(
+  state: GameState,
+  phase: ProgressPendingPhase,
+  player: PlayerId,
+): ProgressAnswer | null {
+  const payload = phase.payload;
+  switch (payload.card) {
+    case 'wedding':
+      return autoAnswerWedding(state, player);
+    case 'tradeHarbor':
+      return autoAnswerTradeHarbor(state, player);
+    case 'spy':
+    case 'masterMerchant':
+      return null;
+    case 'deserter':
+      return payload.replacement === null ? autoAnswerDeserter(state, player) : null;
+  }
+}
+
+/**
+ * Der Fristablauf einer wartenden Karte.
+ *
+ * Beantwortet wird fuer **die, die beim Ablauf warteten** - nicht fuer die, die
+ * dadurch erst an die Reihe kommen. Beim Deserteur oeffnet die Antwort des
+ * Opfers Runde 2 beim Spielenden; der ist anwesend und bekommt seine eigene
+ * Frist. Jede Antwort geht durch `applyAnswerProgress`, denselben Weg wie die
+ * eines Menschen.
+ */
+export function autoAnswerProgress(state: GameState): ReduceResult {
+  const phase = state.phase;
+  if (phase.kind !== 'progressPending') {
+    return rejected(
+      violation(RuleViolationCode.NOT_ANSWERING_PROGRESS, 'Gerade wartet keine Fortschrittskarte'),
+    );
+  }
+
+  let current = state;
+  for (const player of phase.pending) {
+    if (current.phase.kind !== 'progressPending' || !current.phase.pending.includes(player)) break;
+
+    const answer = autoAnswerFor(current, current.phase, player);
+    if (answer === null) return ok({ ...current, phase: { kind: 'main' } });
+
+    const result = applyAnswerProgress(current, player, answer);
+    if (!result.ok) return result;
+    current = result.state;
+  }
+  return ok(current);
 }

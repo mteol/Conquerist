@@ -1,4 +1,4 @@
-import { deadlineOf, type GameAction } from '@conquerist/shared';
+import { deadlineOf, msUntil, type GameAction } from '@conquerist/shared';
 import { broadcastGame, type Sinks } from './broadcast.js';
 import type { RoomRegistry } from './registry.js';
 import { applySystemAction } from './room.js';
@@ -93,7 +93,7 @@ export function createRoomClock(deps: RoomClockDeps): RoomClock {
         () => {
           fire(code);
         },
-        Math.max(0, due.at - now()),
+        msUntil(due, now()),
       ),
     );
   }

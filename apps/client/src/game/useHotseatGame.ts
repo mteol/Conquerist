@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react';
-import { deadlineOf, stampAction, type GameAction, type GameState } from '@conquerist/shared';
+import { deadlineOf, msUntil, stampAction, type GameAction, type GameState } from '@conquerist/shared';
 import type { Seat } from '../seats';
 import { hotseatReducer, startHotseat, type HotseatEvent, type HotseatState } from './hotseat';
 
@@ -48,7 +48,7 @@ export function useHotseatGame(game: GameState, seats: readonly Seat[]): Hotseat
         send({ type: 'apply', action: { type: 'timeout', player: due.owner, at: Date.now() } });
       },
       // Eine bereits abgelaufene Frist ist sofort faellig, nicht negativ.
-      Math.max(0, due.at - Date.now()),
+      msUntil(due, Date.now()),
     );
 
     return () => {

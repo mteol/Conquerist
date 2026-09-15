@@ -18,9 +18,9 @@ import {
   applyRejectCounter,
   applyRejoinTrade,
   applyRespondTrade,
-  applyTimeout,
   applyWithdrawTrade,
 } from './playerTrade.js';
+import { applyTimeout } from './timeout.js';
 import { applyTradeWithBank } from './trade.js';
 import {
   applyBuyDevelopmentCard,
@@ -61,6 +61,10 @@ import { applyAnswerProgress } from './cities/progress/answerRules.js';
  * wird.
  */
 
+/*
+ * `timeout` steht bei jeder Wartephase (Spec 5.5) - der Wecker wirft es ein, und
+ * `actorFor` verlangt als `player` den Besitzer der Frist, den `deadlineOf` nennt.
+ */
 /** Welche Aktionsarten in welcher Phase erlaubt sind. */
 const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
   opening: ['rollDice'],
@@ -80,21 +84,21 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
     'playMonopoly',
     'playProgress',
   ],
-  discardPending: ['discard'],
-  robberPending: ['moveRobber'],
+  discardPending: ['discard', 'timeout'],
+  robberPending: ['moveRobber', 'timeout'],
   /*
    * Die drei Wartestationen eines Wurfs. Jede laesst genau eine Aktion zu -
    * der Tisch steht still, bis sie kommt, und das ist Absicht: was danach
    * geschieht, haengt an dieser Wahl.
    */
-  progressDiscardPending: ['discardProgressCard'],
-  defenderPending: ['pickProgressDeck'],
-  aqueductPending: ['pickAqueduct'],
+  progressDiscardPending: ['discardProgressCard', 'timeout'],
+  defenderPending: ['pickProgressDeck', 'timeout'],
+  aqueductPending: ['pickAqueduct', 'timeout'],
   /*
    * Eine Fortschrittskarte wartet auf Antworten. Nur die Antwort geht - der
    * Spielende baut nicht weiter, waehrend andere noch entscheiden.
    */
-  progressPending: ['answerProgress'],
+  progressPending: ['answerProgress', 'timeout'],
   main: [
     'buildRoad',
     'buildSettlement',
@@ -121,7 +125,7 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
    * Der Tisch steht still, weil der Angreifer sonst weiterbaute, waehrend der
    * Getroffene noch ueberlegt.
    */
-  displacePending: ['placeDisplacedKnight'],
+  displacePending: ['placeDisplacedKnight', 'timeout'],
   tradePending: [
     'respondTrade',
     'counterTrade',

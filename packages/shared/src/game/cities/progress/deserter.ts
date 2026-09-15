@@ -187,3 +187,15 @@ export function answerDeserter(
     phase: { kind: 'main' },
   };
 }
+
+/**
+ * Nach Fristablauf in Runde 1: der schwaechste Ritter faellt, bei Gleichstand
+ * der auf der kleinsten Kreuzungs-Id. `null`, wenn keiner mehr steht.
+ */
+export function autoAnswerDeserter(state: GameState, victim: PlayerId): DeserterAnswer | null {
+  const own = Object.entries(state.knights)
+    .filter(([, knight]) => knight.owner === victim)
+    .sort(([va, a], [vb, b]) => a.level - b.level || (va < vb ? -1 : va > vb ? 1 : 0));
+  const weakest = own[0];
+  return weakest === undefined ? null : { card: 'deserter', vertex: weakest[0] };
+}

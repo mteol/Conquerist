@@ -31,6 +31,7 @@ export * from './playerTrade.js';
 export * from './playerView.js';
 export * from './reducer.js';
 export * from './replay.js';
+export * from './timeout.js';
 export * from './cards.js';
 export * from './roads.js';
 export * from './robber.js';

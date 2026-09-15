@@ -1,5 +1,5 @@
 import { COMMODITY_IDS, type CardId } from '../../../scenario/index.js';
-import { EMPTY_CARDS } from '../../cards.js';
+import { EMPTY_CARDS, takeMostHeld } from '../../cards.js';
 import { RuleViolationCode, violation, type RuleViolation } from '../../errors.js';
 import { RESOURCE_LABELS } from '../../labels.js';
 import type { PlayerId, PlayerState } from '../../player.js';
@@ -120,4 +120,11 @@ export function answerTradeHarbor(
   const commodityIn = transferCards(state, partner, phase.by, one(answer.commodity));
   const resourceOut = transferCards(commodityIn, phase.by, partner, one(payload.resource));
   return withPending(resourceOut, phase, phase.pending.filter((id) => id !== partner));
+}
+
+/** Nach Fristablauf: die haeufigste Handelsware, bei Gleichstand in `COMMODITY_IDS`-Ordnung. */
+export function autoAnswerTradeHarbor(state: GameState, partner: PlayerId): TradeHarborAnswer {
+  const taken = takeMostHeld(findPlayer(state, partner)!.resources, COMMODITY_IDS, 1);
+  const commodity = COMMODITY_IDS.find((id) => taken[id] > 0) ?? COMMODITY_IDS[0];
+  return { card: 'tradeHarbor', commodity };
 }

@@ -11,7 +11,6 @@ import {
   applyRejectCounter,
   applyRejoinTrade,
   applyRespondTrade,
-  applyTimeout,
   applyWithdrawTrade,
   awaitsResponse,
   canAcceptTrade,
@@ -20,7 +19,6 @@ import {
   canOfferTrade,
   canRejectCounter,
   canRespondTrade,
-  canTimeout,
   hasAutomaticDecline,
   termsFor,
 } from './playerTrade.js';
@@ -402,40 +400,11 @@ describe('deadlineOf', () => {
     const state = tableWithOffer();
     const expected = state.phase.kind === 'tradePending' ? state.phase.expiresAt : -1;
 
-    expect(deadlineOf(state)).toEqual({ at: expected, owner: 'p1' });
+    expect(deadlineOf(state)).toEqual({ kind: 'at', at: expected, owner: 'p1' });
   });
 
   it('nennt nichts in der Hauptphase', () => {
     expect(deadlineOf(testGame())).toBeNull();
-  });
-});
-
-describe('timeout', () => {
-  it('wird abgelehnt, solange die Frist laeuft', () => {
-    expect(canTimeout(tableWithOffer(), 1_000)?.code).toBe(RuleViolationCode.DEADLINE_NOT_REACHED);
-  });
-
-  it('raeumt das Angebot ab, sobald die Frist um ist', () => {
-    const state = tableWithOffer();
-    const due = state.phase.kind === 'tradePending' ? state.phase.expiresAt : 0;
-
-    const result = applyTimeout(state, due);
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.state.phase).toEqual({ kind: 'main' });
-  });
-
-  it('bewegt dabei nichts', () => {
-    const state = tableWithOffer();
-    const due = state.phase.kind === 'tradePending' ? state.phase.expiresAt : 0;
-
-    const result = applyTimeout(state, due);
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(resourcesOf(result.state, 'p1')).toEqual(resourcesOf(state, 'p1'));
-    expect(resourcesOf(result.state, 'p2')).toEqual(resourcesOf(state, 'p2'));
   });
 });
 

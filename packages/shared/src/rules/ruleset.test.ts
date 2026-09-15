@@ -239,6 +239,13 @@ describe('RuleSetSchema', () => {
     expect(parsed.handLimitPerWall).toBe(0);
   });
 
+  it('ergaenzt pendingAnswerMs in einem gespeicherten Regelwerk ohne dieses Feld', () => {
+    const stored = { ...CLASSIC_RULES } as Record<string, unknown>;
+    delete stored.pendingAnswerMs;
+
+    expect(RuleSetSchema.parse(stored).pendingAnswerMs).toBe(60_000);
+  });
+
   it('lehnt eine leere Bank ab', () => {
     const broken = rules();
     (broken['resourceBank'] as Record<string, number>)['ore'] = -1;
