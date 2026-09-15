@@ -12,8 +12,10 @@ import { TrackIdSchema } from '../tracks.js';
  * eigene Union unter **einer** Aktion (`playProgress`) - dieselbe Grenze wie
  * bei den Entwicklungskarten in `developmentRules.ts`.
  *
- * Die fuenf Karten, die auf eine fremde Antwort warten, kommen in 10d-2 dazu -
- * ihre Antwort steht in `answer.ts`.
+ * Die fuenf Karten, die auf eine fremde Antwort warten, stehen je in einer
+ * eigenen Datei (`wedding.ts`, `tradeHarbor.ts`, `spy.ts`,
+ * `masterMerchant.ts`, `deserter.ts`) - ihre Gemeinsamkeit ist die Phase,
+ * nicht der Stapel; ihre Antwort steht in `answer.ts`.
  *
  * **Buchdruck und Verfassung fehlen ebenfalls, und zwar dauerhaft.** Beide
  * liegen laut Anleitung (Abschnitt 11) sofort beim Ziehen offen -

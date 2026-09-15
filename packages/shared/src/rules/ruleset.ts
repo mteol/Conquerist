@@ -271,9 +271,10 @@ export const RuleSetSchema = z.object({
    *
    * Leer heisst: keine Fortschrittsstapel. Dieselbe Bauform wie
    * `developmentDeck` - und dieselbe Zusage: was fehlt, gibt es an diesem Tisch
-   * nicht. Genau daran haengt der Zuschnitt von 10d: die fuenf Karten, die auf
-   * eine fremde Antwort warten, stehen hier in 10d-1 noch nicht drin und kommen
-   * in 10d-2 dazu, ohne dass eine Regel sich aendert.
+   * nicht. Die fuenf Karten, die auf eine fremde Antwort warten, stehen je in
+   * einer eigenen Datei (`wedding.ts`, `tradeHarbor.ts`, `spy.ts`,
+   * `masterMerchant.ts`, `deserter.ts`) - ihre Gemeinsamkeit ist die Phase,
+   * nicht der Stapel.
    */
   progressDecks: z.partialRecord(ProgressCardIdSchema, z.number().int().min(0)).default({}),
   /** Ab wie vielen Handkarten bei einer Sieben abgeworfen wird. */

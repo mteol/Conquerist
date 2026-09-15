@@ -15,8 +15,10 @@ import { freeOfCharge, withoutCost } from './science.js';
 /**
  * Fuenf ausspielbare Politikkarten an diesem Tisch - Bischof, Diplomat,
  * Heerfuehrer, Intrige, Sabotage. `spy` (Spionage), `deserter` (Deserteur) und
- * `wedding` (Hochzeit) fehlen: sie warten auf eine fremde Antwort und kommen
- * mit ihrer Phase erst in 10d-2.
+ * `wedding` (Hochzeit) fehlen hier: die fuenf Karten, die auf eine fremde
+ * Antwort warten, stehen je in einer eigenen Datei (`wedding.ts`,
+ * `tradeHarbor.ts`, `spy.ts`, `masterMerchant.ts`, `deserter.ts`) - ihre
+ * Gemeinsamkeit ist die Phase, nicht der Stapel.
  *
  * **Verfassung steht nicht hier.** Sie wird nie ausgespielt: laut Anleitung
  * (Abschnitt 11) liegt sie sofort beim Ziehen offen -

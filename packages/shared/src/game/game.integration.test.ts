@@ -13,6 +13,7 @@ import { robberIsFree } from './cities/barbarians.js';
 import { METROPOLIS_LEVEL, TRACK_IDS, levelOf, type TrackId } from './cities/tracks.js';
 import type { ProgressCardId } from './cities/progress/cards.js';
 import type { ProgressPlay } from './cities/progress/play.js';
+import { progressRoadBuildingTargets } from './cities/progress/targets.js';
 import { giving, hand, testGame, TEST_SCENARIO } from './fixtures.js';
 import { createGame } from './setup.js';
 import { GameStateSchema, type GameState } from './state.js';
@@ -667,20 +668,29 @@ describe('Eine Partie bis zur ersten Metropole', () => {
  * die Aufgabe verlangt woertlich `players: ['p1', 'p2']`. `TEST_SCENARIO`
  * aus `fixtures.ts` ist das einzige Brett im Paket, das das hergibt.
  *
- * **Die beiden Gruendungssetzungen von p1 sind gezielt gewaehlt, nicht dem
- * Zufall der Prioritaetsliste ueberlassen.** Mit diesem Seed und diesem
- * Brett zieht p1 als erste Fortschrittskarte den Schmied - und der braucht
- * einen eigenen Ritter, sonst hat er keine Wirkung (`science.ts`,
- * `applySmith`). Ein Ritter kostet Wolle und Erz; auf diesem Brett gibt es
- * je ein Feld von beidem, und die beiden liegen so, dass keine Kreuzung
- * beide beruehrt (siehe die Nachbarschaft im generierten Radius-1-Ring).
- * Die erste Setzung liegt an der Schafsweide (Wolle), die zweite - die als
- * Stadt sofort Ertrag abwirft, `setupBuildingKind` - am Gebirge (Erz).
- * Zusammen mit `buildKnight` weit vorn in der Prioritaet steht der Ritter
- * damit lange vor der ersten Fortschrittskarte. Welche Karte tatsaechlich
- * faellt, haengt daran nicht: die Wuerfelfolge kommt allein aus dem Seed und
- * der Zahl der vergangenen Zuege, nicht aus Bauentscheidungen - dieselbe
- * Karte faellt so oder so, nur ohne Ritter waere sie unspielbar.
+ * **Die beiden Gruendungssetzungen von p1 und `buildKnight` weit vorn in der
+ * Prioritaet stammen aus 10d-1.** Mit diesem Seed und diesem Brett zog p1
+ * damals als erste Fortschrittskarte den Schmied - und der braucht einen
+ * eigenen Ritter, sonst hat er keine Wirkung (`science.ts`, `applySmith`).
+ * Ein Ritter kostet Wolle und Erz; auf diesem Brett gibt es je ein Feld von
+ * beidem, und die beiden liegen so, dass keine Kreuzung beide beruehrt
+ * (siehe die Nachbarschaft im generierten Radius-1-Ring). Die erste Setzung
+ * liegt an der Schafsweide (Wolle), die zweite - die als Stadt sofort Ertrag
+ * abwirft, `setupBuildingKind` - am Gebirge (Erz).
+ *
+ * **Seit 10d-2 liegen 54 statt 43 Fortschrittskarten in den Stapeln**
+ * (`cities.ts#progressDecks`). Das Mischen zieht dadurch mehr Zufallszahlen
+ * aus demselben `Rng`, und der verschobene Zustand fuehrt sich durch die
+ * ganze Partie fort - mit demselben Seed und derselben Strategie zieht p1
+ * jetzt Strassenbau statt Schmied als erste Karte. Setup-Setzungen und
+ * `buildKnight` bleiben trotzdem unveraendert: sie sind Teil der Strategie,
+ * und jede Aenderung an ihr verschiebt die Zugzahl und damit erneut, welche
+ * Karte faellt. Welche Karte tatsaechlich faellt, haengt ohnehin nicht an
+ * Bauentscheidungen, sondern allein am Seed und der Zahl der vergangenen
+ * Zuege - dieselbe Karte faellt so oder so. Zieht p1 eine andere Karte als
+ * Strassenbau, hat sich an Seed, Brett, Strategie oder Stapelzusammensetzung
+ * etwas geaendert, und der Test soll das laut melden statt still eine
+ * falsche Wahl zu treffen.
  */
 describe('Eine Partie bis zur ersten gespielten Fortschrittskarte', () => {
   const FORTSCHRITT_PLAYERS = ['p1', 'p2'] as const;
@@ -701,9 +711,12 @@ describe('Eine Partie bis zur ersten gespielten Fortschrittskarte', () => {
     'pickProgressDeck',
     'discardProgressCard',
     'pickAqueduct',
-    // Weit vorn, aus demselben Grund wie `improveCity` beim Metropolen-Lauf
-    // oben: ein Ritter muss stehen, bevor der Schmied faellt, sonst kommt er
-    // nie an die Reihe und die Karte unten waere unspielbar.
+    // Stammt aus 10d-1, als p1 als erste Karte den Schmied zog und einen
+    // eigenen Ritter brauchte, sonst waere die Karte unspielbar gewesen. Seit
+    // 10d-2 zieht p1 mit diesem Seed Strassenbau zuerst, die keinen Ritter
+    // braucht - die Prioritaet bleibt trotzdem stehen, weil sie die Zugzahl
+    // mitbestimmt und eine Aenderung erneut verschieben wuerde, welche Karte
+    // faellt.
     'buildKnight',
     'buildCity',
     'buildSettlement',
@@ -833,21 +846,26 @@ describe('Eine Partie bis zur ersten gespielten Fortschrittskarte', () => {
   /**
    * Baut die Kartenwahl fuer **diesen** Lauf - nicht allgemein fuer alle
    * fuenfundzwanzig Karten. Mit diesem Seed, diesem Brett und der Strategie
-   * oben zieht p1 immer den Schmied zuerst (siehe Blockkommentar); jede
-   * andere Karte waere ein Zeichen, dass sich an Seed, Brett oder Strategie
-   * etwas geaendert hat, und soll den Test laut scheitern lassen statt still
-   * eine falsche Wahl zu treffen.
+   * oben zieht p1 seit 10d-2 immer Strassenbau zuerst (siehe Blockkommentar);
+   * die Kanten kommen aus derselben Zielfunktion, die auch der Client fragt
+   * (`progressRoadBuildingTargets`), nicht aus einer eigenen Brettrechnung
+   * hier. Jede andere Karte waere ein Zeichen, dass sich an Seed, Brett,
+   * Strategie oder Stapelzusammensetzung etwas geaendert hat, und soll den
+   * Test laut scheitern lassen statt still eine falsche Wahl zu treffen.
    */
   function playFor(chosenCard: ProgressCardId): ProgressPlay {
-    if (chosenCard !== 'smith') {
+    if (chosenCard !== 'roadBuilding') {
       throw new Error(`playFor: keine Testwahl fuer die Karte '${chosenCard}' hinterlegt`);
     }
 
-    const knightVertex = Object.entries(readyToPlay.knights).find(
-      ([, knight]) => knight.owner === 'p1',
-    )?.[0];
+    const targets = progressRoadBuildingTargets(readyToPlay, 'p1');
+    const first = Object.keys(targets)[0];
+    if (first === undefined) {
+      throw new Error('playFor: keine baubare Kante fuer Strassenbau gefunden');
+    }
+    const second = targets[first]?.[0];
 
-    return { card: 'smith', vertices: knightVertex !== undefined ? [knightVertex] : [] };
+    return { card: 'roadBuilding', edges: second !== undefined ? [first, second] : [first] };
   }
 
   it('spielt eine Staedte-Partie bis zur ersten gespielten Fortschrittskarte', () => {
@@ -863,7 +881,8 @@ describe('Eine Partie bis zur ersten gespielten Fortschrittskarte', () => {
     });
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(playerNamed(result.state, 'p1').progressCards).not.toContain(card);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(playerNamed(result.state, 'p1').progressCards).not.toContain(card);
   });
 });
 

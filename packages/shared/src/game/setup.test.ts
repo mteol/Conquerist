@@ -93,8 +93,8 @@ describe('createGame', () => {
   it('mischt drei Fortschrittsstapel und laesst sie beim Basisspiel leer', () => {
     const cities = createGame(TEST_SCENARIO, CITIES_RULES, TEST_PLAYERS, 'progress-abc');
     expect(cities.progressDecks.science).toHaveLength(18);
-    expect(cities.progressDecks.trade).toHaveLength(14);
-    expect(cities.progressDecks.politics).toHaveLength(11);
+    expect(cities.progressDecks.trade).toHaveLength(18);
+    expect(cities.progressDecks.politics).toHaveLength(18);
 
     const classic = createGame(TEST_SCENARIO, CLASSIC_RULES, TEST_PLAYERS, 'progress-abc');
     expect(classic.progressDecks).toEqual({});

@@ -108,11 +108,10 @@ export const CITIES_RULES: RuleSet = {
   developmentDeck: {},
 
   /*
-   * Die Fortschrittsstapel. Es fehlen fuenf Arten - masterMerchant, spy,
-   * deserter, tradeHarbor, wedding -, weil sie auf die Antwort einer anderen
-   * Person warten und ihre Phase erst in 10d-2 entsteht. Sie fehlen hier und
-   * nicht als Sperre im Regelcode: "was fehlt, gibt es an diesem Tisch nicht"
-   * ist die Zusage, die `developmentDeck` schon gibt.
+   * Die Fortschrittsstapel - achtzehn je Bereich, 54 zusammen, wie in der
+   * Schachtel (`docs/regeln-staedte-und-ritter.md` 11.1-11.3). Die fuenf Karten,
+   * die auf eine fremde Antwort warten, kamen in 10d-2 dazu; bis dahin fehlten
+   * sie hier und nicht als Sperre im Regelcode.
    */
   progressDecks: {
     alchemist: 2,
@@ -128,10 +127,15 @@ export const CITIES_RULES: RuleSet = {
     merchant: 6,
     resourceMonopoly: 4,
     commodityMonopoly: 2,
+    tradeHarbor: 2,
     merchantFleet: 2,
+    masterMerchant: 2,
+    spy: 3,
     bishop: 2,
+    deserter: 2,
     diplomat: 2,
     warlord: 2,
+    wedding: 2,
     intrigue: 2,
     saboteur: 2,
     constitution: 1,

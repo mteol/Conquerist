@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { RuleViolationCode } from '../../errors.js';
-import { hand, testGame } from '../../fixtures.js';
-import { GameActionSchema } from '../../actions.js';
+import { CENTER_VERTEX, hand, testGame } from '../../fixtures.js';
+import { GameActionSchema, type GameAction } from '../../actions.js';
 import { PhaseSchema } from '../../phase.js';
+import { playerViewOf } from '../../playerView.js';
+import type { PlayerState } from '../../player.js';
 import { reduce } from '../../reducer.js';
 import { CITIES_RULES } from '../../../rules/index.js';
 import type { GameState } from '../../state.js';
@@ -111,5 +113,57 @@ describe('twoCardsOrAll', () => {
     expect(twoCardsOrAll(2)).toBe(2);
     expect(twoCardsOrAll(1)).toBe(1);
     expect(twoCardsOrAll(0)).toBe(0);
+  });
+});
+
+describe('Die wartenden Karten am echten Staedte-Tisch', () => {
+  const seats = ['p1', 'p2', 'p3'].map((id) => ({ id, name: id, color: '#808080' }));
+
+  function patch(state: GameState, id: string, change: Partial<PlayerState>): GameState {
+    return {
+      ...state,
+      players: state.players.map((player) => (player.id === id ? { ...player, ...change } : player)),
+    };
+  }
+
+  function act(state: GameState, action: GameAction): GameState {
+    const result = reduce(state, action);
+    if (!result.ok) throw new Error(result.error.message);
+    return result.state;
+  }
+
+  it('spielt eine Hochzeit mit dem Regelwerk der Partie bis zurueck in die Hauptphase', () => {
+    let state = testGame({
+      rules: CITIES_RULES,
+      buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'city', wall: false, metropolis: null } },
+    });
+    state = patch(patch(state, 'p1', { progressCards: ['wedding'] }), 'p2', {
+      resources: hand({ ore: 2 }),
+    });
+
+    const open = act(state, { type: 'playProgress', player: 'p1', play: { card: 'wedding' } });
+    const done = act(open, {
+      type: 'answerProgress',
+      player: 'p2',
+      answer: { card: 'wedding', gift: hand({ ore: 2 }) },
+    });
+
+    expect(done.phase).toEqual({ kind: 'main' });
+    expect(done.players.find((player) => player.id === 'p1')!.resources).toEqual(hand({ ore: 2 }));
+  });
+
+  it('oeffnet der Spionage die fremde Hand und schliesst sie nach der Antwort wieder', () => {
+    let state = testGame({ rules: CITIES_RULES });
+    state = patch(patch(state, 'p1', { progressCards: ['spy'] }), 'p2', {
+      progressCards: ['bishop'],
+    });
+
+    const open = act(state, { type: 'playProgress', player: 'p1', play: { card: 'spy', victim: 'p2' } });
+    const seen = playerViewOf(open, 'p1', seats, 1).players.find((player) => player.id === 'p2')!;
+    expect(seen.progressCards).toEqual(['bishop']);
+
+    const done = act(open, { type: 'answerProgress', player: 'p1', answer: { card: 'spy', take: 'bishop' } });
+    const after = playerViewOf(done, 'p1', seats, 2).players.find((player) => player.id === 'p2')!;
+    expect(after.progressCards).toBeNull();
   });
 });

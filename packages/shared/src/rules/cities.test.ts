@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { CARD_IDS } from '../scenario/terrain.js';
+import { FULL_PROGRESS_DECK } from '../game/cities/progress/cards.js';
 import { CITIES_DICE, CITIES_RULES, CITIES_RULES_56, citiesRulesFor } from './cities.js';
 import { CLASSIC_RULES, RuleSetSchema, cardAmounts } from './ruleset.js';
 
@@ -67,15 +68,12 @@ describe('CITIES_RULES', () => {
     expect(CITIES_RULES.victoryPoints.defender).toBe(1);
   });
 
-  it('legt in 10d-1 dreiundvierzig Fortschrittskarten aus', () => {
-    const total = Object.values(CITIES_RULES.progressDecks).reduce((sum, n) => sum + n, 0);
-    expect(total).toBe(43);
-  });
-
-  it('laesst die fuenf Karten weg, die auf eine fremde Antwort warten', () => {
-    for (const id of ['masterMerchant', 'spy', 'deserter', 'tradeHarbor', 'wedding'] as const) {
-      expect(CITIES_RULES.progressDecks[id]).toBeUndefined();
-    }
+  /*
+   * Die Summe 54 und achtzehn je Stapel prueft `cards.test.ts` an
+   * `FULL_PROGRESS_DECK` - hier genuegt, dass der Tisch genau diese Tabelle legt.
+   */
+  it('legt die vollstaendigen Fortschrittsstapel des Brettspiels aus', () => {
+    expect(CITIES_RULES.progressDecks).toEqual(FULL_PROGRESS_DECK);
   });
 
   it('gibt dem Basistisch keine Fortschrittsstapel', () => {
