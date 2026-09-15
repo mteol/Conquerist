@@ -10,13 +10,15 @@ import {
   findPlayer,
   ok,
   rejected,
-  withPlayer,
   type GameState,
   type KnightLevel,
   type ReduceResult,
 } from './state.js';
-import { applyPlaceDisplacedKnight, displacementTargets } from './cities/knightActions.js';
-import { knightPiece } from './cities/knights.js';
+import {
+  applyPlaceDisplacedKnight,
+  displacementTargets,
+  returnKnightToSupply,
+} from './cities/knightActions.js';
 import {
   applyDiscardProgressCard,
   continueAfterAqueduct,
@@ -173,13 +175,10 @@ function placeDisplaced(
   const [first] = displacementTargets(state, phase.owner, phase.from).sort();
   if (first !== undefined) return applyPlaceDisplacedKnight(state, phase.owner, first);
 
-  const piece = knightPiece(phase.level as KnightLevel);
+  // `phase.level` ist im Zustand ein blosses `number` (1 bis 3), nicht die engere
+  // `KnightLevel` - die eine Verengung dafuer.
   return ok({
-    ...state,
-    players: withPlayer(state, phase.owner, (owner) => ({
-      ...owner,
-      piecesLeft: { ...owner.piecesLeft, [piece]: owner.piecesLeft[piece] + 1 },
-    })),
+    ...returnKnightToSupply(state, phase.owner, phase.level as KnightLevel),
     phase: { kind: 'main' },
   });
 }

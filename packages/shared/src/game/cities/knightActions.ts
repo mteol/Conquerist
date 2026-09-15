@@ -85,6 +85,31 @@ export function displacementTargets(state: GameState, owner: PlayerId, from: Ver
 }
 
 /**
+ * Gibt eine Ritterfigur, die keinen Platz mehr findet, in den Vorrat ihres
+ * Besitzers zurueck. Ruehrt die Phase nicht an - das entscheidet der Aufrufer.
+ *
+ * **Exportiert**, weil zwei Stellen "kein Platz" behandeln: der frisch
+ * Vertriebene hier in `resolveDisplacement` und der Fristablauf in
+ * `timeout.ts`, wenn `displacePending` auslaeuft. Ein zweiter Nachbau derselben
+ * Zeile waere die Regel zweimal (Spec 5.5: "kein zweiter Weg, der die Regel
+ * nachbaut").
+ */
+export function returnKnightToSupply(
+  state: GameState,
+  owner: PlayerId,
+  level: KnightLevel,
+): GameState {
+  const piece = knightPiece(level);
+  return {
+    ...state,
+    players: withPlayer(state, owner, (entry) => ({
+      ...entry,
+      piecesLeft: { ...entry.piecesLeft, [piece]: entry.piecesLeft[piece] + 1 },
+    })),
+  };
+}
+
+/**
  * Was mit einem vertriebenen Ritter geschieht: ausweichen oder in den Vorrat.
  *
  * `state` ist das Brett **nach** dem Angriff - der Vertriebene steht dort
@@ -109,14 +134,7 @@ export function resolveDisplacement(
   const targets = displacementTargets(state, displaced.owner, from);
 
   if (targets.length === 0) {
-    const piece = knightPiece(displaced.level);
-    return {
-      ...state,
-      players: withPlayer(state, displaced.owner, (owner) => ({
-        ...owner,
-        piecesLeft: { ...owner.piecesLeft, [piece]: owner.piecesLeft[piece] + 1 },
-      })),
-    };
+    return returnKnightToSupply(state, displaced.owner, displaced.level);
   }
 
   return {
