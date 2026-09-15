@@ -6,7 +6,13 @@ import type { PlayerId, PlayerState } from '../../player.js';
 import type { GameState } from '../../state.js';
 import type { TrackId } from '../tracks.js';
 import type { ProgressCardId } from './cards.js';
-import { countedHand, drawersFor, drawProgressCards, playersOverProgressLimit } from './draw.js';
+import {
+  countedHand,
+  drawersFor,
+  drawProgressCards,
+  inTurnOrder,
+  playersOverProgressLimit,
+} from './draw.js';
 
 /*
  * Diese Helfer bauen den Zustand, den die Tests brauchen - `citiesTable()`,
@@ -156,5 +162,12 @@ describe('Ziehen am Stadttor', () => {
       'medicine',
     ]);
     expect(playersOverProgressLimit(drawProgressCards(full, 'science', 1))).toEqual([]);
+  });
+});
+
+describe('inTurnOrder', () => {
+  it('beginnt beim Spieler am Zug und laeuft im Uhrzeigersinn', () => {
+    const state = testGame({ currentPlayerIndex: 1 });
+    expect(inTurnOrder(state).map((player) => player.id)).toEqual(['p2', 'p3', 'p1']);
   });
 });

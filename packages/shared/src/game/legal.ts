@@ -32,6 +32,8 @@ import { canPlayProgress } from './cities/progress/progressRules.js';
 import type { ProgressPlay } from './cities/progress/play.js';
 import { canDiscardProgressCard, canPickAqueduct, canPickProgressDeck } from './cities/rollFlow.js';
 import { RESOURCE_IDS } from '../scenario/index.js';
+import { canAnswerProgress } from './cities/progress/answerRules.js';
+import type { ProgressAnswer } from './cities/progress/answer.js';
 
 /**
  * Was dieser Spieler gerade tun darf.
@@ -137,6 +139,11 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
       }
       return actions;
     }
+
+    case 'progressPending':
+      return progressAnswerCandidates(state)
+        .filter((answer) => canAnswerProgress(state, player, answer) === null)
+        .map((answer) => ({ type: 'answerProgress', player, answer }));
 
     case 'tradePending': {
       const trade = state.phase;
@@ -404,4 +411,26 @@ function canPlaceFreeRoad(state: GameState, player: PlayerId, edge: EdgeId): boo
       (other) => other !== edge && state.roads[other] === player,
     );
   });
+}
+
+/**
+ * Die Antworten, die sich aufzaehlen lassen - Kandidaten, gefiltert wird mit
+ * `canAnswerProgress`.
+ *
+ * Hochzeit und Grosshaendler stehen hier nie: ihre Antwort ist eine Menge,
+ * dieselbe Begruendung wie beim Abwerfen. Die uebrigen drei kommen mit ihren
+ * Karten (Aufgaben 4, 5, 7).
+ */
+function progressAnswerCandidates(state: GameState): ProgressAnswer[] {
+  if (state.phase.kind !== 'progressPending') return [];
+
+  const payload = state.phase.payload;
+  switch (payload.card) {
+    case 'wedding':
+    case 'masterMerchant':
+    case 'tradeHarbor':
+    case 'spy':
+    case 'deserter':
+      return [];
+  }
 }

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { RollSchema } from './dice.js';
 import { PlayerIdSchema, type PlayerId } from './player.js';
 import { TradeOfferSchema, TradeResponseSchema } from './tradeOffer.js';
+import { ProgressPendingPayloadSchema } from './cities/progress/answer.js';
 
 /**
  * Der Zugablauf als expliziter Zustandsautomat.
@@ -173,6 +174,26 @@ export const PhaseSchema = z.discriminatedUnion('kind', [
    * nur einen von zweien bedienen.
    */
   z.object({ kind: z.literal('aqueductPending'), pending: z.array(PlayerIdSchema) }),
+  /**
+   * Eine Fortschrittskarte wartet auf Antworten - Hochzeit, Handelshafen,
+   * Spionage, Grosshaendler, Deserteur (Etappe 10d-2).
+   *
+   * `by` hat die Karte gespielt, `pending` muss noch antworten, im
+   * Uhrzeigersinn ab `by`. Leer heisst: die Karte ist fertig, und die Phase
+   * steht schon wieder auf `main`. Geantwortet wird **gleichzeitig** wie beim
+   * Abwerfen - keine der fuenf Karten greift auf einen endlichen gemeinsamen
+   * Vorrat.
+   *
+   * **Kein Feld `answers`.** Jede Antwort wirkt sofort und wird nie wieder
+   * gelesen; ein Datensatz der Antworten stuende in `PlayerView.phase` offen am
+   * Tisch - etwa, welche Karten bei der Hochzeit verschenkt wurden.
+   */
+  z.object({
+    kind: z.literal('progressPending'),
+    by: PlayerIdSchema,
+    pending: z.array(PlayerIdSchema),
+    payload: ProgressPendingPayloadSchema,
+  }),
   /** Bauen, handeln, Zug beenden. */
   z.object({ kind: z.literal('main') }),
   /**

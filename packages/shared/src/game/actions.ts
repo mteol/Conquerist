@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { CardAmountsSchema } from '../rules/index.js';
 import { CardIdSchema, ResourceIdSchema } from '../scenario/index.js';
+import { ProgressAnswerSchema } from './cities/progress/answer.js';
 import { ProgressCardIdSchema } from './cities/progress/cards.js';
 import { ProgressPlaySchema } from './cities/progress/play.js';
 import { TrackIdSchema } from './cities/tracks.js';
@@ -239,6 +240,13 @@ export const GameActionSchema = z.discriminatedUnion('type', [
   /** Aquaedukt: welchen Rohstoff der Leerausgegangene nimmt. */
   z.object({ ...Base, type: z.literal('pickAqueduct'), resource: ResourceIdSchema }),
 
+  /**
+   * Die Antwort auf eine wartende Fortschrittskarte. `answer` traegt Karte und
+   * Wahl in einer eigenen Union (`ProgressAnswerSchema`) - dieselbe Grenze wie
+   * `play` bei `playProgress`.
+   */
+  z.object({ ...Base, type: z.literal('answerProgress'), answer: ProgressAnswerSchema }),
+
   z.object({ ...Base, type: z.literal('endTurn') }),
 ]);
 
@@ -295,6 +303,7 @@ export const GAME_ACTION_TYPES = [
   'pickProgressDeck',
   'discardProgressCard',
   'pickAqueduct',
+  'answerProgress',
   'endTurn',
 ] as const satisfies readonly GameActionType[];
 

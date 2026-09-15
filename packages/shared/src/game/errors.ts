@@ -108,6 +108,12 @@ export const RuleViolationCode = {
   PROGRESS_CARD_NOT_IN_PLAY: 'PROGRESS_CARD_NOT_IN_PLAY',
   /** Die Karte laesst sich gerade nicht sinnvoll spielen. */
   PROGRESS_HAS_NO_EFFECT: 'PROGRESS_HAS_NO_EFFECT',
+  /** Dieser Spieler muss gerade auf keine Fortschrittskarte antworten. */
+  NOT_ANSWERING_PROGRESS: 'NOT_ANSWERING_PROGRESS',
+  /** Die Antwort gehoert zu einer anderen Karte oder hat die falsche Menge. */
+  WRONG_PROGRESS_ANSWER: 'WRONG_PROGRESS_ANSWER',
+  /** Die genannte Person taugt nicht als Ziel dieser Karte. */
+  INVALID_PROGRESS_VICTIM: 'INVALID_PROGRESS_VICTIM',
 
   /** Fuer diesen Tausch gibt es kein Verhaeltnis - oder es ist derselbe Rohstoff. */
   INVALID_TRADE: 'INVALID_TRADE',

@@ -15,8 +15,11 @@ import { PROGRESS_HAND_LIMIT, PROGRESS_VICTORY_CARDS, type ProgressCardId } from
  * Die Spieler in Uhrzeigersinn ab dem Spieler am Zug - unabhaengig davon, ob
  * sie am gewuerfelten Bereich berechtigt sind. Die Reihenfolge ist eine
  * eigene Frage von der Eignung, deshalb ein eigener Schritt vor dem Filter.
+ *
+ * Exportiert seit 10d-2: die Warteliste der wartenden Karten folgt derselben
+ * Reihenfolge.
  */
-function inTurnOrder(state: GameState): PlayerState[] {
+export function inTurnOrder(state: GameState): PlayerState[] {
   const { players, currentPlayerIndex } = state;
   return players.map((_, offset) => players[(currentPlayerIndex + offset) % players.length]!);
 }

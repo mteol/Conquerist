@@ -45,6 +45,7 @@ import {
 import { applyBuildWall } from './cities/walls.js';
 import { applyImproveCity } from './cities/improvements.js';
 import { applyPlayProgress } from './cities/progress/progressRules.js';
+import { applyAnswerProgress } from './cities/progress/answerRules.js';
 
 /**
  * Der Reducer: `(state, action) => newState`, rein und ohne Seiteneffekte.
@@ -89,6 +90,11 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
   progressDiscardPending: ['discardProgressCard'],
   defenderPending: ['pickProgressDeck'],
   aqueductPending: ['pickAqueduct'],
+  /*
+   * Eine Fortschrittskarte wartet auf Antworten. Nur die Antwort geht - der
+   * Spielende baut nicht weiter, waehrend andere noch entscheiden.
+   */
+  progressPending: ['answerProgress'],
   main: [
     'buildRoad',
     'buildSettlement',
@@ -146,6 +152,9 @@ function actorFor(state: GameState): PlayerId | null {
   ) {
     return state.phase.pending[0] ?? null;
   }
+  // Wie beim Abwerfen antworten mehrere gleichzeitig. Wer genau darf, prueft
+  // `canAnswerProgress`.
+  if (state.phase.kind === 'progressPending') return null;
   // Wie beim Abwerfen handeln mehrere: der Anbieter und seine Mitspieler. Wer
   // genau was darf, prueft `playerTrade.ts`.
   if (state.phase.kind === 'tradePending') return null;
@@ -408,6 +417,8 @@ function applyAction(state: GameState, action: GameAction): ReduceResult {
       return applyDiscardProgressCard(state, action.player, action.card);
     case 'pickAqueduct':
       return applyPickAqueduct(state, action.player, action.resource);
+    case 'answerProgress':
+      return applyAnswerProgress(state, action.player, action.answer);
     case 'endTurn':
       return endTurn(state);
   }

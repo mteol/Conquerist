@@ -240,6 +240,10 @@ function describeAction(
     case 'pickAqueduct':
       return `${who} nimmt ${RESOURCE_LABELS[action.resource]} aus dem Aquädukt`;
 
+    case 'answerProgress':
+      // Die Saetze je Karte kommen in Aufgabe 11.
+      return `${who} antwortet auf ${PROGRESS_NAMES[action.answer.card]}`;
+
     case 'endTurn':
       return `${who} beendet den Zug`;
   }

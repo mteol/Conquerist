@@ -1,6 +1,7 @@
 import {
   handLimitOf,
   nameList,
+  PROGRESS_NAMES,
   setupPlayerIndex,
   yieldTotal,
   type DiceSpec,
@@ -258,6 +259,9 @@ function phaseTextOf(view: PlayerView): string {
       return `${nameOf(view.phase.pending[0] ?? null)} wählt einen Fortschrittsstapel`;
     case 'aqueductPending':
       return `${nameOf(view.phase.pending[0] ?? null)} nimmt einen Rohstoff aus dem Aquädukt`;
+    case 'progressPending':
+      // Der Satz je Karte kommt in Aufgabe 12.
+      return `${nameOf(view.phase.pending[0] ?? null)} antwortet auf ${PROGRESS_NAMES[view.phase.payload.card]}`;
     case 'finished':
       return `${nameOf(view.phase.winner)} hat gewonnen`;
   }
