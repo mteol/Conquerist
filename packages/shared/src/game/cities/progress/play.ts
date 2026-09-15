@@ -68,6 +68,7 @@ export const ProgressPlaySchema = z.discriminatedUnion('card', [
   z.object({ card: z.literal('intrigue'), vertex: z.string() }),
   z.object({ card: z.literal('saboteur') }),
   z.object({ card: z.literal('wedding') }),
+  z.object({ card: z.literal('tradeHarbor'), resource: ResourceIdSchema }),
 ]);
 
 export type ProgressPlay = z.infer<typeof ProgressPlaySchema>;

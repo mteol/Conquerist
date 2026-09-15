@@ -31,7 +31,7 @@ import { PROGRESS_CARD_IDS, type ProgressCardId } from './cities/progress/cards.
 import { canPlayProgress } from './cities/progress/progressRules.js';
 import type { ProgressPlay } from './cities/progress/play.js';
 import { canDiscardProgressCard, canPickAqueduct, canPickProgressDeck } from './cities/rollFlow.js';
-import { RESOURCE_IDS } from '../scenario/index.js';
+import { COMMODITY_IDS, RESOURCE_IDS } from '../scenario/index.js';
 import { canAnswerProgress } from './cities/progress/answerRules.js';
 import type { ProgressAnswer } from './cities/progress/answer.js';
 
@@ -278,17 +278,18 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
       }
 
       /*
-       * Fortschrittskarten ohne Auswahl - Bergbau, Bewaesserung, Buchdruck,
-       * Heerfuehrer, Sabotage, Verfassung. Alles andere braeuchte eine
-       * Aufzaehlung ueber Kreuzungen, Kanten, Felder oder Sorten und bleibt wie
-       * Strassenbau, Erfindung und Monopol bei den Entwicklungskarten der
-       * Auswahl im Dialog ueberlassen.
+       * Fortschrittskarten, deren Angabe sich aufzaehlen laesst: ohne Angabe,
+       * eine von fuenf Rohstoffsorten (Handelshafen) oder - ab Aufgabe 5 - eine
+       * andere Person. Alles andere braeuchte eine Aufzaehlung ueber Kreuzungen,
+       * Kanten oder Felder und bleibt der Auswahl im Dialog oder am Brett
+       * ueberlassen. Ueber die **Arten** auf der Hand und nicht ueber die Karten:
+       * zwei gleiche Karten ergaeben sonst jeden Zug doppelt.
        */
-      for (const card of state.players[state.currentPlayerIndex]?.progressCards ?? []) {
-        const play = zeroArgumentProgressPlay(card);
-        if (play === null) continue;
-        if (canPlayProgress(state, player, play) === null) {
-          actions.push({ type: 'playProgress', player, play });
+      for (const card of new Set(state.players[state.currentPlayerIndex]?.progressCards ?? [])) {
+        for (const play of enumerableProgressPlays(card)) {
+          if (canPlayProgress(state, player, play) === null) {
+            actions.push({ type: 'playProgress', player, play });
+          }
         }
       }
 
@@ -327,27 +328,29 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
 }
 
 /**
- * Baut die Wahl fuer eine Fortschrittskarte ohne Parameter - `null`, wenn
- * diese Karte eine Auswahl braucht (oder an diesem Tisch gar keine Karte
- * ist).
+ * Die aufzaehlbaren Wahlen einer Fortschrittskarte - leer, wenn die Karte eine
+ * Angabe braucht, die sich nicht aufzaehlen laesst.
  *
- * Nur fuer `legalActions`: dieselbe Grenze wie bei Strassenbau, Erfindung und
- * Monopol - Karten mit Auswahl werden dort nicht einzeln aufgezaehlt.
+ * Nur fuer `legalActions`. Jede Karte ohne Angabe steht in einem eigenen Zweig:
+ * `{ card }` fuer mehrere Literale zugleich waere fuer `tsc` kein Mitglied der
+ * Union.
  */
-function zeroArgumentProgressPlay(card: ProgressCardId): ProgressPlay | null {
+function enumerableProgressPlays(card: ProgressCardId): ProgressPlay[] {
   switch (card) {
     case 'mining':
-      return { card };
+      return [{ card }];
     case 'irrigation':
-      return { card };
+      return [{ card }];
     case 'warlord':
-      return { card };
+      return [{ card }];
     case 'saboteur':
-      return { card };
+      return [{ card }];
     case 'wedding':
-      return { card };
+      return [{ card }];
+    case 'tradeHarbor':
+      return RESOURCE_IDS.map((resource): ProgressPlay => ({ card: 'tradeHarbor', resource }));
     default:
-      return null;
+      return [];
   }
 }
 
@@ -430,9 +433,10 @@ function progressAnswerCandidates(state: GameState): ProgressAnswer[] {
   switch (payload.card) {
     case 'wedding':
     case 'masterMerchant':
-    case 'tradeHarbor':
     case 'spy':
     case 'deserter':
       return [];
+    case 'tradeHarbor':
+      return COMMODITY_IDS.map((commodity): ProgressAnswer => ({ card: 'tradeHarbor', commodity }));
   }
 }

@@ -3,6 +3,7 @@ import type { PlayerId } from '../../player.js';
 import { ok, rejected, type GameState, type ReduceResult } from '../../state.js';
 import type { ProgressAnswer, WaitingCard } from './answer.js';
 import { PROGRESS_NAMES } from './cards.js';
+import { answerTradeHarbor, canAnswerTradeHarbor } from './tradeHarbor.js';
 import { answerWedding, canAnswerWedding } from './wedding.js';
 
 /**
@@ -53,7 +54,7 @@ export function canAnswerProgress(
       return canAnswerWedding(state, phase, player, answer);
     case 'tradeHarbor':
       if (payload.card !== 'tradeHarbor') return wrongCard(payload.card);
-      return notWiredYet(answer.card);
+      return canAnswerTradeHarbor(state, phase, payload, player, answer);
     case 'spy':
       if (payload.card !== 'spy') return wrongCard(payload.card);
       return notWiredYet(answer.card);
@@ -81,7 +82,11 @@ export function applyAnswerProgress(
   switch (answer.card) {
     case 'wedding':
       return ok(answerWedding(state, phase, player, answer));
-    case 'tradeHarbor':
+    case 'tradeHarbor': {
+      const payload = phase.payload;
+      if (payload.card !== 'tradeHarbor') return rejected(wrongCard(payload.card));
+      return ok(answerTradeHarbor(state, phase, payload, player, answer));
+    }
     case 'spy':
     case 'masterMerchant':
     case 'deserter':
