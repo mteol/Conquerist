@@ -28,6 +28,7 @@ import { canBuildWall } from './cities/walls.js';
 import { canImproveCity, claimsMetropolis } from './cities/improvements.js';
 import { TRACK_IDS } from './cities/tracks.js';
 import { PROGRESS_CARD_IDS, type ProgressCardId } from './cities/progress/cards.js';
+import { deserterPlacements } from './cities/progress/deserter.js';
 import { canPlayProgress } from './cities/progress/progressRules.js';
 import type { ProgressPlay } from './cities/progress/play.js';
 import { canDiscardProgressCard, canPickAqueduct, canPickProgressDeck } from './cities/rollFlow.js';
@@ -141,7 +142,7 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
     }
 
     case 'progressPending':
-      return progressAnswerCandidates(state)
+      return progressAnswerCandidates(state, player)
         .filter((answer) => canAnswerProgress(state, player, answer) === null)
         .map((answer) => ({ type: 'answerProgress', player, answer }));
 
@@ -359,6 +360,8 @@ function enumerableProgressPlays(
       return others.map((victim): ProgressPlay => ({ card: 'spy', victim }));
     case 'masterMerchant':
       return others.map((victim): ProgressPlay => ({ card: 'masterMerchant', victim }));
+    case 'deserter':
+      return others.map((victim): ProgressPlay => ({ card: 'deserter', victim }));
     default:
       return [];
   }
@@ -434,16 +437,17 @@ function canPlaceFreeRoad(state: GameState, player: PlayerId, edge: EdgeId): boo
  *
  * Hochzeit und Grosshaendler stehen hier nie: ihre Antwort ist eine Menge,
  * dieselbe Begruendung wie beim Abwerfen. Die uebrigen drei kommen mit ihren
- * Karten (Aufgaben 4, 5, 7).
+ * Karten. Der Deserteur braucht den fragenden Spieler: seine beiden Runden -
+ * die eigenen Ritter des Opfers, die freien Kreuzungen des Spielenden - haben
+ * je einen anderen Antwortenden.
  */
-function progressAnswerCandidates(state: GameState): ProgressAnswer[] {
+function progressAnswerCandidates(state: GameState, player: PlayerId): ProgressAnswer[] {
   if (state.phase.kind !== 'progressPending') return [];
 
   const payload = state.phase.payload;
   switch (payload.card) {
     case 'wedding':
     case 'masterMerchant':
-    case 'deserter':
       return [];
     case 'tradeHarbor':
       return COMMODITY_IDS.map((commodity): ProgressAnswer => ({ card: 'tradeHarbor', commodity }));
@@ -452,6 +456,15 @@ function progressAnswerCandidates(state: GameState): ProgressAnswer[] {
       return [...new Set(victim?.progressCards ?? [])].map(
         (take): ProgressAnswer => ({ card: 'spy', take }),
       );
+    }
+    case 'deserter': {
+      const vertices =
+        payload.replacement === null
+          ? Object.entries(state.knights)
+              .filter(([, knight]) => knight.owner === player)
+              .map(([vertex]) => vertex)
+          : deserterPlacements(state, player);
+      return vertices.map((vertex): ProgressAnswer => ({ card: 'deserter', vertex }));
     }
   }
 }

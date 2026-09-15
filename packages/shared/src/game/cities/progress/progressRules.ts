@@ -34,6 +34,7 @@ import {
   applyProgressRoadBuilding,
   applySmith,
 } from './science.js';
+import { applyDeserter, canDeserter } from './deserter.js';
 import { applyMasterMerchant, canMasterMerchant } from './masterMerchant.js';
 import { applySpy, canSpy } from './spy.js';
 import { applyTradeHarbor, canTradeHarbor } from './tradeHarbor.js';
@@ -144,6 +145,8 @@ function canWaitingCard(
       return canSpy(state, player, play);
     case 'masterMerchant':
       return canMasterMerchant(state, player, play);
+    case 'deserter':
+      return canDeserter(state, player, play);
     default:
       return null;
   }
@@ -232,5 +235,7 @@ export function applyPlayProgress(
       return applySpy(discarded, player, play);
     case 'masterMerchant':
       return applyMasterMerchant(discarded, player, play);
+    case 'deserter':
+      return applyDeserter(discarded, player, play);
   }
 }

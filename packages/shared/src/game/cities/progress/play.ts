@@ -74,6 +74,8 @@ export const ProgressPlaySchema = z.discriminatedUnion('card', [
   z.object({ card: z.literal('spy'), victim: PlayerIdSchema }),
   /** Grosshaendler: wessen Handkarten angesehen werden. */
   z.object({ card: z.literal('masterMerchant'), victim: PlayerIdSchema }),
+  /** Deserteur: wessen Ritter abgeworben wird. */
+  z.object({ card: z.literal('deserter'), victim: PlayerIdSchema }),
 ]);
 
 export type ProgressPlay = z.infer<typeof ProgressPlaySchema>;

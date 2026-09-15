@@ -3,6 +3,7 @@ import type { PlayerId } from '../../player.js';
 import { ok, rejected, type GameState, type ReduceResult } from '../../state.js';
 import type { ProgressAnswer, WaitingCard } from './answer.js';
 import { PROGRESS_NAMES } from './cards.js';
+import { answerDeserter, canAnswerDeserter } from './deserter.js';
 import { answerMasterMerchant, canAnswerMasterMerchant } from './masterMerchant.js';
 import { answerSpy, canAnswerSpy } from './spy.js';
 import { answerTradeHarbor, canAnswerTradeHarbor } from './tradeHarbor.js';
@@ -25,14 +26,6 @@ function wrongCard(waitingFor: WaitingCard): RuleViolation {
   return violation(
     RuleViolationCode.WRONG_PROGRESS_ANSWER,
     `Gewartet wird auf eine Antwort zu ${PROGRESS_NAMES[waitingFor]}`,
-  );
-}
-
-/** Bis zur Aufgabe der Karte - faellt mit der fuenften Karte (Aufgabe 7) weg. */
-function notWiredYet(card: WaitingCard): RuleViolation {
-  return violation(
-    RuleViolationCode.WRONG_PROGRESS_ANSWER,
-    `${PROGRESS_NAMES[card]} ist noch nicht verdrahtet`,
   );
 }
 
@@ -65,7 +58,7 @@ export function canAnswerProgress(
       return canAnswerMasterMerchant(state, phase, payload, player, answer);
     case 'deserter':
       if (payload.card !== 'deserter') return wrongCard(payload.card);
-      return notWiredYet(answer.card);
+      return canAnswerDeserter(state, phase, payload, player, answer);
   }
 }
 
@@ -99,7 +92,10 @@ export function applyAnswerProgress(
       if (payload.card !== 'masterMerchant') return rejected(wrongCard(payload.card));
       return ok(answerMasterMerchant(state, phase, payload, player, answer));
     }
-    case 'deserter':
-      return rejected(notWiredYet(answer.card));
+    case 'deserter': {
+      const payload = phase.payload;
+      if (payload.card !== 'deserter') return rejected(wrongCard(payload.card));
+      return ok(answerDeserter(state, phase, payload, player, answer));
+    }
   }
 }

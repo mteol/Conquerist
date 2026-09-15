@@ -19,6 +19,7 @@ import {
   applyUpgradeKnight,
   canActivateKnight,
   canBuildKnight,
+  canPlaceKnightAt,
   canUpgradeKnight,
   catanStrength,
   hasFortress,
@@ -69,6 +70,19 @@ describe('knightPiece', () => {
     expect(knightPiece(1)).toBe('knight1');
     expect(knightPiece(2)).toBe('knight2');
     expect(knightPiece(3)).toBe('knight3');
+  });
+});
+
+describe('canPlaceKnightAt', () => {
+  it('fragt nur nach dem Platz, nicht nach Preis und Vorrat', () => {
+    const state = testGame({ rules: CITIES_RULES, roads: { [CENTER_EDGE]: 'p1' } });
+    expect(canPlaceKnightAt(state, 'p1', CENTER_VERTEX)).toBeNull();
+  });
+
+  it('verlangt eine eigene Strasse an der Kreuzung', () => {
+    expect(canPlaceKnightAt(testGame({ rules: CITIES_RULES }), 'p1', CENTER_VERTEX)?.code).toBe(
+      RuleViolationCode.NOT_CONNECTED,
+    );
   });
 });
 

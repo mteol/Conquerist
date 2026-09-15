@@ -152,12 +152,14 @@ function withKnight(state: GameState, vertex: VertexId, knight: Knight): GameSta
 }
 
 /**
- * Darf hier ein Ritter hin? Brett, Platz, eigene Strasse, Preis, Vorrat.
+ * Ob hier eine Ritterfigur stehen darf - Brett, freier Platz, eigene Strasse.
  *
- * Bewusst **nicht** ueber `canPlaceSettlementAt`: die traegt die
- * Abstandsregel, und die gilt fuer Ritter ausdruecklich nicht.
+ * Ohne Preis und ohne Vorrat, herausgeloest aus `canBuildKnight` (Etappe
+ * 10d-2): der Deserteur stellt einen Ritter auf, den niemand bezahlt und der
+ * nicht immer ein Einfacher ist. Die Frage nach dem Platz ist trotzdem
+ * dieselbe, und zwei Auslegungen davon liefen auseinander.
  */
-export function canBuildKnight(
+export function canPlaceKnightAt(
   state: GameState,
   player: PlayerId,
   vertex: VertexId,
@@ -179,13 +181,29 @@ export function canBuildKnight(
 
   /*
    * Eine angrenzende eigene **Strasse** - ein eigenes Dorf allein genuegt
-   * nicht. Deshalb hier eine eigene Schleife und nicht `connectsAt` aus
-   * `build.ts`, das ein eigenes Gebaeude als Anschluss durchgehen laesst.
+   * nicht. Deshalb eine eigene Schleife und nicht `connectsAt` aus `build.ts`.
    */
   const roads = board.topology.vertexEdges.get(vertex) ?? [];
   if (!roads.some((edge) => state.roads[edge] === player)) {
     return violation(RuleViolationCode.NOT_CONNECTED, `An ${vertex} endet keine eigene Straße`);
   }
+
+  return null;
+}
+
+/**
+ * Darf hier ein Ritter hin? Brett, Platz, eigene Strasse, Preis, Vorrat.
+ *
+ * Bewusst **nicht** ueber `canPlaceSettlementAt`: die traegt die
+ * Abstandsregel, und die gilt fuer Ritter ausdruecklich nicht.
+ */
+export function canBuildKnight(
+  state: GameState,
+  player: PlayerId,
+  vertex: VertexId,
+): RuleViolation | null {
+  const place = canPlaceKnightAt(state, player, vertex);
+  if (place !== null) return place;
 
   const price = priceOf(state, 'knight');
   if (price === null) return noSuchTable('Ritter');
