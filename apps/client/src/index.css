@@ -6109,9 +6109,14 @@ body {
  * Das Kreuz oben rechts.
  *
  * Es liegt im Rand und nicht im Text: die Ueberschrift behaelt ihre Mitte, und
- * kein Dialog rueckt eine Zeile tiefer, nur weil er sich schliessen laesst. Die
- * Trefferflaeche ist groesser als das gezeichnete Kreuz - 2,25 rem im Quadrat,
- * damit auch ein Daumen sie findet.
+ * kein Dialog rueckt eine Zeile tiefer, nur weil er sich schliessen laesst. Der
+ * sichtbare Kreis bleibt 2,25 rem (36px) - Befund aus dem Browser-Durchgang:
+ * das war die Trefferflaeche und keine 44px, wie sie an jedem Bedienelement
+ * mindestens stehen muss. Statt den Kreis selbst zu vergroessern (das ruecke
+ * ihn sichtbar naeher an den Dialogtitel heran) traegt `::before` eine
+ * unsichtbare, groessere Flaeche darueber - derselbe Mittelpunkt, 0,25 rem
+ * (4px) auf jeder Seite mehr, macht 2,75 rem (44px) im Quadrat. Nichts am
+ * Erscheinungsbild oder an der Position des Kreises aendert sich.
  */
 .modal__close {
   position: absolute;
@@ -6128,6 +6133,12 @@ body {
   color: var(--ink-muted);
   cursor: pointer;
   transition: background-color 120ms ease;
+}
+
+.modal__close::before {
+  content: '';
+  position: absolute;
+  inset: -0.25rem;
 }
 
 .modal__close:hover {
