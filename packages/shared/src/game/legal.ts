@@ -29,6 +29,7 @@ import { canImproveCity, claimsMetropolis } from './cities/improvements.js';
 import { TRACK_IDS } from './cities/tracks.js';
 import { PROGRESS_CARD_IDS, type ProgressCardId } from './cities/progress/cards.js';
 import { deserterPlacements } from './cities/progress/deserter.js';
+import { mustShedProgressCard } from './cities/progress/draw.js';
 import { canPlayProgress } from './cities/progress/progressRules.js';
 import type { ProgressPlay } from './cities/progress/play.js';
 import { canDiscardProgressCard, canPickAqueduct, canPickProgressDeck } from './cities/rollFlow.js';
@@ -213,6 +214,21 @@ export function legalActions(state: GameState, player: PlayerId): GameAction[] {
     case 'main': {
       if (state.players[state.currentPlayerIndex]?.id !== player) return [];
 
+      // Regel 11: bei einer fuenften Karte am Zug nur ausspielen oder abgeben.
+      if (mustShedProgressCard(state)) {
+        for (const card of new Set(state.players[state.currentPlayerIndex]?.progressCards ?? [])) {
+          for (const play of enumerableProgressPlays(state, player, card)) {
+            if (canPlayProgress(state, player, play) === null) {
+              actions.push({ type: 'playProgress', player, play });
+            }
+          }
+          if (canDiscardProgressCard(state, player, card) === null) {
+            actions.push({ type: 'discardProgressCard', player, card });
+          }
+        }
+        return actions;
+      }
+
       for (const edge of board.topology.edges) {
         if (canBuildRoad(state, player, edge) === null) {
           actions.push({ type: 'buildRoad', player, edge });
@@ -376,6 +392,7 @@ function enumerableProgressPlays(
  * dahinter ist dieselbe `canPlayDevelopmentCard`, die auch der Reducer nimmt.
  */
 export function playableDevelopmentCards(state: GameState, player: PlayerId): DevelopmentCardId[] {
+  if (mustShedProgressCard(state)) return [];
   return DEVELOPMENT_CARD_IDS.filter(
     (card) => canPlayDevelopmentCard(state, player, card) === null,
   );

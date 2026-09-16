@@ -9,6 +9,7 @@ import { aqueductClaimants, bankHasResource, distributeYield } from '../yield.js
 import { PROGRESS_NAMES, PROGRESS_VICTORY_CARDS, type ProgressCardId } from './progress/cards.js';
 import {
   anyProgressCardsLeft,
+  mustShedProgressCard,
   playersOverProgressLimit,
   receiveProgressCard,
 } from './progress/draw.js';
@@ -208,7 +209,10 @@ export function canDiscardProgressCard(
   player: PlayerId,
   card: ProgressCardId,
 ): RuleViolation | null {
-  if (state.phase.kind !== 'progressDiscardPending' || state.phase.pending[0] !== player) {
+  const queued = state.phase.kind === 'progressDiscardPending' && state.phase.pending[0] === player;
+  const current =
+    mustShedProgressCard(state) && state.players[state.currentPlayerIndex]?.id === player;
+  if (!queued && !current) {
     return violation(
       RuleViolationCode.NOT_DISCARDING_PROGRESS,
       `${player} muss gerade keine Fortschrittskarte abgeben`,
@@ -270,6 +274,9 @@ export function applyDiscardProgressCard(
       return { ...entry, progressCards: cards };
     }),
   };
+
+  // Am Zug (Regel 11) bleibt es beim Zug - `mustShedProgressCard` fragt neu.
+  if (state.phase.kind === 'main') return ok(discarded);
 
   const pending = playersOverProgressLimit(discarded);
   if (pending.length > 0) {

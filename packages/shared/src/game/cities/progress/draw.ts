@@ -111,11 +111,29 @@ export function countedHand(player: PlayerState): number {
 }
 
 /**
+ * Ob der Spieler am Zug erst eine Fortschrittskarte loswerden muss - Regel 11:
+ * "Zieht man eine 5. Karte: am Zug - sofort eine ausspielen".
+ *
+ * Abgeleitet und keine eigene Phase: eine fuenfte Karte kommt auf mehreren
+ * Wegen in die Hand des Spielers am Zug (Stadttor, Stapelwahl als Verteidiger,
+ * Spionage), und jeder davon endet in `main`. Eine Pruefung dort erreicht alle,
+ * eine Phase muesste jeder Weg selbst oeffnen. Solange sie greift, gehen nur
+ * `playProgress` und `discardProgressCard` (Reducer, `legalActions`). Keine
+ * Frist, wie fuer `main` ueberhaupt (Spec 5.5).
+ */
+export function mustShedProgressCard(state: GameState): boolean {
+  if (state.phase.kind !== 'main') return false;
+  const current = state.players[state.currentPlayerIndex];
+  return current !== undefined && countedHand(current) > PROGRESS_HAND_LIMIT;
+}
+
+/**
  * Wer mehr als vier zaehlende Karten haelt und **nicht** am Zug ist.
  *
  * Abgeleitet und nicht mitgeschleppt: die Stapelwahl der Verteidiger verteilt
  * selbst Karten, und eine vor ihr gebildete Liste waere danach falsch. Wer am
- * Zug ist, steht nie drin - er spielt sofort aus, und das kann er in `main`.
+ * Zug ist, steht nie drin - er spielt sofort aus oder gibt ab, und das
+ * erzwingt `mustShedProgressCard` in `main`.
  */
 export function playersOverProgressLimit(state: GameState): PlayerId[] {
   const current = state.players[state.currentPlayerIndex]?.id;

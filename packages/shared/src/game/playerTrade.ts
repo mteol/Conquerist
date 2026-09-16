@@ -13,6 +13,7 @@ import {
   type ReduceResult,
 } from './state.js';
 import type { TradeResponse } from './tradeOffer.js';
+import { mustShedProgressCard } from './cities/progress/draw.js';
 
 /**
  * Handel zwischen Spielern.
@@ -106,6 +107,7 @@ export function canOfferAnything(state: GameState, player: PlayerId): boolean {
   if (state.phase.kind !== 'main') return false;
   if (state.players[state.currentPlayerIndex]?.id !== player) return false;
   if (state.players.length < 2) return false;
+  if (mustShedProgressCard(state)) return false;
 
   const owner = findPlayer(state, player);
   return owner !== undefined && countCards(owner.resources) > 0;

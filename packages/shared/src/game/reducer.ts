@@ -44,6 +44,7 @@ import {
 } from './cities/knightActions.js';
 import { applyBuildWall } from './cities/walls.js';
 import { applyImproveCity } from './cities/improvements.js';
+import { mustShedProgressCard } from './cities/progress/draw.js';
 import { applyPlayProgress } from './cities/progress/progressRules.js';
 import { applyAnswerProgress } from './cities/progress/answerRules.js';
 
@@ -118,6 +119,8 @@ const PHASE_ACTIONS: Readonly<Record<string, readonly GameAction['type'][]>> = {
     'chaseRobber',
     'improveCity',
     'playProgress',
+    // Nur bei einer fuenften Karte am Zug - `canDiscardProgressCard` prueft das.
+    'discardProgressCard',
     'endTurn',
   ],
   /*
@@ -338,6 +341,19 @@ export function reduce(state: GameState, action: GameAction): ReduceResult {
       violation(
         RuleViolationCode.NOT_YOUR_TURN,
         `${action.player} ist nicht am Zug (${actor} ist es)`,
+      ),
+    );
+  }
+
+  if (
+    mustShedProgressCard(state) &&
+    action.type !== 'playProgress' &&
+    action.type !== 'discardProgressCard'
+  ) {
+    return rejected(
+      violation(
+        RuleViolationCode.PROGRESS_LIMIT_FIRST,
+        'Erst eine Fortschrittskarte ausspielen oder abgeben – mehr als vier gehen nicht',
       ),
     );
   }

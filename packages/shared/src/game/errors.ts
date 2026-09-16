@@ -98,6 +98,8 @@ export const RuleViolationCode = {
   PROGRESS_DECK_EMPTY: 'PROGRESS_DECK_EMPTY',
   /** Dieser Spieler muss gerade keine Fortschrittskarte abgeben. */
   NOT_DISCARDING_PROGRESS: 'NOT_DISCARDING_PROGRESS',
+  /** Erst eine Fortschrittskarte ausspielen oder abgeben - Regel 11, fuenfte Karte am Zug. */
+  PROGRESS_LIMIT_FIRST: 'PROGRESS_LIMIT_FIRST',
   /** Diese Fortschrittskarte liegt nicht auf seiner Hand. */
   NO_SUCH_PROGRESS_CARD: 'NO_SUCH_PROGRESS_CARD',
   /** Siegpunktkarten zaehlen nicht zum Limit und helfen beim Abgeben nicht. */

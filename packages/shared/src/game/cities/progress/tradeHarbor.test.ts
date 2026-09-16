@@ -129,11 +129,9 @@ describe('Handelshafen', () => {
   });
 
   it('ist nicht spielbar, wenn niemand sonst Handkarten hat', () => {
-    const state = patchPlayer(
-      patchPlayer(harborTable(), 'p2', { resources: hand() }),
-      'p3',
-      { resources: hand() },
-    );
+    const state = patchPlayer(patchPlayer(harborTable(), 'p2', { resources: hand() }), 'p3', {
+      resources: hand(),
+    });
     expect(canPlayProgress(state, 'p1', { card: 'tradeHarbor', resource: 'wool' })?.code).toBe(
       RuleViolationCode.PROGRESS_HAS_NO_EFFECT,
     );
