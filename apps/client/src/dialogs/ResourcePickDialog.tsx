@@ -44,6 +44,8 @@ export interface ResourcePickDialogProps<T extends CardId = CardId> {
   readonly onConfirm: (picks: readonly T[]) => void;
   /** Fehlt bei einer Pflichtwahl - siehe Kopfkommentar. */
   readonly onClose?: () => void;
+  /** Text am Bestätigungsknopf - fehlt er, heißt er „Karte spielen". */
+  readonly confirmLabel?: string;
 }
 
 export function ResourcePickDialog<T extends CardId = CardId>({
@@ -53,6 +55,7 @@ export function ResourcePickDialog<T extends CardId = CardId>({
   count,
   onConfirm,
   onClose,
+  confirmLabel = 'Karte spielen',
 }: ResourcePickDialogProps<T>): JSX.Element {
   const [picks, setPicks] = useState<readonly T[]>([]);
 
@@ -106,7 +109,7 @@ export function ResourcePickDialog<T extends CardId = CardId>({
             disabled={picks.length !== count}
             onClick={() => onConfirm(picks)}
           >
-            Karte spielen
+            {confirmLabel}
           </button>
         </div>
       </div>

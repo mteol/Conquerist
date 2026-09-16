@@ -29,6 +29,15 @@ export interface DiscardDialogProps {
   readonly cards: readonly CardId[];
   readonly required: number;
   readonly onConfirm: (resources: CardAmounts) => void;
+  /**
+   * Überschrift, Hinweis und Knopftext - fehlen sie, gelten die der Sieben.
+   * Hochzeit und Großhändler setzen eigene: dieselbe Frage („welche Karten,
+   * wie viele"), ein anderer Anlass. Beim Großhändler ist `player` das Opfer,
+   * dessen Hand für diese Phase aufgedeckt ist.
+   */
+  readonly title?: string;
+  readonly hint?: string;
+  readonly confirmLabel?: string;
 }
 
 export function DiscardDialog({
@@ -36,6 +45,9 @@ export function DiscardDialog({
   cards,
   required,
   onConfirm,
+  title,
+  hint,
+  confirmLabel,
 }: DiscardDialogProps): JSX.Element {
   const [chosen, setChosen] = useState<CardAmounts>({ ...EMPTY_CARDS });
   const held = player.resources ?? EMPTY_CARDS;
@@ -104,13 +116,11 @@ export function DiscardDialog({
   };
 
   return (
-    <div className="modal" role="dialog" aria-label={`${player.name} wirft ab`}>
+    <div className="modal" role="dialog" aria-label={title ?? `${player.name} wirft ab`}>
       <div className="modal__box">
-        <h2>
-          {player.name}, wirf {required} Karten ab
-        </h2>
+        <h2>{title ?? `${player.name}, wirf ${required} Karten ab`}</h2>
         <p className="modal__hint">
-          Nur du siehst dieses Fenster. {player.cardCount} Karten auf der Hand.
+          {hint ?? `Nur du siehst dieses Fenster. ${player.cardCount} Karten auf der Hand.`}
         </p>
 
         <div className="cards">
@@ -148,7 +158,7 @@ export function DiscardDialog({
           disabled={total !== required || excess !== undefined}
           onClick={() => onConfirm(chosen)}
         >
-          Abwerfen ({total}/{required})
+          {confirmLabel ?? 'Abwerfen'} ({total}/{required})
         </button>
       </div>
     </div>

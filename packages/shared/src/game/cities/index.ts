@@ -42,6 +42,12 @@ export * from './progress/cards.js';
  * (siehe `game/index.ts`).
  */
 export { canPlaceMerchant } from './merchant.js';
+/*
+ * Nur `twoCardsOrAll` aus `progress/pending.js`, benannt: der Zaehlerdialog von
+ * Hochzeit und Grosshaendler verlangt damit dieselbe Zahl wie die Regel. Der
+ * Rest der Datei baut Zustaende und bleibt Sache des Reducers.
+ */
+export { twoCardsOrAll } from './progress/pending.js';
 export * from './rollFlow.js';
 export * from './tracks.js';
 export * from './turn.js';

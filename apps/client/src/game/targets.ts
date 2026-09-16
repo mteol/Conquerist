@@ -87,6 +87,8 @@ export interface ActionTargets {
   readonly moves: ReadonlyMap<VertexId, ReadonlyMap<VertexId, GameAction>>;
   /** Wohin der eigene vertriebene Ritter ausweichen kann. */
   readonly displace: ReadonlyMap<VertexId, GameAction>;
+  /** Beim Deserteur: welcher eigene Ritter fällt, bzw. wohin der Überläufer kommt. */
+  readonly desert: ReadonlyMap<VertexId, GameAction>;
 
   /*
    * Zwei Karten aus demselben Grund wie bei den Rittern oben: derselbe
@@ -117,6 +119,7 @@ export const EMPTY_TARGETS: ActionTargets = {
   chase: new Map(),
   moves: new Map(),
   displace: new Map(),
+  desert: new Map(),
   improve: new Map(),
   metropolis: new Map(),
 };
@@ -194,6 +197,7 @@ export function targetsFrom(
   const chase = new Map<VertexId, GameAction>();
   const moves = new Map<VertexId, Map<VertexId, GameAction>>();
   const displace = new Map<VertexId, GameAction>();
+  const desert = new Map<VertexId, GameAction>();
   const improve = new Map<TrackId, GameAction>();
   const metropolis = new Map<TrackId, Map<VertexId, GameAction>>();
   let roll: GameAction | null = null;
@@ -309,6 +313,14 @@ export function targetsFrom(
         // Handkarten gaebe es dutzende gueltige Kombinationen. Der Dialog
         // stellt sie zusammen. Dieser Zweig ist reine Vollstaendigkeit.
         break;
+
+      case 'answerProgress':
+        // Nur der Deserteur antwortet mit einem Ort. Die übrigen Antworten
+        // liest der Dialog der Karte selbst aus der Liste.
+        if (action.answer.card === 'deserter') {
+          claim(desert, action.answer.vertex, action, 'Deserteurziel');
+        }
+        break;
     }
   }
 
@@ -329,6 +341,7 @@ export function targetsFrom(
     chase,
     moves,
     displace,
+    desert,
     improve,
     metropolis,
   };

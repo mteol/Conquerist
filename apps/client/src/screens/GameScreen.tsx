@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'rea
 import {
   barbarianStrength,
   tradeRateFor,
+  twoCardsOrAll,
+  CARD_LABELS,
   RESOURCE_IDS,
   type DevelopmentCardId,
   type EdgeId,
@@ -58,6 +60,7 @@ import { VictimDialog } from '../dialogs/VictimDialog';
 import { GameOverDialog } from '../dialogs/GameOverDialog';
 import { PickDeckDialog } from '../dialogs/PickDeckDialog';
 import { ProgressDiscardDialog } from '../dialogs/ProgressDiscardDialog';
+import { SpyDialog } from '../dialogs/SpyDialog';
 import type { LogEntry } from '../game/hotseat';
 import { useCoarsePointer } from '../useCoarsePointer';
 
@@ -297,6 +300,9 @@ type PickIntent =
       readonly card: ProgressBoardCard;
       readonly first: string | null;
     };
+
+/** Die Antwort auf eine wartende Fortschrittskarte - dieselbe Union wie `shared`. */
+type ProgressAnswer = Extract<GameAction, { type: 'answerProgress' }>['answer'];
 
 export function GameScreen({
   view,
@@ -626,6 +632,15 @@ export function GameScreen({
       return { ...EMPTY_TARGETS, vertices: new Map(targets.displace) };
     }
 
+    /*
+     * Der Deserteur fragt eine Kreuzung - ebenfalls ohne Modus: das Opfer muss
+     * einen Ritter aufgeben, der Spielende den Überläufer setzen. Beides ist
+     * Pflicht und keine Absicht, die man fassen oder fallen lassen könnte.
+     */
+    if (targets.desert.size > 0) {
+      return { ...EMPTY_TARGETS, vertices: new Map(targets.desert) };
+    }
+
     return pickTargets;
   }, [targets, pickTargets, buildingRoads, view.roadBuildingTargets, view.you]);
 
@@ -636,6 +651,12 @@ export function GameScreen({
         const dodge = targets.displace.get(place.id);
         if (dodge !== undefined) {
           onAct(dodge);
+          return;
+        }
+
+        const desert = targets.desert.get(place.id);
+        if (desert !== undefined) {
+          onAct(desert);
           return;
         }
 
@@ -929,6 +950,37 @@ export function GameScreen({
   const isFrontOfQueue = (
     kind: 'progressDiscardPending' | 'defenderPending' | 'aqueductPending',
   ): boolean => view.phase.kind === kind && view.phase.pending[0] === view.you;
+
+  /**
+   * Worauf eine wartende Fortschrittskarte bei **diesem** Empfänger wartet -
+   * `null`, wenn er gerade nicht antworten muss. Gleichzeitig wie beim
+   * Abwerfen: jeder Wartende sieht seinen Dialog.
+   */
+  const answering =
+    view.phase.kind === 'progressPending' && view.phase.pending.includes(view.you)
+      ? view.phase
+      : null;
+
+  /** Die aufzählbaren Antworten stehen in der Aktionsliste - wie die Opfer beim Räuber. */
+  const listedAnswers = actions.flatMap((action) =>
+    action.type === 'answerProgress' ? [action.answer] : [],
+  );
+
+  const answer = (reply: ProgressAnswer): void => {
+    onAct({ type: 'answerProgress', player: view.you, answer: reply });
+  };
+
+  const nameOfPlayer = (id: PlayerId): string => playerOf(id)?.name ?? id;
+
+  const merchantVictim =
+    answering?.payload.card === 'masterMerchant' ? playerOf(answering.payload.victim) : undefined;
+  const spyVictim =
+    answering?.payload.card === 'spy' ? playerOf(answering.payload.victim) : undefined;
+  const harborResource =
+    answering?.payload.card === 'tradeHarbor' ? answering.payload.resource : null;
+
+  /** „eine Karte" oder „zwei Karten" - die Zahl kommt aus der Regel, nicht von hier. */
+  const cardsWord = (count: number): string => (count === 1 ? 'eine Karte' : 'zwei Karten');
 
   /** Die eigene Hand aus `view.players` - `progressCards` liegt am Sitz, siehe `ProgressPanel.tsx`. */
   const ownProgressCards =
@@ -1350,6 +1402,62 @@ export function GameScreen({
       ) : null}
 
       {/*
+       * Die fünf wartenden Karten - je ein Dialog, sichtbar für jeden, der in
+       * der Warteliste steht. Kein Schließkreuz: gespielt ist die Karte, und
+       * wer nicht antwortet, dem nimmt die Frist die Antwort ab oder lässt sie
+       * verfallen (Spec 5.5). `key` je Anlass, damit eine halbe Auswahl nicht
+       * in den nächsten Dialog wandert.
+       */}
+      {answering?.payload.card === 'wedding' && you !== undefined ? (
+        <DiscardDialog
+          key={`wedding-${view.you}`}
+          player={you}
+          cards={view.rules.cards}
+          required={twoCardsOrAll(you.cardCount)}
+          title={`Hochzeit: schenke ${nameOfPlayer(answering.by)} ${cardsWord(twoCardsOrAll(you.cardCount))}`}
+          hint="Du hast mehr Siegpunkte – die Karten wählst du selbst."
+          confirmLabel="Schenken"
+          onConfirm={(gift) => answer({ card: 'wedding', gift })}
+        />
+      ) : null}
+
+      {merchantVictim !== undefined && merchantVictim.resources !== null ? (
+        <DiscardDialog
+          key={`merchant-${merchantVictim.id}`}
+          player={merchantVictim}
+          cards={view.rules.cards}
+          required={twoCardsOrAll(merchantVictim.cardCount)}
+          title={`Großhändler: nimm ${merchantVictim.name} ${cardsWord(twoCardsOrAll(merchantVictim.cardCount))}`}
+          hint="Nur du siehst diese Hand, und nur jetzt."
+          confirmLabel="Nehmen"
+          onConfirm={(take) => answer({ card: 'masterMerchant', take })}
+        />
+      ) : null}
+
+      {spyVictim !== undefined ? (
+        <SpyDialog
+          key={`spy-${spyVictim.id}`}
+          victimName={spyVictim.name}
+          cards={listedAnswers.flatMap((reply) => (reply.card === 'spy' ? [reply.take] : []))}
+          onTake={(take) => answer({ card: 'spy', take })}
+        />
+      ) : null}
+
+      {harborResource !== null && answering !== null ? (
+        <ResourcePickDialog
+          key={`harbor-${view.you}`}
+          title="Handelshafen"
+          hint={`${nameOfPlayer(answering.by)} gibt dir ${CARD_LABELS[harborResource]} – welche Handelsware gibst du dafür?`}
+          pool={listedAnswers.flatMap((reply) =>
+            reply.card === 'tradeHarbor' ? [reply.commodity] : [],
+          )}
+          count={1}
+          confirmLabel="Tauschen"
+          onConfirm={(picks) => answer({ card: 'tradeHarbor', commodity: picks[0]! })}
+        />
+      ) : null}
+
+      {/*
         Kein Knopf davor: solange ein Angebot liegt, geht ohnehin nichts
         anderes - der Dialog ist der Zustand und nicht eine Ansicht davon.
       */}
@@ -1477,6 +1585,16 @@ export function GameScreen({
           </button>
         </div>
       )}
+
+      {targets.desert.size > 0 ? (
+        <div className="mode" role="status" data-testid="deserter-mode">
+          <span>
+            {answering?.payload.card === 'deserter' && answering.payload.replacement !== null
+              ? 'Deserteur: Wo stellst du den Überläufer auf?'
+              : 'Deserteur: Welchen Ritter gibst du auf?'}
+          </span>
+        </div>
+      ) : null}
 
       {/*
        * Dieselbe Leiste fuer die Ritter. Der Vertriebene bekommt sie **ohne**
