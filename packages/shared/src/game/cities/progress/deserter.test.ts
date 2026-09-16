@@ -16,6 +16,7 @@ import type { PlayerId, PlayerState } from '../../player.js';
 import { reduce } from '../../reducer.js';
 import type { GameState, Knight } from '../../state.js';
 import type { ProgressCardId } from './cards.js';
+import { knightMayAct } from '../knights.js';
 import { canPlayProgress } from './progressRules.js';
 
 /*
@@ -154,13 +155,38 @@ describe('Deserteur', () => {
       owner: 'p1',
       level: 2,
       active: true,
-      activatedOnTurn: after.turn,
+      activatedOnTurn: after.turn - 1,
       upgradedThisTurn: false,
     });
     expect(playerNamed(after, 'p1').piecesLeft.knight2).toBe(
       playerNamed(round2, 'p1').piecesLeft.knight2 - 1,
     );
     expect(after.phase).toEqual({ kind: 'main' });
+  });
+
+  it('laesst einen aktiven Ueberlaeufer sofort handeln (FAQ 83)', () => {
+    const round2 = act(act(deserterTable(), PLAY), pick('p2', FAR_VERTEX));
+    const after = act(round2, pick('p1', CENTER_VERTEX));
+    expect(knightMayAct(after, CENTER_VERTEX, 'p1')).toBe(true);
+  });
+
+  it('stellt einen maechtigen Ueberlaeufer auch ohne Festung auf (FAQ 84)', () => {
+    const mighty: Knight = { ...STRONG_READY, level: 3 };
+    const state = deserterTable({ knights: { [FAR_VERTEX]: mighty } });
+    const round2 = act(act(state, PLAY), pick('p2', FAR_VERTEX));
+    const after = act(round2, pick('p1', CENTER_VERTEX));
+    expect(after.knights[CENTER_VERTEX]).toMatchObject({ owner: 'p1', level: 3 });
+  });
+
+  it('stellt keinen Ritter, wenn fuer einen einfachen keiner mehr im Vorrat liegt (FAQ 82)', () => {
+    const state = withStock(
+      deserterTable({ knights: { [HARBOR3_VERTEX]: SIMPLE_PASSIVE } }),
+      'p1',
+      { knight1: 0 },
+    );
+    const after = act(act(state, PLAY), pick('p2', HARBOR3_VERTEX));
+    expect(after.phase).toEqual({ kind: 'main' });
+    expect(Object.values(after.knights).some((knight) => knight.owner === 'p1')).toBe(false);
   });
 
   it('stellt einen passiven Ritter passiv und ohne Aktivierungsrunde auf', () => {

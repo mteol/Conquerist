@@ -135,8 +135,11 @@ export function canAnswerDeserter(
  * nichts an.
  *
  * Runde 2: der Ueberlaeufer steht mit der Ersatzstufe und dem Helm des
- * Gefallenen. `activatedOnTurn` ist die laufende Runde: uebernommen heisst
- * angekommen, nicht sofort handlungsfaehig.
+ * Gefallenen. Ein aktiver Ueberlaeufer darf sofort handeln (offizielle FAQ,
+ * Frage 83), deshalb steht `activatedOnTurn` eine Runde zurueck -
+ * `knightMayAct` verlangt `activatedOnTurn < state.turn`. Die Festung braucht
+ * auch ein maechtiger Ueberlaeufer nicht (Frage 84): er wird ersetzt, nicht
+ * aufgewertet.
  */
 export function answerDeserter(
   state: GameState,
@@ -186,7 +189,7 @@ export function answerDeserter(
         owner: player,
         level,
         active,
-        activatedOnTurn: active ? state.turn : null,
+        activatedOnTurn: active ? Math.max(0, state.turn - 1) : null,
         upgradedThisTurn: false,
       },
     },
