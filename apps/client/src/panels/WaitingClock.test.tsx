@@ -17,10 +17,7 @@ function viewIn(phase: unknown): PlayerView {
 describe('WaitingClock', () => {
   it('zeigt in einer Wartephase die Restzeit', () => {
     render(
-      <WaitingClock
-        view={viewIn({ kind: 'aqueductPending', pending: ['p2'] })}
-        clockOffset={0}
-      />,
+      <WaitingClock view={viewIn({ kind: 'aqueductPending', pending: ['p2'] })} clockOffset={0} />,
     );
     expect(screen.getByTestId('waiting-clock').textContent).toBe('Noch 60 Sekunden');
   });

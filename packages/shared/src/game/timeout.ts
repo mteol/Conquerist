@@ -5,7 +5,13 @@ import { deadlineOf } from './deadline.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { Phase } from './phase.js';
 import type { PlayerId } from './player.js';
-import { applyDiscard, applyMoveRobber, canPlaceRobberAt, discardCountFor, victimsAt } from './robber.js';
+import {
+  applyDiscard,
+  applyMoveRobber,
+  canPlaceRobberAt,
+  discardCountFor,
+  victimsAt,
+} from './robber.js';
 import {
   findPlayer,
   ok,
@@ -150,7 +156,9 @@ function moveRobberForCurrent(state: GameState): ReduceResult {
   const player = state.players[state.currentPlayerIndex]!.id;
   const board = boardOf(state.scenario);
 
-  const legal = [...board.hexes.keys()].filter((hex) => canPlaceRobberAt(state, hex) === null).sort();
+  const legal = [...board.hexes.keys()]
+    .filter((hex) => canPlaceRobberAt(state, hex) === null)
+    .sort();
   const desert = legal.filter((hex) => board.hexes.get(hex)?.terrain === 'desert');
   const harmless = legal.filter(
     (hex) =>

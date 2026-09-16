@@ -20,7 +20,12 @@ import { PersonPickDialog, type PersonOption } from '../dialogs/PersonPickDialog
 type ProgressPlay = Extract<GameAction, { type: 'playProgress' }>['play'];
 
 type DialogCard =
-  'alchemist' | 'crane' | 'resourceMonopoly' | 'commodityMonopoly' | 'merchantFleet' | 'tradeHarbor';
+  | 'alchemist'
+  | 'crane'
+  | 'resourceMonopoly'
+  | 'commodityMonopoly'
+  | 'merchantFleet'
+  | 'tradeHarbor';
 
 /** Die drei Karten, die eine Person als Ziel brauchen. */
 type PersonCard = 'spy' | 'masterMerchant' | 'deserter';
@@ -54,7 +59,9 @@ type CardCategory =
   | { readonly kind: 'inert' };
 
 /** Titel und Hinweis der Personenwahl - eine Karte, ein Satzpaar. */
-const PERSON_TEXTS: Readonly<Record<PersonCard, { readonly title: string; readonly hint: string }>> = {
+const PERSON_TEXTS: Readonly<
+  Record<PersonCard, { readonly title: string; readonly hint: string }>
+> = {
   spy: {
     title: 'Spionage: bei wem?',
     hint: 'Du siehst die Fortschrittskarten dieser Person und nimmst eine davon.',
@@ -191,11 +198,20 @@ export function ProgressPanel({
       const person = view.players.find((player) => player.id === payload.victim);
       return person === undefined
         ? []
-        : [{ id: person.id, name: person.name, color: person.color, victoryPoints: person.victoryPoints }];
+        : [
+            {
+              id: person.id,
+              name: person.name,
+              color: person.color,
+              victoryPoints: person.victoryPoints,
+            },
+          ];
     });
 
   const tradeHarborPool = RESOURCE_IDS.filter((resource) =>
-    playsOf('tradeHarbor').some((payload) => 'resource' in payload && payload.resource === resource),
+    playsOf('tradeHarbor').some(
+      (payload) => 'resource' in payload && payload.resource === resource,
+    ),
   );
 
   /** Eine Karte mit Person spielen - je Karte ein Zweig, damit `tsc` die Union trifft. */

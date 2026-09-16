@@ -24,7 +24,9 @@ export function SpyDialog({ victimName, cards, onTake }: SpyDialogProps): JSX.El
     <div className="modal" role="dialog" aria-label="Spionage">
       <div className="modal__box">
         <h2>{victimName}s Fortschrittskarten</h2>
-        <p className="modal__hint">Nur du siehst diese Karten, und nur jetzt. Eine davon nimmst du.</p>
+        <p className="modal__hint">
+          Nur du siehst diese Karten, und nur jetzt. Eine davon nimmst du.
+        </p>
 
         <div className="pick">
           {cards.map((card) => (

@@ -21,7 +21,12 @@ import { twoCardsOrAll } from './pending.js';
 function weddingPending(overrides: Partial<GameState> = {}): GameState {
   return testGame({
     rules: CITIES_RULES,
-    phase: { kind: 'progressPending', by: 'p1', pending: ['p2', 'p3'], payload: { card: 'wedding' } },
+    phase: {
+      kind: 'progressPending',
+      by: 'p1',
+      pending: ['p2', 'p3'],
+      payload: { card: 'wedding' },
+    },
     ...overrides,
   });
 }
@@ -44,7 +49,12 @@ describe('progressPending als Phase', () => {
   });
 
   it('lehnt eine Nutzlast fuer eine Karte ab, die nicht wartet', () => {
-    const phase = { kind: 'progressPending', by: 'p1', pending: ['p2'], payload: { card: 'bishop' } };
+    const phase = {
+      kind: 'progressPending',
+      by: 'p1',
+      pending: ['p2'],
+      payload: { card: 'bishop' },
+    };
     expect(PhaseSchema.safeParse(phase).success).toBe(false);
   });
 });
@@ -122,7 +132,9 @@ describe('Die wartenden Karten am echten Staedte-Tisch', () => {
   function patch(state: GameState, id: string, change: Partial<PlayerState>): GameState {
     return {
       ...state,
-      players: state.players.map((player) => (player.id === id ? { ...player, ...change } : player)),
+      players: state.players.map((player) =>
+        player.id === id ? { ...player, ...change } : player,
+      ),
     };
   }
 
@@ -158,11 +170,19 @@ describe('Die wartenden Karten am echten Staedte-Tisch', () => {
       progressCards: ['bishop'],
     });
 
-    const open = act(state, { type: 'playProgress', player: 'p1', play: { card: 'spy', victim: 'p2' } });
+    const open = act(state, {
+      type: 'playProgress',
+      player: 'p1',
+      play: { card: 'spy', victim: 'p2' },
+    });
     const seen = playerViewOf(open, 'p1', seats, 1).players.find((player) => player.id === 'p2')!;
     expect(seen.progressCards).toEqual(['bishop']);
 
-    const done = act(open, { type: 'answerProgress', player: 'p1', answer: { card: 'spy', take: 'bishop' } });
+    const done = act(open, {
+      type: 'answerProgress',
+      player: 'p1',
+      answer: { card: 'spy', take: 'bishop' },
+    });
     const after = playerViewOf(done, 'p1', seats, 2).players.find((player) => player.id === 'p2')!;
     expect(after.progressCards).toBeNull();
   });

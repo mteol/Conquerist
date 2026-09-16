@@ -59,7 +59,10 @@ function offer(player: PlayerId, commodity: CommodityId): GameAction {
 /** p1 hat zwei Wolle; p2 haelt Papier und Tuch, p3 eine Muenze. */
 function harborTable(): GameState {
   let state = tableWith('tradeHarbor');
-  state = patchPlayer(state, 'p1', { progressCards: ['tradeHarbor'], resources: hand({ wool: 2 }) });
+  state = patchPlayer(state, 'p1', {
+    progressCards: ['tradeHarbor'],
+    resources: hand({ wool: 2 }),
+  });
   state = patchPlayer(state, 'p2', { resources: hand({ paper: 1, cloth: 2 }) });
   return patchPlayer(state, 'p3', { resources: hand({ coin: 1 }) });
 }

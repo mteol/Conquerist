@@ -43,7 +43,11 @@ function act(state: GameState, action: GameAction): GameState {
   return result.state;
 }
 
-const PLAY: GameAction = { type: 'playProgress', player: 'p1', play: { card: 'spy', victim: 'p2' } };
+const PLAY: GameAction = {
+  type: 'playProgress',
+  player: 'p1',
+  play: { card: 'spy', victim: 'p2' },
+};
 
 function take(card: ProgressCardId): GameAction {
   return { type: 'answerProgress', player: 'p1', answer: { card: 'spy', take: card } };

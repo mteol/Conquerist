@@ -245,8 +245,20 @@ function personView(hand: readonly ProgressCardId[]): PlayerView {
   return baseView({
     players: [
       { id: 'p1', name: 'Spieler 1', color: 'red', victoryPoints: 3, progressCards: hand } as never,
-      { id: 'p2', name: 'Spieler 2', color: 'blue', victoryPoints: 5, progressCards: null } as never,
-      { id: 'p3', name: 'Spieler 3', color: 'green', victoryPoints: 2, progressCards: null } as never,
+      {
+        id: 'p2',
+        name: 'Spieler 2',
+        color: 'blue',
+        victoryPoints: 5,
+        progressCards: null,
+      } as never,
+      {
+        id: 'p3',
+        name: 'Spieler 3',
+        color: 'green',
+        victoryPoints: 2,
+        progressCards: null,
+      } as never,
     ],
   });
 }

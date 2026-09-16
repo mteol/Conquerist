@@ -100,7 +100,11 @@ export function answerWedding(
   answer: WeddingAnswer,
 ): GameState {
   const given = transferCards(state, giver, phase.by, answer.gift);
-  return withPending(given, phase, phase.pending.filter((id) => id !== giver));
+  return withPending(
+    given,
+    phase,
+    phase.pending.filter((id) => id !== giver),
+  );
 }
 
 /** Nach Fristablauf: die zwei haeufigsten Karten, bei Gleichstand in `CARD_IDS`-Ordnung. */

@@ -131,7 +131,10 @@ describe('timeout beim Angebot', () => {
 
 describe('ein Geschenk verfaellt', () => {
   it('nimmt dem Vordersten am Aquaedukt die Wahl und laesst den Naechsten waehlen', () => {
-    const state = testGame({ rules: CITIES_RULES, phase: { kind: 'aqueductPending', pending: ['p2', 'p3'] } });
+    const state = testGame({
+      rules: CITIES_RULES,
+      phase: { kind: 'aqueductPending', pending: ['p2', 'p3'] },
+    });
     const after = expire(state, 'p2');
 
     expect(after.phase).toEqual({ kind: 'aqueductPending', pending: ['p3'] });
@@ -139,7 +142,10 @@ describe('ein Geschenk verfaellt', () => {
   });
 
   it('schliesst das Aquaedukt, wenn der Letzte schweigt', () => {
-    const state = testGame({ rules: CITIES_RULES, phase: { kind: 'aqueductPending', pending: ['p2'] } });
+    const state = testGame({
+      rules: CITIES_RULES,
+      phase: { kind: 'aqueductPending', pending: ['p2'] },
+    });
     expect(expire(state, 'p2').phase).toEqual({ kind: 'main' });
   });
 
@@ -159,7 +165,12 @@ describe('ein Geschenk verfaellt', () => {
     const spy = patchPlayer(
       testGame({
         rules: CITIES_RULES,
-        phase: { kind: 'progressPending', by: 'p1', pending: ['p1'], payload: { card: 'spy', victim: 'p2' } },
+        phase: {
+          kind: 'progressPending',
+          by: 'p1',
+          pending: ['p1'],
+          payload: { card: 'spy', victim: 'p2' },
+        },
       }),
       'p2',
       { progressCards: ['bishop'] },
@@ -241,7 +252,9 @@ describe('eine Pflicht wird abgenommen', () => {
   it('schickt den Raeuber sonst auf das erste Feld ohne fremdes Bauwerk', () => {
     const state = testGame({
       phase: { kind: 'robberPending', resume: 'main' },
-      buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null } },
+      buildings: {
+        [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+      },
     });
     const after = expire(state, 'p1');
 
@@ -291,7 +304,12 @@ describe('eine Pflicht wird abgenommen', () => {
   it('laesst bei der Hochzeit alle Uebrigen ihre zwei haeufigsten Karten schenken', () => {
     let state = testGame({
       rules: CITIES_RULES,
-      phase: { kind: 'progressPending', by: 'p1', pending: ['p2', 'p3'], payload: { card: 'wedding' } },
+      phase: {
+        kind: 'progressPending',
+        by: 'p1',
+        pending: ['p2', 'p3'],
+        payload: { card: 'wedding' },
+      },
     });
     state = patchPlayer(state, 'p2', { resources: hand({ ore: 5, wool: 3 }) });
     state = patchPlayer(state, 'p3', { resources: hand({ grain: 1 }) });
@@ -323,8 +341,20 @@ describe('eine Pflicht wird abgenommen', () => {
   });
 
   it('laesst beim Deserteur den schwaechsten Ritter fallen und oeffnet Runde 2', () => {
-    const strong: Knight = { owner: 'p2', level: 2, active: true, activatedOnTurn: 0, upgradedThisTurn: false };
-    const simple: Knight = { owner: 'p2', level: 1, active: false, activatedOnTurn: null, upgradedThisTurn: false };
+    const strong: Knight = {
+      owner: 'p2',
+      level: 2,
+      active: true,
+      activatedOnTurn: 0,
+      upgradedThisTurn: false,
+    };
+    const simple: Knight = {
+      owner: 'p2',
+      level: 1,
+      active: false,
+      activatedOnTurn: null,
+      upgradedThisTurn: false,
+    };
     const state = testGame({
       rules: CITIES_RULES,
       roads: { [CENTER_EDGE]: 'p1' },

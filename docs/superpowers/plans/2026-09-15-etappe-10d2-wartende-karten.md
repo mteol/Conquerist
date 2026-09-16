@@ -96,46 +96,46 @@ sie stehen so im Plan und dürfen beim Umsetzen nicht stillschweigend gedreht we
 
 ## Dateiplan
 
-| Datei                                                             | Rolle                                                                  |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `packages/shared/src/game/cities/progress/answer.ts`              | **neu** — `ProgressAnswerSchema`, `ProgressPendingPayloadSchema`       |
-| `packages/shared/src/game/cities/progress/pending.ts`             | **neu** — Phasenhelfer: öffnen, streichen, Karten verschieben, 2-oder-alles |
-| `packages/shared/src/game/cities/progress/answerRules.ts`         | **neu** — `canAnswerProgress` / `applyAnswerProgress` / `autoAnswerProgress` |
-| `packages/shared/src/game/cities/progress/wedding.ts`             | **neu** — Hochzeit                                                     |
-| `packages/shared/src/game/cities/progress/tradeHarbor.ts`         | **neu** — Handelshafen                                                 |
-| `packages/shared/src/game/cities/progress/spy.ts`                 | **neu** — Spionage                                                     |
-| `packages/shared/src/game/cities/progress/masterMerchant.ts`      | **neu** — Großhändler                                                  |
-| `packages/shared/src/game/cities/progress/deserter.ts`            | **neu** — Deserteur (zwei Runden)                                      |
-| `packages/shared/src/game/timeout.ts`                             | **neu** — `canTimeout` / `applyTimeout` als Verteiler über die Phasen  |
-| `packages/shared/src/game/phase.ts`                               | ändern — `progressPending`                                             |
-| `packages/shared/src/game/actions.ts`                             | ändern — `answerProgress`                                              |
-| `packages/shared/src/game/reducer.ts`                             | ändern — Phasentabelle, `actorFor`, Verteiler                          |
-| `packages/shared/src/game/legal.ts`                               | ändern — spielbare und beantwortbare Züge aufzählen                    |
-| `packages/shared/src/game/playerView.ts`                          | ändern — `revealsTo`                                                   |
-| `packages/shared/src/game/errors.ts`                              | ändern — drei Ablehnungsgründe                                         |
-| `packages/shared/src/game/cards.ts`                               | ändern — `takeMostHeld`                                                |
-| `packages/shared/src/game/deadline.ts`                            | ändern — `Deadline` mit `at` oder `after`, `msUntil`                   |
-| `packages/shared/src/game/playerTrade.ts`                         | ändern — `canTimeout`/`applyTimeout` ziehen aus                        |
-| `packages/shared/src/game/log.ts`                                 | ändern — Kartensätze, Antworten, Fristablauf                           |
-| `packages/shared/src/game/cities/progress/play.ts`                | ändern — fünf Varianten                                                |
-| `packages/shared/src/game/cities/progress/progressRules.ts`       | ändern — fünf Zweige                                                   |
-| `packages/shared/src/game/cities/progress/draw.ts`                | ändern — `inTurnOrder` exportieren                                     |
-| `packages/shared/src/game/cities/knights.ts`                      | ändern — `canPlaceKnightAt` herauslösen                                |
-| `packages/shared/src/game/cities/index.ts`                        | ändern — `twoCardsOrAll` für den Client                                |
-| `packages/shared/src/rules/ruleset.ts`, `rules/cities.ts`         | ändern — `pendingAnswerMs`, die fünf Stapeleinträge                    |
-| `apps/server/src/rooms/clock.ts`                                  | ändern — `msUntil`                                                     |
-| `apps/client/src/game/useHotseatGame.ts`                          | ändern — `msUntil`                                                     |
-| `apps/client/src/game/useCountdown.ts`                            | **neu** — der eine Countdown für Angebot und Wartephasen               |
-| `apps/client/src/panels/WaitingClock.tsx`                         | **neu** — die Wartezeile                                               |
-| `apps/client/src/dialogs/PersonPickDialog.tsx`                    | **neu** — die Personenwahl                                             |
-| `apps/client/src/dialogs/SpyDialog.tsx`                           | **neu** — Aufdeckdialog der Spionage                                   |
-| `apps/client/src/dialogs/DiscardDialog.tsx`                       | ändern — Titel, Hinweis, Knopftext einstellbar                         |
-| `apps/client/src/dialogs/ResourcePickDialog.tsx`                  | ändern — Knopftext einstellbar                                         |
-| `apps/client/src/dialogs/TradeOfferDialog.tsx`                    | ändern — `useCountdown`                                                |
-| `apps/client/src/panels/ProgressPanel.tsx`, `StatusPanel.tsx`     | ändern — fünf Karten spielen, Platz für die Uhr                        |
-| `apps/client/src/game/view.ts`, `game/targets.ts`                 | ändern — wer handelt, Phasensatz, Brettziele des Deserteurs            |
-| `apps/client/src/screens/GameScreen.tsx`, `index.css`             | ändern — Antwortdialoge, Wartezeile                                    |
-| `PROGRESS.md`                                                     | ändern — Abschnitt 10d-2                                               |
+| Datei                                                         | Rolle                                                                        |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `packages/shared/src/game/cities/progress/answer.ts`          | **neu** — `ProgressAnswerSchema`, `ProgressPendingPayloadSchema`             |
+| `packages/shared/src/game/cities/progress/pending.ts`         | **neu** — Phasenhelfer: öffnen, streichen, Karten verschieben, 2-oder-alles  |
+| `packages/shared/src/game/cities/progress/answerRules.ts`     | **neu** — `canAnswerProgress` / `applyAnswerProgress` / `autoAnswerProgress` |
+| `packages/shared/src/game/cities/progress/wedding.ts`         | **neu** — Hochzeit                                                           |
+| `packages/shared/src/game/cities/progress/tradeHarbor.ts`     | **neu** — Handelshafen                                                       |
+| `packages/shared/src/game/cities/progress/spy.ts`             | **neu** — Spionage                                                           |
+| `packages/shared/src/game/cities/progress/masterMerchant.ts`  | **neu** — Großhändler                                                        |
+| `packages/shared/src/game/cities/progress/deserter.ts`        | **neu** — Deserteur (zwei Runden)                                            |
+| `packages/shared/src/game/timeout.ts`                         | **neu** — `canTimeout` / `applyTimeout` als Verteiler über die Phasen        |
+| `packages/shared/src/game/phase.ts`                           | ändern — `progressPending`                                                   |
+| `packages/shared/src/game/actions.ts`                         | ändern — `answerProgress`                                                    |
+| `packages/shared/src/game/reducer.ts`                         | ändern — Phasentabelle, `actorFor`, Verteiler                                |
+| `packages/shared/src/game/legal.ts`                           | ändern — spielbare und beantwortbare Züge aufzählen                          |
+| `packages/shared/src/game/playerView.ts`                      | ändern — `revealsTo`                                                         |
+| `packages/shared/src/game/errors.ts`                          | ändern — drei Ablehnungsgründe                                               |
+| `packages/shared/src/game/cards.ts`                           | ändern — `takeMostHeld`                                                      |
+| `packages/shared/src/game/deadline.ts`                        | ändern — `Deadline` mit `at` oder `after`, `msUntil`                         |
+| `packages/shared/src/game/playerTrade.ts`                     | ändern — `canTimeout`/`applyTimeout` ziehen aus                              |
+| `packages/shared/src/game/log.ts`                             | ändern — Kartensätze, Antworten, Fristablauf                                 |
+| `packages/shared/src/game/cities/progress/play.ts`            | ändern — fünf Varianten                                                      |
+| `packages/shared/src/game/cities/progress/progressRules.ts`   | ändern — fünf Zweige                                                         |
+| `packages/shared/src/game/cities/progress/draw.ts`            | ändern — `inTurnOrder` exportieren                                           |
+| `packages/shared/src/game/cities/knights.ts`                  | ändern — `canPlaceKnightAt` herauslösen                                      |
+| `packages/shared/src/game/cities/index.ts`                    | ändern — `twoCardsOrAll` für den Client                                      |
+| `packages/shared/src/rules/ruleset.ts`, `rules/cities.ts`     | ändern — `pendingAnswerMs`, die fünf Stapeleinträge                          |
+| `apps/server/src/rooms/clock.ts`                              | ändern — `msUntil`                                                           |
+| `apps/client/src/game/useHotseatGame.ts`                      | ändern — `msUntil`                                                           |
+| `apps/client/src/game/useCountdown.ts`                        | **neu** — der eine Countdown für Angebot und Wartephasen                     |
+| `apps/client/src/panels/WaitingClock.tsx`                     | **neu** — die Wartezeile                                                     |
+| `apps/client/src/dialogs/PersonPickDialog.tsx`                | **neu** — die Personenwahl                                                   |
+| `apps/client/src/dialogs/SpyDialog.tsx`                       | **neu** — Aufdeckdialog der Spionage                                         |
+| `apps/client/src/dialogs/DiscardDialog.tsx`                   | ändern — Titel, Hinweis, Knopftext einstellbar                               |
+| `apps/client/src/dialogs/ResourcePickDialog.tsx`              | ändern — Knopftext einstellbar                                               |
+| `apps/client/src/dialogs/TradeOfferDialog.tsx`                | ändern — `useCountdown`                                                      |
+| `apps/client/src/panels/ProgressPanel.tsx`, `StatusPanel.tsx` | ändern — fünf Karten spielen, Platz für die Uhr                              |
+| `apps/client/src/game/view.ts`, `game/targets.ts`             | ändern — wer handelt, Phasensatz, Brettziele des Deserteurs                  |
+| `apps/client/src/screens/GameScreen.tsx`, `index.css`         | ändern — Antwortdialoge, Wartezeile                                          |
+| `PROGRESS.md`                                                 | ändern — Abschnitt 10d-2                                                     |
 
 ## Reihenfolge der Aufgaben
 
@@ -282,7 +282,12 @@ import { twoCardsOrAll } from './pending.js';
 function weddingPending(overrides: Partial<GameState> = {}): GameState {
   return testGame({
     rules: CITIES_RULES,
-    phase: { kind: 'progressPending', by: 'p1', pending: ['p2', 'p3'], payload: { card: 'wedding' } },
+    phase: {
+      kind: 'progressPending',
+      by: 'p1',
+      pending: ['p2', 'p3'],
+      payload: { card: 'wedding' },
+    },
     ...overrides,
   });
 }
@@ -305,7 +310,12 @@ describe('progressPending als Phase', () => {
   });
 
   it('lehnt eine Nutzlast fuer eine Karte ab, die nicht wartet', () => {
-    const phase = { kind: 'progressPending', by: 'p1', pending: ['p2'], payload: { card: 'bishop' } };
+    const phase = {
+      kind: 'progressPending',
+      by: 'p1',
+      pending: ['p2'],
+      payload: { card: 'bishop' },
+    };
     expect(PhaseSchema.safeParse(phase).success).toBe(false);
   });
 });
@@ -573,7 +583,8 @@ export function transferCards(
   return {
     ...state,
     players: state.players.map((entry) => {
-      if (entry.id === from) return { ...entry, resources: subtractCards(entry.resources, amounts) };
+      if (entry.id === from)
+        return { ...entry, resources: subtractCards(entry.resources, amounts) };
       if (entry.id === to) return { ...entry, resources: addCards(entry.resources, amounts) };
       return entry;
     }),
@@ -695,15 +706,15 @@ export function applyAnswerProgress(
   progressPending: ['answerProgress'],
 ```
 
-  - In `actorFor` vor dem `tradePending`-Zweig:
+- In `actorFor` vor dem `tradePending`-Zweig:
 
 ```ts
-  // Wie beim Abwerfen antworten mehrere gleichzeitig. Wer genau darf, prueft
-  // `canAnswerProgress`.
-  if (state.phase.kind === 'progressPending') return null;
+// Wie beim Abwerfen antworten mehrere gleichzeitig. Wer genau darf, prueft
+// `canAnswerProgress`.
+if (state.phase.kind === 'progressPending') return null;
 ```
 
-  - In `applyAction` vor `endTurn`:
+- In `applyAction` vor `endTurn`:
 
 ```ts
     case 'answerProgress':
@@ -757,8 +768,8 @@ function progressAnswerCandidates(state: GameState): ProgressAnswer[] {
       return `${who} antwortet auf ${PROGRESS_NAMES[action.answer.card]}`;
 ```
 
-  - `apps/client/src/game/view.ts`, `phaseTextOf`, vor `finished` (Import `PROGRESS_NAMES` aus
-    `@conquerist/shared` ergänzen):
+- `apps/client/src/game/view.ts`, `phaseTextOf`, vor `finished` (Import `PROGRESS_NAMES` aus
+  `@conquerist/shared` ergänzen):
 
 ```ts
     case 'progressPending':
@@ -821,34 +832,32 @@ function allStrings(value: unknown, found: Set<string> = new Set()): Set<string>
 Den Test „gibt den Inhalt und die Reihenfolge der Stapel nirgends heraus" **ersetzen**:
 
 ```ts
-  it('gibt den Inhalt und die Reihenfolge der Stapel nirgends heraus', () => {
-    const state = gameWithCities({
-      progressDecks: {
-        science: ['mining', 'irrigation'],
-        trade: ['merchant'],
-        politics: ['bishop', 'saboteur'],
-      },
-    });
-
-    const view = playerViewOf(state, 'p1', seats, 1);
-
-    expect(Object.keys(view)).not.toContain('progressDecks');
-
-    /*
-     * Geprueft wird auf **Werte**, nicht auf Teilstrings im JSON. Der alte Test
-     * suchte `'bishop'` in der ganzen Zeichenkette und waere am ersten Feld
-     * namens `bishopTargets` grundlos umgefallen - ein Schluessel ist kein Leck.
-     * `rules` bleibt aussen vor: `rules.progressDecks` nennt die Zusammensetzung
-     * aller Stapel, das ist oeffentliches Regelwissen.
-     */
-    const withoutRules = Object.fromEntries(
-      Object.entries(view).filter(([key]) => key !== 'rules'),
-    );
-    const values = allStrings(withoutRules);
-    for (const card of ['mining', 'irrigation', 'merchant', 'bishop', 'saboteur']) {
-      expect(values.has(card)).toBe(false);
-    }
+it('gibt den Inhalt und die Reihenfolge der Stapel nirgends heraus', () => {
+  const state = gameWithCities({
+    progressDecks: {
+      science: ['mining', 'irrigation'],
+      trade: ['merchant'],
+      politics: ['bishop', 'saboteur'],
+    },
   });
+
+  const view = playerViewOf(state, 'p1', seats, 1);
+
+  expect(Object.keys(view)).not.toContain('progressDecks');
+
+  /*
+   * Geprueft wird auf **Werte**, nicht auf Teilstrings im JSON. Der alte Test
+   * suchte `'bishop'` in der ganzen Zeichenkette und waere am ersten Feld
+   * namens `bishopTargets` grundlos umgefallen - ein Schluessel ist kein Leck.
+   * `rules` bleibt aussen vor: `rules.progressDecks` nennt die Zusammensetzung
+   * aller Stapel, das ist oeffentliches Regelwissen.
+   */
+  const withoutRules = Object.fromEntries(Object.entries(view).filter(([key]) => key !== 'rules'));
+  const values = allStrings(withoutRules);
+  for (const card of ['mining', 'irrigation', 'merchant', 'bishop', 'saboteur']) {
+    expect(values.has(card)).toBe(false);
+  }
+});
 ```
 
 Und ein neuer Block am Dateiende:
@@ -864,7 +873,11 @@ describe('revealsTo - die eine geoeffnete Hand', () => {
       ...base,
       players: base.players.map((player) =>
         player.id === 'p2'
-          ? { ...player, resources: { ...player.resources, ore: 2 }, progressCards: ['bishop' as const] }
+          ? {
+              ...player,
+              resources: { ...player.resources, ore: 2 },
+              progressCards: ['bishop' as const],
+            }
           : player,
       ),
     };
@@ -902,7 +915,12 @@ describe('revealsTo - die eine geoeffnete Hand', () => {
     const base = looking({ card: 'spy', victim: 'p2' });
     const state = {
       ...base,
-      phase: { kind: 'progressPending' as const, by: 'p1', pending: ['p2'], payload: { card: 'spy' as const, victim: 'p2' } },
+      phase: {
+        kind: 'progressPending' as const,
+        by: 'p1',
+        pending: ['p2'],
+        payload: { card: 'spy' as const, victim: 'p2' },
+      },
     };
     expect(revealsTo(state, 'p1', 'p2')).toEqual({ resources: false, progressCards: false });
   });
@@ -918,7 +936,10 @@ describe('revealsTo - die eine geoeffnete Hand', () => {
   });
 
   it('zeigt jedem die eigene Hand ganz', () => {
-    expect(revealsTo(gameWithCities(), 'p2', 'p2')).toEqual({ resources: true, progressCards: true });
+    expect(revealsTo(gameWithCities(), 'p2', 'p2')).toEqual({
+      resources: true,
+      progressCards: true,
+    });
   });
 
   it('haelt waehrend der offenen Hand das eigene Schema ein', () => {
@@ -1187,7 +1208,9 @@ describe('Hochzeit', () => {
   });
 
   it('zaehlt die Hochzeit in legalActions als Zug ohne Angabe auf', () => {
-    const plays = legalActions(weddingTable(), 'p1').filter((action) => action.type === 'playProgress');
+    const plays = legalActions(weddingTable(), 'p1').filter(
+      (action) => action.type === 'playProgress',
+    );
     expect(plays).toContainEqual(PLAY);
   });
 
@@ -1351,7 +1374,11 @@ export function answerWedding(
   answer: WeddingAnswer,
 ): GameState {
   const given = transferCards(state, giver, phase.by, answer.gift);
-  return withPending(given, phase, phase.pending.filter((id) => id !== giver));
+  return withPending(
+    given,
+    phase,
+    phase.pending.filter((id) => id !== giver),
+  );
 }
 ```
 
@@ -1385,8 +1412,9 @@ function canWaitingCard(
 ```
 
     Und in `applyPlayProgress`: `case 'wedding': return applyWedding(discarded, player, play);`
-  - `answerRules.ts`: Import `import { answerWedding, canAnswerWedding } from './wedding.js';`
-    und `ok` im Import aus `../../state.js` ergänzen. Im `wedding`-Zweig von `canAnswerProgress`:
+
+- `answerRules.ts`: Import `import { answerWedding, canAnswerWedding } from './wedding.js';`
+  und `ok` im Import aus `../../state.js` ergänzen. Im `wedding`-Zweig von `canAnswerProgress`:
 
 ```ts
     case 'wedding':
@@ -1401,7 +1429,7 @@ function canWaitingCard(
       return ok(answerWedding(state, phase, player, answer));
 ```
 
-  - `legal.ts`, `zeroArgumentProgressPlay`: `case 'wedding': return { card };`
+- `legal.ts`, `zeroArgumentProgressPlay`: `case 'wedding': return { card };`
 
 - [ ] **Schritt 6: Tests laufen lassen** — `pnpm typecheck && pnpm -r test`. PASS.
 - [ ] **Schritt 7: Committen**
@@ -1472,7 +1500,10 @@ function offer(player: PlayerId, commodity: CommodityId): GameAction {
 /** p1 hat zwei Wolle; p2 haelt Papier und Tuch, p3 eine Muenze. */
 function harborTable(): GameState {
   let state = tableWith('tradeHarbor');
-  state = patchPlayer(state, 'p1', { progressCards: ['tradeHarbor'], resources: hand({ wool: 2 }) });
+  state = patchPlayer(state, 'p1', {
+    progressCards: ['tradeHarbor'],
+    resources: hand({ wool: 2 }),
+  });
   state = patchPlayer(state, 'p2', { resources: hand({ paper: 1, cloth: 2 }) });
   return patchPlayer(state, 'p3', { resources: hand({ coin: 1 }) });
 }
@@ -1670,7 +1701,11 @@ export function answerTradeHarbor(
 ): GameState {
   const commodityIn = transferCards(state, partner, phase.by, one(answer.commodity));
   const resourceOut = transferCards(commodityIn, phase.by, partner, one(payload.resource));
-  return withPending(resourceOut, phase, phase.pending.filter((id) => id !== partner));
+  return withPending(
+    resourceOut,
+    phase,
+    phase.pending.filter((id) => id !== partner),
+  );
 }
 ```
 
@@ -1697,33 +1732,33 @@ export function answerTradeHarbor(
     }
 ```
 
-  - `legal.ts`, `progressAnswerCandidates`: `tradeHarbor` aus dem gemeinsamen `[]`-Zweig
-    herausnehmen (Import `COMMODITY_IDS` aus `../scenario/index.js` ergänzen):
+- `legal.ts`, `progressAnswerCandidates`: `tradeHarbor` aus dem gemeinsamen `[]`-Zweig
+  herausnehmen (Import `COMMODITY_IDS` aus `../scenario/index.js` ergänzen):
 
 ```ts
     case 'tradeHarbor':
       return COMMODITY_IDS.map((commodity): ProgressAnswer => ({ card: 'tradeHarbor', commodity }));
 ```
 
-  - `legal.ts`, Hauptphase: die Schleife über `progressCards` und `zeroArgumentProgressPlay`
-    **ersetzen**. Die Schleife:
+- `legal.ts`, Hauptphase: die Schleife über `progressCards` und `zeroArgumentProgressPlay`
+  **ersetzen**. Die Schleife:
 
 ```ts
-      /*
-       * Fortschrittskarten, deren Angabe sich aufzaehlen laesst: ohne Angabe,
-       * eine von fuenf Rohstoffsorten (Handelshafen) oder - ab Aufgabe 5 - eine
-       * andere Person. Alles andere braeuchte eine Aufzaehlung ueber Kreuzungen,
-       * Kanten oder Felder und bleibt der Auswahl im Dialog oder am Brett
-       * ueberlassen. Ueber die **Arten** auf der Hand und nicht ueber die Karten:
-       * zwei gleiche Karten ergaeben sonst jeden Zug doppelt.
-       */
-      for (const card of new Set(state.players[state.currentPlayerIndex]?.progressCards ?? [])) {
-        for (const play of enumerableProgressPlays(card)) {
-          if (canPlayProgress(state, player, play) === null) {
-            actions.push({ type: 'playProgress', player, play });
-          }
-        }
-      }
+/*
+ * Fortschrittskarten, deren Angabe sich aufzaehlen laesst: ohne Angabe,
+ * eine von fuenf Rohstoffsorten (Handelshafen) oder - ab Aufgabe 5 - eine
+ * andere Person. Alles andere braeuchte eine Aufzaehlung ueber Kreuzungen,
+ * Kanten oder Felder und bleibt der Auswahl im Dialog oder am Brett
+ * ueberlassen. Ueber die **Arten** auf der Hand und nicht ueber die Karten:
+ * zwei gleiche Karten ergaeben sonst jeden Zug doppelt.
+ */
+for (const card of new Set(state.players[state.currentPlayerIndex]?.progressCards ?? [])) {
+  for (const play of enumerableProgressPlays(card)) {
+    if (canPlayProgress(state, player, play) === null) {
+      actions.push({ type: 'playProgress', player, play });
+    }
+  }
+}
 ```
 
     Die Funktion (an die Stelle von `zeroArgumentProgressPlay`):
@@ -1797,7 +1832,11 @@ ihm die fremden Fortschrittskarten.
 `legalActions`, ohne `CardAmounts`, `countCards`, `scoring`, `Building`:
 
 ```ts
-const PLAY: GameAction = { type: 'playProgress', player: 'p1', play: { card: 'spy', victim: 'p2' } };
+const PLAY: GameAction = {
+  type: 'playProgress',
+  player: 'p1',
+  play: { card: 'spy', victim: 'p2' },
+};
 
 function take(card: ProgressCardId): GameAction {
   return { type: 'answerProgress', player: 'p1', answer: { card: 'spy', take: card } };
@@ -1904,11 +1943,17 @@ type SpyPayload = Extract<ProgressPendingPayload, { card: 'spy' }>;
 
 export function canSpy(state: GameState, player: PlayerId, play: SpyPlay): RuleViolation | null {
   if (play.victim === player) {
-    return violation(RuleViolationCode.INVALID_PROGRESS_VICTIM, 'Bei sich selbst spioniert man nicht');
+    return violation(
+      RuleViolationCode.INVALID_PROGRESS_VICTIM,
+      'Bei sich selbst spioniert man nicht',
+    );
   }
   const victim = findPlayer(state, play.victim);
   if (victim === undefined) {
-    return violation(RuleViolationCode.UNKNOWN_PLAYER, `${play.victim} sitzt nicht an diesem Tisch`);
+    return violation(
+      RuleViolationCode.UNKNOWN_PLAYER,
+      `${play.victim} sitzt nicht an diesem Tisch`,
+    );
   }
   if (countedHand(victim) === 0) {
     return violation(
@@ -1984,7 +2029,7 @@ export function answerSpy(
     }
 ```
 
-  - `legal.ts`, `progressAnswerCandidates`:
+- `legal.ts`, `progressAnswerCandidates`:
 
 ```ts
     case 'spy': {
@@ -1995,11 +2040,11 @@ export function answerSpy(
     }
 ```
 
-  - `legal.ts`, `enumerableProgressPlays`: Signatur auf
-    `(state: GameState, player: PlayerId, card: ProgressCardId)`, den Aufruf auf
-    `enumerableProgressPlays(state, player, card)`, als erste Zeile
-    `const others = state.players.map((entry) => entry.id).filter((id) => id !== player);`
-    und der Zweig
+- `legal.ts`, `enumerableProgressPlays`: Signatur auf
+  `(state: GameState, player: PlayerId, card: ProgressCardId)`, den Aufruf auf
+  `enumerableProgressPlays(state, player, card)`, als erste Zeile
+  `const others = state.players.map((entry) => entry.id).filter((id) => id !== player);`
+  und der Zweig
 
 ```ts
     case 'spy':
@@ -2164,7 +2209,10 @@ export function canMasterMerchant(
   }
   const victim = findPlayer(state, play.victim);
   if (victim === undefined) {
-    return violation(RuleViolationCode.UNKNOWN_PLAYER, `${play.victim} sitzt nicht an diesem Tisch`);
+    return violation(
+      RuleViolationCode.UNKNOWN_PLAYER,
+      `${play.victim} sitzt nicht an diesem Tisch`,
+    );
   }
   if (victoryPointsOf(state, play.victim) <= victoryPointsOf(state, player)) {
     return violation(
@@ -2173,7 +2221,10 @@ export function canMasterMerchant(
     );
   }
   if (countCards(victim.resources) === 0) {
-    return violation(RuleViolationCode.INVALID_PROGRESS_VICTIM, `${play.victim} hat keine Handkarten`);
+    return violation(
+      RuleViolationCode.INVALID_PROGRESS_VICTIM,
+      `${play.victim} hat keine Handkarten`,
+    );
   }
   return null;
 }
@@ -2244,7 +2295,7 @@ export function answerMasterMerchant(
     }
 ```
 
-  - `legal.ts`, `enumerableProgressPlays`:
+- `legal.ts`, `enumerableProgressPlays`:
 
 ```ts
     case 'masterMerchant':
@@ -2454,13 +2505,17 @@ describe('Deserteur', () => {
   it('zaehlt in beiden Runden genau die moeglichen Kreuzungen auf', () => {
     const round1 = act(deserterTable(), PLAY);
     const victimMoves = legalActions(round1, 'p2').map((action) =>
-      action.type === 'answerProgress' && action.answer.card === 'deserter' ? action.answer.vertex : null,
+      action.type === 'answerProgress' && action.answer.card === 'deserter'
+        ? action.answer.vertex
+        : null,
     );
     expect(victimMoves.sort()).toEqual([FAR_VERTEX, HARBOR3_VERTEX].sort());
 
     const round2 = act(round1, pick('p2', FAR_VERTEX));
     const placements = legalActions(round2, 'p1').map((action) =>
-      action.type === 'answerProgress' && action.answer.card === 'deserter' ? action.answer.vertex : null,
+      action.type === 'answerProgress' && action.answer.card === 'deserter'
+        ? action.answer.vertex
+        : null,
     );
     expect(placements.sort()).toEqual([ADJACENT_VERTEX, CENTER_VERTEX].sort());
   });
@@ -2517,13 +2572,13 @@ export function canPlaceKnightAt(
 `canBuildKnight` behält Kopfkommentar und Signatur; sein Rumpf wird:
 
 ```ts
-  const place = canPlaceKnightAt(state, player, vertex);
-  if (place !== null) return place;
+const place = canPlaceKnightAt(state, player, vertex);
+if (place !== null) return place;
 
-  const price = priceOf(state, 'knight');
-  if (price === null) return noSuchTable('Ritter');
+const price = priceOf(state, 'knight');
+if (price === null) return noSuchTable('Ritter');
 
-  return canPayFor(state, player, knightPiece(1), price);
+return canPayFor(state, player, knightPiece(1), price);
 ```
 
 - [ ] **Schritt 4: `deserter.ts` schreiben**
@@ -2576,7 +2631,10 @@ export function canDeserter(
     );
   }
   if (findPlayer(state, play.victim) === undefined) {
-    return violation(RuleViolationCode.UNKNOWN_PLAYER, `${play.victim} sitzt nicht an diesem Tisch`);
+    return violation(
+      RuleViolationCode.UNKNOWN_PLAYER,
+      `${play.victim} sitzt nicht an diesem Tisch`,
+    );
   }
   if (!Object.values(state.knights).some((knight) => knight.owner === play.victim)) {
     return violation(
@@ -2587,7 +2645,11 @@ export function canDeserter(
   return null;
 }
 
-export function applyDeserter(state: GameState, player: PlayerId, play: DeserterPlay): ReduceResult {
+export function applyDeserter(
+  state: GameState,
+  player: PlayerId,
+  play: DeserterPlay,
+): ReduceResult {
   const problem = canDeserter(state, player, play);
   if (problem !== null) return rejected(problem);
 
@@ -2644,7 +2706,10 @@ export function canAnswerDeserter(
 
   const piece = knightPiece(payload.replacement.level);
   if ((findPlayer(state, player)!.piecesLeft[piece] ?? 0) <= 0) {
-    return violation(RuleViolationCode.NO_PIECES_LEFT, 'Im Vorrat liegt kein Ritter dieser Stufe mehr');
+    return violation(
+      RuleViolationCode.NO_PIECES_LEFT,
+      'Im Vorrat liegt kein Ritter dieser Stufe mehr',
+    );
   }
   return null;
 }
@@ -2738,16 +2803,17 @@ export function answerDeserter(
 
     Danach steht in keinem Zweig mehr `notWiredYet`: die Funktion samt Kommentar löschen.
     `pnpm typecheck` bestätigt, dass kein Aufrufer übrig ist.
-  - `legal.ts`, `enumerableProgressPlays`:
+
+- `legal.ts`, `enumerableProgressPlays`:
 
 ```ts
     case 'deserter':
       return others.map((victim): ProgressPlay => ({ card: 'deserter', victim }));
 ```
 
-  - `legal.ts`, `progressAnswerCandidates`: Signatur `(state: GameState, player: PlayerId)`,
-    Aufruf `progressAnswerCandidates(state, player)`, Import `deserterPlacements` aus
-    `./cities/progress/deserter.js`, und der Zweig:
+- `legal.ts`, `progressAnswerCandidates`: Signatur `(state: GameState, player: PlayerId)`,
+  Aufruf `progressAnswerCandidates(state, player)`, Import `deserterPlacements` aus
+  `./cities/progress/deserter.js`, und der Zweig:
 
 ```ts
     case 'deserter': {
@@ -2798,13 +2864,13 @@ ein Eingriff in sie — und gehört in `PROGRESS.md`.
       `FULL_PROGRESS_DECK` aus `../game/cities/progress/cards.js`):
 
 ```ts
-  /*
-   * Die Summe 54 und achtzehn je Stapel prueft `cards.test.ts` an
-   * `FULL_PROGRESS_DECK` - hier genuegt, dass der Tisch genau diese Tabelle legt.
-   */
-  it('legt die vollstaendigen Fortschrittsstapel des Brettspiels aus', () => {
-    expect(CITIES_RULES.progressDecks).toEqual(FULL_PROGRESS_DECK);
-  });
+/*
+ * Die Summe 54 und achtzehn je Stapel prueft `cards.test.ts` an
+ * `FULL_PROGRESS_DECK` - hier genuegt, dass der Tisch genau diese Tabelle legt.
+ */
+it('legt die vollstaendigen Fortschrittsstapel des Brettspiels aus', () => {
+  expect(CITIES_RULES.progressDecks).toEqual(FULL_PROGRESS_DECK);
+});
 ```
 
 In `answerRules.test.ts` am Ende (Imports `CENTER_VERTEX` aus `../../fixtures.js`,
@@ -2818,7 +2884,9 @@ describe('Die wartenden Karten am echten Staedte-Tisch', () => {
   function patch(state: GameState, id: string, change: Partial<PlayerState>): GameState {
     return {
       ...state,
-      players: state.players.map((player) => (player.id === id ? { ...player, ...change } : player)),
+      players: state.players.map((player) =>
+        player.id === id ? { ...player, ...change } : player,
+      ),
     };
   }
 
@@ -2854,11 +2922,19 @@ describe('Die wartenden Karten am echten Staedte-Tisch', () => {
       progressCards: ['bishop'],
     });
 
-    const open = act(state, { type: 'playProgress', player: 'p1', play: { card: 'spy', victim: 'p2' } });
+    const open = act(state, {
+      type: 'playProgress',
+      player: 'p1',
+      play: { card: 'spy', victim: 'p2' },
+    });
     const seen = playerViewOf(open, 'p1', seats, 1).players.find((player) => player.id === 'p2')!;
     expect(seen.progressCards).toEqual(['bishop']);
 
-    const done = act(open, { type: 'answerProgress', player: 'p1', answer: { card: 'spy', take: 'bishop' } });
+    const done = act(open, {
+      type: 'answerProgress',
+      player: 'p1',
+      answer: { card: 'spy', take: 'bishop' },
+    });
     const after = playerViewOf(done, 'p1', seats, 2).players.find((player) => player.id === 'p2')!;
     expect(after.progressCards).toBeNull();
   });
@@ -2874,12 +2950,12 @@ describe('Die wartenden Karten am echten Staedte-Tisch', () => {
       Kommentar darüber wird:
 
 ```ts
-  /*
-   * Die Fortschrittsstapel - achtzehn je Bereich, 54 zusammen, wie in der
-   * Schachtel (`docs/regeln-staedte-und-ritter.md` 11.1-11.3). Die fuenf Karten,
-   * die auf eine fremde Antwort warten, kamen in 10d-2 dazu; bis dahin fehlten
-   * sie hier und nicht als Sperre im Regelcode.
-   */
+/*
+ * Die Fortschrittsstapel - achtzehn je Bereich, 54 zusammen, wie in der
+ * Schachtel (`docs/regeln-staedte-und-ritter.md` 11.1-11.3). Die fuenf Karten,
+ * die auf eine fremde Antwort warten, kamen in 10d-2 dazu; bis dahin fehlten
+ * sie hier und nicht als Sperre im Regelcode.
+ */
 ```
 
 - [ ] **Schritt 4: Die veralteten Kommentare nachziehen.** In `rules/ruleset.ts` (Kommentar an
@@ -2917,20 +2993,20 @@ git commit -m "Die fuenf wartenden Karten liegen auf den Stapeln: 54 statt 43"
 über die Phasen. Die zwölf Zeilen aus 5.5, abgeleitet aus einem Satz: **ein Geschenk verfällt,
 eine Pflicht wird abgenommen.**
 
-| Phase                                  | beim Ablauf                                                                  |
-| -------------------------------------- | ---------------------------------------------------------------------------- |
-| `aqueductPending`                      | verfällt für den Vordersten — kein Rohstoff                                  |
-| `defenderPending`                      | verfällt für den Vordersten — keine Karte                                    |
-| `progressPending` / `spy`              | verfällt — nichts genommen                                                   |
-| `progressPending` / `masterMerchant`   | verfällt — nichts genommen                                                   |
-| `progressPending` / `deserter` Runde 2 | verfällt — kein Ersatzritter                                                 |
-| `discardPending`                       | für alle Übrigen abgeworfen, je vom größten Stapel abwärts (`takeMostHeld`)  |
+| Phase                                  | beim Ablauf                                                                   |
+| -------------------------------------- | ----------------------------------------------------------------------------- |
+| `aqueductPending`                      | verfällt für den Vordersten — kein Rohstoff                                   |
+| `defenderPending`                      | verfällt für den Vordersten — keine Karte                                     |
+| `progressPending` / `spy`              | verfällt — nichts genommen                                                    |
+| `progressPending` / `masterMerchant`   | verfällt — nichts genommen                                                    |
+| `progressPending` / `deserter` Runde 2 | verfällt — kein Ersatzritter                                                  |
+| `discardPending`                       | für alle Übrigen abgeworfen, je vom größten Stapel abwärts (`takeMostHeld`)   |
 | `progressDiscardPending`               | der Vorderste gibt die erste zählende Karte in `PROGRESS_CARD_IDS`-Ordnung ab |
-| `progressPending` / `wedding`          | alle Übrigen schenken ihre zwei häufigsten Karten                            |
-| `progressPending` / `tradeHarbor`      | alle Übrigen geben ihre häufigste Handelsware                                |
-| `progressPending` / `deserter` Runde 1 | der schwächste Ritter fällt, bei Gleichstand die kleinste Kreuzungs-Id       |
-| `robberPending`                        | Wüste, sonst das erste Feld ohne fremdes Bauwerk, sonst das erste legale     |
-| `displacePending`                      | erste legale Kreuzung, sonst vom Brett                                       |
+| `progressPending` / `wedding`          | alle Übrigen schenken ihre zwei häufigsten Karten                             |
+| `progressPending` / `tradeHarbor`      | alle Übrigen geben ihre häufigste Handelsware                                 |
+| `progressPending` / `deserter` Runde 1 | der schwächste Ritter fällt, bei Gleichstand die kleinste Kreuzungs-Id        |
+| `robberPending`                        | Wüste, sonst das erste Feld ohne fremdes Bauwerk, sonst das erste legale      |
+| `displacePending`                      | erste legale Kreuzung, sonst vom Brett                                        |
 
 Jede abgenommene Pflicht geht durch **dieselbe** `apply…`, die der Mensch auslöst — kein
 zweiter Weg, der die Regel nachbaut.
@@ -2961,12 +3037,12 @@ zweiter Weg, der die Regel nachbaut.
 In `rules/ruleset.test.ts` (Imports ergänzen, soweit sie fehlen):
 
 ```ts
-  it('ergaenzt pendingAnswerMs in einem gespeicherten Regelwerk ohne dieses Feld', () => {
-    const stored = { ...CLASSIC_RULES } as Record<string, unknown>;
-    delete stored.pendingAnswerMs;
+it('ergaenzt pendingAnswerMs in einem gespeicherten Regelwerk ohne dieses Feld', () => {
+  const stored = { ...CLASSIC_RULES } as Record<string, unknown>;
+  delete stored.pendingAnswerMs;
 
-    expect(RuleSetSchema.parse(stored).pendingAnswerMs).toBe(60_000);
-  });
+  expect(RuleSetSchema.parse(stored).pendingAnswerMs).toBe(60_000);
+});
 ```
 
 In `playerTrade.test.ts`: den ganzen `describe('timeout', …)`-Block und die Imports
@@ -2974,7 +3050,7 @@ In `playerTrade.test.ts`: den ganzen `describe('timeout', …)`-Block und die Im
 `deadlineOf`-Block die Erwartung auf die neue Form bringen:
 
 ```ts
-    expect(deadlineOf(state)).toEqual({ kind: 'at', at: expected, owner: 'p1' });
+expect(deadlineOf(state)).toEqual({ kind: 'at', at: expected, owner: 'p1' });
 ```
 
 `packages/shared/src/game/timeout.test.ts`:
@@ -3113,7 +3189,10 @@ describe('timeout beim Angebot', () => {
 
 describe('ein Geschenk verfaellt', () => {
   it('nimmt dem Vordersten am Aquaedukt die Wahl und laesst den Naechsten waehlen', () => {
-    const state = testGame({ rules: CITIES_RULES, phase: { kind: 'aqueductPending', pending: ['p2', 'p3'] } });
+    const state = testGame({
+      rules: CITIES_RULES,
+      phase: { kind: 'aqueductPending', pending: ['p2', 'p3'] },
+    });
     const after = expire(state, 'p2');
 
     expect(after.phase).toEqual({ kind: 'aqueductPending', pending: ['p3'] });
@@ -3121,7 +3200,10 @@ describe('ein Geschenk verfaellt', () => {
   });
 
   it('schliesst das Aquaedukt, wenn der Letzte schweigt', () => {
-    const state = testGame({ rules: CITIES_RULES, phase: { kind: 'aqueductPending', pending: ['p2'] } });
+    const state = testGame({
+      rules: CITIES_RULES,
+      phase: { kind: 'aqueductPending', pending: ['p2'] },
+    });
     expect(expire(state, 'p2').phase).toEqual({ kind: 'main' });
   });
 
@@ -3141,7 +3223,12 @@ describe('ein Geschenk verfaellt', () => {
     const spy = patchPlayer(
       testGame({
         rules: CITIES_RULES,
-        phase: { kind: 'progressPending', by: 'p1', pending: ['p1'], payload: { card: 'spy', victim: 'p2' } },
+        phase: {
+          kind: 'progressPending',
+          by: 'p1',
+          pending: ['p1'],
+          payload: { card: 'spy', victim: 'p2' },
+        },
       }),
       'p2',
       { progressCards: ['bishop'] },
@@ -3223,7 +3310,9 @@ describe('eine Pflicht wird abgenommen', () => {
   it('schickt den Raeuber sonst auf das erste Feld ohne fremdes Bauwerk', () => {
     const state = testGame({
       phase: { kind: 'robberPending', resume: 'main' },
-      buildings: { [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null } },
+      buildings: {
+        [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+      },
     });
     const after = expire(state, 'p1');
 
@@ -3273,7 +3362,12 @@ describe('eine Pflicht wird abgenommen', () => {
   it('laesst bei der Hochzeit alle Uebrigen ihre zwei haeufigsten Karten schenken', () => {
     let state = testGame({
       rules: CITIES_RULES,
-      phase: { kind: 'progressPending', by: 'p1', pending: ['p2', 'p3'], payload: { card: 'wedding' } },
+      phase: {
+        kind: 'progressPending',
+        by: 'p1',
+        pending: ['p2', 'p3'],
+        payload: { card: 'wedding' },
+      },
     });
     state = patchPlayer(state, 'p2', { resources: hand({ ore: 5, wool: 3 }) });
     state = patchPlayer(state, 'p3', { resources: hand({ grain: 1 }) });
@@ -3305,8 +3399,20 @@ describe('eine Pflicht wird abgenommen', () => {
   });
 
   it('laesst beim Deserteur den schwaechsten Ritter fallen und oeffnet Runde 2', () => {
-    const strong: Knight = { owner: 'p2', level: 2, active: true, activatedOnTurn: 0, upgradedThisTurn: false };
-    const simple: Knight = { owner: 'p2', level: 1, active: false, activatedOnTurn: null, upgradedThisTurn: false };
+    const strong: Knight = {
+      owner: 'p2',
+      level: 2,
+      active: true,
+      activatedOnTurn: 0,
+      upgradedThisTurn: false,
+    };
+    const simple: Knight = {
+      owner: 'p2',
+      level: 1,
+      active: false,
+      activatedOnTurn: null,
+      upgradedThisTurn: false,
+    };
     const state = testGame({
       rules: CITIES_RULES,
       roads: { [CENTER_EDGE]: 'p1' },
@@ -3537,7 +3643,13 @@ import { deadlineOf } from './deadline.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { Phase } from './phase.js';
 import type { PlayerId } from './player.js';
-import { applyDiscard, applyMoveRobber, canPlaceRobberAt, discardCountFor, victimsAt } from './robber.js';
+import {
+  applyDiscard,
+  applyMoveRobber,
+  canPlaceRobberAt,
+  discardCountFor,
+  victimsAt,
+} from './robber.js';
 import {
   findPlayer,
   ok,
@@ -3680,7 +3792,9 @@ function moveRobberForCurrent(state: GameState): ReduceResult {
   const player = state.players[state.currentPlayerIndex]!.id;
   const board = boardOf(state.scenario);
 
-  const legal = [...board.hexes.keys()].filter((hex) => canPlaceRobberAt(state, hex) === null).sort();
+  const legal = [...board.hexes.keys()]
+    .filter((hex) => canPlaceRobberAt(state, hex) === null)
+    .sort();
   const desert = legal.filter((hex) => board.hexes.get(hex)?.terrain === 'desert');
   const harmless = legal.filter(
     (hex) =>
@@ -3908,25 +4022,25 @@ jeder Frist.
 ohnehin offen liegt — beim Handelshafen ist es ein Tausch, dessen Rohstoff schon beim Ausspielen
 genannt wurde. Das Opfer einer Karte ist öffentlich: es muss antworten oder wird aufgedeckt.
 
-| Zug                                  | Satz                                                             |
-| ------------------------------------ | ---------------------------------------------------------------- |
-| Spionage / Großhändler spielen       | `p1 spielt Spionage bei p2`                                      |
-| Deserteur spielen                    | `p1 spielt Deserteur gegen p2`                                   |
-| Handelshafen spielen                 | `p1 spielt Handelshafen und bietet Wolle`                        |
-| Hochzeit spielen                     | `p1 spielt Hochzeit` (wie bisher)                                |
-| Hochzeit beantworten                 | `p2 schenkt p1 zwei Karten`                                      |
-| Handelshafen beantworten             | `p2 gibt p1 Tuch für Wolle`                                      |
-| Spionage beantworten                 | `p1 nimmt p2 eine Fortschrittskarte`                             |
-| Großhändler beantworten              | `p1 nimmt p2 zwei Karten`                                        |
-| Deserteur Runde 1 / 2                | `p2 gibt einen Ritter auf` / `p1 stellt einen Überläufer auf`    |
-| Frist beim Angebot                   | `Die Zeit für p1s Angebot ist abgelaufen` (wie bisher)           |
-| Frist beim Abwerfen                  | `Die Zeit ist abgelaufen - p2 und p3 werfen von selbst ab`       |
-| Frist beim Räuber                    | `Die Zeit ist abgelaufen - der Räuber zieht von selbst weiter`   |
-| Frist beim Ausweichen                | `Die Zeit ist abgelaufen - p2s Ritter weicht von selbst aus`     |
-| Frist beim Abgeben                   | `Die Zeit ist abgelaufen - p2 gibt von selbst eine Fortschrittskarte ab` |
-| Frist bei der Stapelwahl             | `Die Zeit ist abgelaufen - p2 zieht keine Karte`                 |
-| Frist am Aquädukt                    | `Die Zeit ist abgelaufen - p2 nimmt nichts aus dem Aquädukt`     |
-| Frist bei einer wartenden Karte      | `Die Zeit für Hochzeit ist abgelaufen`                           |
+| Zug                             | Satz                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------ |
+| Spionage / Großhändler spielen  | `p1 spielt Spionage bei p2`                                              |
+| Deserteur spielen               | `p1 spielt Deserteur gegen p2`                                           |
+| Handelshafen spielen            | `p1 spielt Handelshafen und bietet Wolle`                                |
+| Hochzeit spielen                | `p1 spielt Hochzeit` (wie bisher)                                        |
+| Hochzeit beantworten            | `p2 schenkt p1 zwei Karten`                                              |
+| Handelshafen beantworten        | `p2 gibt p1 Tuch für Wolle`                                              |
+| Spionage beantworten            | `p1 nimmt p2 eine Fortschrittskarte`                                     |
+| Großhändler beantworten         | `p1 nimmt p2 zwei Karten`                                                |
+| Deserteur Runde 1 / 2           | `p2 gibt einen Ritter auf` / `p1 stellt einen Überläufer auf`            |
+| Frist beim Angebot              | `Die Zeit für p1s Angebot ist abgelaufen` (wie bisher)                   |
+| Frist beim Abwerfen             | `Die Zeit ist abgelaufen - p2 und p3 werfen von selbst ab`               |
+| Frist beim Räuber               | `Die Zeit ist abgelaufen - der Räuber zieht von selbst weiter`           |
+| Frist beim Ausweichen           | `Die Zeit ist abgelaufen - p2s Ritter weicht von selbst aus`             |
+| Frist beim Abgeben              | `Die Zeit ist abgelaufen - p2 gibt von selbst eine Fortschrittskarte ab` |
+| Frist bei der Stapelwahl        | `Die Zeit ist abgelaufen - p2 zieht keine Karte`                         |
+| Frist am Aquädukt               | `Die Zeit ist abgelaufen - p2 nimmt nichts aus dem Aquädukt`             |
+| Frist bei einer wartenden Karte | `Die Zeit für Hochzeit ist abgelaufen`                                   |
 
 **Dateien:**
 
@@ -3941,7 +4055,9 @@ describe('Verlaufssaetze der wartenden Karten', () => {
   function patch(state: GameState, id: PlayerId, change: Partial<PlayerState>): GameState {
     return {
       ...state,
-      players: state.players.map((player) => (player.id === id ? { ...player, ...change } : player)),
+      players: state.players.map((player) =>
+        player.id === id ? { ...player, ...change } : player,
+      ),
     };
   }
 
@@ -3962,7 +4078,10 @@ describe('Verlaufssaetze der wartenden Karten', () => {
   });
 
   it('nennt beim Handelshafen den angebotenen Rohstoff', () => {
-    let state = patch(cities(), 'p1', { progressCards: ['tradeHarbor'], resources: hand({ wool: 1 }) });
+    let state = patch(cities(), 'p1', {
+      progressCards: ['tradeHarbor'],
+      resources: hand({ wool: 1 }),
+    });
     state = patch(state, 'p2', { resources: hand({ cloth: 1 }) });
     expect(
       sentence(state, {
@@ -4014,13 +4133,22 @@ describe('Verlaufssaetze der wartenden Karten', () => {
   it('verraet bei der Spionage nicht, welche Karte genommen wurde', () => {
     const state = patch(
       cities({
-        phase: { kind: 'progressPending', by: 'p1', pending: ['p1'], payload: { card: 'spy', victim: 'p2' } },
+        phase: {
+          kind: 'progressPending',
+          by: 'p1',
+          pending: ['p1'],
+          payload: { card: 'spy', victim: 'p2' },
+        },
       }),
       'p2',
       { progressCards: ['bishop'] },
     );
     expect(
-      sentence(state, { type: 'answerProgress', player: 'p1', answer: { card: 'spy', take: 'bishop' } }),
+      sentence(state, {
+        type: 'answerProgress',
+        player: 'p1',
+        answer: { card: 'spy', take: 'bishop' },
+      }),
     ).toBe('p1 nimmt p2 eine Fortschrittskarte');
   });
 
@@ -4249,12 +4377,13 @@ describe('Eine wartende Fortschrittskarte im Anzeigemodell', () => {
       payload: { card: 'deserter' as const, victim: ids[1]!, replacement },
     });
 
-    expect(gameViewOf(playerViewOf({ ...state, phase: round(null) }, ids[1]!, seats, 1)).phaseText).toBe(
-      'Deserteur: Spieler 2 gibt einen Ritter auf',
-    );
     expect(
-      gameViewOf(playerViewOf({ ...state, phase: round({ level: 1, active: false }) }, ids[0]!, seats, 1))
-        .phaseText,
+      gameViewOf(playerViewOf({ ...state, phase: round(null) }, ids[1]!, seats, 1)).phaseText,
+    ).toBe('Deserteur: Spieler 2 gibt einen Ritter auf');
+    expect(
+      gameViewOf(
+        playerViewOf({ ...state, phase: round({ level: 1, active: false }) }, ids[0]!, seats, 1),
+      ).phaseText,
     ).toBe('Deserteur: Spieler 1 stellt den Überläufer auf');
   });
 });
@@ -4346,10 +4475,7 @@ function viewIn(phase: unknown): PlayerView {
 describe('WaitingClock', () => {
   it('zeigt in einer Wartephase die Restzeit', () => {
     render(
-      <WaitingClock
-        view={viewIn({ kind: 'aqueductPending', pending: ['p2'] })}
-        clockOffset={0}
-      />,
+      <WaitingClock view={viewIn({ kind: 'aqueductPending', pending: ['p2'] })} clockOffset={0} />,
     );
     expect(screen.getByTestId('waiting-clock').textContent).toBe('Noch 60 Sekunden');
   });
@@ -4513,16 +4639,16 @@ export function WaitingClock({
   - `GameScreen.tsx`, `.topline`: `<StatusPanel view={display} />` wird
 
 ```tsx
-        <StatusPanel view={display}>
-          <WaitingClock view={view} clockOffset={clockOffset} />
-        </StatusPanel>
+<StatusPanel view={display}>
+  <WaitingClock view={view} clockOffset={clockOffset} />
+</StatusPanel>
 ```
 
-  - `TradeOfferDialog.tsx`: die Funktion `secondsLeft`, `const [left, setLeft] = useState(…)`
-    und den `useEffect` mit `setInterval` **löschen**; an ihre Stelle (vor dem ersten `return`)
-    `const left = useCountdown(view, clockOffset) ?? 0;` mit Import aus `../game/useCountdown`.
-    `useEffect` aus dem React-Import nehmen, falls unbenutzt.
-  - `index.css`, direkt nach `.status__turn`:
+- `TradeOfferDialog.tsx`: die Funktion `secondsLeft`, `const [left, setLeft] = useState(…)`
+  und den `useEffect` mit `setInterval` **löschen**; an ihre Stelle (vor dem ersten `return`)
+  `const left = useCountdown(view, clockOffset) ?? 0;` mit Import aus `../game/useCountdown`.
+  `useEffect` aus dem React-Import nehmen, falls unbenutzt.
+- `index.css`, direkt nach `.status__turn`:
 
 ```css
 /*
@@ -4596,7 +4722,13 @@ const people = [
 describe('PersonPickDialog', () => {
   it('nennt jede Person mit Namen und Punktestand', () => {
     render(
-      <PersonPickDialog title="Spionage: bei wem?" hint="" people={people} onChoose={vi.fn()} onClose={vi.fn()} />,
+      <PersonPickDialog
+        title="Spionage: bei wem?"
+        hint=""
+        people={people}
+        onChoose={vi.fn()}
+        onClose={vi.fn()}
+      />,
     );
 
     expect(screen.getByRole('button', { name: 'Ben · 5 Siegpunkte' })).toBeDefined();
@@ -4606,7 +4738,13 @@ describe('PersonPickDialog', () => {
   it('meldet die gewählte Person', async () => {
     const onChoose = vi.fn();
     render(
-      <PersonPickDialog title="Spionage: bei wem?" hint="" people={people} onChoose={onChoose} onClose={vi.fn()} />,
+      <PersonPickDialog
+        title="Spionage: bei wem?"
+        hint=""
+        people={people}
+        onChoose={onChoose}
+        onClose={vi.fn()}
+      />,
     );
 
     await userEvent.click(screen.getByRole('button', { name: /Ben/ }));
@@ -4617,7 +4755,13 @@ describe('PersonPickDialog', () => {
   it('lässt sich abbrechen', async () => {
     const onClose = vi.fn();
     render(
-      <PersonPickDialog title="Spionage: bei wem?" hint="" people={people} onChoose={vi.fn()} onClose={onClose} />,
+      <PersonPickDialog
+        title="Spionage: bei wem?"
+        hint=""
+        people={people}
+        onChoose={vi.fn()}
+        onClose={onClose}
+      />,
     );
 
     await userEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
@@ -4636,8 +4780,20 @@ function personView(hand: readonly ProgressCardId[]): PlayerView {
   return baseView({
     players: [
       { id: 'p1', name: 'Spieler 1', color: 'red', victoryPoints: 3, progressCards: hand } as never,
-      { id: 'p2', name: 'Spieler 2', color: 'blue', victoryPoints: 5, progressCards: null } as never,
-      { id: 'p3', name: 'Spieler 3', color: 'green', victoryPoints: 2, progressCards: null } as never,
+      {
+        id: 'p2',
+        name: 'Spieler 2',
+        color: 'blue',
+        victoryPoints: 5,
+        progressCards: null,
+      } as never,
+      {
+        id: 'p3',
+        name: 'Spieler 3',
+        color: 'green',
+        victoryPoints: 2,
+        progressCards: null,
+      } as never,
     ],
   });
 }
@@ -4784,7 +4940,12 @@ export function PersonPickDialog({
 
 ```ts
 type DialogCard =
-  'alchemist' | 'crane' | 'resourceMonopoly' | 'commodityMonopoly' | 'merchantFleet' | 'tradeHarbor';
+  | 'alchemist'
+  | 'crane'
+  | 'resourceMonopoly'
+  | 'commodityMonopoly'
+  | 'merchantFleet'
+  | 'tradeHarbor';
 
 /** Die drei Karten, die eine Person als Ziel brauchen. */
 type PersonCard = 'spy' | 'masterMerchant' | 'deserter';
@@ -4796,7 +4957,9 @@ type CardCategory =
   | { readonly kind: 'person'; readonly card: PersonCard }
   | { readonly kind: 'inert' };
 
-const PERSON_TEXTS: Readonly<Record<PersonCard, { readonly title: string; readonly hint: string }>> = {
+const PERSON_TEXTS: Readonly<
+  Record<PersonCard, { readonly title: string; readonly hint: string }>
+> = {
   spy: {
     title: 'Spionage: bei wem?',
     hint: 'Du siehst die Fortschrittskarten dieser Person und nimmst eine davon.',
@@ -4812,70 +4975,79 @@ const PERSON_TEXTS: Readonly<Record<PersonCard, { readonly title: string; readon
 };
 ```
 
-  - `categoryOf`: `'wedding'` zu den `direct`-Fällen, `'tradeHarbor'` zu den `dialog`-Fällen,
-    ein neuer Block `case 'spy': case 'masterMerchant': case 'deserter': return { kind: 'person', card };`,
-    `inert` nur noch `'printer'` und `'constitution'`. Den Kommentar über `categoryOf` so
-    anpassen, dass `inert` nur noch Buchdruck und Verfassung meint (die liegen nie auf der Hand).
-  - Props: `readonly actions?: readonly GameAction[];` mit Kommentar „Die erlaubten Züge - aus
-    ihnen liest das Panel, welche Personen und Rohstoffe es anbietet.", Destrukturierung
-    `actions = []`.
-  - Neben den bestehenden `useState`:
-    `const [personFor, setPersonFor] = useState<PersonCard | null>(null);`
-  - Nach dem frühen `return null`:
+- `categoryOf`: `'wedding'` zu den `direct`-Fällen, `'tradeHarbor'` zu den `dialog`-Fällen,
+  ein neuer Block `case 'spy': case 'masterMerchant': case 'deserter': return { kind: 'person', card };`,
+  `inert` nur noch `'printer'` und `'constitution'`. Den Kommentar über `categoryOf` so
+  anpassen, dass `inert` nur noch Buchdruck und Verfassung meint (die liegen nie auf der Hand).
+- Props: `readonly actions?: readonly GameAction[];` mit Kommentar „Die erlaubten Züge - aus
+  ihnen liest das Panel, welche Personen und Rohstoffe es anbietet.", Destrukturierung
+  `actions = []`.
+- Neben den bestehenden `useState`:
+  `const [personFor, setPersonFor] = useState<PersonCard | null>(null);`
+- Nach dem frühen `return null`:
 
 ```ts
-  /** Die erlaubten Ausspielzüge einer Karte - aus der Aktionsliste, nie aus einer eigenen Rechnung. */
-  const playsOf = (card: ProgressCardId) =>
-    actions.flatMap((action) =>
-      action.type === 'playProgress' && action.play.card === card ? [action.play] : [],
-    );
-
-  const peopleFor = (card: PersonCard): PersonOption[] =>
-    playsOf(card).flatMap((payload) => {
-      if (!('victim' in payload)) return [];
-      const person = view.players.find((player) => player.id === payload.victim);
-      return person === undefined
-        ? []
-        : [{ id: person.id, name: person.name, color: person.color, victoryPoints: person.victoryPoints }];
-    });
-
-  const tradeHarborPool = RESOURCE_IDS.filter((resource) =>
-    playsOf('tradeHarbor').some((payload) => 'resource' in payload && payload.resource === resource),
+/** Die erlaubten Ausspielzüge einer Karte - aus der Aktionsliste, nie aus einer eigenen Rechnung. */
+const playsOf = (card: ProgressCardId) =>
+  actions.flatMap((action) =>
+    action.type === 'playProgress' && action.play.card === card ? [action.play] : [],
   );
 
-  /** Eine Karte mit Person spielen - je Karte ein Zweig, damit `tsc` die Union trifft. */
-  const playOn = (card: PersonCard, victim: string): ProgressPlay => {
-    switch (card) {
-      case 'spy':
-        return { card, victim };
-      case 'masterMerchant':
-        return { card, victim };
-      case 'deserter':
-        return { card, victim };
-    }
-  };
+const peopleFor = (card: PersonCard): PersonOption[] =>
+  playsOf(card).flatMap((payload) => {
+    if (!('victim' in payload)) return [];
+    const person = view.players.find((player) => player.id === payload.victim);
+    return person === undefined
+      ? []
+      : [
+          {
+            id: person.id,
+            name: person.name,
+            color: person.color,
+            victoryPoints: person.victoryPoints,
+          },
+        ];
+  });
+
+const tradeHarborPool = RESOURCE_IDS.filter((resource) =>
+  playsOf('tradeHarbor').some((payload) => 'resource' in payload && payload.resource === resource),
+);
+
+/** Eine Karte mit Person spielen - je Karte ein Zweig, damit `tsc` die Union trifft. */
+const playOn = (card: PersonCard, victim: string): ProgressPlay => {
+  switch (card) {
+    case 'spy':
+      return { card, victim };
+    case 'masterMerchant':
+      return { card, victim };
+    case 'deserter':
+      return { card, victim };
+  }
+};
 ```
 
     (Import `PersonOption`, `PersonPickDialog` aus `../dialogs/PersonPickDialog`.)
-  - `onCardClick`: `case 'person': setPersonFor(category.card); return;`
-  - `isClickable`:
+
+- `onCardClick`: `case 'person': setPersonFor(category.card); return;`
+- `isClickable`:
 
 ```ts
-  const isClickable = (card: ProgressCardId): boolean => {
-    const category = categoryOf(card);
-    if (category.kind === 'inert') return false;
-    /*
-     * Personenwahl und Handelshafen bieten an, was die Aktionsliste nennt. Ohne
-     * einen einzigen erlaubten Zug öffnete der Klick eine leere Wahl - der Knopf
-     * ist dann gesperrt, und der Satz zur Karte steht trotzdem darüber.
-     */
-    if (category.kind === 'person' || card === 'tradeHarbor') return playsOf(card).length > 0;
-    return true;
-  };
+const isClickable = (card: ProgressCardId): boolean => {
+  const category = categoryOf(card);
+  if (category.kind === 'inert') return false;
+  /*
+   * Personenwahl und Handelshafen bieten an, was die Aktionsliste nennt. Ohne
+   * einen einzigen erlaubten Zug öffnete der Klick eine leere Wahl - der Knopf
+   * ist dann gesperrt, und der Satz zur Karte steht trotzdem darüber.
+   */
+  if (category.kind === 'person' || card === 'tradeHarbor') return playsOf(card).length > 0;
+  return true;
+};
 ```
 
     Da `isClickable` jetzt `playsOf` braucht, steht es **nach** `playsOf`.
-  - Im Dialogbereich vor `) : null}` der `merchantFleet`-Kette:
+
+- Im Dialogbereich vor `) : null}` der `merchantFleet`-Kette:
 
 ```tsx
       ) : dialog === 'tradeHarbor' ? (
@@ -4895,21 +5067,23 @@ const PERSON_TEXTS: Readonly<Record<PersonCard, { readonly title: string; readon
     und danach, außerhalb der Kette:
 
 ```tsx
-      {personFor === null ? null : (
-        <PersonPickDialog
-          title={PERSON_TEXTS[personFor].title}
-          hint={PERSON_TEXTS[personFor].hint}
-          people={peopleFor(personFor)}
-          onClose={() => setPersonFor(null)}
-          onChoose={(victim) => {
-            play(playOn(personFor, victim));
-            setPersonFor(null);
-          }}
-        />
-      )}
+{
+  personFor === null ? null : (
+    <PersonPickDialog
+      title={PERSON_TEXTS[personFor].title}
+      hint={PERSON_TEXTS[personFor].hint}
+      people={peopleFor(personFor)}
+      onClose={() => setPersonFor(null)}
+      onChoose={(victim) => {
+        play(playOn(personFor, victim));
+        setPersonFor(null);
+      }}
+    />
+  );
+}
 ```
 
-  - `GameScreen.tsx`: `<ProgressPanel view={view} actions={actions} onAction={onAct} … />`
+- `GameScreen.tsx`: `<ProgressPanel view={view} actions={actions} onAction={onAct} … />`
 
 - [ ] **Schritt 5: Tests laufen lassen** — `pnpm typecheck && pnpm -r test`. PASS.
 - [ ] **Schritt 6: Committen**
@@ -5040,7 +5214,11 @@ function screenFor(state: GameState, viewer: string, onAct = vi.fn()) {
   );
 }
 
-function withResources(state: GameState, id: string, part: Parameters<typeof cardAmounts>[0]): GameState {
+function withResources(
+  state: GameState,
+  id: string,
+  part: Parameters<typeof cardAmounts>[0],
+): GameState {
   return {
     ...state,
     players: state.players.map((player) =>
@@ -5108,7 +5286,12 @@ describe('Antworten auf wartende Karten', () => {
       players: base.players.map((player) =>
         player.id === other ? { ...player, progressCards: ['bishop', 'crane'] } : player,
       ),
-      phase: { kind: 'progressPending', by, pending: [by], payload: { card: 'spy', victim: other } },
+      phase: {
+        kind: 'progressPending',
+        by,
+        pending: [by],
+        payload: { card: 'spy', victim: other },
+      },
     };
     const onAct = vi.fn();
     screenFor(state, by, onAct);
@@ -5158,7 +5341,13 @@ describe('Antworten auf wartende Karten', () => {
     const state: GameState = {
       ...base,
       knights: {
-        [vertex]: { owner: other, level: 1, active: false, activatedOnTurn: null, upgradedThisTurn: false },
+        [vertex]: {
+          owner: other,
+          level: 1,
+          active: false,
+          activatedOnTurn: null,
+          upgradedThisTurn: false,
+        },
       },
       phase: {
         kind: 'progressPending',
@@ -5258,7 +5447,9 @@ export function SpyDialog({ victimName, cards, onTake }: SpyDialogProps): JSX.El
     <div className="modal" role="dialog" aria-label="Spionage">
       <div className="modal__box">
         <h2>{victimName}s Fortschrittskarten</h2>
-        <p className="modal__hint">Nur du siehst diese Karten, und nur jetzt. Eine davon nimmst du.</p>
+        <p className="modal__hint">
+          Nur du siehst diese Karten, und nur jetzt. Eine davon nimmst du.
+        </p>
 
         <div className="pick">
           {cards.map((card) => (
@@ -5290,8 +5481,8 @@ export function SpyDialog({ victimName, cards, onTake }: SpyDialogProps): JSX.El
   readonly desert: ReadonlyMap<VertexId, GameAction>;
 ```
 
-  - `EMPTY_TARGETS`: `desert: new Map(),`
-  - `targetsFrom`: `const desert = new Map<VertexId, GameAction>();`, im `switch`:
+- `EMPTY_TARGETS`: `desert: new Map(),`
+- `targetsFrom`: `const desert = new Map<VertexId, GameAction>();`, im `switch`:
 
 ```ts
       case 'answerProgress':
@@ -5304,8 +5495,9 @@ export function SpyDialog({ victimName, cards, onTake }: SpyDialogProps): JSX.El
 ```
 
     und `desert` im zurückgegebenen Objekt.
-  - `pnpm typecheck`: jede Stelle, die ein `ActionTargets` ohne Spread aus `EMPTY_TARGETS` von
-    Hand baut, bekommt `desert: new Map()`.
+
+- `pnpm typecheck`: jede Stelle, die ein `ActionTargets` ohne Spread aus `EMPTY_TARGETS` von
+  Hand baut, bekommt `desert: new Map()`.
 
 - [ ] **Schritt 7: `GameScreen.tsx`.**
   - Imports: `SpyDialog` aus `../dialogs/SpyDialog`; `twoCardsOrAll` und `CARD_LABELS` aus
@@ -5314,133 +5506,145 @@ export function SpyDialog({ victimName, cards, onTake }: SpyDialogProps): JSX.El
   - `boardTargets`, direkt nach dem `targets.displace`-Zweig:
 
 ```ts
-    /*
-     * Der Deserteur fragt eine Kreuzung - ebenfalls ohne Modus: das Opfer muss
-     * einen Ritter aufgeben, der Spielende den Überläufer setzen. Beides ist
-     * Pflicht und keine Absicht, die man fassen oder fallen lassen könnte.
-     */
-    if (targets.desert.size > 0) {
-      return { ...EMPTY_TARGETS, vertices: new Map(targets.desert) };
-    }
+/*
+ * Der Deserteur fragt eine Kreuzung - ebenfalls ohne Modus: das Opfer muss
+ * einen Ritter aufgeben, der Spielende den Überläufer setzen. Beides ist
+ * Pflicht und keine Absicht, die man fassen oder fallen lassen könnte.
+ */
+if (targets.desert.size > 0) {
+  return { ...EMPTY_TARGETS, vertices: new Map(targets.desert) };
+}
 ```
 
-  - `commit`, im `vertex`-Zweig direkt nach dem `dodge`-Block:
+- `commit`, im `vertex`-Zweig direkt nach dem `dodge`-Block:
 
 ```ts
-        const desert = targets.desert.get(place.id);
-        if (desert !== undefined) {
-          onAct(desert);
-          return;
-        }
+const desert = targets.desert.get(place.id);
+if (desert !== undefined) {
+  onAct(desert);
+  return;
+}
 ```
 
-  - Nach `isFrontOfQueue`:
+- Nach `isFrontOfQueue`:
 
 ```ts
-  /**
-   * Worauf eine wartende Fortschrittskarte bei **diesem** Empfänger wartet -
-   * `null`, wenn er gerade nicht antworten muss. Gleichzeitig wie beim
-   * Abwerfen: jeder Wartende sieht seinen Dialog.
+/**
+ * Worauf eine wartende Fortschrittskarte bei **diesem** Empfänger wartet -
+ * `null`, wenn er gerade nicht antworten muss. Gleichzeitig wie beim
+ * Abwerfen: jeder Wartende sieht seinen Dialog.
+ */
+const answering =
+  view.phase.kind === 'progressPending' && view.phase.pending.includes(view.you)
+    ? view.phase
+    : null;
+
+/** Die aufzählbaren Antworten stehen in der Aktionsliste - wie die Opfer beim Räuber. */
+const listedAnswers = actions.flatMap((action) =>
+  action.type === 'answerProgress' ? [action.answer] : [],
+);
+
+const answer = (reply: ProgressAnswer): void => {
+  onAct({ type: 'answerProgress', player: view.you, answer: reply });
+};
+
+const nameOfPlayer = (id: PlayerId): string => playerOf(id)?.name ?? id;
+
+const merchantVictim =
+  answering?.payload.card === 'masterMerchant' ? playerOf(answering.payload.victim) : undefined;
+const spyVictim =
+  answering?.payload.card === 'spy' ? playerOf(answering.payload.victim) : undefined;
+const harborResource =
+  answering?.payload.card === 'tradeHarbor' ? answering.payload.resource : null;
+
+/** „eine Karte" oder „zwei Karten" - die Zahl kommt aus der Regel, nicht von hier. */
+const cardsWord = (count: number): string => (count === 1 ? 'eine Karte' : 'zwei Karten');
+```
+
+- Im Markup nach dem `aqueductPending`-Dialog:
+
+```tsx
+{
+  /*
+   * Die fünf wartenden Karten - je ein Dialog, sichtbar für jeden, der in
+   * der Warteliste steht. Kein Schließkreuz: gespielt ist die Karte, und
+   * wer nicht antwortet, dem nimmt die Frist die Antwort ab oder lässt sie
+   * verfallen (Spec 5.5). `key` je Anlass, damit eine halbe Auswahl nicht
+   * in den nächsten Dialog wandert.
    */
-  const answering =
-    view.phase.kind === 'progressPending' && view.phase.pending.includes(view.you)
-      ? view.phase
-      : null;
+}
+{
+  answering?.payload.card === 'wedding' && you !== undefined ? (
+    <DiscardDialog
+      key={`wedding-${view.you}`}
+      player={you}
+      cards={view.rules.cards}
+      required={twoCardsOrAll(you.cardCount)}
+      title={`Hochzeit: schenke ${nameOfPlayer(answering.by)} ${cardsWord(twoCardsOrAll(you.cardCount))}`}
+      hint="Du hast mehr Siegpunkte – die Karten wählst du selbst."
+      confirmLabel="Schenken"
+      onConfirm={(gift) => answer({ card: 'wedding', gift })}
+    />
+  ) : null;
+}
 
-  /** Die aufzählbaren Antworten stehen in der Aktionsliste - wie die Opfer beim Räuber. */
-  const listedAnswers = actions.flatMap((action) =>
-    action.type === 'answerProgress' ? [action.answer] : [],
-  );
+{
+  merchantVictim !== undefined && merchantVictim.resources !== null ? (
+    <DiscardDialog
+      key={`merchant-${merchantVictim.id}`}
+      player={merchantVictim}
+      cards={view.rules.cards}
+      required={twoCardsOrAll(merchantVictim.cardCount)}
+      title={`Großhändler: nimm ${merchantVictim.name} ${cardsWord(twoCardsOrAll(merchantVictim.cardCount))}`}
+      hint="Nur du siehst diese Hand, und nur jetzt."
+      confirmLabel="Nehmen"
+      onConfirm={(take) => answer({ card: 'masterMerchant', take })}
+    />
+  ) : null;
+}
 
-  const answer = (reply: ProgressAnswer): void => {
-    onAct({ type: 'answerProgress', player: view.you, answer: reply });
-  };
+{
+  spyVictim !== undefined ? (
+    <SpyDialog
+      key={`spy-${spyVictim.id}`}
+      victimName={spyVictim.name}
+      cards={listedAnswers.flatMap((reply) => (reply.card === 'spy' ? [reply.take] : []))}
+      onTake={(take) => answer({ card: 'spy', take })}
+    />
+  ) : null;
+}
 
-  const nameOfPlayer = (id: PlayerId): string => playerOf(id)?.name ?? id;
-
-  const merchantVictim =
-    answering?.payload.card === 'masterMerchant' ? playerOf(answering.payload.victim) : undefined;
-  const spyVictim =
-    answering?.payload.card === 'spy' ? playerOf(answering.payload.victim) : undefined;
-  const harborResource =
-    answering?.payload.card === 'tradeHarbor' ? answering.payload.resource : null;
-
-  /** „eine Karte" oder „zwei Karten" - die Zahl kommt aus der Regel, nicht von hier. */
-  const cardsWord = (count: number): string => (count === 1 ? 'eine Karte' : 'zwei Karten');
+{
+  harborResource !== null && answering !== null ? (
+    <ResourcePickDialog
+      key={`harbor-${view.you}`}
+      title="Handelshafen"
+      hint={`${nameOfPlayer(answering.by)} gibt dir ${CARD_LABELS[harborResource]} – welche Handelsware gibst du dafür?`}
+      pool={listedAnswers.flatMap((reply) =>
+        reply.card === 'tradeHarbor' ? [reply.commodity] : [],
+      )}
+      count={1}
+      confirmLabel="Tauschen"
+      onConfirm={(picks) => answer({ card: 'tradeHarbor', commodity: picks[0]! })}
+    />
+  ) : null;
+}
 ```
 
-  - Im Markup nach dem `aqueductPending`-Dialog:
+- Vor dem `targets.displace`-Modus:
 
 ```tsx
-      {/*
-       * Die fünf wartenden Karten - je ein Dialog, sichtbar für jeden, der in
-       * der Warteliste steht. Kein Schließkreuz: gespielt ist die Karte, und
-       * wer nicht antwortet, dem nimmt die Frist die Antwort ab oder lässt sie
-       * verfallen (Spec 5.5). `key` je Anlass, damit eine halbe Auswahl nicht
-       * in den nächsten Dialog wandert.
-       */}
-      {answering?.payload.card === 'wedding' && you !== undefined ? (
-        <DiscardDialog
-          key={`wedding-${view.you}`}
-          player={you}
-          cards={view.rules.cards}
-          required={twoCardsOrAll(you.cardCount)}
-          title={`Hochzeit: schenke ${nameOfPlayer(answering.by)} ${cardsWord(twoCardsOrAll(you.cardCount))}`}
-          hint="Du hast mehr Siegpunkte – die Karten wählst du selbst."
-          confirmLabel="Schenken"
-          onConfirm={(gift) => answer({ card: 'wedding', gift })}
-        />
-      ) : null}
-
-      {merchantVictim !== undefined && merchantVictim.resources !== null ? (
-        <DiscardDialog
-          key={`merchant-${merchantVictim.id}`}
-          player={merchantVictim}
-          cards={view.rules.cards}
-          required={twoCardsOrAll(merchantVictim.cardCount)}
-          title={`Großhändler: nimm ${merchantVictim.name} ${cardsWord(twoCardsOrAll(merchantVictim.cardCount))}`}
-          hint="Nur du siehst diese Hand, und nur jetzt."
-          confirmLabel="Nehmen"
-          onConfirm={(take) => answer({ card: 'masterMerchant', take })}
-        />
-      ) : null}
-
-      {spyVictim !== undefined ? (
-        <SpyDialog
-          key={`spy-${spyVictim.id}`}
-          victimName={spyVictim.name}
-          cards={listedAnswers.flatMap((reply) => (reply.card === 'spy' ? [reply.take] : []))}
-          onTake={(take) => answer({ card: 'spy', take })}
-        />
-      ) : null}
-
-      {harborResource !== null && answering !== null ? (
-        <ResourcePickDialog
-          key={`harbor-${view.you}`}
-          title="Handelshafen"
-          hint={`${nameOfPlayer(answering.by)} gibt dir ${CARD_LABELS[harborResource]} – welche Handelsware gibst du dafür?`}
-          pool={listedAnswers.flatMap((reply) =>
-            reply.card === 'tradeHarbor' ? [reply.commodity] : [],
-          )}
-          count={1}
-          confirmLabel="Tauschen"
-          onConfirm={(picks) => answer({ card: 'tradeHarbor', commodity: picks[0]! })}
-        />
-      ) : null}
-```
-
-  - Vor dem `targets.displace`-Modus:
-
-```tsx
-      {targets.desert.size > 0 ? (
-        <div className="mode" role="status" data-testid="deserter-mode">
-          <span>
-            {answering?.payload.card === 'deserter' && answering.payload.replacement !== null
-              ? 'Deserteur: Wo stellst du den Überläufer auf?'
-              : 'Deserteur: Welchen Ritter gibst du auf?'}
-          </span>
-        </div>
-      ) : null}
+{
+  targets.desert.size > 0 ? (
+    <div className="mode" role="status" data-testid="deserter-mode">
+      <span>
+        {answering?.payload.card === 'deserter' && answering.payload.replacement !== null
+          ? 'Deserteur: Wo stellst du den Überläufer auf?'
+          : 'Deserteur: Welchen Ritter gibst du auf?'}
+      </span>
+    </div>
+  ) : null;
+}
 ```
 
 - [ ] **Schritt 8: Tests laufen lassen** — `pnpm typecheck && pnpm -r test`. PASS.
@@ -5467,37 +5671,32 @@ Hand".
 - [ ] **Schritt 1: Die Tests schreiben.** Im Block `Strassenbau (Fortschritt): Ziele`:
 
 ```ts
-  it('nennt die einzige Kante mit leerer zweiter Wahl, wenn keine zweite geht', () => {
-    const base = withHand(
-      citiesTable({ buildings: { [CENTER_VERTEX]: settlementOf('p1') } }),
-      'p1',
-      ['roadBuilding'],
-    );
-    // Die letzte Strasse im Vorrat: nach ihr geht keine zweite mehr.
-    const state: GameState = {
-      ...base,
-      players: base.players.map((player) =>
-        player.id === 'p1'
-          ? { ...player, piecesLeft: { ...player.piecesLeft, road: 1 } }
-          : player,
-      ),
-    };
+it('nennt die einzige Kante mit leerer zweiter Wahl, wenn keine zweite geht', () => {
+  const base = withHand(citiesTable({ buildings: { [CENTER_VERTEX]: settlementOf('p1') } }), 'p1', [
+    'roadBuilding',
+  ]);
+  // Die letzte Strasse im Vorrat: nach ihr geht keine zweite mehr.
+  const state: GameState = {
+    ...base,
+    players: base.players.map((player) =>
+      player.id === 'p1' ? { ...player, piecesLeft: { ...player.piecesLeft, road: 1 } } : player,
+    ),
+  };
 
-    expect(progressRoadBuildingTargets(state, 'p1')[CENTER_EDGE]).toEqual([]);
-  });
+  expect(progressRoadBuildingTargets(state, 'p1')[CENTER_EDGE]).toEqual([]);
+});
 ```
 
 Im Block `Medizin: Ziele`:
 
 ```ts
-  it('ist leer ohne die Karte auf der Hand', () => {
-    const state = giving(
-      citiesTable({ buildings: { [CENTER_VERTEX]: settlementOf('p1') } }),
-      'p1',
-      { ore: 2, grain: 1 },
-    );
-    expect(medicineTargets(state, 'p1')).toEqual([]);
+it('ist leer ohne die Karte auf der Hand', () => {
+  const state = giving(citiesTable({ buildings: { [CENTER_VERTEX]: settlementOf('p1') } }), 'p1', {
+    ore: 2,
+    grain: 1,
   });
+  expect(medicineTargets(state, 'p1')).toEqual([]);
+});
 ```
 
 - [ ] **Schritt 2: Tests laufen lassen** — `pnpm -r test`. Erwartet: PASS, denn beide Fälle
@@ -5633,30 +5832,30 @@ git commit -m "Was in 10d-2 entschieden wurde"
 
 ## Selbstprüfung gegen die Spec
 
-| Anforderung der Spec (5.3, 5.5, Zuschnitt 10d-2)                                  | Aufgabe |
-| --------------------------------------------------------------------------------- | ------- |
-| `progressPending` als eine Phase, `payload` für das, was zwischen Runden feststeht | 1       |
-| `ProgressAnswerSchema` als eigene Union unter einer Aktion `answerProgress`        | 1       |
-| `actorFor` / `PHASE_ACTIONS` / `legalActions`                                      | 1, 4–7  |
-| `revealsTo` öffnet je ein Feld, für eine Person, eine Hand, eine Phase             | 2       |
-| Lecktest ohne Teilstrings                                                          | 2       |
-| Hochzeit: `victoryPointsOf`, weniger als zwei → alles, ohne Karten nicht in `pending` | 3    |
-| „Öffentliche und volle Punkte sind hier gleich" als Satz im Code                   | 3       |
-| Handelshafen: eine Sorte für alle, Deckung in `canPlayProgress`                    | 4       |
-| Spionage: jede Person, nur `progressCards` wählbar                                 | 5       |
-| Großhändler: mehr Punkte **und** mindestens eine Karte                             | 6       |
-| Deserteur: zwei Runden, Ersatzstufe erzwungen, `active` reist mit, `activatedOnTurn = turn` | 7 |
-| Reihenfolge in `pending` im Uhrzeigersinn, `inTurnOrder` herausgezogen             | 1, 3, 4 |
-| Die fünf Karten in `CITIES_RULES.progressDecks`                                    | 8       |
-| `deadlineOf` liefert eine Dauer, der Wecker rechnet `now + ms`                     | 9, 10   |
-| `applyTimeout` zieht nach `game/timeout.ts` und wird Verteiler                     | 9       |
-| Die zwölf Zeilen aus 5.5, rein und deterministisch                                 | 9       |
-| Personenwahl mit Name, Farbe, Punktestand                                          | 13      |
-| Zwei Aufdeckdialoge                                                                | 14      |
-| Wartezeile mit Countdown, zweite Fundstelle ohne zweite Umsetzung                  | 12      |
-| Verlauf: fünf Kartensätze und der Fristablauf                                      | 11      |
-| Die zwei Testlücken aus 10d-1 (Straßenbau, Medizin)                                | 15      |
-| Browser-Durchgang inklusive Messpunkt 7, dann Abnahme und `PROGRESS.md`            | 16, 17  |
+| Anforderung der Spec (5.3, 5.5, Zuschnitt 10d-2)                                            | Aufgabe |
+| ------------------------------------------------------------------------------------------- | ------- |
+| `progressPending` als eine Phase, `payload` für das, was zwischen Runden feststeht          | 1       |
+| `ProgressAnswerSchema` als eigene Union unter einer Aktion `answerProgress`                 | 1       |
+| `actorFor` / `PHASE_ACTIONS` / `legalActions`                                               | 1, 4–7  |
+| `revealsTo` öffnet je ein Feld, für eine Person, eine Hand, eine Phase                      | 2       |
+| Lecktest ohne Teilstrings                                                                   | 2       |
+| Hochzeit: `victoryPointsOf`, weniger als zwei → alles, ohne Karten nicht in `pending`       | 3       |
+| „Öffentliche und volle Punkte sind hier gleich" als Satz im Code                            | 3       |
+| Handelshafen: eine Sorte für alle, Deckung in `canPlayProgress`                             | 4       |
+| Spionage: jede Person, nur `progressCards` wählbar                                          | 5       |
+| Großhändler: mehr Punkte **und** mindestens eine Karte                                      | 6       |
+| Deserteur: zwei Runden, Ersatzstufe erzwungen, `active` reist mit, `activatedOnTurn = turn` | 7       |
+| Reihenfolge in `pending` im Uhrzeigersinn, `inTurnOrder` herausgezogen                      | 1, 3, 4 |
+| Die fünf Karten in `CITIES_RULES.progressDecks`                                             | 8       |
+| `deadlineOf` liefert eine Dauer, der Wecker rechnet `now + ms`                              | 9, 10   |
+| `applyTimeout` zieht nach `game/timeout.ts` und wird Verteiler                              | 9       |
+| Die zwölf Zeilen aus 5.5, rein und deterministisch                                          | 9       |
+| Personenwahl mit Name, Farbe, Punktestand                                                   | 13      |
+| Zwei Aufdeckdialoge                                                                         | 14      |
+| Wartezeile mit Countdown, zweite Fundstelle ohne zweite Umsetzung                           | 12      |
+| Verlauf: fünf Kartensätze und der Fristablauf                                               | 11      |
+| Die zwei Testlücken aus 10d-1 (Straßenbau, Medizin)                                         | 15      |
+| Browser-Durchgang inklusive Messpunkt 7, dann Abnahme und `PROGRESS.md`                     | 16, 17  |
 
 **Nicht in dieser Etappe, mit Absicht:** die 25 Kartenmotive (Abweichung 1, vom Menschen am
 2026-09-15 gestrichen); eine Zugzeit für `main` und `rollPending` (Spec 5.5: eine andere Sache

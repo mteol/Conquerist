@@ -137,7 +137,9 @@ describe('Hochzeit', () => {
   });
 
   it('zaehlt die Hochzeit in legalActions als Zug ohne Angabe auf', () => {
-    const plays = legalActions(weddingTable(), 'p1').filter((action) => action.type === 'playProgress');
+    const plays = legalActions(weddingTable(), 'p1').filter(
+      (action) => action.type === 'playProgress',
+    );
     expect(plays).toContainEqual(PLAY);
   });
 

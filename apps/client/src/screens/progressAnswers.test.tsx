@@ -57,7 +57,11 @@ function screenFor(state: GameState, viewer: string, onAct = vi.fn()) {
   );
 }
 
-function withResources(state: GameState, id: string, part: Parameters<typeof cardAmounts>[0]): GameState {
+function withResources(
+  state: GameState,
+  id: string,
+  part: Parameters<typeof cardAmounts>[0],
+): GameState {
   return {
     ...state,
     players: state.players.map((player) =>
@@ -125,7 +129,12 @@ describe('Antworten auf wartende Karten', () => {
       players: base.players.map((player) =>
         player.id === other ? { ...player, progressCards: ['bishop', 'crane'] } : player,
       ),
-      phase: { kind: 'progressPending', by, pending: [by], payload: { card: 'spy', victim: other } },
+      phase: {
+        kind: 'progressPending',
+        by,
+        pending: [by],
+        payload: { card: 'spy', victim: other },
+      },
     };
     const onAct = vi.fn();
     screenFor(state, by, onAct);
@@ -175,7 +184,13 @@ describe('Antworten auf wartende Karten', () => {
     const state: GameState = {
       ...base,
       knights: {
-        [vertex]: { owner: other, level: 1, active: false, activatedOnTurn: null, upgradedThisTurn: false },
+        [vertex]: {
+          owner: other,
+          level: 1,
+          active: false,
+          activatedOnTurn: null,
+          upgradedThisTurn: false,
+        },
       },
       phase: {
         kind: 'progressPending',

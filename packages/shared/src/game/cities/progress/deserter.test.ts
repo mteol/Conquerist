@@ -188,13 +188,17 @@ describe('Deserteur', () => {
   it('zaehlt in beiden Runden genau die moeglichen Kreuzungen auf', () => {
     const round1 = act(deserterTable(), PLAY);
     const victimMoves = legalActions(round1, 'p2').map((action) =>
-      action.type === 'answerProgress' && action.answer.card === 'deserter' ? action.answer.vertex : null,
+      action.type === 'answerProgress' && action.answer.card === 'deserter'
+        ? action.answer.vertex
+        : null,
     );
     expect(victimMoves.sort()).toEqual([FAR_VERTEX, HARBOR3_VERTEX].sort());
 
     const round2 = act(round1, pick('p2', FAR_VERTEX));
     const placements = legalActions(round2, 'p1').map((action) =>
-      action.type === 'answerProgress' && action.answer.card === 'deserter' ? action.answer.vertex : null,
+      action.type === 'answerProgress' && action.answer.card === 'deserter'
+        ? action.answer.vertex
+        : null,
     );
     expect(placements.sort()).toEqual([ADJACENT_VERTEX, CENTER_VERTEX].sort());
   });

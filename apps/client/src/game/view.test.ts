@@ -301,12 +301,13 @@ describe('Eine wartende Fortschrittskarte im Anzeigemodell', () => {
       payload: { card: 'deserter' as const, victim: ids[1]!, replacement },
     });
 
-    expect(gameViewOf(playerViewOf({ ...state, phase: round(null) }, ids[1]!, seats, 1)).phaseText).toBe(
-      'Deserteur: Spieler 2 gibt einen Ritter auf',
-    );
     expect(
-      gameViewOf(playerViewOf({ ...state, phase: round({ level: 1, active: false }) }, ids[0]!, seats, 1))
-        .phaseText,
+      gameViewOf(playerViewOf({ ...state, phase: round(null) }, ids[1]!, seats, 1)).phaseText,
+    ).toBe('Deserteur: Spieler 2 gibt einen Ritter auf');
+    expect(
+      gameViewOf(
+        playerViewOf({ ...state, phase: round({ level: 1, active: false }) }, ids[0]!, seats, 1),
+      ).phaseText,
     ).toBe('Deserteur: Spieler 1 stellt den Überläufer auf');
   });
 });

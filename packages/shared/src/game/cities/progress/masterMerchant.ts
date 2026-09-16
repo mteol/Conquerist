@@ -36,7 +36,10 @@ export function canMasterMerchant(
   }
   const victim = findPlayer(state, play.victim);
   if (victim === undefined) {
-    return violation(RuleViolationCode.UNKNOWN_PLAYER, `${play.victim} sitzt nicht an diesem Tisch`);
+    return violation(
+      RuleViolationCode.UNKNOWN_PLAYER,
+      `${play.victim} sitzt nicht an diesem Tisch`,
+    );
   }
   if (victoryPointsOf(state, play.victim) <= victoryPointsOf(state, player)) {
     return violation(
@@ -45,7 +48,10 @@ export function canMasterMerchant(
     );
   }
   if (countCards(victim.resources) === 0) {
-    return violation(RuleViolationCode.INVALID_PROGRESS_VICTIM, `${play.victim} hat keine Handkarten`);
+    return violation(
+      RuleViolationCode.INVALID_PROGRESS_VICTIM,
+      `${play.victim} hat keine Handkarten`,
+    );
   }
   return null;
 }

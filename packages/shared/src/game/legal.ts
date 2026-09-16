@@ -453,9 +453,10 @@ function progressAnswerCandidates(state: GameState, player: PlayerId): ProgressA
       return COMMODITY_IDS.map((commodity): ProgressAnswer => ({ card: 'tradeHarbor', commodity }));
     case 'spy': {
       const victim = state.players.find((entry) => entry.id === payload.victim);
-      return [...new Set(victim?.progressCards ?? [])].map(
-        (take): ProgressAnswer => ({ card: 'spy', take }),
-      );
+      return [...new Set(victim?.progressCards ?? [])].map((take): ProgressAnswer => ({
+        card: 'spy',
+        take,
+      }));
     }
     case 'deserter': {
       const vertices =

@@ -654,7 +654,9 @@ describe('Verlaufssaetze der wartenden Karten', () => {
   function patch(state: GameState, id: PlayerId, change: Partial<PlayerState>): GameState {
     return {
       ...state,
-      players: state.players.map((player) => (player.id === id ? { ...player, ...change } : player)),
+      players: state.players.map((player) =>
+        player.id === id ? { ...player, ...change } : player,
+      ),
     };
   }
 
@@ -677,7 +679,13 @@ describe('Verlaufssaetze der wartenden Karten', () => {
       cities({
         roads: { [CENTER_EDGE]: 'p1' },
         knights: {
-          [FAR_VERTEX]: { owner: 'p2', level: 1, active: false, activatedOnTurn: null, upgradedThisTurn: false },
+          [FAR_VERTEX]: {
+            owner: 'p2',
+            level: 1,
+            active: false,
+            activatedOnTurn: null,
+            upgradedThisTurn: false,
+          },
         },
       }),
       'p1',
@@ -713,7 +721,9 @@ describe('Verlaufssaetze der wartenden Karten', () => {
   it('nennt das Spielen der Hochzeit ohne weitere Angabe', () => {
     const state = patch(
       cities({
-        buildings: { [FAR_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null } },
+        buildings: {
+          [FAR_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+        },
       }),
       'p1',
       { progressCards: ['wedding'] },
@@ -724,7 +734,10 @@ describe('Verlaufssaetze der wartenden Karten', () => {
   });
 
   it('nennt beim Handelshafen den angebotenen Rohstoff', () => {
-    let state = patch(cities(), 'p1', { progressCards: ['tradeHarbor'], resources: hand({ wool: 1 }) });
+    let state = patch(cities(), 'p1', {
+      progressCards: ['tradeHarbor'],
+      resources: hand({ wool: 1 }),
+    });
     state = patch(state, 'p2', { resources: hand({ cloth: 1 }) });
     expect(
       sentence(state, {
@@ -776,13 +789,22 @@ describe('Verlaufssaetze der wartenden Karten', () => {
   it('verraet bei der Spionage nicht, welche Karte genommen wurde', () => {
     const state = patch(
       cities({
-        phase: { kind: 'progressPending', by: 'p1', pending: ['p1'], payload: { card: 'spy', victim: 'p2' } },
+        phase: {
+          kind: 'progressPending',
+          by: 'p1',
+          pending: ['p1'],
+          payload: { card: 'spy', victim: 'p2' },
+        },
       }),
       'p2',
       { progressCards: ['bishop'] },
     );
     expect(
-      sentence(state, { type: 'answerProgress', player: 'p1', answer: { card: 'spy', take: 'bishop' } }),
+      sentence(state, {
+        type: 'answerProgress',
+        player: 'p1',
+        answer: { card: 'spy', take: 'bishop' },
+      }),
     ).toBe('p1 nimmt p2 eine Fortschrittskarte');
   });
 
@@ -837,7 +859,13 @@ describe('Verlaufssaetze der wartenden Karten', () => {
     const state = cities({
       roads: { [CENTER_EDGE]: 'p1' },
       knights: {
-        [FAR_VERTEX]: { owner: 'p2', level: 1, active: false, activatedOnTurn: null, upgradedThisTurn: false },
+        [FAR_VERTEX]: {
+          owner: 'p2',
+          level: 1,
+          active: false,
+          activatedOnTurn: null,
+          upgradedThisTurn: false,
+        },
       },
       phase: {
         kind: 'progressPending',

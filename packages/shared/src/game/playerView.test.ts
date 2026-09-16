@@ -635,7 +635,11 @@ describe('revealsTo - die eine geoeffnete Hand', () => {
       ...base,
       players: base.players.map((player) =>
         player.id === 'p2'
-          ? { ...player, resources: { ...player.resources, ore: 2 }, progressCards: ['bishop' as const] }
+          ? {
+              ...player,
+              resources: { ...player.resources, ore: 2 },
+              progressCards: ['bishop' as const],
+            }
           : player,
       ),
     };
@@ -673,7 +677,12 @@ describe('revealsTo - die eine geoeffnete Hand', () => {
     const base = looking({ card: 'spy', victim: 'p2' });
     const state = {
       ...base,
-      phase: { kind: 'progressPending' as const, by: 'p1', pending: ['p2'], payload: { card: 'spy' as const, victim: 'p2' } },
+      phase: {
+        kind: 'progressPending' as const,
+        by: 'p1',
+        pending: ['p2'],
+        payload: { card: 'spy' as const, victim: 'p2' },
+      },
     };
     expect(revealsTo(state, 'p1', 'p2')).toEqual({ resources: false, progressCards: false });
   });
@@ -689,7 +698,10 @@ describe('revealsTo - die eine geoeffnete Hand', () => {
   });
 
   it('zeigt jedem die eigene Hand ganz', () => {
-    expect(revealsTo(gameWithCities(), 'p2', 'p2')).toEqual({ resources: true, progressCards: true });
+    expect(revealsTo(gameWithCities(), 'p2', 'p2')).toEqual({
+      resources: true,
+      progressCards: true,
+    });
   });
 
   it('haelt waehrend der offenen Hand das eigene Schema ein', () => {

@@ -24,11 +24,17 @@ type SpyPayload = Extract<ProgressPendingPayload, { card: 'spy' }>;
 
 export function canSpy(state: GameState, player: PlayerId, play: SpyPlay): RuleViolation | null {
   if (play.victim === player) {
-    return violation(RuleViolationCode.INVALID_PROGRESS_VICTIM, 'Bei sich selbst spioniert man nicht');
+    return violation(
+      RuleViolationCode.INVALID_PROGRESS_VICTIM,
+      'Bei sich selbst spioniert man nicht',
+    );
   }
   const victim = findPlayer(state, play.victim);
   if (victim === undefined) {
-    return violation(RuleViolationCode.UNKNOWN_PLAYER, `${play.victim} sitzt nicht an diesem Tisch`);
+    return violation(
+      RuleViolationCode.UNKNOWN_PLAYER,
+      `${play.victim} sitzt nicht an diesem Tisch`,
+    );
   }
   if (countedHand(victim) === 0) {
     return violation(

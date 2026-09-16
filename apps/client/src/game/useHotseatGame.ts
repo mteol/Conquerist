@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react';
-import { deadlineOf, msUntil, stampAction, type GameAction, type GameState } from '@conquerist/shared';
+import {
+  deadlineOf,
+  msUntil,
+  stampAction,
+  type GameAction,
+  type GameState,
+} from '@conquerist/shared';
 import type { Seat } from '../seats';
 import { hotseatReducer, startHotseat, type HotseatEvent, type HotseatState } from './hotseat';
 

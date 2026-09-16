@@ -11,7 +11,13 @@ const people = [
 describe('PersonPickDialog', () => {
   it('nennt jede Person mit Namen und Punktestand', () => {
     render(
-      <PersonPickDialog title="Spionage: bei wem?" hint="" people={people} onChoose={vi.fn()} onClose={vi.fn()} />,
+      <PersonPickDialog
+        title="Spionage: bei wem?"
+        hint=""
+        people={people}
+        onChoose={vi.fn()}
+        onClose={vi.fn()}
+      />,
     );
 
     expect(screen.getByRole('button', { name: 'Ben · 5 Siegpunkte' })).toBeDefined();
@@ -21,7 +27,13 @@ describe('PersonPickDialog', () => {
   it('meldet die gewählte Person', async () => {
     const onChoose = vi.fn();
     render(
-      <PersonPickDialog title="Spionage: bei wem?" hint="" people={people} onChoose={onChoose} onClose={vi.fn()} />,
+      <PersonPickDialog
+        title="Spionage: bei wem?"
+        hint=""
+        people={people}
+        onChoose={onChoose}
+        onClose={vi.fn()}
+      />,
     );
 
     await userEvent.click(screen.getByRole('button', { name: /Ben/ }));
@@ -32,7 +44,13 @@ describe('PersonPickDialog', () => {
   it('lässt sich abbrechen', async () => {
     const onClose = vi.fn();
     render(
-      <PersonPickDialog title="Spionage: bei wem?" hint="" people={people} onChoose={vi.fn()} onClose={onClose} />,
+      <PersonPickDialog
+        title="Spionage: bei wem?"
+        hint=""
+        people={people}
+        onChoose={vi.fn()}
+        onClose={onClose}
+      />,
     );
 
     await userEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));

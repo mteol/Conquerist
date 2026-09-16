@@ -180,9 +180,7 @@ describe('Strassenbau (Fortschritt): Ziele', () => {
     const state: GameState = {
       ...base,
       players: base.players.map((player) =>
-        player.id === 'p1'
-          ? { ...player, piecesLeft: { ...player.piecesLeft, road: 1 } }
-          : player,
+        player.id === 'p1' ? { ...player, piecesLeft: { ...player.piecesLeft, road: 1 } } : player,
       ),
     };
 

@@ -45,7 +45,10 @@ export function canDeserter(
     );
   }
   if (findPlayer(state, play.victim) === undefined) {
-    return violation(RuleViolationCode.UNKNOWN_PLAYER, `${play.victim} sitzt nicht an diesem Tisch`);
+    return violation(
+      RuleViolationCode.UNKNOWN_PLAYER,
+      `${play.victim} sitzt nicht an diesem Tisch`,
+    );
   }
   if (!Object.values(state.knights).some((knight) => knight.owner === play.victim)) {
     return violation(
@@ -56,7 +59,11 @@ export function canDeserter(
   return null;
 }
 
-export function applyDeserter(state: GameState, player: PlayerId, play: DeserterPlay): ReduceResult {
+export function applyDeserter(
+  state: GameState,
+  player: PlayerId,
+  play: DeserterPlay,
+): ReduceResult {
   const problem = canDeserter(state, player, play);
   if (problem !== null) return rejected(problem);
 
@@ -113,7 +120,10 @@ export function canAnswerDeserter(
 
   const piece = knightPiece(payload.replacement.level);
   if ((findPlayer(state, player)!.piecesLeft[piece] ?? 0) <= 0) {
-    return violation(RuleViolationCode.NO_PIECES_LEFT, 'Im Vorrat liegt kein Ritter dieser Stufe mehr');
+    return violation(
+      RuleViolationCode.NO_PIECES_LEFT,
+      'Im Vorrat liegt kein Ritter dieser Stufe mehr',
+    );
   }
   return null;
 }

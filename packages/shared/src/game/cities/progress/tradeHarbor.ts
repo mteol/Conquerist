@@ -119,7 +119,11 @@ export function answerTradeHarbor(
 ): GameState {
   const commodityIn = transferCards(state, partner, phase.by, one(answer.commodity));
   const resourceOut = transferCards(commodityIn, phase.by, partner, one(payload.resource));
-  return withPending(resourceOut, phase, phase.pending.filter((id) => id !== partner));
+  return withPending(
+    resourceOut,
+    phase,
+    phase.pending.filter((id) => id !== partner),
+  );
 }
 
 /** Nach Fristablauf: die haeufigste Handelsware, bei Gleichstand in `COMMODITY_IDS`-Ordnung. */

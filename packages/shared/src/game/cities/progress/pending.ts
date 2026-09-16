@@ -49,7 +49,8 @@ export function transferCards(
   return {
     ...state,
     players: state.players.map((entry) => {
-      if (entry.id === from) return { ...entry, resources: subtractCards(entry.resources, amounts) };
+      if (entry.id === from)
+        return { ...entry, resources: subtractCards(entry.resources, amounts) };
       if (entry.id === to) return { ...entry, resources: addCards(entry.resources, amounts) };
       return entry;
     }),
