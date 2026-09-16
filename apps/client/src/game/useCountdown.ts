@@ -27,8 +27,18 @@ export function secondsLeft(
  * liest ihn auch die Wartezeile - eine zweite Fundstelle, keine zweite
  * Umsetzung. Welche Frist läuft, sagt `deadlineOf` aus `shared`, dieselbe
  * Funktion, die der Server vollstreckt.
+ *
+ * `dueAt` ist, wann der Wecker des Servers die Dauer abnimmt (Serverzeit).
+ * Steht er da, wird die Dauer wie ein gespeicherter Zeitpunkt gerechnet: mit
+ * Versatz, und ein neuer Stand ohne Zug - Wiederverbinden, Beitritt,
+ * Umbenennen - setzt die Anzeige nicht zurück. Ohne ihn (lokal, wo der Wecker
+ * mit jedem Stand neu läuft, oder ein älterer Server) gilt die Ankunft.
  */
-export function useCountdown(view: PlayerView, clockOffset: number): number | null {
+export function useCountdown(
+  view: PlayerView,
+  clockOffset: number,
+  dueAt: number | null = null,
+): number | null {
   const [arrival, setArrival] = useState(() => ({ version: view.version, at: Date.now() }));
   const [now, setNow] = useState(() => Date.now());
 
@@ -46,7 +56,11 @@ export function useCountdown(view: PlayerView, clockOffset: number): number | nu
     return () => clearInterval(handle);
   }, []);
 
-  const due = deadlineOf(view);
-  if (due === null) return null;
+  const found = deadlineOf(view);
+  if (found === null) return null;
+  const due: Deadline =
+    found.kind === 'after' && dueAt !== null
+      ? { kind: 'at', at: dueAt, owner: found.owner }
+      : found;
   return secondsLeft(due, arrival.at, Math.max(now, arrival.at), clockOffset);
 }

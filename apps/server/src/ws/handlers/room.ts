@@ -17,7 +17,12 @@ import {
   stampAction,
   type GameAction,
 } from '@conquerist/shared';
-import { broadcastGame, broadcastOver, broadcastRoom } from '../../rooms/broadcast.js';
+import {
+  broadcastGame,
+  broadcastOver,
+  broadcastRoom,
+  type Transition,
+} from '../../rooms/broadcast.js';
 import { summaryOf } from '../../rooms/summary.js';
 import {
   abandonRoom,
@@ -70,6 +75,17 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
   const { registry, users, sinks } = deps;
 
   /**
+   * Die Partie verteilen - mit dem Zeitpunkt, den der Wecker gerade gestellt hat.
+   *
+   * Nach einem Zug steht der Wecker davor schon neu (`arm` vor `publish`);
+   * ohne Zug (Wiederverbinden, Beitritt, Umbenennen) bleibt er, wie er ist, und
+   * der Stand traegt denselben Zeitpunkt wie der letzte.
+   */
+  const publish = (room: Room, transition?: Transition): void => {
+    broadcastGame(room, sinks.map, transition, deps.clock?.dueAt(room.code));
+  };
+
+  /**
    * Einen Zug einwerfen, den der Server selbst ausloest.
    *
    * Immer denselben Weg: anwenden, ablegen samt Log, verteilen. Ohne diese
@@ -83,14 +99,13 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
 
     registry.update(acted.room.code, acted.room, action);
 
-    broadcastGame(
+    deps.clock?.arm(acted.room.code);
+    publish(
       acted.room,
-      sinks.map,
       before === null || acted.room.game === null
         ? undefined
         : { before, action, after: acted.room.game },
     );
-    deps.clock?.arm(acted.room.code);
     return true;
   };
 
@@ -147,7 +162,7 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
         hasAutomaticDecline(game, result.user.id) &&
         system(reconnected, { type: 'rejoinTrade', player: result.user.id });
 
-      if (!revived) broadcastGame(reconnected, sinks.map);
+      if (!revived) publish(reconnected);
     }
 
     return result.secret === undefined
@@ -197,7 +212,7 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
 
     broadcastRoom(joined.room, sinks.map);
     // Wer einer laufenden Partie wieder beitritt, braucht auch den Spielstand.
-    broadcastGame(joined.room, sinks.map);
+    publish(joined.room);
 
     return { code: joined.room.code };
   });
@@ -372,7 +387,7 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
        * und ohne das hiesse der Umbenannte am Tisch erst nach dem naechsten Zug
        * anders - oder in einer angehaltenen Partie nie.
        */
-      if (next.game !== null) broadcastGame(next, sinks.map);
+      if (next.game !== null) publish(next);
     }
 
     return {};
@@ -387,8 +402,8 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
 
     registry.update(started.room.code, started.room);
     broadcastRoom(started.room, sinks.map);
-    broadcastGame(started.room, sinks.map);
     deps.clock?.arm(started.room.code);
+    publish(started.room);
 
     return {};
   });
@@ -417,15 +432,16 @@ export function registerRoomHandlers(router: MessageRouter, deps: RoomHandlerDep
     // er kann damit nicht von dem abweichen, was wirklich geschehen ist. Wo er
     // entsteht, steht seit dem Ton in `broadcast.ts`; hier geht nur noch der
     // Uebergang hinein.
-    broadcastGame(
+    //
+    // Der Zug kann eine Frist geoeffnet, verlaengert oder beendet haben - der
+    // Wecker steht vor dem Verteilen neu, damit der Stand ihren Zeitpunkt traegt.
+    deps.clock?.arm(acted.room.code);
+    publish(
       acted.room,
-      sinks.map,
       before === null || acted.room.game === null
         ? undefined
         : { before, action, after: acted.room.game },
     );
-    // Der Zug kann eine Frist geoeffnet, verlaengert oder beendet haben.
-    deps.clock?.arm(acted.room.code);
     return {};
   });
 }
@@ -467,12 +483,13 @@ export function handleDisconnect(deps: RoomHandlerDeps, session: Session, sink: 
 
     registry.update(acted.room.code, acted.room, action);
 
+    deps.clock?.arm(acted.room.code);
     broadcastGame(
       acted.room,
       sinks.map,
       acted.room.game === null ? undefined : { before: game, action, after: acted.room.game },
+      deps.clock?.dueAt(acted.room.code),
     );
-    deps.clock?.arm(acted.room.code);
   }
 }
 

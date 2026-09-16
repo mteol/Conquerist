@@ -38,6 +38,15 @@ export interface OnlineState {
    * abgelaufen ist - oder eine, die nie endet.
    */
   readonly clockOffset: number;
+  /**
+   * Wann die laufende Frist fällig ist, in Serverzeit - `null`, wenn der
+   * letzte Stand keinen Zeitpunkt trug.
+   *
+   * Nur der Server weiß, wann sein Wecker gestellt wurde: ein Stand ohne Zug
+   * (Wiederverbinden, Beitritt, Umbenennen) lässt ihn stehen, und ab der
+   * Ankunft gerechnet sprang die Anzeige auf die volle Frist zurück.
+   */
+  readonly dueAt: number | null;
 }
 
 export const emptyOnlineState: OnlineState = {
@@ -49,6 +58,7 @@ export const emptyOnlineState: OnlineState = {
   sound: null,
   over: null,
   clockOffset: 0,
+  dueAt: null,
 };
 
 export type OnlineEvent =
@@ -97,6 +107,7 @@ export function onlineReducer(state: OnlineState, event: OnlineEvent): OnlineSta
         actions: event.payload.actions,
         // Je Stand neu gerechnet: eine Uhr, die nachgeht, holt damit auf.
         clockOffset: event.payload.sentAt - Date.now(),
+        dueAt: event.payload.dueAt ?? null,
         log:
           entry === undefined
             ? state.log

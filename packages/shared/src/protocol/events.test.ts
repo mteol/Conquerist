@@ -73,4 +73,30 @@ describe('Ereignisse', () => {
       schema.safeParse({ ...base, move: { type: 'buildCastle', actor: TEST_PLAYERS[0] } }).success,
     ).toBe(false);
   });
+
+  it('traegt den faelligen Zeitpunkt der Frist - und bleibt ohne ihn gueltig', () => {
+    const schema = eventSchema(GAME_EVENT);
+    const seats: readonly Seat[] = TEST_PLAYERS.map((id, index) => ({
+      id,
+      name: `Spieler ${index + 1}`,
+      color: '#c0392b',
+    }));
+    const base = {
+      version: 3,
+      view: playerViewOf(testGame(), TEST_PLAYERS[0], seats, 3),
+      actions: [],
+      sentAt: 1_700_000_000_000,
+    };
+
+    const withDue = schema.safeParse({ ...base, dueAt: 1_700_000_060_000 });
+    expect(withDue.success).toBe(true);
+    expect(withDue.success && withDue.data.dueAt).toBe(1_700_000_060_000);
+
+    // Aeltere Server schicken ihn nicht - der Stand bleibt trotzdem gueltig.
+    const without = schema.safeParse(base);
+    expect(without.success).toBe(true);
+    expect(without.success && without.data.dueAt).toBeUndefined();
+
+    expect(schema.safeParse({ ...base, dueAt: -1 }).success).toBe(false);
+  });
 });

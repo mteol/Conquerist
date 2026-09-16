@@ -214,3 +214,85 @@ describe('createRoomClock in einer Wartephase', () => {
     expect(runs).toHaveLength(2);
   });
 });
+
+/**
+ * Der faellige Zeitpunkt in Serverzeit.
+ *
+ * Eine Dauer beginnt mit jedem `arm` neu - aber nicht mit jedem Stand, der
+ * hinausgeht: Wiederverbinden, Beitritt und Umbenennen erhoehen die Version
+ * ohne Zug. Der Client braucht deshalb den Zeitpunkt, den der Wecker wirklich
+ * gestellt hat, und nicht die Ankunft des Standes.
+ */
+describe('createRoomClock und der faellige Zeitpunkt', () => {
+  it('merkt sich beim Stellen, wann die Antwortfrist faellig ist', () => {
+    const registry = registryWithDiscard();
+    const { clock } = clockFor(registry, 123_456);
+
+    clock.arm('K7X2');
+
+    const total = registry.get('K7X2')!.game!.rules.pendingAnswerMs;
+    expect(clock.dueAt('K7X2')).toBe(123_456 + total);
+  });
+
+  it('nimmt beim Angebot den gespeicherten Zeitpunkt', () => {
+    const { registry, room } = registryWithOffer(10_000);
+    const { clock } = clockFor(registry, 20_000);
+
+    clock.arm('K7X2');
+
+    expect(clock.dueAt('K7X2')).toBe(10_000 + room.game!.rules.tradeOfferMs);
+  });
+
+  it('vergisst den Zeitpunkt beim Abbestellen', () => {
+    const registry = registryWithDiscard();
+    const { clock } = clockFor(registry, 0);
+
+    clock.arm('K7X2');
+    clock.disarm('K7X2');
+
+    expect(clock.dueAt('K7X2')).toBeUndefined();
+  });
+
+  it('kennt keinen Zeitpunkt, wenn keine Frist laeuft', () => {
+    const registry = new RoomRegistry({ randomCode: () => 'K7X2' });
+    registry.create('u1', 'Anna', 3, 'wecker-probe', 10);
+    registry.update('K7X2', inMainPhase());
+
+    const { clock } = clockFor(registry, 0);
+    clock.arm('K7X2');
+
+    expect(clock.dueAt('K7X2')).toBeUndefined();
+  });
+
+  it('schickt nach dem Klingeln schon den Zeitpunkt der naechsten Frist mit', () => {
+    const registry = registryWithDiscard();
+    const sinks = new SinkHub();
+    const seen: unknown[] = [];
+    sinks.add('u1', {
+      send: (_type, payload): void => {
+        seen.push(payload);
+      },
+    });
+
+    let time = 0;
+    const runs: (() => void)[] = [];
+    const clock = createRoomClock({
+      registry,
+      sinks,
+      now: () => time,
+      schedule: (run) => {
+        runs.push(run);
+        return 1 as unknown as NodeJS.Timeout;
+      },
+      cancel: () => undefined,
+    });
+
+    clock.arm('K7X2');
+    time = 60_000;
+    runs[0]!();
+
+    const total = registry.get('K7X2')!.game!.rules.pendingAnswerMs;
+    expect(seen).toHaveLength(1);
+    expect((seen[0] as { dueAt?: number }).dueAt).toBe(60_000 + total);
+  });
+});

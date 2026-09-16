@@ -310,6 +310,7 @@ function Online({
         }}
         onDismissError={online.dismissError}
         clockOffset={online.state.clockOffset}
+        dueAt={online.state.dueAt}
         offline={online.connection.status !== 'open'}
         onLeave={() => {
           void online.leaveRoom();

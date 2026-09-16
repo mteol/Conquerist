@@ -91,4 +91,18 @@ describe('Online-Zustand', () => {
 
     expect(state.sound).toBeNull();
   });
+
+  it('merkt sich den fälligen Zeitpunkt der Frist – und vergisst ihn, wenn keiner mitkommt', () => {
+    const waiting = onlineReducer(emptyOnlineState, {
+      type: 'game',
+      payload: { version: 1, view: view(1), actions: [], sentAt: 0, dueAt: 60_000 },
+    });
+    expect(waiting.dueAt).toBe(60_000);
+
+    const over = onlineReducer(waiting, {
+      type: 'game',
+      payload: { version: 2, view: view(2), actions: [], sentAt: 0 },
+    });
+    expect(over.dueAt).toBeNull();
+  });
 });

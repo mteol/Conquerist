@@ -16,8 +16,16 @@ function waitingView(version: number): PlayerView {
   } as never;
 }
 
-function Probe({ view }: { readonly view: PlayerView }) {
-  return <span data-testid="left">{String(useCountdown(view, 0))}</span>;
+function Probe({
+  view,
+  clockOffset = 0,
+  dueAt,
+}: {
+  readonly view: PlayerView;
+  readonly clockOffset?: number;
+  readonly dueAt?: number | null;
+}) {
+  return <span data-testid="left">{String(useCountdown(view, clockOffset, dueAt))}</span>;
 }
 
 describe('secondsLeft', () => {
@@ -55,5 +63,43 @@ describe('useCountdown', () => {
   it('meldet null, wenn keine Frist läuft', () => {
     render(<Probe view={{ ...waitingView(1), phase: { kind: 'main' } } as never} />);
     expect(screen.getByTestId('left').textContent).toBe('null');
+  });
+
+  /*
+   * Online sagt der Server, wann die Frist fällig ist. Wiederverbinden, Beitritt
+   * und Umbenennen bringen eine neue Version ohne Zug - die Anzeige darf dabei
+   * nicht auf die volle Frist zurückspringen.
+   */
+  it('setzt die Frist bei neuer Version und unverändertem Fälligkeitszeitpunkt nicht zurück', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    try {
+      const { rerender } = render(<Probe view={waitingView(1)} dueAt={60_000} />);
+      expect(screen.getByTestId('left').textContent).toBe('60');
+
+      act(() => {
+        vi.advanceTimersByTime(45_000);
+      });
+      expect(screen.getByTestId('left').textContent).toBe('15');
+
+      act(() => {
+        rerender(<Probe view={waitingView(2)} dueAt={60_000} />);
+      });
+      expect(screen.getByTestId('left').textContent).toBe('15');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('zeigt einem zurückkehrenden Client die echte Restzeit, auch mit Uhrversatz', () => {
+    vi.useFakeTimers();
+    // Die eigene Uhr geht fünf Sekunden nach: Serverzeit 45 000, hier 40 000.
+    vi.setSystemTime(40_000);
+    try {
+      render(<Probe view={waitingView(7)} clockOffset={5_000} dueAt={60_000} />);
+      expect(screen.getByTestId('left').textContent).toBe('15');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

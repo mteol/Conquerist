@@ -141,6 +141,11 @@ export interface GameScreenProps {
    * falsch gehende Rechneruhr eine Frist, die es so nie gab.
    */
   readonly clockOffset?: number;
+  /**
+   * Wann der Server die laufende Frist abnimmt, in Serverzeit. Lokal `null` -
+   * dort stellt sich die Uhr mit jedem Stand neu, und die Ankunft genügt.
+   */
+  readonly dueAt?: number | null;
 }
 
 /**
@@ -317,6 +322,7 @@ export function GameScreen({
   offline = false,
   concealBetweenTurns = false,
   clockOffset = 0,
+  dueAt = null,
 }: GameScreenProps): JSX.Element {
   const [tradeOpen, setTradeOpen] = useState(false);
   /*
@@ -1127,7 +1133,7 @@ export function GameScreen({
           <span className="visually-hidden">Zum Startbildschirm</span>
         </button>
         <StatusPanel view={display}>
-          <WaitingClock view={view} clockOffset={clockOffset} />
+          <WaitingClock view={view} clockOffset={clockOffset} dueAt={dueAt} />
         </StatusPanel>
         <LogPanel entries={log} />
       </div>

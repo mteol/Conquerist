@@ -15,11 +15,14 @@ import { useCountdown } from '../game/useCountdown';
 export function WaitingClock({
   view,
   clockOffset,
+  dueAt = null,
 }: {
   readonly view: PlayerView;
   readonly clockOffset: number;
+  /** Wann der Server die Frist abnimmt (Serverzeit); lokal `null`. */
+  readonly dueAt?: number | null;
 }): JSX.Element | null {
-  const left = useCountdown(view, clockOffset);
+  const left = useCountdown(view, clockOffset, dueAt);
   if (left === null || view.phase.kind === 'tradePending') return null;
 
   return (

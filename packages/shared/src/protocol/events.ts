@@ -100,6 +100,16 @@ export const GameEventSchema = z.object({
    * Frist, die laengst abgelaufen ist - oder eine, die nie endet.
    */
   sentAt: z.number().int().min(0),
+  /**
+   * Wann die laufende Frist faellig ist - in Serverzeit, so wie der Wecker sie
+   * gestellt hat. Fehlt, wenn keine Frist laeuft (oder kein Wecker da ist).
+   *
+   * Eine Dauer beginnt mit jedem Zug neu, aber nicht mit jedem Stand:
+   * Wiederverbinden, Beitritt und Umbenennen erhoehen die Version ohne Zug.
+   * Aus der Ankunft des Standes gerechnet, sprang die Anzeige dabei auf die
+   * volle Frist zurueck. Optional, damit aeltere Nachrichten gueltig bleiben.
+   */
+  dueAt: z.number().int().min(0).optional(),
 });
 
 export const OverEventSchema = z.object({

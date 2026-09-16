@@ -77,7 +77,17 @@ export interface Transition {
   readonly after: GameState;
 }
 
-export function broadcastGame(room: Room, sinks: Sinks, transition?: Transition): void {
+/**
+ * `dueAt` ist, wann die laufende Frist faellig ist (Serverzeit) - so, wie der
+ * Wecker sie gestellt hat (`RoomClock.dueAt`). Wer einen Zug verteilt, stellt
+ * den Wecker deshalb **vor** dem Verteilen neu.
+ */
+export function broadcastGame(
+  room: Room,
+  sinks: Sinks,
+  transition?: Transition,
+  dueAt?: number,
+): void {
   const game = room.game;
   if (game === null) return;
 
@@ -118,6 +128,7 @@ export function broadcastGame(room: Room, sinks: Sinks, transition?: Transition)
       view: playerViewOf(game, seat.userId, seats, room.version, connected),
       actions: legalActions(game, seat.userId),
       sentAt,
+      ...(dueAt === undefined ? {} : { dueAt }),
       ...(entry === undefined ? {} : { entry }),
       ...(move === undefined ? {} : { move }),
     };

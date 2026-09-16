@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { PlayerView } from '@conquerist/shared';
 import { render, screen } from '../test/dom';
 import { WaitingClock } from './WaitingClock';
@@ -37,5 +37,22 @@ describe('WaitingClock', () => {
     };
     render(<WaitingClock view={viewIn(offer)} clockOffset={0} />);
     expect(screen.queryByTestId('waiting-clock')).toBeNull();
+  });
+
+  it('zählt bis zum Fälligkeitszeitpunkt des Servers', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(45_000);
+    try {
+      render(
+        <WaitingClock
+          view={viewIn({ kind: 'aqueductPending', pending: ['p2'] })}
+          clockOffset={0}
+          dueAt={60_000}
+        />,
+      );
+      expect(screen.getByTestId('waiting-clock').textContent).toBe('Noch 15 Sekunden');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

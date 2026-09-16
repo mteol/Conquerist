@@ -13,6 +13,12 @@ import { applySystemAction } from './room.js';
  * ist die einzige Quelle. Eine Dauer beginnt mit jedem `arm` neu - die Frist
  * gilt je Stand, nach jedem Zug.
  *
+ * Seit dem Schlussreview von 10d-2 merkt sich die Uhr auch, **wann** die Frist
+ * faellig ist (`dueAt`, Serverzeit). Der Spielstand traegt diesen Zeitpunkt
+ * hinaus: Wiederverbinden, Beitritt und Umbenennen erhoehen die Version, stellen
+ * den Wecker aber nicht neu - eine Anzeige, die ab der Ankunft des Standes
+ * rechnet, sprang dabei auf die volle Frist zurueck.
+ *
  * Uhr und Zeitgeber kommen von aussen herein, damit die Tests nicht warten.
  */
 export interface RoomClockDeps {
@@ -27,6 +33,8 @@ export interface RoomClock {
   /** Die Frist des Raums neu lesen und den Wecker entsprechend stellen. */
   arm(code: string): void;
   disarm(code: string): void;
+  /** Wann die Frist des Raums faellig ist, in Serverzeit - `undefined`, wenn keine laeuft. */
+  dueAt(code: string): number | undefined;
   disarmAll(): void;
 }
 
@@ -36,8 +44,12 @@ export function createRoomClock(deps: RoomClockDeps): RoomClock {
   const cancel = deps.cancel ?? ((handle): void => clearTimeout(handle));
 
   const timers = new Map<string, NodeJS.Timeout>();
+  const dueAts = new Map<string, number>();
 
   function disarm(code: string): void {
+    // Vor dem Wecker: auch ein schon abgelaufener hinterlaesst keinen Zeitpunkt.
+    dueAts.delete(code);
+
     const handle = timers.get(code);
     if (handle === undefined) return;
 
@@ -47,6 +59,7 @@ export function createRoomClock(deps: RoomClockDeps): RoomClock {
 
   function fire(code: string): void {
     timers.delete(code);
+    dueAts.delete(code);
 
     const room = deps.registry.get(code);
     const before = room?.game ?? null;
@@ -66,14 +79,16 @@ export function createRoomClock(deps: RoomClockDeps): RoomClock {
 
     deps.registry.update(acted.room.code, acted.room, action);
 
+    // Der neue Zustand kann eine neue Frist tragen - nachsehen statt annehmen.
+    // Vor dem Verteilen, damit der Stand schon ihren Zeitpunkt traegt.
+    arm(code);
+
     broadcastGame(
       acted.room,
       deps.sinks.map,
       acted.room.game === null ? undefined : { before, action, after: acted.room.game },
+      dueAts.get(code),
     );
-
-    // Der neue Zustand kann eine neue Frist tragen - nachsehen statt annehmen.
-    arm(code);
   }
 
   function arm(code: string): void {
@@ -89,20 +104,21 @@ export function createRoomClock(deps: RoomClockDeps): RoomClock {
      * Ein gespeicherter Zeitpunkt, der beim Laden laengst vorbei ist, ist
      * sofort faellig - das rechnet `msUntil`.
      */
+    const at = now();
+    const ms = msUntil(due, at);
+    dueAts.set(code, at + ms);
     timers.set(
       code,
-      schedule(
-        () => {
-          fire(code);
-        },
-        msUntil(due, now()),
-      ),
+      schedule(() => {
+        fire(code);
+      }, ms),
     );
   }
 
   return {
     arm,
     disarm,
+    dueAt: (code: string): number | undefined => dueAts.get(code),
     disarmAll: (): void => {
       // Erst sammeln, dann abraeumen: `disarm` fasst die Map an.
       for (const code of [...timers.keys()]) disarm(code);

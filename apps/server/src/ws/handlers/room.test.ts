@@ -22,6 +22,7 @@ import { openDatabase } from '../../db/database.js';
 import { Sessions } from '../../identity/sessions.js';
 import { Users } from '../../identity/users.js';
 import { RoomRegistry } from '../../rooms/registry.js';
+import { createRoomClock } from '../../rooms/clock.js';
 import { applyAction, createRoom, joinRoom, startGame } from '../../rooms/room.js';
 import { MemoryRoomStore } from '../../rooms/store.js';
 import { MessageRouter } from '../router.js';
@@ -537,5 +538,125 @@ describe('Nach dem Verlassen', () => {
     expect(bensPost).toEqual([]);
     // Wer noch am Tisch sitzt, bekommt selbstverstaendlich weiter alles.
     expect(cemsPost.map((entry) => entry.type)).toContain(ROOM_EVENT);
+  });
+});
+
+/**
+ * Der faellige Zeitpunkt reist mit dem Spielstand.
+ *
+ * Wiederverbinden, Beitritt und Umbenennen erhoehen die Version und verteilen
+ * die Partie, stellen den Wecker aber nicht neu. Rechnete der Client die
+ * Antwortfrist ab der Ankunft des Standes, sprang seine Anzeige dabei auf die
+ * volle Frist - obwohl der Server die Pflicht viel frueher abnimmt.
+ */
+function waitingTable() {
+  const database = openDatabase(':memory:');
+  const users = new Users(database, new Sessions(database));
+  const registry = new RoomRegistry({ randomCode: () => 'K7X2' });
+  const sinks = new SinkHub();
+  const router = new MessageRouter();
+  const time = { now: 0 };
+  const clock = createRoomClock({
+    registry,
+    sinks,
+    now: () => time.now,
+    schedule: () => 1 as unknown as NodeJS.Timeout,
+    cancel: () => undefined,
+  });
+  registerRoomHandlers(router, { registry, users, sinks, clock });
+
+  const anna = users.hello(undefined, 'Anna');
+  const ben = users.hello(undefined, 'Ben');
+  const cem = users.hello(undefined, 'Cem');
+
+  const created = registry.create(anna.user.id, 'Anna', 3, 'frist-probe', 10);
+  if (!created.ok) throw new Error(created.error);
+
+  let current = created.room;
+  for (const guest of [ben, cem]) {
+    const joined = joinRoom(current, guest.user.id, guest.user.name);
+    if (!joined.ok) throw new Error(joined.error);
+    current = joined.room;
+  }
+
+  const started = startGame(current, anna.user.id);
+  if (!started.ok) throw new Error(started.error);
+  const game = started.room.game!;
+
+  // Nach einer Sieben muss Ben von acht Holz vier abwerfen.
+  const discarding: GameState = {
+    ...game,
+    phase: { kind: 'discardPending', pending: [ben.user.id], counts: {}, resume: 'seven' },
+    currentPlayerIndex: 0,
+    players: game.players.map((player) =>
+      player.id === ben.user.id ? { ...player, resources: cardAmounts({ lumber: 8 }) } : player,
+    ),
+  };
+  registry.update('K7X2', { ...started.room, game: discarding });
+  clock.arm('K7X2');
+
+  const total = discarding.rules.pendingAnswerMs;
+  return { registry, sinks, router, users, clock, time, total, anna, ben, cem };
+}
+
+/** Der letzte Spielstand, der bei einem Empfaenger ankam. */
+function lastGame(seen: readonly { type: string; payload: unknown }[]): {
+  version: number;
+  dueAt?: number;
+} {
+  const games = seen.filter((entry) => entry.type === GAME_EVENT);
+  return games[games.length - 1]!.payload as { version: number; dueAt?: number };
+}
+
+describe('Der faellige Zeitpunkt im Spielstand', () => {
+  it('bleibt beim Wiederverbinden derselbe, auch wenn die Version steigt', async () => {
+    const { registry, sinks, router, users, clock, time, total, ben } = waitingTable();
+    const annasPost = listener(sinks, registry.get('K7X2')!.seats[0]!.userId);
+    const sink = { send: (): void => undefined };
+    sinks.add(ben.user.id, sink);
+    const before = registry.get('K7X2')!.version;
+
+    time.now = 45_000;
+    handleDisconnect(
+      { registry, users, sinks, clock },
+      { userId: ben.user.id, roomCode: 'K7X2', tokenHash: ben.tokenHash },
+      sink,
+    );
+    const { context, seen } = reload();
+    await router.dispatch(message(HELLO, { secret: ben.secret }), context);
+
+    // Der Zurueckgekehrte bekommt die echte Frist, nicht eine neue.
+    expect(lastGame(seen).version).toBeGreaterThan(before);
+    expect(lastGame(seen).dueAt).toBe(total);
+    // Und bei allen anderen springt sie nicht zurueck.
+    expect(lastGame(annasPost).dueAt).toBe(total);
+  });
+
+  it('bleibt beim Umbenennen derselbe', async () => {
+    const { sinks, router, time, total, anna, cem } = waitingTable();
+    const cemsPost = listener(sinks, cem.user.id);
+
+    time.now = 30_000;
+    await router.dispatch(
+      message(RENAME, { name: 'Annika' }),
+      contextFor(anna.user.id, anna.tokenHash, { send: (): void => undefined }),
+    );
+
+    expect(lastGame(cemsPost).dueAt).toBe(total);
+  });
+
+  it('stellt sich mit einem Zug neu - und der Stand dieses Zuges traegt schon die neue Frist', async () => {
+    const { sinks, router, time, total, ben, cem } = waitingTable();
+    const cemsPost = listener(sinks, cem.user.id);
+
+    time.now = 20_000;
+    const response = await router.dispatch(
+      act({ type: 'discard', player: ben.user.id, resources: cardAmounts({ lumber: 4 }) }),
+      contextFor(ben.user.id, ben.tokenHash, { send: (): void => undefined }),
+    );
+
+    expect(response.ok).toBe(true);
+    // Jetzt der Raeuber - mit eigener, frisch gestellter Frist.
+    expect(lastGame(cemsPost).dueAt).toBe(20_000 + total);
   });
 });
