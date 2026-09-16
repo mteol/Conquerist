@@ -117,6 +117,15 @@ describe('Medizin: Ziele', () => {
     const state = withHand(giving(citiesTable(), 'p1', { ore: 2, grain: 1 }), 'p1', ['medicine']);
     expect(medicineTargets(state, 'p1')).toEqual([]);
   });
+
+  it('ist leer ohne die Karte auf der Hand', () => {
+    const state = giving(
+      citiesTable({ buildings: { [CENTER_VERTEX]: settlementOf('p1') } }),
+      'p1',
+      { ore: 2, grain: 1 },
+    );
+    expect(medicineTargets(state, 'p1')).toEqual([]);
+  });
 });
 
 describe('Schmied: Ziele', () => {
@@ -159,6 +168,25 @@ describe('Strassenbau (Fortschritt): Ziele', () => {
 
     const targets = progressRoadBuildingTargets(state, 'p1');
     expect(targets[CENTER_EDGE]).toContain(NEXT_EDGE);
+  });
+
+  it('nennt die einzige Kante mit leerer zweiter Wahl, wenn keine zweite geht', () => {
+    const base = withHand(
+      citiesTable({ buildings: { [CENTER_VERTEX]: settlementOf('p1') } }),
+      'p1',
+      ['roadBuilding'],
+    );
+    // Die letzte Strasse im Vorrat: nach ihr geht keine zweite mehr.
+    const state: GameState = {
+      ...base,
+      players: base.players.map((player) =>
+        player.id === 'p1'
+          ? { ...player, piecesLeft: { ...player.piecesLeft, road: 1 } }
+          : player,
+      ),
+    };
+
+    expect(progressRoadBuildingTargets(state, 'p1')[CENTER_EDGE]).toEqual([]);
   });
 
   it('ist leer ohne die Karte auf der Hand', () => {
