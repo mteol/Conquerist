@@ -1395,6 +1395,7 @@ export function GameScreen({
           hint="Bei diesem Wurf leer ausgegangen — einen Rohstoff deiner Wahl aus der Bank."
           pool={RESOURCE_IDS}
           count={1}
+          confirmLabel="Nehmen"
           onConfirm={(picks) =>
             onAct({ type: 'pickAqueduct', player: view.you, resource: picks[0]! })
           }

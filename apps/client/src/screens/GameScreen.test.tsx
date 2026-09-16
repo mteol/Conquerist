@@ -1179,9 +1179,32 @@ describe('GameScreen mit Rittern', () => {
       expect(dialog).toBeDefined();
 
       await userEvent.click(screen.getByTestId('pick-ore'));
-      await userEvent.click(screen.getByRole('button', { name: 'Karte spielen' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Nehmen' }));
 
       expect(screen.queryByRole('dialog', { name: 'Aquädukt: welcher Rohstoff?' })).toBeNull();
+    });
+
+    /*
+     * Befund A aus dem Browser-Durchgang: der Bestaetigungsknopf hiess
+     * "Karte spielen", obwohl das Aquaedukt keine Karte spielt, sondern einen
+     * Rohstoff aus der Bank nimmt (so auch im Verlauf: "nimmt ... aus dem
+     * Aquaedukt"). Dieser Test faengt genau das an der echten Aufrufstelle in
+     * GameScreen.tsx, nicht nur am isolierten Dialog.
+     */
+    it('nennt den Bestaetigungsknopf am Aquaedukt "Nehmen", nicht "Karte spielen"', () => {
+      const base = citiesMainPhase();
+      const me = base.players[0]!.id;
+      const state: GameState = {
+        ...base,
+        phase: { kind: 'aqueductPending', pending: [me] },
+      };
+
+      render(<CitiesGame state={state} />);
+
+      const dialog = screen.getByRole('dialog', { name: 'Aquädukt: welcher Rohstoff?' });
+
+      expect(within(dialog).getByRole('button', { name: 'Nehmen' })).toBeDefined();
+      expect(within(dialog).queryByRole('button', { name: 'Karte spielen' })).toBeNull();
     });
 
     /*
