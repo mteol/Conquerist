@@ -7383,6 +7383,43 @@ Abnahme nach der Fixwelle: `pnpm typecheck && pnpm -r test && pnpm build && pnpm
 grün — shared 1263 (66 Dateien), server 222 (22), client 614 (59); Client-Bundle 537,29 kB
 (156,12 kB gzip), CSS 60,17 kB.
 
+## Die offenen Regelfragen aus 10d-2 — entschieden am 16.09.2026
+
+Branch `etappe-10d3-regelfragen` ab `fc10a11`. Vier Fragen lagen beim Menschen; alle vier sind
+entschieden, drei davon sind umgesetzt, die vierte ist eine Schreibregel.
+
+1. **Handelshafen ohne Leck** (`ac97142`). Ob die Karte spielbar ist, hängt nur noch an
+   öffentlichen Größen: so viele Rohstoffe der gewählten Sorte, wie Mitspieler überhaupt
+   Handkarten halten. Wer davon wirklich Handelsware hat, steht erst beim Ausspielen fest; hält
+   niemand eine, ist die Karte ohne Wirkung gespielt. Ein Test hält fest, dass
+   `canPlayProgress` und `legalActions` mit und ohne fremde Handelswaren dasselbe sagen.
+   Preis: die Deckung ist strenger als nötig, wenn Mitspieler nur Rohstoffe halten.
+2. **Deserteur nach der offiziellen FAQ** (`f169aec`, catan.com, Städte & Ritter, Fragen 82–85).
+   Ein aktiver Überläufer darf **sofort** handeln (Frage 83) — `activatedOnTurn` steht jetzt eine
+   Runde zurück, statt ihn für den laufenden Zug zu sperren; das war eine der drei unbestätigten
+   Auslegungen. Der mächtige Überläufer braucht keine Festung (Frage 84) — der Code tat das schon,
+   jetzt steht es im Test. Ebenso Frage 82: für einen einfachen Ritter ohne Vorrat gibt es keinen
+   Ersatz.
+3. **Regel 11 erzwungen** (`feb515a`, `ebf6293`, `a5ad607`). Wer am Zug mehr als vier zählende
+   Fortschrittskarten hält, darf nur noch eine ausspielen oder eine abgeben. **Keine neue Phase**,
+   sondern abgeleitet (`mustShedProgressCard` in `draw.ts`): die fünfte Karte kommt über
+   Stadttor, Stapelwahl und Spionage, und alle drei Wege enden in `main` — eine Prüfung dort
+   erreicht sie alle, ohne dass ein Weg sie vergessen kann. Der Reducer lehnt alles andere mit
+   `PROGRESS_LIMIT_FIRST` ab; `legalActions`, `playableDevelopmentCards` und `canOfferAnything`
+   sagen dasselbe. Abgeben geht über das vorhandene `discardProgressCard`, das jetzt auch in
+   `main` gilt. Keine Frist, wie für `main` überhaupt. Am Bildschirm: Statussatz „… muss eine
+   Fortschrittskarte ausspielen oder abgeben", ein Knopf „Karte abgeben" neben dem gesperrten
+   Zugende und der vorhandene Abgabedialog, diesmal mit Kreuz, weil Ausspielen auch geht.
+   **Bewusste Vereinfachung:** Abgeben ist immer erlaubt, nicht erst, wenn keine Karte spielbar
+   wäre — ob eine Karte mit Brettwahl (Ingenieur, Bischof …) spielbar ist, lässt sich nicht
+   billig aufzählen, und wer abgibt statt auszuspielen, schadet nur sich selbst.
+4. **Testnamen im Client ohne Umlaute.** Die Regel folgt dem Bestand: Testnamen überall in
+   ASCII-Umschrift, Kommentare im Client weiter mit Umlauten.
+
+Nicht im Browser geprüft. Abnahme: `pnpm typecheck && pnpm -r test && pnpm build &&
+pnpm format:check` grün — shared 1276 (67 Dateien), server 222 (22), client 618 (59);
+Client-Bundle 538,88 kB (156,48 kB gzip).
+
 ### Nächste Etappe
 
 **10e — Burg 1 / Burg 2 zu fünft und sechst.** Fünf und sechs Personen am Städte-&-Ritter-Tisch
