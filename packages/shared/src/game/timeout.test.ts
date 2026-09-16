@@ -22,9 +22,10 @@ import type { GameState, Knight } from './state.js';
 import { applyTimeout, canTimeout } from './timeout.js';
 
 /*
- * Ein Geschenk verfaellt, eine Pflicht wird abgenommen (Spec 5.5). Jeder Test
- * geht durch `reduce` mit dem Besitzer der Frist als `player` - so, wie der
- * Wecker im Server die Aktion einwirft.
+ * Ein Geschenk verfaellt, eine Pflicht wird abgenommen (Spec 5.5). Diese Tests
+ * gehen ueber `expire` durch `reduce`, mit dem Besitzer der Frist als `player` -
+ * so, wie der Wecker im Server die Aktion einwirft. Die Tests zu `deadlineOf`,
+ * `msUntil` und zum Angebot rufen ihre Funktionen dagegen direkt.
  */
 
 function patchPlayer(state: GameState, id: PlayerId, change: Partial<PlayerState>): GameState {
@@ -122,6 +123,7 @@ describe('timeout beim Angebot', () => {
     if (!result.ok) return;
     expect(result.state.phase).toEqual({ kind: 'main' });
     expect(playerNamed(result.state, 'p1').resources).toEqual(playerNamed(state, 'p1').resources);
+    expect(playerNamed(result.state, 'p2').resources).toEqual(playerNamed(state, 'p2').resources);
   });
 
   it('wird ohne laufende Frist abgelehnt', () => {
@@ -254,12 +256,16 @@ describe('eine Pflicht wird abgenommen', () => {
       phase: { kind: 'robberPending', resume: 'main' },
       buildings: {
         [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
+        // Am ersten legalen Feld '-1,0' - sonst waere das erste harmlose Feld
+        // zugleich das erste legale, und der Test koennte nicht rot werden.
+        'v:-2,0|-1,-1|-1,0': { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
       },
     });
     const after = expire(state, 'p1');
 
-    // Die Wueste '0,0' ist besetzt; '1,-1' und '1,0' tragen p2s Siedlung.
-    expect(after.robber).toBe('-1,0');
+    // Der Raeuber steht auf der Wueste '0,0'; '-1,0', '1,-1' und '1,0' tragen
+    // p2s Siedlungen. Das naechste legale Feld nach Id ist '-1,1'.
+    expect(after.robber).toBe('-1,1');
   });
 
   it('setzt den Vertriebenen auf die erste legale Kreuzung', () => {
