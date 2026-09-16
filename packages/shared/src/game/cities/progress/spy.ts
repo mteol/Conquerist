@@ -72,8 +72,13 @@ export function canAnswerSpy(
 /**
  * Nimmt **ein** Exemplar und schliesst die Phase.
  *
- * Kein Abgeben, auch ueber vier Karten: der Spielende ist am Zug, und am Zug
- * wird eine fuenfte Karte sofort gespielt (Regel 11) - das kann er in `main`.
+ * Kein Abgeben, auch ueber vier Karten: der Spielende ist am Zug. Regel 11
+ * verlangt am Zug fuer eine fuenfte verdeckte Karte, **sofort eine
+ * auszuspielen** - eine Pflicht, keine Moeglichkeit. Erzwungen wird sie hier
+ * nicht: er steht danach in `main` und kann spielen, muss aber nicht; erst der
+ * naechste Wurf findet ihn ueber dem Limit (`continueAfterEvent`) und laesst
+ * ihn abgeben. Dieselbe Luecke besteht seit 10d-1 beim Ziehen im eigenen Zug;
+ * die Spionage ist ein zweiter Weg dorthin.
  */
 export function answerSpy(
   state: GameState,

@@ -7176,7 +7176,15 @@ Acht Stellen, alle mit Grund:
 stehen so im Plan und sind beim Umsetzen nicht stillschweigend gedreht worden:
 
 - `activatedOnTurn = state.turn` beim Deserteur;
-- die strenge Deckungsprüfung beim Handelshafen;
+- die strenge Deckungsprüfung beim Handelshafen. **Der Schlussreview hat daran ein Leck
+  gefunden:** `canTradeHarbor` zählt die Mitspieler, die mindestens eine Handelsware halten —
+  verdeckte Information. `legalActions` und `isClickable` im `ProgressPanel` machen das Ergebnis
+  sichtbar: wer die Karte hält, erfährt in jedem Zug, ob überhaupt jemand Handelswaren hat, und
+  bekommt eine Schranke für ihre Zahl (so viele Rohstoffe muss er decken). Nicht umgebaut, weil
+  die strenge Prüfung wörtlich in der Spec steht. Die Alternative, als Entscheidung beim
+  Menschen: die Spielbarkeit nur an öffentlichen Größen messen (etwa Deckung ≥ Zahl der
+  Mitspieler, die überhaupt Karten halten) und die tatsächlichen Tauschpartner erst beim Öffnen
+  der Phase bestimmen;
 - `robberPending` und `displacePending` stehen in der Fristenliste, obwohl sie dem Spieler am
   Zug gehören und nicht einem Wartenden.
 
@@ -7266,8 +7274,10 @@ Punkte: die Überlappung besteht schon ohne 10d-2, tritt nur im schmalen Hochfor
 das Spiel „Quer halten" anzeigt, und bei 900 px besteht sie nicht.
 
 Zwei Beobachtungen, die nicht aus 10d-2 stammen: p1 hielt nach dem Ziehen im eigenen Zug fünf
-Fortschrittskarten, das Abgeben kam erst beim nächsten Wurf eines anderen — gegen die Regel
-prüfen, bevor es Befund heißt. Und bei 900 px liegen die Ecke der Fortschrittskarten und das
+Fortschrittskarten, das Abgeben kam erst beim nächsten Wurf eines anderen. Die Regelstelle
+beantwortet das (Regel 11): „Zieht man eine 5. Karte: am Zug — sofort eine ausspielen; nicht am
+Zug — eine beliebige unter den Stapel zurücklegen." Am Zug heißt es also **ausspielen**, nicht
+abgeben — und das erzwingt heute nichts. Eine Regellücke aus 10d-1, siehe Offene Punkte. Und bei 900 px liegen die Ecke der Fortschrittskarten und das
 Tableau über dem Brett (Screenshot) — ein Layoutthema aus 10c/10d-1.
 
 ### Offene Punkte
@@ -7292,8 +7302,22 @@ Tableau über dem Brett (Screenshot) — ein Layoutthema aus 10c/10d-1.
   `hotseatClock.test.tsx` aus 10c. In beiden vollen Läufen dieser Abnahme grün geblieben.
 - **Was der Durchgang nicht erreicht hat:** der Fall „alle" bei der Hochzeit (unter zwei
   Karten); eine trennscharfe Leckprüfung der Spionage (die gesehene Karte lag schon auf der
-  eigenen Hand); die Spionage-Dialoge bei 900 px; die Frage, ob p1 nach dem Ziehen im eigenen
-  Zug mit fünf Fortschrittskarten sofort abgeben müsste.
+  eigenen Hand); die Spionage-Dialoge bei 900 px. Die Frage, ob p1 nach dem Ziehen im eigenen
+  Zug mit fünf Fortschrittskarten sofort abgeben müsste, beantwortet Regel 11 (nächster Punkt).
+- **Regel 11 ist am Zug nicht erzwungen — eine Regellücke aus 10d-1.** Wer am Zug eine fünfte
+  verdeckte Fortschrittskarte bekommt, muss sofort eine **ausspielen** (nicht abgeben). Heute
+  steht er danach in `main`, darf spielen, muss aber nicht; erst der nächste Wurf findet ihn über
+  dem Limit und lässt ihn abgeben (`continueAfterEvent`). 10d-2 erweitert die Lücke um einen
+  zweiten Weg: die Spionage legt die genommene Karte dem Spielenden am Zug auf die Hand. Der
+  Kommentar in `spy.ts` nennt die Pflicht jetzt ausdrücklich als nicht erzwungen. Die
+  Erzwingung selbst gehört nicht in diese Etappe.
+- **Offene Regelfrage: darf der Deserteur einen mächtigen Ritter ohne Festung stellen?**
+  Regel 7.4: „Einfach → Stark jederzeit. **Stark → Mächtig erst nach der Festung** (Politik,
+  dritte Ausbaustufe). Aktiv bleibt aktiv, passiv bleibt passiv. **Je Zug darf ein Ritter nur
+  einmal aufgewertet werden.**" Die Deserteur-Zeile in 11.3 sagt zur Festung nichts, und
+  `replacementLevel` (`deserter.ts`) setzt Stufe 3 auch ohne Festung ein, wenn der gefallene
+  Ritter mächtig war. Ob der Überläufer ein Aufwerten ist (dann gälte die Festung) oder ein
+  Ersetzen (dann nicht), entscheidet der Mensch; der Code ist unverändert.
 - **Die Umlaut-Regel für Client-Testnamen ist ungeklärt.** Neue Client-Testnamen stehen in
   ASCII-Umschrift (`view.test.ts` „laesst alle Wartenden gleichzeitig handeln",
   `CloseButton.test.tsx`, `GameScreen.test.tsx`), obwohl die Regel für den Client Umlaute
@@ -7302,27 +7326,62 @@ Tableau über dem Brett (Screenshot) — ein Layoutthema aus 10c/10d-1.
   Kommentar- oder Testnamenzeile mit Umlaut.
 - **Kleinere Punkte aus den Reviews**, alle heute unerreichbar, ungetestete Randfälle oder
   kosmetisch:
-  - `timeout.test.ts`: der Räubertest „erstes Feld ohne fremdes Bauwerk" kann beim Löschen der
-    Regel nicht rot werden (erstes legales = erstes harmloses Feld); ungetestet sind Aquädukt
-    und Verteidiger mit leerer Bank bzw. leeren Stapeln, der letzte Verteidiger, die dritte
-    Räuberstufe, der Deserteur-Gleichstand über die Kreuzungs-Id und ein `timeout` von einem
-    Nicht-Vordersten. Der Kopfkommentar behauptet, alle Tests liefen über `reduce`.
+  - `timeout.test.ts`: ungetestet sind Aquädukt und Verteidiger mit leerer Bank bzw. leeren
+    Stapeln, der letzte Verteidiger, die dritte Räuberstufe, der Deserteur-Gleichstand über die
+    Kreuzungs-Id und ein `timeout` von einem Nicht-Vordersten. (Der nicht trennscharfe
+    Räubertest und der falsche Kopfkommentar sind in der Fixwelle des Schlussreviews behoben.)
   - Der Vorschub der Warteschlange „solange Bank bzw. Stapel reichen" steht doppelt in
     `timeout.ts` und `rollFlow.ts` (so im Plan).
   - `tradeHarbor.ts`: `?? COMMODITY_IDS[0]` erfindet eine sicher abgelehnte Antwort, und ein
-    abgelehnter Ablauf stellt den Wecker in `clock.ts` nie neu. Ob der `!acted.ok`-Wettlauf im
-    Wecker überhaupt erreichbar ist, ist nicht geprüft.
+    abgelehnter Ablauf stellt den Wecker in `clock.ts` nie neu. Den `!acted.ok`-Wettlauf im
+    Wecker hat der Schlussreview am Code geprüft: `system()`, die Aktions-Handler und `fire`
+    laufen synchron (`registry.update` → Wecker stellen → Verteilen, seit I1 in dieser Reihenfolge), jede anders beendete Frist
+    stellt den Wecker ab, bevor er klingeln könnte — der Wettlauf ist unerreichbar. Übrig blieb,
+    dass ein trotzdem abgelehnter Ablauf den Tisch lautlos anhielte; er schreibt jetzt eine
+    Warnung ins Log (M5).
   - `log.ts`: `pending[0] ?? ''` erzeugt bei leerer Warteschlange einen verstümmelten Satz
     statt eines sichtbaren Fehlers.
   - Der zweite Zweig von `canAnswerTradeHarbor` (Deckung des Spielenden) ist ungetestet.
   - `spy.ts` mit `findPlayer(…)!` und `splice(indexOf)` ohne eigenen Schutz; `deserter.ts` liest
     `piecesLeft` ohne `?? 0`.
   - `ProgressPanel.tsx` wächst je Karte (vier Kategorien, vier Helfer, drei Dialogzweige) —
-    Kandidat für eine Bündelung; ein Kommentar dort spricht von „vier Karten ohne Angabe", mit
-    der Hochzeit sind es fünf.
-  - Der ersetzte Angebots-Ablauftest prüft die Rohstoffe von p2 nicht mehr.
+    Kandidat für eine Bündelung.
 - Die offenen Punkte aus Etappe 9 (Volume, HTTPS, Sicherung, Drossel im Wartebereich) gelten
   unverändert weiter.
+
+### Schlussreview und seine Fixwelle
+
+Der Review über die ganze Etappe (Base `b3d8476`) fand einen echten Fehler, einen Befund zur
+Geheimhaltung, zwei Regelfragen und drei kleinere Punkte. Behoben, je mit eigenem Commit und —
+wo Code betroffen ist — mit einem Test, der vorher rot war:
+
+- **I1 — der Dauer-Countdown log nach Wiederverbinden, Beitritt oder Umbenennen** (`9c482c6`).
+  `useCountdown` rechnete eine Dauer ab der Ankunft einer neuen `view.version`; diese drei
+  Handler erhöhen die Version und verteilen die Partie, stellen den Wecker aber nicht neu. Kam
+  ein Abwesender nach 45 s zurück, sprang bei allen die Anzeige auf „Noch 60 Sekunden", obwohl
+  der Server nach 15 s abnimmt — genau die Anzeige, die Abweichung 5 ausschließen soll. Jetzt
+  merkt sich der Wecker den fälligen Zeitpunkt in Serverzeit (`RoomClock.dueAt`), der
+  Spielstand trägt ihn als optionales `dueAt` im `GameEventSchema`, und der Client rechnet die
+  Dauer daraus mit dem vorhandenen `clockOffset` wie beim Angebot. Damit der Stand eines Zuges
+  schon die neue Frist trägt, stellen alle Aufrufstellen den Wecker jetzt **vor** dem Verteilen.
+  Lokal bleibt die Rechnung ab der Ankunft: dort stellt sich die Uhr mit jedem Stand neu. Ein
+  Countdown, zwei Leser — unverändert.
+- **M5** (`051b3cb`) — ein abgelehnter Fristablauf schreibt eine Warnung (Raum,
+  Ablehnungsgrund) ins Log.
+- **M6** (`8f99887`) — `timeout.test.ts`: der Räubertest ist trennscharf (eine fremde Siedlung
+  am ersten legalen Feld, Gegenprobe belegt), der Angebotsablauf prüft wieder die Rohstoffe von
+  p2, der Kopfkommentar stimmt.
+- **M7** (`ddd781c`) — die Hochzeit ist im `ProgressPanel` nur anklickbar, wenn die
+  Aktionsliste sie nennt; vorher lief der Klick ohne Mitspieler mit mehr Punkten in eine
+  Ablehnung des Servers. Der Kommentar spricht von fünf Karten ohne Angabe.
+
+Beim Menschen liegen drei Fragen, alle nur dokumentiert: das Leck der strengen Deckungsprüfung
+beim Handelshafen (I2, bei den unbestätigten Auslegungen), die nicht erzwungene Ausspielpflicht
+aus Regel 11 (M3) und der mächtige Überläufer ohne Festung (M4), beide unter Offene Punkte.
+
+Abnahme nach der Fixwelle: `pnpm typecheck && pnpm -r test && pnpm build && pnpm format:check`
+grün — shared 1263 (66 Dateien), server 222 (22), client 614 (59); Client-Bundle 537,29 kB
+(156,12 kB gzip), CSS 60,17 kB.
 
 ### Nächste Etappe
 
