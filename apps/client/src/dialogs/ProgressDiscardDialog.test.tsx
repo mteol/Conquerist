@@ -20,4 +20,16 @@ describe('ProgressDiscardDialog', () => {
 
     expect(onDiscard).toHaveBeenCalledWith('crane');
   });
+
+  it('hat ohne onClose kein Kreuz, mit onClose schon (Regel 11)', async () => {
+    const { unmount } = render(<ProgressDiscardDialog cards={['crane']} onDiscard={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /schlie/i })).toBeNull();
+    unmount();
+
+    const onClose = vi.fn();
+    render(<ProgressDiscardDialog cards={['crane']} onDiscard={vi.fn()} onClose={onClose} />);
+    expect(screen.getByText(/spiel eine aus/)).toBeDefined();
+    await userEvent.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalled();
+  });
 });

@@ -22,9 +22,21 @@ export interface TurnPanelProps {
   readonly targets: ActionTargets;
   readonly onOpenTrade: () => void;
   readonly onEndTurn: () => void;
+  /**
+   * Regel 11: gesetzt, solange am eigenen Zug eine fuenfte Fortschrittskarte
+   * auf der Hand liegt. Der Knopf steht dann neben dem gesperrten Zugende -
+   * genau dort, wo man nachsieht, warum es nicht weitergeht.
+   */
+  readonly onShedProgress?: (() => void) | undefined;
 }
 
-export function TurnPanel({ view, targets, onOpenTrade, onEndTurn }: TurnPanelProps): JSX.Element {
+export function TurnPanel({
+  view,
+  targets,
+  onOpenTrade,
+  onEndTurn,
+  onShedProgress,
+}: TurnPanelProps): JSX.Element {
   return (
     <div className="panel__buttons tray__turn" role="group" aria-label="Zug">
       <button
@@ -42,6 +54,11 @@ export function TurnPanel({ view, targets, onOpenTrade, onEndTurn }: TurnPanelPr
       >
         Handel
       </button>
+      {onShedProgress !== undefined ? (
+        <button type="button" className="button" onClick={onShedProgress}>
+          Karte abgeben
+        </button>
+      ) : null}
       <button
         type="button"
         className="button button--go"

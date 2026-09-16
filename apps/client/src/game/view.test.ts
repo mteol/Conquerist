@@ -57,6 +57,23 @@ describe('Anzeigemodell', () => {
     expect(actingPlayers(state)).toEqual([setupPlayer(state)]);
   });
 
+  it('nennt bei einer fuenften Fortschrittskarte am Zug die Pflicht (Regel 11)', () => {
+    const state = afterSetup();
+    const current = state.players[state.currentPlayerIndex]!.id;
+    const over: GameState = {
+      ...state,
+      phase: { kind: 'main' },
+      players: state.players.map((player) =>
+        player.id === current
+          ? { ...player, progressCards: ['crane', 'smith', 'medicine', 'bishop', 'spy'] }
+          : player,
+      ),
+    };
+
+    const text = gameViewOf(playerViewOf(over, ids[1]!, seats, 1)).phaseText;
+    expect(text).toContain('muss eine Fortschrittskarte ausspielen oder abgeben');
+  });
+
   it('nennt sonst den Spieler am Zug', () => {
     const state = afterSetup();
     expect(actingPlayers(state)).toEqual([state.players[state.currentPlayerIndex]!.id]);

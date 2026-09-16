@@ -325,6 +325,8 @@ export function GameScreen({
   dueAt = null,
 }: GameScreenProps): JSX.Element {
   const [tradeOpen, setTradeOpen] = useState(false);
+  // Regel 11: der Abgabedialog am eigenen Zug geht nur auf Knopfdruck auf.
+  const [shedOpen, setShedOpen] = useState(false);
   /*
    * Ob der Endstand gerade weggeklickt ist. Kein `overOpen`, sondern das
    * Gegenteil: er geht von selbst auf, sobald die Partie herum ist, und nur
@@ -993,6 +995,13 @@ export function GameScreen({
     view.players.find((player) => player.id === view.you)?.progressCards ?? [];
 
   /**
+   * Regel 11: eine fuenfte Karte am eigenen Zug. Ob das greift, sagt die
+   * Aktionsliste - in `main` nennt sie `discardProgressCard` nur dann.
+   */
+  const mustShedProgress =
+    view.phase.kind === 'main' && actions.some((action) => action.type === 'discardProgressCard');
+
+  /**
    * Eine Karte spielen.
    *
    * Der Ritter geht sofort hinaus - er braucht keine Auswahl, das Versetzen
@@ -1211,6 +1220,7 @@ export function GameScreen({
             onEndTurn={() => {
               if (targets.endTurn !== null) onAct(targets.endTurn);
             }}
+            onShedProgress={mustShedProgress ? () => setShedOpen(true) : undefined}
           />
         </div>
 
@@ -1375,6 +1385,18 @@ export function GameScreen({
        * (Ruling 27, `isFrontOfQueue`). Kein Knopf davor, aus demselben Grund
        * wie beim Abwerfen: die Wahl ist Pflicht, der Dialog IST der Zustand.
        */}
+      {mustShedProgress && shedOpen ? (
+        <ProgressDiscardDialog
+          key={`shed-${view.you}`}
+          cards={ownProgressCards}
+          onDiscard={(card) => {
+            setShedOpen(false);
+            onAct({ type: 'discardProgressCard', player: view.you, card });
+          }}
+          onClose={() => setShedOpen(false)}
+        />
+      ) : null}
+
       {isFrontOfQueue('progressDiscardPending') ? (
         <ProgressDiscardDialog
           key={view.you}

@@ -251,6 +251,31 @@ describe('TurnPanel', () => {
     expect(screen.getByRole('button', { name: 'Handel' })).toHaveProperty('disabled', false);
   });
 
+  it('zeigt „Karte abgeben" nur, wenn Regel 11 greift', async () => {
+    const state = afterSetup();
+    const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));
+    const targets = actionTargets(state, view.currentPlayerId);
+
+    const { unmount } = render(
+      <TurnPanel view={view} targets={targets} onOpenTrade={vi.fn()} onEndTurn={vi.fn()} />,
+    );
+    expect(screen.queryByRole('button', { name: 'Karte abgeben' })).toBeNull();
+    unmount();
+
+    const onShedProgress = vi.fn();
+    render(
+      <TurnPanel
+        view={view}
+        targets={targets}
+        onOpenTrade={vi.fn()}
+        onEndTurn={vi.fn()}
+        onShedProgress={onShedProgress}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Karte abgeben' }));
+    expect(onShedProgress).toHaveBeenCalled();
+  });
+
   it('sperrt den Handel, wenn weder Bank noch Mitspieler in Frage kommen', () => {
     const state = afterSetup();
     const view = gameViewOf(playerViewOf(state, ids[0]!, seats, 1));

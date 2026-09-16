@@ -1,6 +1,7 @@
 import {
   handLimitOf,
   nameList,
+  PROGRESS_HAND_LIMIT,
   setupPlayerIndex,
   yieldTotal,
   type DiceSpec,
@@ -254,7 +255,10 @@ function phaseTextOf(view: PlayerView): string {
       // steht hier `owner` und nicht `currentName()`.
       return `${nameOf(view.phase.owner)} setzt seinen vertriebenen Ritter neu`;
     case 'main':
-      return `${currentName()} ist am Zug`;
+      // Regel 11: die Anzahl ist oeffentlich, also darf der Satz es jedem sagen.
+      return (view.players[view.currentPlayerIndex]?.progressCardCount ?? 0) > PROGRESS_HAND_LIMIT
+        ? `${currentName()} muss eine Fortschrittskarte ausspielen oder abgeben`
+        : `${currentName()} ist am Zug`;
     case 'tradePending':
       return `${nameOf(view.phase.offer.from)} bietet einen Tausch an`;
     case 'progressDiscardPending':

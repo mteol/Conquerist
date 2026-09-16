@@ -1144,6 +1144,32 @@ describe('GameScreen mit Rittern', () => {
       expect(screen.queryByRole('dialog', { name: 'Fortschrittskarte abgeben' })).toBeNull();
     });
 
+    it('laesst bei einer fuenften Karte am Zug ueber den Knopf abgeben (Regel 11)', async () => {
+      const base = citiesMainPhase();
+      const me = base.players[base.currentPlayerIndex]!.id;
+      const state: GameState = {
+        ...base,
+        players: base.players.map((player) =>
+          player.id === me
+            ? { ...player, progressCards: ['crane', 'smith', 'medicine', 'bishop', 'spy'] }
+            : player,
+        ),
+      };
+
+      render(<CitiesGame state={state} />);
+
+      expect(screen.getByRole('button', { name: 'Zug beenden' })).toHaveProperty('disabled', true);
+      expect(screen.queryByRole('dialog', { name: 'Fortschrittskarte abgeben' })).toBeNull();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Karte abgeben' }));
+      const dialog = screen.getByRole('dialog', { name: 'Fortschrittskarte abgeben' });
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Kran' }));
+
+      expect(screen.queryByRole('dialog', { name: 'Fortschrittskarte abgeben' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Karte abgeben' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Zug beenden' })).toHaveProperty('disabled', false);
+    });
+
     it('laesst bei defenderPending einen Stapel waehlen - und zeigt den Dialog dem Wartenden, nicht dem Spieler am Zug (Ruling 27)', async () => {
       const base = citiesMainPhase();
       const waiting = citiesSeats[1]!.id;
