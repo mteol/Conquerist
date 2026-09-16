@@ -230,8 +230,8 @@ export function ProgressPanel({
     const category = categoryOf(card);
     switch (category.kind) {
       case 'direct':
-        // Die vier Karten ohne Angabe haben alle dieselbe Form `{ card }` -
-        // deshalb hier zusammengefasst statt viermal wortgleich ausgefuehrt.
+        // Die fünf Karten ohne Angabe haben alle dieselbe Form `{ card }` -
+        // deshalb hier zusammengefasst statt fünfmal wortgleich ausgeführt.
         play({ card } as ProgressPlay);
         return;
       case 'dialog':
@@ -257,8 +257,14 @@ export function ProgressPanel({
      * Personenwahl und Handelshafen bieten an, was die Aktionsliste nennt. Ohne
      * einen einzigen erlaubten Zug öffnete der Klick eine leere Wahl - der Knopf
      * ist dann gesperrt, und der Satz zur Karte steht trotzdem darüber.
+     *
+     * Die Hochzeit ist nur spielbar, wenn jemand mehr Punkte hat. Ob das so
+     * ist, sagt ebenfalls die Aktionsliste; sonst liefe der Klick in eine
+     * Ablehnung des Servers.
      */
-    if (category.kind === 'person' || card === 'tradeHarbor') return playsOf(card).length > 0;
+    if (category.kind === 'person' || card === 'tradeHarbor' || card === 'wedding') {
+      return playsOf(card).length > 0;
+    }
     return true;
   };
 

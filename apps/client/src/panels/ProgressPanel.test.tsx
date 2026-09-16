@@ -266,7 +266,12 @@ function personView(hand: readonly ProgressCardId[]): PlayerView {
 describe('Die fünf wartenden Karten am Panel', () => {
   it('spielt die Hochzeit mit einem Klick', async () => {
     const onAction = vi.fn();
-    render(<ProgressPanel view={withHandView(['wedding'])} onAction={onAction} />);
+    const actions: GameAction[] = [
+      { type: 'playProgress', player: 'p1', play: { card: 'wedding' } },
+    ];
+    render(
+      <ProgressPanel view={withHandView(['wedding'])} actions={actions} onAction={onAction} />,
+    );
 
     await userEvent.click(screen.getByRole('button', { name: /Hochzeit/ }));
 
@@ -313,6 +318,19 @@ describe('Die fünf wartenden Karten am Panel', () => {
    * Ein Knopf, der eine leere Wahl öffnet, verspricht eine Wirkung, die es
    * nicht gibt (CLAUDE.md, „Ein Bedienelement lügt in beide Richtungen").
    */
+  /*
+   * Die Hochzeit ist nur spielbar, wenn jemand mehr Punkte hat - ob das so ist,
+   * sagt die Aktionsliste. Ohne den Zug lief der Klick in eine Ablehnung des
+   * Servers.
+   */
+  it('sperrt die Hochzeit, wenn die Aktionsliste sie nicht nennt', () => {
+    render(<ProgressPanel view={withHandView(['wedding'])} actions={[]} />);
+
+    expect((screen.getByRole('button', { name: /Hochzeit/ }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+  });
+
   it('sperrt eine Personenkarte, zu der es kein erlaubtes Ziel gibt', () => {
     render(<ProgressPanel view={personView(['masterMerchant'])} actions={[]} />);
 
