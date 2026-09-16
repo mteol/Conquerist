@@ -107,9 +107,11 @@ describe('Regel 11: die fuenfte Karte am Zug', () => {
     expect(canOfferAnything(overLimit(FIVE.slice(0, 4)), 'p1')).toBe(true);
 
     const withKnight = patchPlayer(overLimit(), 'p1', {
-      progressCards: FIVE,
-      developmentCards: { ...playerNamed(overLimit(), 'p1').developmentCards, knight: 1 },
+      developmentCards: [{ id: 'knight', boughtOnTurn: 0 }],
     });
-    expect(playableDevelopmentCards(withKnight, 'p1')).toEqual([]);
+    expect(playableDevelopmentCards({ ...withKnight, phase: { kind: 'main' } }, 'p1')).toEqual([]);
+    expect(
+      playableDevelopmentCards(patchPlayer(withKnight, 'p1', { progressCards: [] }), 'p1'),
+    ).toEqual(['knight']);
   });
 });
