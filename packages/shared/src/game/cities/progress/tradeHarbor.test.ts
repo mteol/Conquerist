@@ -82,16 +82,55 @@ describe('Handelshafen', () => {
     expect(act(state, PLAY).phase).toMatchObject({ pending: ['p2'] });
   });
 
-  it('ist nicht spielbar mit weniger Rohstoffen als Tauschpartnern', () => {
+  it('ist nicht spielbar mit weniger Rohstoffen als Mitspielern mit Handkarten', () => {
     const state = patchPlayer(harborTable(), 'p1', { resources: hand({ wool: 1 }) });
     expect(canPlayProgress(state, 'p1', { card: 'tradeHarbor', resource: 'wool' })?.code).toBe(
       RuleViolationCode.INSUFFICIENT_RESOURCES,
     );
   });
 
-  it('ist nicht spielbar, wenn niemand sonst eine Handelsware hat', () => {
+  it('verlangt Deckung auch fuer Mitspieler ohne Handelsware', () => {
+    const state = patchPlayer(
+      patchPlayer(harborTable(), 'p1', { resources: hand({ wool: 1 }) }),
+      'p3',
+      { resources: hand({ ore: 3 }) },
+    );
+    expect(canPlayProgress(state, 'p1', { card: 'tradeHarbor', resource: 'wool' })?.code).toBe(
+      RuleViolationCode.INSUFFICIENT_RESOURCES,
+    );
+  });
+
+  it('verraet nicht, ob Mitspieler Handelswaren halten', () => {
+    const withCommodities = harborTable();
+    const withoutCommodities = patchPlayer(
+      patchPlayer(harborTable(), 'p2', { resources: hand({ ore: 3 }) }),
+      'p3',
+      { resources: hand({ grain: 1 }) },
+    );
+    for (const resource of ['wool', 'ore'] as const) {
+      const play = { card: 'tradeHarbor', resource } as const;
+      expect(canPlayProgress(withoutCommodities, 'p1', play)).toEqual(
+        canPlayProgress(withCommodities, 'p1', play),
+      );
+    }
+    expect(legalActions(withoutCommodities, 'p1')).toEqual(legalActions(withCommodities, 'p1'));
+  });
+
+  it('ist ohne Wirkung gespielt, wenn niemand eine Handelsware hat', () => {
     const state = patchPlayer(
       patchPlayer(harborTable(), 'p2', { resources: hand({ ore: 1 }) }),
+      'p3',
+      { resources: hand({ grain: 2 }) },
+    );
+    const after = act(state, PLAY);
+    expect(after.phase).toEqual({ kind: 'main' });
+    expect(playerNamed(after, 'p1').progressCards).toEqual([]);
+    expect(playerNamed(after, 'p1').resources).toEqual(hand({ wool: 2 }));
+  });
+
+  it('ist nicht spielbar, wenn niemand sonst Handkarten hat', () => {
+    const state = patchPlayer(
+      patchPlayer(harborTable(), 'p2', { resources: hand() }),
       'p3',
       { resources: hand() },
     );
@@ -125,7 +164,7 @@ describe('Handelshafen', () => {
     expect(legalActions(open, 'p1')).toEqual([]);
   });
 
-  it('bietet beim Ausspielen nur Rohstoffe an, die alle Tauschpartner decken', () => {
+  it('bietet beim Ausspielen nur Rohstoffe an, die alle Mitspieler mit Handkarten decken', () => {
     const plays = legalActions(harborTable(), 'p1').filter(
       (action) => action.type === 'playProgress' && action.play.card === 'tradeHarbor',
     );

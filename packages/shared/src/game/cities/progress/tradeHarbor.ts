@@ -1,5 +1,5 @@
 import { COMMODITY_IDS, type CardId } from '../../../scenario/index.js';
-import { EMPTY_CARDS, takeMostHeld } from '../../cards.js';
+import { countCards, EMPTY_CARDS, takeMostHeld } from '../../cards.js';
 import { RuleViolationCode, violation, type RuleViolation } from '../../errors.js';
 import { RESOURCE_LABELS } from '../../labels.js';
 import type { PlayerId, PlayerState } from '../../player.js';
@@ -18,11 +18,14 @@ import type { ProgressPlay } from './play.js';
  * Handelshafen: jeder anderen Person einmal einen Rohstoff anbieten, sie gibt
  * dafuer eine Handelsware ihrer Wahl.
  *
- * **Eine Rohstoffsorte fuer alle, gedeckt schon beim Ausspielen.** Wer die Karte
- * spielt, muss so viele davon haben, wie es Tauschpartner gibt. Danach ist jede
- * Antwort gedeckt - kein Teilerfolg, keine Abhaengigkeit von der Reihenfolge der
- * Antworten, und die Antwort braucht kein `null`, weil wer keine Handelsware hat
- * gar nicht erst gefragt wird.
+ * **Eine Rohstoffsorte fuer alle, gedeckt schon beim Ausspielen.** Die Deckung
+ * misst nur Oeffentliches: so viele Rohstoffe, wie Mitspieler ueberhaupt
+ * Handkarten halten. Ob darunter Handelswaren sind, ist verdeckt - eine
+ * Spielbarkeit, die daran hinge, verriete es in jedem Zug (Schlussreview 10d-2).
+ * Wer wirklich tauscht, steht erst beim Ausspielen fest; haelt niemand eine
+ * Handelsware, ist die Karte ohne Wirkung gespielt. Danach ist jede Antwort
+ * gedeckt - kein Teilerfolg, und die Antwort braucht kein `null`, weil wer
+ * keine Handelsware hat gar nicht erst gefragt wird.
  */
 
 type TradeHarborPlay = Extract<ProgressPlay, { card: 'tradeHarbor' }>;
@@ -44,24 +47,27 @@ export function tradeHarborPartners(state: GameState, player: PlayerId): PlayerI
     .map((other) => other.id);
 }
 
+/** Wie viele Rohstoffe die Karte decken muss - nur aus oeffentlichen Handgroessen. */
+function othersHoldingCards(state: GameState, player: PlayerId): number {
+  return state.players.filter((other) => other.id !== player && countCards(other.resources) > 0)
+    .length;
+}
+
 export function canTradeHarbor(
   state: GameState,
   player: PlayerId,
   play: TradeHarborPlay,
 ): RuleViolation | null {
-  const partners = tradeHarborPartners(state, player).length;
-  if (partners === 0) {
-    return violation(
-      RuleViolationCode.PROGRESS_HAS_NO_EFFECT,
-      'Niemand sonst hat eine Handelsware',
-    );
+  const needed = othersHoldingCards(state, player);
+  if (needed === 0) {
+    return violation(RuleViolationCode.PROGRESS_HAS_NO_EFFECT, 'Niemand sonst hat Handkarten');
   }
 
   const held = findPlayer(state, player)!.resources[play.resource];
-  if (held < partners) {
+  if (held < needed) {
     return violation(
       RuleViolationCode.INSUFFICIENT_RESOURCES,
-      `Für ${partners} Tauschpartner braucht es ${partners}-mal ${RESOURCE_LABELS[play.resource]}`,
+      `Für ${needed} Mitspieler mit Handkarten braucht es ${needed}-mal ${RESOURCE_LABELS[play.resource]}`,
     );
   }
   return null;
