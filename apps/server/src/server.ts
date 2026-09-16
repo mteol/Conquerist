@@ -53,7 +53,7 @@ async function main(): Promise<void> {
    * geladenen Raum einmal gestellt: eine Frist, die waehrend des Stillstands
    * abgelaufen ist, ist damit beim ersten Lauf faellig.
    */
-  const clock = createRoomClock(deps);
+  const clock = createRoomClock({ ...deps, log: app.log });
   for (const room of deps.registry.all) clock.arm(room.code);
   // Dieselbe Sessions-Instanz wie oben - Accounts und Users teilen sich eine
   // Sitzungstabelle, sonst saehen sie unterschiedliche Anmeldungen.

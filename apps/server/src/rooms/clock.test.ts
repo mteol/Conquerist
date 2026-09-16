@@ -296,3 +296,36 @@ describe('createRoomClock und der faellige Zeitpunkt', () => {
     expect((seen[0] as { dueAt?: number }).dueAt).toBe(60_000 + total);
   });
 });
+
+/**
+ * Ein abgelehnter Fristablauf laesst den Tisch ohne Wecker stehen. Heute ist
+ * das unerreichbar - wenn es doch passiert, soll es im Log stehen und nicht
+ * still bleiben.
+ */
+describe('createRoomClock bei einem abgelehnten Fristablauf', () => {
+  it('schreibt eine Warnung mit Raum und Ablehnungsgrund', () => {
+    const { registry, room } = registryWithOffer(10_000);
+    const runs: (() => void)[] = [];
+    const warn = vi.fn();
+    const clock = createRoomClock({
+      registry,
+      sinks: new SinkHub(),
+      // Zu frueh: das Angebot laeuft noch, `timeout` wird abgelehnt.
+      now: () => 10_000,
+      schedule: (run) => {
+        runs.push(run);
+        return 1 as unknown as NodeJS.Timeout;
+      },
+      cancel: () => undefined,
+      log: { warn },
+    });
+
+    clock.arm('K7X2');
+    runs[0]!();
+
+    expect(registry.get('K7X2')?.game?.phase).toEqual(room.game!.phase);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]![0]).toEqual({ code: 'K7X2', error: 'Die Frist läuft noch' });
+    expect(clock.dueAt('K7X2')).toBeUndefined();
+  });
+});

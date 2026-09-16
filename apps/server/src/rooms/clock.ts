@@ -27,6 +27,8 @@ export interface RoomClockDeps {
   readonly now?: () => number;
   readonly schedule?: (run: () => void, ms: number) => NodeJS.Timeout;
   readonly cancel?: (handle: NodeJS.Timeout) => void;
+  /** Fuer die eine Warnung unten - im Server `app.log`, in Tests ein Double. */
+  readonly log?: { warn(details: object, message: string): void };
 }
 
 export interface RoomClock {
@@ -72,10 +74,20 @@ export function createRoomClock(deps: RoomClockDeps): RoomClock {
     const action: GameAction = { type: 'timeout', player: due.owner, at: now() };
 
     const acted = applySystemAction(room, action);
-    // Abgelehnt heisst: die Frist wurde inzwischen anders beendet, etwa durch
-    // einen Zuschlag oder die eigene Antwort in einer Wartephase. Dann gibt es
-    // nichts mehr abzulaeuten.
-    if (!acted.ok) return;
+    /*
+     * Abgelehnt heisst: der Reducer haelt die Frist fuer nicht abgelaufen oder
+     * fuer keine. Eine anders beendete Frist (Zuschlag, eigene Antwort) kommt
+     * hier nicht an - Aktion, Verteilen und `arm` laufen synchron, der Wecker
+     * steht danach neu oder gar nicht. Heute ist dieser Zweig unerreichbar;
+     * tritt er doch ein, steht der Tisch ohne Wecker. Das soll im Log stehen.
+     */
+    if (!acted.ok) {
+      deps.log?.warn(
+        { code, error: acted.error },
+        'Fristablauf abgelehnt - der Tisch steht ohne Wecker',
+      );
+      return;
+    }
 
     deps.registry.update(acted.room.code, acted.room, action);
 
