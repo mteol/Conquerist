@@ -1121,6 +1121,17 @@ export function GameScreen({
           strength={barbarianStrength(view)}
           defenders={view.defenders}
         />
+
+        {/*
+         * Was noch niemand hat, liegt am Tisch - unter den Plaetzen, bei denen
+         * es landen wird. Es lag bis hierher in der rechten Ecke beim
+         * Bankmaterial und war dort das oberste Stueck einer Spalte, die bei
+         * niedrigen Fenstern ueber den oberen Rand hinauswuchs (gemessen bei
+         * 1184x615: Oberkante -42 px, ueber Status und Verlauf). Links ist
+         * unter dem Tisch Platz, und es ist das einzige Stueck der Ecke, das
+         * man nicht anfasst.
+         */}
+        <OpenAwards awards={openAwards(display.awards)} />
       </div>
 
       <div className="topline">
@@ -1144,6 +1155,18 @@ export function GameScreen({
         <StatusPanel view={display}>
           <WaitingClock view={view} clockOffset={clockOffset} dueAt={dueAt} />
         </StatusPanel>
+        {/*
+         * Der Vorrat ist Auskunft wie Status und Verlauf und steht deshalb hier
+         * oben bei ihnen. In der rechten Ecke unten bildete er eine eigene
+         * Zeile ganz oben auf einer Spalte, die bei niedrigen Fenstern schon zu
+         * hoch war - und lag dort genau unter Status und Verlauf.
+         */}
+        <SupplyPanel
+          bank={view.bank}
+          start={view.rules.resourceBank}
+          deckLeft={display.deckLeft}
+          deckStart={deckStart}
+        />
         <LogPanel entries={log} />
       </div>
 
@@ -1226,15 +1249,6 @@ export function GameScreen({
 
         <div className="tray__controls">
           {/*
-           * Was noch niemand hat, liegt beim uebrigen Bankmaterial - vor dem
-           * Kaufstapel, also am weitesten innen. Es ist das einzige Stueck in
-           * dieser Ecke, das man nicht anfasst; nach aussen wird die Reihe
-           * bedienbarer, und die Wuerfel in der Ecke selbst sind das Ende
-           * dieser Steigerung.
-           */}
-          <OpenAwards awards={openAwards(display.awards)} />
-
-          {/*
            * Kein Kaufstapel an einem Tisch, der keine Entwicklungskarten
            * kennt. Bis zur Erweiterung stand hier ein Ersatzpreis aus lauter
            * Nullen fuer den Fall, dass das Regelwerk keinen nennt - und
@@ -1251,13 +1265,6 @@ export function GameScreen({
               }}
             />
           )}
-
-          <SupplyPanel
-            bank={view.bank}
-            start={view.rules.resourceBank}
-            deckLeft={display.deckLeft}
-            deckStart={deckStart}
-          />
 
           <ActionPanel
             targets={targets}

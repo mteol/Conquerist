@@ -13,8 +13,7 @@ import { DevelopmentGlyph } from './DevelopmentGlyph';
  * dieser Weg ist hier nachgebaut und ist der Grund, warum es **drei**
  * Darstellungen gibt und nicht eine:
  *
- * - `OpenAwards` — was noch niemand hat, liegt in der rechten Ecke beim uebrigen
- *   Bankmaterial. Es steht dort mit seiner Bedingung („ab 5 Straßen"), denn
+ * - `OpenAwards` — was noch niemand hat, liegt links am Tisch unter den Plaetzen. Es steht dort mit seiner Bedingung („ab 5 Straßen"), denn
  *   solange sie frei ist, ist die Bedingung die einzige Auskunft, die zaehlt.
  * - `AwardCards` — was man selbst haelt, liegt unten links bei den eigenen
  *   Karten. Als Karte und nicht als Zeile: sie ist Besitz, sie bringt Punkte,
@@ -78,7 +77,7 @@ export function AwardCards({ awards }: AwardCardsProps): JSX.Element | null {
 }
 
 /**
- * Was noch frei liegt - in der rechten Ecke, beim Bankmaterial.
+ * Was noch frei liegt - links am Tisch, unter den Plaetzen.
  *
  * **Sie liegt da und ist nicht ausgegraut.** Ein blasser Umriss haette „gibt es
  * hier nicht" gesagt; die Karte gibt es aber, sie ist nur noch zu haben. Was

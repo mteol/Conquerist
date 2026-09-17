@@ -2009,13 +2009,13 @@ body {
 }
 
 /*
- * Was noch frei liegt, steht in der rechten Ecke beim Bankmaterial - und
- * bricht dort um wie alles andere, statt unter das Brett zu laufen.
+ * Was noch frei liegt, steht links am Tisch unter der Fahrstrecke und bricht
+ * dort um, statt unter das Brett zu laufen.
  */
 .awards--open {
   margin: 0;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .awardcard {
@@ -6331,6 +6331,20 @@ body {
 }
 
 /*
+ * Mit dem Finger reichen 22 px nicht (Befund C: Hochzeit, Grosshaendler,
+ * Abwerfen). Auf groben Zeigern bekommen die Schritte die 44 px, die jede
+ * Flaeche zum Antippen braucht; mit der Maus bleiben sie klein, damit der
+ * Zaehler die Karte darueber nicht ueberragt. `.cards` bricht um, also passt
+ * es auch im schmalen Dialog.
+ */
+@media (pointer: coarse) {
+  .cards__stepper button {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
+/*
  * **Ein Rohstoff als Karte - und zwar ueberall dieselbe.**
  *
  * Es gab ihn fuenfmal: als Stapel auf der Hand, als Farbplatte in „Erfindung",
@@ -7002,14 +7016,15 @@ body {
  * und die Bauteile daneben zusammengeschoben, sobald jemand nachsieht. Was eine
  * Auskunft ist, soll das Bedienbare nicht verruecken.
  *
- * Nach oben, weil die Leiste unten sitzt - nach unten aufgehend stuende es
- * ausserhalb des Fensters.
+ * Nach unten, weil der Knopf oben in der Leiste bei Status und Verlauf sitzt
+ * - wie das Verlaufsblatt daneben.
  */
 .supply {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
+  pointer-events: auto;
 }
 
 .supply__toggle {
@@ -7041,8 +7056,8 @@ body {
 
 .supply__sheet {
   position: absolute;
+  top: calc(100% + 0.4rem);
   right: 0;
-  bottom: calc(100% + 0.4rem);
   z-index: 2;
   width: 13.5rem;
   padding: 0.5rem 0.6rem;
@@ -7227,4 +7242,37 @@ body {
   left: 50%;
   z-index: 3;
   transform: translateX(-50%);
+}
+
+/* --- Niedrige und schmale Fenster: die Ecken und die Leiste oben -------- *
+ *
+ * Befund F: bei 1184x615 war die rechte Ecke hoeher als das Fenster und wuchs
+ * ueber den oberen Rand - unter Status und Verlauf. Die freien Auszeichnungen
+ * und der Vorrat sind deshalb umgezogen (links an den Tisch, oben in die
+ * Leiste); was bleibt, wird bei wenig Hoehe enger gesetzt. Die naechste Stufe
+ * der Leiter behaelt ihre 44 px, nur die Auskunftssprossen ruecken zusammen.
+ */
+@media (max-height: 44rem) {
+  .tray__controls {
+    gap: 0.3rem;
+  }
+
+  .tracks {
+    margin-top: 0;
+  }
+
+  .tracks__step:not(.tracks__step--next) {
+    min-height: 1.25rem;
+  }
+}
+
+/*
+ * Befund E: unter 40rem ist die Leiste oben so breit wie der halbe Bildschirm
+ * und lag bei 396 px ueber den ersten Zeilen des Tisches. Die linke Spalte
+ * beginnt dort deshalb unter der Leiste statt neben ihr.
+ */
+@media (width <= 40rem) {
+  .leftrail {
+    top: 4.75rem;
+  }
 }

@@ -707,6 +707,8 @@ describe('Die Stapel-Uebersicht', () => {
 
     expect(screen.getByTestId('supply-toggle').getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByTestId('supply-brick')).toBeNull();
+    // Oben bei Status und Verlauf, nicht in der rechten Ecke (Befund F).
+    expect(screen.getByTestId('supply-toggle').closest('.topline')).not.toBeNull();
   });
 
   it('zeigt den Vorrat der laufenden Partie', async () => {

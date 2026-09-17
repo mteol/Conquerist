@@ -22,11 +22,6 @@ Im Archiv nur gezielt suchen (`grep` nach Stichwort), nie ganz lesen.
 
 - **Keine Zugzeit** für `main` und `rollPending`: wer nicht würfelt oder den Zug
   nicht beendet, hält die Partie unbegrenzt an.
-- **Befund C:** Stepper 22×22 px im Zählerdialog (Hochzeit, Großhändler, Abwerfen)
-  — auf Touch fummelig.
-- **Befund D (10d-1):** Auszeichnungskarte „Rittermacht" überlappt bei ~396 px
-  das Brett (`.awardcard__name`).
-- **Befund E:** `.panel--status` überlappt bei 396 px die Tischliste.
 - **Flackernde Tests unter Last:** `GameScreen.test.tsx`, `hotseatClock.test.tsx`.
 - Nicht erreicht im Browser: Hochzeit „alle", trennscharfe Leckprüfung der
   Spionage, Spionage-Dialoge bei 900 px.
@@ -36,10 +31,10 @@ Im Archiv nur gezielt suchen (`grep` nach Stichwort), nie ganz lesen.
 - **Abgeben nennt die Karte im Verlauf** („gibt Bergbau ab", seit 10d-1, `log.ts`).
   Online sehen alle Mitspieler, welche Karte abgegeben wurde. Ob das geheim
   bleiben soll, ist ungeklärt.
-- **Befund F — Statusblock bei niedrigem Fenster verdeckt** (1184×615): Vorrat
-  (`.tray__controls`, `.build`) und die offene Auszeichnungskarte liegen über
-  `.panel--status`. Schon vor 10e so; bei 10e aufgefallen, weil der Hinweis
-  zum Burg-2-Zug dort steht.
+- **Hochformat unter ~40rem bleibt eng:** die beiden Ecken der Ablage sind je
+  mindestens 14,75rem breit und berühren sich bei 396 px mit dem Tisch (33 px)
+  und der Leiste oben (14 px). Dafür gibt es den Hinweis zum Drehen; ein
+  eigenes Hochformat-Layout wäre eine eigene Etappe.
 - Aus Etappe 9 weiter offen: Volume bestätigen, HTTPS, Sicherung, Drossel im
   Wartebereich.
 
@@ -99,8 +94,31 @@ Text („Burg 1"), nicht nur Farbe; ihr `title` erklärt den Zug.
   Partien im Speicher betroffen.
 - Kein eigener Verlaufssatz zur Weitergabe der Marken.
 
+## Anzeige-Befunde C–F (2026-09-17, `anzeige-befunde`)
+
+Gemessen in zwei Iframes (1184×615 mit 5 Personen, 396×800 mit 4), Städte &
+Ritter, lokal.
+
+- **F — rechte Ecke höher als das Fenster** (vorher Oberkante −42 px, unter
+  Status und Verlauf). Die freien Auszeichnungen liegen jetzt links am Tisch
+  unter der Fahrstrecke, der Vorrat oben in der Leiste zwischen Status und
+  Verlauf (sein Blatt klappt nach unten). Unter 44rem Höhe rücken Ecke und
+  Leitern enger zusammen; die nächste Stufe behält 44 px. Nachher: Ecke ab
+  79 px, Leiste endet bei 69 px, keine Überlappung.
+- **D — Auszeichnungskarte über dem Brett:** mit dem Umzug nach links erledigt;
+  bei 1184 px liegt sie neben dem Brett. Im schmalen Hochformat liegt alles auf
+  dem Brett (siehe Offene Punkte).
+- **E — Status über der Tischliste bei 396 px:** unter 40rem beginnt die linke
+  Spalte bei 4,75rem, unter der Leiste (Tisch ab 76 px, Leiste bis 70 px).
+- **C — Zählerknöpfe 22 px:** auf groben Zeigern 44 px; `.cards` bricht um.
+  Nicht im Browser gesehen (braucht einen Touch-Zeiger).
+
+Tests halten den neuen Ort fest (`awards.test.tsx`, `GameScreen.test.tsx`).
+Aufgeräumt: gemergte lokale Branches gelöscht (die Commits stehen in `main`),
+alte SDD-Arbeitsordner unter `.superpowers/sdd` entfernt.
+
 ## Nächste Etappe
 
 Mit 10e ist der Etappenplan aus der Spec für Städte & Ritter
-abgearbeitet. Kandidaten: Befunde C–F, Zugzeit für `main`/`rollPending`, die
+abgearbeitet. Kandidaten: Zugzeit für `main`/`rollPending`, die
 Frage nach der Geheimhaltung abgegebener Fortschrittskarten.

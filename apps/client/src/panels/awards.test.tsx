@@ -77,10 +77,13 @@ function Screen({ state }: { readonly state: GameState }): JSX.Element {
  * Karte mehr.
  */
 describe('Auszeichnungen auf dem Tisch', () => {
-  it('liegen zu Beginn frei in der rechten Ecke, mit ihrer Bedingung', () => {
+  it('liegen zu Beginn frei links am Tisch, mit ihrer Bedingung', () => {
     render(<Screen state={mainPhase()} />);
 
     expect(screen.getByTestId('award-open-longestRoad')).toBeDefined();
+    // Nicht in der rechten Ecke: dort machten sie die Spalte bei niedrigen
+    // Fenstern hoeher als das Fenster (Befund F).
+    expect(screen.getByTestId('award-open-longestRoad').closest('.leftrail')).not.toBeNull();
     expect(screen.getByTestId('award-open-largestArmy')).toBeDefined();
     expect(screen.getByText('ab 5 Straßen')).toBeDefined();
     expect(screen.getByText('ab 3 Ritter')).toBeDefined();
