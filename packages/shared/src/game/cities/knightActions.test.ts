@@ -44,7 +44,7 @@ function withChain(overrides: Partial<GameState> = {}, knight: Knight = ready('p
     buildings: {},
     roads: Object.fromEntries(CHAIN.map((edge) => [edge, 'p1'])),
     knights: { [START]: knight },
-    turn: 2,
+    turnsPlayed: 2,
     ...overrides,
   });
 }
@@ -227,7 +227,7 @@ describe('canPlaceDisplacedKnight / applyPlaceDisplacedKnight', () => {
         activatedOnTurn: 1,
         from: START,
       },
-      turn: 2,
+      turnsPlayed: 2,
       ...overrides,
     });
   }

@@ -4563,6 +4563,21 @@ body {
   font-weight: 650;
 }
 
+/*
+ * Die Burgmarke ist ein Kleinlabel, kein Abzeichen: weite Sperrung, Rahmen in
+ * der Schriftfarbe, keine eigene Farbe. Die Zahl sagt, welcher Zug es ist -
+ * Farbe allein trüge das nicht (Designregel 7).
+ */
+.seat__castle {
+  padding: 0 0.3rem;
+  border: 1px solid currentcolor;
+  color: var(--ink-muted);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .seat__points {
   color: var(--ink-muted);
   font-size: 0.75rem;
@@ -5421,6 +5436,13 @@ body {
   border-right: 3px solid var(--warn);
   font-size: 0.75rem;
   line-height: 1.35;
+  text-align: right;
+}
+
+.status__note {
+  margin: 0.1rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.7rem;
   text-align: right;
 }
 

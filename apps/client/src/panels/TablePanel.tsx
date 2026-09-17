@@ -93,6 +93,20 @@ function PlayerRow({
         {isYou ? ' (du)' : ''}
       </span>
 
+      {player.castle === null ? null : (
+        <span
+          className="seat__castle"
+          data-testid={`castle-${player.id}`}
+          title={
+            player.castle === 1
+              ? 'Burg 1: voller Zug'
+              : 'Burg 2: angepasster Zug – kein Wurf, Handel nur mit der Bank'
+          }
+        >
+          Burg {player.castle}
+        </span>
+      )}
+
       <SeatMarks player={player.id} awards={awards} knights={player.playedKnights} />
 
       <span className="seat__points">{player.victoryPoints} SP</span>

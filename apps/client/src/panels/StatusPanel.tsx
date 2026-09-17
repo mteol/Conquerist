@@ -31,6 +31,11 @@ export function StatusPanel({
   return (
     <section className="panel panel--status">
       <div className="status__phase">{view.phaseText}</div>
+      {view.adaptedTurn ? (
+        <p className="status__note" data-testid="adapted-turn">
+          Kein Wurf, Handel nur mit der Bank
+        </p>
+      ) : null}
       <div className="status__turn">Runde {view.turn}</div>
       {children}
 

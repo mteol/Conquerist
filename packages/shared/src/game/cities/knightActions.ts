@@ -49,7 +49,7 @@ function actingKnight(
       `Der Ritter auf ${vertex} trägt keinen Helm`,
     );
   }
-  if (knight.activatedOnTurn >= state.turn) {
+  if (knight.activatedOnTurn >= state.turnsPlayed) {
     return violation(
       RuleViolationCode.KNIGHT_JUST_ACTIVATED,
       `Der Ritter auf ${vertex} wurde eben erst aktiviert und handelt ab dem nächsten Zug`,

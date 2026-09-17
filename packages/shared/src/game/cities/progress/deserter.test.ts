@@ -155,7 +155,7 @@ describe('Deserteur', () => {
       owner: 'p1',
       level: 2,
       active: true,
-      activatedOnTurn: after.turn - 1,
+      activatedOnTurn: after.turnsPlayed - 1,
       upgradedThisTurn: false,
     });
     expect(playerNamed(after, 'p1').piecesLeft.knight2).toBe(

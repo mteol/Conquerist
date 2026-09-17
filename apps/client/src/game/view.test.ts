@@ -74,6 +74,25 @@ describe('Anzeigemodell', () => {
     expect(text).toContain('muss eine Fortschrittskarte ausspielen oder abgeben');
   });
 
+  it('zeigt die Burgmarken und nennt im Zug mit Burg 2, was fehlt (Regel 13)', () => {
+    const state: GameState = {
+      ...afterSetup(),
+      phase: { kind: 'main' },
+      castles: { first: 0, second: 1 },
+      currentPlayerIndex: 1,
+    };
+
+    const view = gameViewOf(playerViewOf(state, ids[2]!, seats, 1));
+
+    expect(view.players.map((player) => player.castle)).toEqual([1, 2, null]);
+    expect(view.phaseText).toBe('Spieler 2 spielt mit Burg 2');
+    expect(view.adaptedTurn).toBe(true);
+
+    const full = gameViewOf(playerViewOf({ ...state, currentPlayerIndex: 0 }, ids[2]!, seats, 1));
+    expect(full.phaseText).toBe('Spieler 1 ist am Zug');
+    expect(full.adaptedTurn).toBe(false);
+  });
+
   it('nennt sonst den Spieler am Zug', () => {
     const state = afterSetup();
     expect(actingPlayers(state)).toEqual([state.players[state.currentPlayerIndex]!.id]);

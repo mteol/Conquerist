@@ -101,16 +101,15 @@ export function catanStrength(source: KnightSource): number {
 /**
  * Ob dieser Ritter in diesem Zug handeln darf.
  *
- * Gezaehlt wird in `state.turn`, also in vollen Runden. Weil jeder je Runde
- * einmal handelt, heisst `activatedOnTurn < state.turn` genau "ab dem
- * naechsten eigenen Zug" - ohne dass irgendwo ein Zaehler nachgezogen werden
- * muesste.
+ * Gezaehlt wird in `state.turnsPlayed`, also in einzelnen Zuegen:
+ * `activatedOnTurn < state.turnsPlayed` heisst genau "ab dem naechsten Zug" -
+ * auch mit Burg 1 / Burg 2, wo jede Person zwei Zuege je Runde spielt.
  */
 export function knightMayAct(state: GameState, vertex: VertexId, player: PlayerId): boolean {
   const knight = knightAt(state, vertex);
   if (knight === undefined || knight.owner !== player) return false;
   if (!knight.active || knight.activatedOnTurn === null) return false;
-  return knight.activatedOnTurn < state.turn;
+  return knight.activatedOnTurn < state.turnsPlayed;
 }
 
 /**
@@ -283,7 +282,9 @@ export function applyActivateKnight(
   const knight = state.knights[vertex]!;
   const paid = payFor(state, player, priceOf(state, 'knightActivation')!, {});
 
-  return ok(withKnight(paid, vertex, { ...knight, active: true, activatedOnTurn: state.turn }));
+  return ok(
+    withKnight(paid, vertex, { ...knight, active: true, activatedOnTurn: state.turnsPlayed }),
+  );
 }
 
 /** Darf dieser Ritter eine Stufe steigen? */

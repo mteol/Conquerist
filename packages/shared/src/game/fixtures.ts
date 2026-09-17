@@ -126,6 +126,8 @@ export function testGame(overrides: Partial<GameState> = {}): GameState {
     lastRoll: null,
     rollTally: {},
     turn: 1,
+    turnsPlayed: 1,
+    castles: null,
   };
 
   const state = { ...base, ...overrides };

@@ -4,6 +4,7 @@ import type { RuleSet } from '../rules/index.js';
 import type { ScenarioDefinition } from '../scenario/index.js';
 import { boardOf } from './board.js';
 import { canPlaceRoadAt, canPlaceSettlementAt } from './build.js';
+import { initialCastles } from './cities/castles.js';
 import { PROGRESS_TRACK, type ProgressCardId } from './cities/progress/cards.js';
 import { TRACK_IDS, type TrackId } from './cities/tracks.js';
 import { buildDeck, type DevelopmentCardId } from './development.js';
@@ -100,6 +101,8 @@ export function createGame(
     lastRoll: null,
     rollTally: {},
     turn: 0,
+    turnsPlayed: 0,
+    castles: null,
   };
 }
 
@@ -267,7 +270,14 @@ export function applySetupRoad(state: GameState, player: PlayerId, edge: EdgeId)
 
   const next = phase.placement + 1;
   if (next >= setupPlacementCount(state.players.length)) {
-    return ok({ ...withRoad, phase: { kind: 'rollPending' }, currentPlayerIndex: 0, turn: 1 });
+    return ok({
+      ...withRoad,
+      phase: { kind: 'rollPending' },
+      currentPlayerIndex: 0,
+      turn: 1,
+      turnsPlayed: 1,
+      castles: initialCastles(withRoad),
+    });
   }
 
   return ok({

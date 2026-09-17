@@ -1,3 +1,4 @@
+import { isAdaptedTurn } from './cities/castles.js';
 import type { CardAmounts } from '../rules/index.js';
 import { RESOURCE_IDS } from '../scenario/index.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
@@ -87,6 +88,13 @@ export function canOfferTrade(
     return violation(RuleViolationCode.NOT_YOUR_TURN, `${player} ist nicht am Zug`);
   }
 
+  if (isAdaptedTurn(state)) {
+    return violation(
+      RuleViolationCode.ADAPTED_TURN_BANK_ONLY,
+      'Im Zug mit Burg 2 wird nur mit der Bank gehandelt',
+    );
+  }
+
   const owner = findPlayer(state, player);
   if (owner === undefined) {
     return violation(RuleViolationCode.UNKNOWN_PLAYER, `${player} sitzt nicht an diesem Tisch`);
@@ -108,6 +116,7 @@ export function canOfferAnything(state: GameState, player: PlayerId): boolean {
   if (state.players[state.currentPlayerIndex]?.id !== player) return false;
   if (state.players.length < 2) return false;
   if (mustShedProgressCard(state)) return false;
+  if (isAdaptedTurn(state)) return false;
 
   const owner = findPlayer(state, player);
   return owner !== undefined && countCards(owner.resources) > 0;

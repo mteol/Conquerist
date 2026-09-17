@@ -190,8 +190,8 @@ describe('canActivateKnight / applyActivateKnight', () => {
     expect(playerOf(result.state, 'p1').resources.grain).toBe(0);
   });
 
-  it('merkt sich die Runde der Aktivierung', () => {
-    const state = { ...withKnight(ACTIVATION_COST), turn: 5 };
+  it('merkt sich den Zug der Aktivierung', () => {
+    const state = { ...withKnight(ACTIVATION_COST), turnsPlayed: 5 };
     const result = applyActivateKnight(state, 'p1', ADJACENT_VERTEX);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -344,8 +344,8 @@ describe('hasFortress', () => {
 });
 
 describe('knightMayAct', () => {
-  function withKnight(knight: Knight, turn: number): GameState {
-    return gameWithCities({ knights: { [ADJACENT_VERTEX]: knight }, turn });
+  function withKnight(knight: Knight, turnsPlayed: number): GameState {
+    return gameWithCities({ knights: { [ADJACENT_VERTEX]: knight }, turnsPlayed });
   }
 
   it('verneint fuer einen passiven Ritter', () => {

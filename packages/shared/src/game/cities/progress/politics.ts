@@ -67,10 +67,10 @@ export function canPolitics(
  *
  * **Die schon aktivierten bleiben unangetastet.** Ihnen die
  * Aktivierungsrunde neu zu setzen naehme ihnen die Handlungsfaehigkeit fuer
- * diesen Zug - `knightMayAct` verlangt `activatedOnTurn < state.turn`, und die
+ * diesen Zug - `knightMayAct` verlangt `activatedOnTurn < state.turnsPlayed`, und die
  * eigene Karte darf den eigenen Rittern nicht die Hand binden.
  *
- * Die frisch Aktivierten tragen dagegen die laufende Runde und handeln damit
+ * Die frisch Aktivierten tragen dagegen den laufenden Zug und handeln damit
  * ab dem naechsten Zug - dieselbe Ruhefrist wie bei `applyActivateKnight`.
  */
 export function applyWarlord(
@@ -83,7 +83,7 @@ export function applyWarlord(
     knights: Object.fromEntries(
       Object.entries(state.knights).map(([vertex, knight]) =>
         knight.owner === player && !knight.active
-          ? [vertex, { ...knight, active: true, activatedOnTurn: state.turn }]
+          ? [vertex, { ...knight, active: true, activatedOnTurn: state.turnsPlayed }]
           : [vertex, knight],
       ),
     ),

@@ -100,6 +100,8 @@ export const RuleViolationCode = {
   NOT_DISCARDING_PROGRESS: 'NOT_DISCARDING_PROGRESS',
   /** Erst eine Fortschrittskarte ausspielen oder abgeben - Regel 11, fuenfte Karte am Zug. */
   PROGRESS_LIMIT_FIRST: 'PROGRESS_LIMIT_FIRST',
+  /** Im angepassten Zug mit Burg 2 wird nur mit der Bank gehandelt - Regel 13. */
+  ADAPTED_TURN_BANK_ONLY: 'ADAPTED_TURN_BANK_ONLY',
   /** Diese Fortschrittskarte liegt nicht auf seiner Hand. */
   NO_SUCH_PROGRESS_CARD: 'NO_SUCH_PROGRESS_CARD',
   /** Siegpunktkarten zaehlen nicht zum Limit und helfen beim Abgeben nicht. */

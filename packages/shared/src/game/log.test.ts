@@ -275,6 +275,7 @@ describe('Verlaufssaetze fuer Staedte & Ritter', () => {
       buildings: {},
       knights: { [CORNERS[0]!]: knight('p1', 1, true) },
       turn: 2,
+      turnsPlayed: 2,
     });
     const move = { type: 'moveKnight', player: 'p1', from: CORNERS[0]!, to: CORNERS[2]! } as const;
     expect(sentenceFor(state, move)).toBe('p1 versetzt einen Ritter');
@@ -285,6 +286,7 @@ describe('Verlaufssaetze fuer Staedte & Ritter', () => {
       buildings: {},
       knights: { [CORNERS[0]!]: knight('p1', 2, true), [CORNERS[2]!]: knight('p2', 1, false) },
       turn: 2,
+      turnsPlayed: 2,
     });
     const move = { type: 'moveKnight', player: 'p1', from: CORNERS[0]!, to: CORNERS[2]! } as const;
     expect(sentenceFor(state, move)).toBe('p1 vertreibt p2s Ritter');
@@ -314,6 +316,7 @@ describe('Verlaufssaetze fuer Staedte & Ritter', () => {
       barbarians: { position: 0, attacks: 1 },
       robber: '0,0',
       turn: 2,
+      turnsPlayed: 2,
     });
     expect(sentenceFor(state, { type: 'chaseRobber', player: 'p1', vertex: CORNERS[0]! })).toBe(
       'p1 schickt einen Ritter hinter dem Räuber her',
@@ -418,6 +421,7 @@ describe('Der Ueberfall im Verlauf', () => {
         },
       },
       turn: 2,
+      turnsPlayed: 2,
     });
 
     const sentence = landingSentence(state);
@@ -435,6 +439,7 @@ describe('Der Ueberfall im Verlauf', () => {
       },
       knights: {},
       turn: 2,
+      turnsPlayed: 2,
     });
 
     const sentence = landingSentence(state);
@@ -466,6 +471,7 @@ describe('Befunde aus dem Browser-Durchgang', () => {
       buildings: { [CENTER_VERTEX]: city('p1'), [RICH]: city('p2'), [POOR]: city('p3') },
       knights: {},
       turn: 2,
+      turnsPlayed: 2,
       phase: { kind: 'rollPending' },
     });
 
@@ -491,6 +497,7 @@ describe('Befunde aus dem Browser-Durchgang', () => {
       buildings: { [CENTER_VERTEX]: city('p1'), [RICH]: city('p1') },
       knights: {},
       turn: 2,
+      turnsPlayed: 2,
       phase: { kind: 'rollPending' },
     });
 

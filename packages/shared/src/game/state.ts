@@ -97,9 +97,10 @@ export const KnightSchema = z.object({
    * "darf handeln" - ein gespeicherter abgeleiteter Wert ist ein Wert, den man
    * nachzuziehen vergisst.
    *
-   * Gezaehlt wird in `state.turn`, also in vollen Runden. Weil jeder je Runde
-   * einmal handelt, heisst `activatedOnTurn < state.turn` genau "ab dem
-   * naechsten eigenen Zug".
+   * Gezaehlt wird in `state.turnsPlayed`, also in einzelnen Zuegen:
+   * `activatedOnTurn < state.turnsPlayed` heisst "ab dem naechsten Zug". In
+   * Runden ginge das nicht mehr, sobald Burg 1 / Burg 2 jeder Person zwei Zuege
+   * je Runde gibt.
    */
   activatedOnTurn: z.number().int().min(0).nullable(),
   /**
@@ -263,6 +264,29 @@ export const GameStateSchema = z.object({
   rollTally: z.record(z.string(), z.number().int().min(0)).default({}),
   /** Vollstaendige Runden seit Ende der Gruendungsphase. */
   turn: z.number().int().min(0),
+  /**
+   * Einzelne Zuege seit Ende der Gruendungsphase, beginnend bei 1.
+   *
+   * Nicht dasselbe wie `turn`: mit Burg 1 / Burg 2 spielt jede Person zwei Zuege
+   * je Runde, und "ab dem naechsten eigenen Zug" (Ritter) laesst sich in Runden
+   * nicht mehr zaehlen. Mit Vorgabe, weil aeltere Startzustaende das Feld nicht
+   * kennen - das Replay zaehlt es nach.
+   */
+  turnsPlayed: z.number().int().min(0).default(0),
+  /**
+   * Wo Burg 1 und Burg 2 gerade liegen (Etappe 10e, Spec 7) - Indizes in
+   * `players`. `null` an jedem Tisch, der ohne die Marken spielt; ob mit ihnen
+   * gespielt wird, sagt `RuleSet.castleTurns`.
+   */
+  castles: z
+    .object({
+      /** Wer den vollen Zug spielt. */
+      first: z.number().int().min(0),
+      /** Wer danach den angepassten Zug spielt. */
+      second: z.number().int().min(0),
+    })
+    .nullable()
+    .default(null),
 });
 
 export type GameState = z.infer<typeof GameStateSchema>;

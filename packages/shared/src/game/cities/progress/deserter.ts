@@ -136,8 +136,8 @@ export function canAnswerDeserter(
  *
  * Runde 2: der Ueberlaeufer steht mit der Ersatzstufe und dem Helm des
  * Gefallenen. Ein aktiver Ueberlaeufer darf sofort handeln (offizielle FAQ,
- * Frage 83), deshalb steht `activatedOnTurn` eine Runde zurueck -
- * `knightMayAct` verlangt `activatedOnTurn < state.turn`. Die Festung braucht
+ * Frage 83), deshalb steht `activatedOnTurn` einen Zug zurueck -
+ * `knightMayAct` verlangt `activatedOnTurn < state.turnsPlayed`. Die Festung braucht
  * auch ein maechtiger Ueberlaeufer nicht (Frage 84): er wird ersetzt, nicht
  * aufgewertet.
  */
@@ -189,7 +189,7 @@ export function answerDeserter(
         owner: player,
         level,
         active,
-        activatedOnTurn: active ? Math.max(0, state.turn - 1) : null,
+        activatedOnTurn: active ? Math.max(0, state.turnsPlayed - 1) : null,
         upgradedThisTurn: false,
       },
     },

@@ -7,6 +7,7 @@
  * Antwort mehr im Dateisystem.
  */
 export * from './barbarians.js';
+export * from './castles.js';
 export * from './event.js';
 export * from './improvements.js';
 export * from './knightActions.js';

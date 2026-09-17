@@ -38,6 +38,7 @@ function tableView(gains: ReadonlyMap<string, number>): GameView {
       developmentCount: 0,
       playedKnights: 0,
       isCurrent: index === 0,
+      castle: null,
       connected: true,
       mustDiscard: 0,
       improvements: {},
@@ -45,6 +46,7 @@ function tableView(gains: ReadonlyMap<string, number>): GameView {
     actingPlayers: [seats[0]!.id],
     currentPlayerId: seats[0]!.id,
     phaseText: 'Spieler 1 ist am Zug',
+    adaptedTurn: false,
     dice: CLASSIC_DICE,
     lastRoll: [
       { die: 'first', value: 4 },

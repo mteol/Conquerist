@@ -21,6 +21,7 @@ const player: PlayerRow = {
   developmentCount: 0,
   playedKnights: 0,
   isCurrent: true,
+  castle: null,
   connected: true,
   mustDiscard: 4,
   improvements: {},

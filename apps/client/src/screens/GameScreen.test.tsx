@@ -853,7 +853,7 @@ describe('GameScreen mit Rittern', () => {
 
     // Ein handlungsbereiter Ritter braucht eine eigene Strasse an seinem Knoten
     // - die Gruendung hat p1 genau eine gelegt.
-    const state = citiesMainPhase({ turn: 3 });
+    const state = citiesMainPhase({ turn: 3, turnsPlayed: 3 });
     const me = state.players[state.currentPlayerIndex]!.id;
     const own = Object.entries(state.roads).find(([, owner]) => owner === me)![0];
     const vertex = edgeVertices(own)[0]!;
@@ -935,7 +935,7 @@ describe('GameScreen mit Rittern', () => {
    * dem Ziel eines Ritters, den niemand mehr gewählt hat.
    */
   it('loescht mit jeder neuen Absicht die vorige samt halbfertigem Ritterzug', async () => {
-    const base = citiesMainPhase({ turn: 3 });
+    const base = citiesMainPhase({ turn: 3, turnsPlayed: 3 });
     const me = base.players[base.currentPlayerIndex]!.id;
     const own = Object.entries(base.roads).find(([, owner]) => owner === me)![0];
     const vertex = edgeVertices(own)[0]!;

@@ -69,6 +69,7 @@ function baseView(
     lastRoll: null,
     rollTally: {},
     turn: 1,
+    castles: null,
     ...overrides,
   };
 }

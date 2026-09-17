@@ -231,6 +231,11 @@ export const PlayerViewSchema = z.object({
   /** Wie oft welche Wurfsumme fiel - offenes Material, siehe `GameState`. */
   rollTally: z.record(z.string(), z.number().int().min(0)).default({}),
   turn: z.number().int().min(0),
+  /** Wo Burg 1 und Burg 2 liegen - oeffentlich, `null` ohne die Marken. */
+  castles: z
+    .object({ first: z.number().int().min(0), second: z.number().int().min(0) })
+    .nullable()
+    .default(null),
 });
 
 export type PlayerView = z.infer<typeof PlayerViewSchema>;
@@ -375,5 +380,6 @@ export function playerViewOf(
     lastRoll: state.lastRoll,
     rollTally: state.rollTally,
     turn: state.turn,
+    castles: state.castles,
   };
 }

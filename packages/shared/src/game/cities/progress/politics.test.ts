@@ -90,7 +90,7 @@ describe('Heerfuehrer', () => {
           [CORNERS[2]!]: passive('p1'),
           [CORNERS[3]!]: passive('p2'),
         },
-        turn: 2,
+        turnsPlayed: 2,
       }),
       'p1',
       ['warlord'],
@@ -119,11 +119,11 @@ describe('Heerfuehrer', () => {
    * Ein frisch aktivierter Ritter darf in derselben Runde nicht handeln - die
    * Regel aus 10b gilt auch hier, und `activatedOnTurn` traegt sie.
    */
-  it('setzt bei den aktivierten Rittern die laufende Runde', () => {
+  it('setzt bei den aktivierten Rittern den laufenden Zug', () => {
     const result = applyPlayProgress(threePassiveKnights, 'p1', { card: 'warlord' });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(knightAt(result.state, CORNERS[0]!)?.activatedOnTurn).toBe(result.state.turn);
+      expect(knightAt(result.state, CORNERS[0]!)?.activatedOnTurn).toBe(result.state.turnsPlayed);
     }
   });
 

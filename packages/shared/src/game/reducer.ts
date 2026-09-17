@@ -1,3 +1,4 @@
+import { nextCastleTurn } from './cities/castles.js';
 import type { GameAction } from './actions.js';
 import { applyBuildCity, applyBuildRoad, applyBuildSettlement } from './build.js';
 import { rollAll, yieldTotal, type Roll } from './dice.js';
@@ -260,13 +261,22 @@ function rollDice(state: GameState): ReduceResult {
 
 /** Gibt den Zug weiter und zaehlt die Runde, sobald sie herum ist. */
 function endTurn(state: GameState): ReduceResult {
-  const next = (state.currentPlayerIndex + 1) % state.players.length;
+  /*
+   * Mit Burg 1 / Burg 2 bestimmt die Marke, wer folgt, und ob gewuerfelt wird
+   * (`castles.ts`). Eine Runde ist um, sobald Burg 1 wieder beim ersten Platz
+   * ankommt - wie ohne Marken, wenn der Zug dorthin zurueckkehrt.
+   */
+  const castle = state.castles === null ? null : nextCastleTurn(state, state.castles);
+  const next = castle?.current ?? (state.currentPlayerIndex + 1) % state.players.length;
+  const newRound = castle === null ? next === 0 : castle.roll && castle.castles.first === 0;
 
   return ok({
     ...state,
     currentPlayerIndex: next,
-    phase: { kind: 'rollPending' },
-    turn: next === 0 ? state.turn + 1 : state.turn,
+    phase: castle === null || castle.roll ? { kind: 'rollPending' } : { kind: 'main' },
+    castles: castle?.castles ?? null,
+    turn: newRound ? state.turn + 1 : state.turn,
+    turnsPlayed: state.turnsPlayed + 1,
     // Die Sperre gilt je Zug, nicht je Runde: der Naechste darf wieder eine
     // Karte spielen.
     developmentPlayed: false,

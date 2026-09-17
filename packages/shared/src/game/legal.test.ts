@@ -389,6 +389,7 @@ describe('legalActions an einem Staedte-&-Ritter-Tisch', () => {
       barbarians: { position: 0, attacks: 1 },
       robber: '0,0',
       turn: 2,
+      turnsPlayed: 2,
     });
 
     const types = typesFor(state, 'p1');

@@ -15,23 +15,9 @@ Im Archiv nur gezielt suchen (`grep` nach Stichwort), nie ganz lesen.
 
 ## Aktueller Stand (2026-09-17)
 
-- **10d-3 abgeschlossen und in `main`** (2026-09-17): die vier Regelfragen aus
-  10d-2 (Handelshafen ohne Leck, Deserteur nach FAQ, Regel 11 erzwungen über
-  `mustShedProgressCard`, Testnamen in ASCII). Details: Archiv 10d, letzter
-  Abschnitt.
-- **Entschieden am 2026-09-17:** `robberPending` und `displacePending` behalten
-  ihre Frist (`deadline.ts`, `timeout.ts`), obwohl sie dem Spieler am Zug
-  gehören. Grund: sonst hängt die Partie an einer offenen Wahl fest; am Ablauf
-  wählt der Server. Damit sind alle drei Auslegungen aus 10d-2 bestätigt.
-- **Regel 11 im Browser gesehen** (lokale Partie, Städte & Ritter, 1184 px;
-  vorübergehend fünf Karten in `setup.ts`, zurückgesetzt): nach dem Wurf steht
-  „Spieler 1 muss eine Fortschrittskarte ausspielen oder abgeben"; Handel, Bauen
-  und Zugende gesperrt, Karten spielbar, Knopf „Karte abgeben" offen. Der Dialog
-  „Welche Karte gibst du ab?" zeigt alle fünf Karten und ein Schließkreuz;
-  Schließen lässt die Pflicht stehen, Abgeben hebt sie auf, Verlauf „Spieler 1
-  gibt Bergbau ab". Handelshafen nicht erneut im Browser (Logik, per Test belegt).
-- Abnahme 2026-09-17: typecheck, build, format:check grün; shared 1276 (67),
-  server 222 (22), client 618 (59); Client-Bundle 538,88 kB (156,48 kB gzip).
+- `main` = `049546d`: 10d-3 abgeschlossen (Regelfragen aus 10d-2, Regel 11 im
+  Browser gesehen, alle drei Auslegungen bestätigt). Details: Archiv 10d.
+- **10e auf Branch `etappe-10e-burgen`**, Abschnitt unten.
 
 ## Offene Punkte
 
@@ -51,13 +37,71 @@ Im Archiv nur gezielt suchen (`grep` nach Stichwort), nie ganz lesen.
 - **Abgeben nennt die Karte im Verlauf** („gibt Bergbau ab", seit 10d-1, `log.ts`).
   Online sehen alle Mitspieler, welche Karte abgegeben wurde. Ob das geheim
   bleiben soll, ist ungeklärt.
+- **Befund F — Statusblock bei niedrigem Fenster verdeckt** (1184×615): Vorrat
+  (`.tray__controls`, `.build`) und die offene Auszeichnungskarte liegen über
+  `.panel--status`. Schon vor 10e so; bei 10e aufgefallen, weil der Hinweis
+  zum Burg-2-Zug dort steht.
 - Aus Etappe 9 weiter offen: Volume bestätigen, HTTPS, Sicherung, Drossel im
   Wartebereich.
 
+## Etappe 10e — Burg 1 / Burg 2 zu fünft und sechst (2026-09-17, `etappe-10e-burgen`)
+
+Regel 13 (Ausgabe 2025) nach Spec 7: zwei Marken, drei Plätze auseinander.
+Burg 1 spielt den vollen Zug, danach Burg 2 den angepassten Zug (kein Wurf,
+Handel nur mit der Bank, keine Alchemie), dann wandern beide eins weiter.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                           |
+| ------------------- | -------------------------------------------------- |
+| `pnpm typecheck`    | grün                                               |
+| `pnpm -r test`      | shared 1282 (68), server 222 (22), client 619 (59) |
+| `pnpm build`        | Client 540,49 kB (157,00 kB gzip), CSS 60,42 kB    |
+| `pnpm format:check` | grün                                               |
+
+Im Browser gesehen (lokal, 5 Personen, Städte & Ritter, 1184 px): nach dem
+Zug mit Burg 1 von Spieler 4 folgt Spieler 2 (drei Plätze weiter) ohne Wurf;
+Tisch zeigt „Burg 1"/„Burg 2" an den Plätzen, Status „Spieler 2 spielt mit
+Burg 2" mit Zeile „Kein Wurf, Handel nur mit der Bank". Nicht gesehen: das
+Weiterwandern über eine volle Runde, der Handeldialog mit Bankhandel im
+Burg-2-Zug (Hand reichte nicht für die Bank), sechs Personen.
+
+### Getroffene Entscheidungen
+
+**Keine eigene Phase `mainRestricted`, sondern `castles` im Zustand plus eine
+Sperre.** Der Burg-2-Zug beginnt direkt in `main`; Wurf und Alchemie gehören zu
+`rollPending` und fallen damit von selbst weg. Übrig bleibt nur das Angebot an
+Mitspieler: `canOfferTrade` lehnt mit `ADAPTED_TURN_BANK_ONLY` ab,
+`canOfferAnything` sagt `false` — dieselbe Stelle, die `legalActions` und der
+Handeldialog fragen (der Tab „Spieler" verschwindet). Alles in
+`game/cities/castles.ts`.
+
+**Neuer Zugzähler `turnsPlayed` für die Ritter.** `activatedOnTurn < turn`
+zählte Runden und setzte voraus, dass jeder je Runde einmal handelt. Mit Burgen
+hat jede Person zwei Züge je Runde: ein im Burg-1-Zug aktivierter Ritter wäre
+im Burg-2-Zug derselben Runde gesperrt gewesen — je nach Sitzplatz, weil die
+Runde an Burg 1 hängt. Ritter (Aktivieren, Heerführer, Deserteur) zählen jetzt
+in Zügen; ohne Burgen ist das gleichwertig. Entwicklungskarten (`boughtOnTurn`,
+Basisspiel ohne Burgen) bleiben bei `turn`. Beide Felder haben Vorgaben;
+gespeicherte Partien bekommen sie beim Replay.
+
+**Eine Runde endet, wenn Burg 1 wieder beim ersten Platz ankommt** — wie ohne
+Marken, wenn der Zug dorthin zurückkehrt.
+
+**Der Hinweis steht als eigene Zeile unter dem Statussatz**, nicht im Satz: der
+lange Satz passte nicht in die Ecke. Die Marke am Platz ist ein Kleinlabel mit
+Text („Burg 1"), nicht nur Farbe; ihr `title` erklärt den Zug.
+
+### Offene Punkte
+
+- Spielstände 5–6 mit Städte & Ritter, die vor 10e begonnen wurden, laufen mit
+  der alten Zugfolge weiter, bis sie neu gestartet werden (`castles` wird nur
+  am Ende der Gründung gesetzt). Ein Replay setzt sie neu — also nur laufende
+  Partien im Speicher betroffen.
+- Kein eigener Verlaufssatz zur Weitergabe der Marken.
+
 ## Nächste Etappe
 
-**10e — Burg 1 / Burg 2 zu fünft und sechst.** Fünf und sechs Personen am
-Städte-&-Ritter-Tisch nach Abschnitt 7 des Entwurfs
-(`docs/superpowers/specs/2026-08-25-staedte-und-ritter-design.md`); am Bildschirm
-sichtbar, wer den vollen und wer den angepassten Zug hat und was im angepassten
-Zug fehlt.
+Nach dem Merge von 10e ist der Etappenplan aus der Spec für Städte & Ritter
+abgearbeitet. Kandidaten: Befunde C–F, Zugzeit für `main`/`rollPending`, die
+Frage nach der Geheimhaltung abgegebener Fortschrittskarten.

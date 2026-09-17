@@ -38,6 +38,11 @@ export interface PlayerRow {
   /** `null` heisst: gehoert jemand anderem. Die Anzahl bleibt sichtbar. */
   readonly resources: CardAmounts | null;
   readonly piecesLeft: RuleSet['pieceStock'];
+  /**
+   * Welche Burgmarke vor diesem Platz liegt - `1` voller Zug, `2` angepasster
+   * Zug (Regel 13). `null` ohne Marke oder an einem Tisch ohne Burgen.
+   */
+  readonly castle: 1 | 2 | null;
   readonly isCurrent: boolean;
   /** Ob dieser Spieler gerade eine offene Verbindung hat. */
   readonly connected: boolean;
@@ -65,6 +70,12 @@ export interface GameView {
   readonly actingPlayers: readonly PlayerId[];
   readonly currentPlayerId: PlayerId;
   readonly phaseText: string;
+  /**
+   * Ob gerade der angepasste Zug mit Burg 2 laeuft (Regel 13). Die Oberflaeche
+   * sagt dann dazu, was fehlt - sonst sucht man Wuerfel und Spielerhandel und
+   * haelt ihr Fehlen fuer einen Fehler.
+   */
+  readonly adaptedTurn: boolean;
   /** Womit an diesem Tisch gewuerfelt wird - die Schale aus dem RuleSet. */
   readonly dice: DiceSpec;
   /** Was zuletzt gefallen ist; `null`, solange in dieser Partie kein Wurf war. */
@@ -157,6 +168,13 @@ function setupPlayerOf(view: PhaseSource): PlayerId | null {
   if (view.phase.kind !== 'setup') return null;
   const index = setupPlayerIndex(view.phase.placement, view.players.length);
   return view.players[index]?.id ?? null;
+}
+
+/** Welche Burgmarke vor dem Platz `index` liegt. Burg 1 gewinnt, falls beide dort laegen. */
+function castleAt(view: PlayerView, index: number): 1 | 2 | null {
+  if (view.castles === null) return null;
+  if (view.castles.first === index) return 1;
+  return view.castles.second === index ? 2 : null;
 }
 
 /**
@@ -256,8 +274,13 @@ function phaseTextOf(view: PlayerView): string {
       return `${nameOf(view.phase.owner)} setzt seinen vertriebenen Ritter neu`;
     case 'main':
       // Regel 11: die Anzahl ist oeffentlich, also darf der Satz es jedem sagen.
-      return (view.players[view.currentPlayerIndex]?.progressCardCount ?? 0) > PROGRESS_HAND_LIMIT
-        ? `${currentName()} muss eine Fortschrittskarte ausspielen oder abgeben`
+      if ((view.players[view.currentPlayerIndex]?.progressCardCount ?? 0) > PROGRESS_HAND_LIMIT) {
+        return `${currentName()} muss eine Fortschrittskarte ausspielen oder abgeben`;
+      }
+      // Regel 13: was im Zug mit Burg 2 fehlt, sagt `adaptedTurn` darunter -
+      // der Satz selbst bleibt kurz, er steht in einer schmalen Ecke.
+      return castleAt(view, view.currentPlayerIndex) === 2
+        ? `${currentName()} spielt mit Burg 2`
         : `${currentName()} ist am Zug`;
     case 'tradePending':
       return `${nameOf(view.phase.offer.from)} bietet einen Tausch an`;
@@ -336,7 +359,7 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     }
   }
 
-  const players: PlayerRow[] = view.players.map((player) => ({
+  const players: PlayerRow[] = view.players.map((player, index) => ({
     id: player.id,
     name: player.name,
     color: player.color,
@@ -350,6 +373,7 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     playedKnights: player.playedKnights,
     improvements: player.improvements,
     isCurrent: player.id === current?.id,
+    castle: castleAt(view, index),
     mustDiscard:
       view.phase.kind === 'discardPending' && view.phase.pending.includes(player.id)
         ? discardCountForView(view, player.id)
@@ -363,6 +387,7 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     actingPlayers: acting,
     currentPlayerId: current?.id ?? view.you,
     phaseText: phaseTextOf(view),
+    adaptedTurn: view.phase.kind === 'main' && castleAt(view, view.currentPlayerIndex) === 2,
     dice: view.rules.dice,
     lastRoll: view.lastRoll,
     rollTotal: view.lastRoll === null ? null : yieldTotal(view.rules.dice, view.lastRoll),
