@@ -1,0 +1,3911 @@
+# Fortschritt — Playtest und Politur, August 2026 (Archiv)
+
+## Nach dem ersten Playtest — neun Anpassungen (2026-08-13, `etappe-10-playtest`)
+
+Stand: 2026-08-13, Branch `etappe-10-playtest`, abgezweigt von `main` (`4158e07`).
+
+Das Spiel ist zum ersten Mal von Menschen gespielt worden, und die Liste, die
+dabei entstanden ist, hat einen gemeinsamen Nenner: **nichts davon war ein
+Absturz.** Neun Beobachtungen aus einer Runde, davon zwei echte Fehler (die
+heissen Zahlen, der Einladungslink), vier fehlende Auskuenfte (Vorrat, Farbe,
+Ziel, Name) und drei Stellen, an denen die Oberflaeche etwas anderes sagte als
+sie meinte.
+
+### Abnahme
+
+| Pruefung            | Ergebnis                                                                     |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `pnpm typecheck`    | gruen (`tsc -b`, alle drei Pakete)                                           |
+| `pnpm test`         | 948 Tests gruen (shared 568, server 161, client 219)                         |
+| `pnpm build`        | gruen, Client-Bundle 385,51 kB (114,66 kB gzip), CSS 27,03 kB (6,35 kB gzip) |
+| `pnpm format:check` | gruen                                                                        |
+| Browser             | **nicht gelaufen** — siehe „Offene Punkte"                                   |
+
+Zum Vergleich: Etappe 9 stand bei 838 Tests. Dazu gekommen sind 110, davon 27
+neu geschrieben (17 Server, 10 Client), der Rest aus dem Anpassen bestehender
+Vorrichtungen.
+
+### Getroffene Entscheidungen
+
+**Die Sechs und die Acht waren rot — nur nie sichtbar.** `.chip__hot` mit
+`fill: #a52a1e` stand seit Etappe 3 im Blatt, darueber `.chip text` mit
+`fill: #16202a`. Eine Klasse plus ein Typ schlaegt eine Klasse allein, also hat
+die Regel nie gegriffen, und niemand hat es gemerkt, weil die Farbe ja dastand.
+Die Regel heisst jetzt `.chip text.chip__hot`. Wer eine Farbe schreibt, hat sie
+damit noch nicht gezeigt.
+
+**„Heiss" wird aus der Wuerfelschale abgeleitet, nicht als `6 || 8` getippt.**
+`isHot` liest die hoechste Augenwahrscheinlichkeit aus derselben `PIPS`-Tabelle,
+aus der die Punktreihe unter der Zahl kommt. Ein Regelwerk mit anderen Wuerfeln
+faerbt damit von selbst die richtigen Chips. Die Punktreihe faerbt sich mit —
+Rot ist nie der einzige Traeger.
+
+**Ein zweites Farbtripel fuer Pergament.** `--ok`, `--warn` und `--bad` sind
+fuer die Tiefsee-Flaeche gemischt und stehen auf einem Zahlenchip oder einem
+Knopf aus Pergament zu hell. Statt im Einzelfall abzuweichen, gibt es jetzt
+`--ok-ink`, `--warn-ink` und `--bad-ink`: gleiche Bedeutung, anderer Untergrund.
+
+**Das Schliesskreuz ist eine eigene Komponente und nimmt Escape mit.** Jeder
+Dialog hatte seinen Ausweg schon, aber unten und ausgeschrieben — im Playtest
+hat jemand versehentlich „Handel" gedrueckt und ihn nicht gefunden, weil er
+unter drei Reitern und zwei Kartenlisten stand. `CloseButton` sitzt oben rechts,
+in jedem schliessbaren Fenster an derselben Stelle, und haengt seinen
+Escape-Horcher an sein eigenes Leben: solange das Kreuz da ist, gibt es einen
+Ausweg. Es ersetzt den unteren Knopf **nicht** — „Abbrechen" sagt, was passiert,
+das Kreuz sagt nur, wo man drueckt. Klick auf den Hintergrund schliesst weiter
+nichts: beim Abwerfen und beim Angebot gibt es kein Zumachen, und ein
+Hintergrund, der mal schliesst und mal nicht, ist schlimmer als einer, der es
+nie tut.
+
+**Drei Antworten, drei Farben.** Annehmen/Ablehnen/Anpassen trugen `button`,
+`button` und `button--ghost` — zwei sahen gleich aus, und der dritte war auf
+Pergament praktisch unsichtbar. Im Playtest hat niemand gesehen, dass sich ein
+Angebot anpassen laesst. Jetzt gruen, rot und gelb, und auf jedem steht
+weiterhin, was er tut: wer Rot und Gruen nicht unterscheidet, liest die Woerter.
+
+**Fehlt das Annehmen, tritt der Satz an seine Stelle — Ablehnen bleibt.** Der
+gesperrte Knopf mit der Erklaerung daneben liess einen erst hindruecken und dann
+lesen. Jetzt steht „Nicht genügend Ressourcen" dort, wo der Knopf war. Das
+Ablehnen daneben ist eine bewusste Abweichung von der woertlichen Bitte: der
+Anbieter wartet auf eine Antwort, und ohne Ablehnen bekaeme er sie erst, wenn
+die Frist ablaeuft — ein Fenster, das einem den kurzen Weg nimmt, haelt den
+ganzen Tisch auf.
+
+**„Gegenangebot" heisst jetzt ueberall „Angebot anpassen".** Knopf, Hinweis und
+Absender tragen dasselbe Wort (Regel 8). Der Verlaufssatz („haelt dagegen")
+bleibt, er beschreibt das Ergebnis und nicht die Bedienung.
+
+**Der Bauvorrat steht neben den Wuerfeln.** `piecesLeft` lag seit Etappe 4 in
+jeder `PlayerView` und wurde nirgends gezeigt; dass die letzte Strasse gelegt
+war, merkte man an der Absage des Servers. Drei Zeilen, je die Silhouette vom
+Brett in der eigenen Farbe und die Zahl daneben. **Die Null verschwindet nicht**,
+sondern wird blass: ein fehlender Eintrag saehe aus wie ein Anzeigefehler, und
+gerade die Null ist die Auskunft, auf die es ankommt. Das ist bewusst anders als
+bei der Hand, wo eine Ressource ohne Karten keinen Stapel hat — dort ist das
+Fehlen die Auskunft, hier waere es das Gegenteil.
+
+**Der Einladungslink tritt nicht mehr von selbst bei.** Sein Code stand beim
+ersten Rendern in `codeRef`, und der Anmelde-Effekt schickte gleich hinter
+`hello` ein `room.join` hinterher. Wer dem Link folgte, sass als „Gast" am Tisch,
+bevor er einen Namen eintippen konnte. `codeRef` faengt jetzt bei `null` an; der
+Link fuellt nur noch das Feld auf dem Startbildschirm. Der Reconnect haengt nicht
+daran: nach einem echten Beitritt steht der Code drin, und wer in genau einem
+Raum sitzt, bekommt ihn ohnehin von `hello` aus geoeffnet.
+
+**Umbenennen ist `user.rename` und nicht `room.rename`.** Der Name gehoert der
+Person und nicht dem Sitz (Regel 7). Der Server schreibt ihn in `users` und zieht
+ihn durch **jeden** Raum nach, an dem diese Person sitzt — seit Etappe 6 koennen
+das mehrere sein, und ein Name, der nur in einem ankommt, ist danach zweierlei.
+Laeuft dort eine Partie, geht auch der Spielstand hinaus: die Namen stehen in der
+`PlayerView`, und ohne das hiesse der Umbenannte erst nach dem naechsten Zug
+anders. Nicht ueber `hello` mit neuem Namen, obwohl das schon umbenennen kann:
+das waere die halbe Anmeldung fuer eine Textaenderung, samt allem, was daran
+haengt.
+
+**Die Farbe ist keine Funktion des Platzes mehr.** `seatColorAt(index)` ging,
+solange sie niemand aussuchen konnte. Jetzt gibt `firstFreeColor` dem Naechsten
+die erste freie, `chooseColor` laesst nehmen, was frei ist, und `leaveRoom`
+**faerbt niemanden mehr um** — bis Etappe 9 zaehlte es die Verbliebenen neu
+durch, und wer sich Violett ausgesucht hatte, sass danach in Rot, weil vor ihm
+jemand gegangen war. Belegt ist belegt, kein Tausch: zwei Spieler, die
+gleichzeitig tauschen wollen, waeren eine Verhandlung und keine Einstellung. Wer
+die Farbe eines anderen will, fragt ihn.
+
+**Die Farbwahl trennt sich vom Umstellen des Tisches.** `room.color` ist eine
+eigene Nachricht und kein Feld an `room.configure`: die Tischgroesse stellt der
+Gastgeber fuer alle ein, die Farbe waehlt jeder fuer sich. Zwei verschiedene
+Berechtigungen in einer Nachricht waeren eine Nachricht, die man nur zur Haelfte
+annehmen kann. Im Wartebereich ist das sichtbar: „Dein Platz" ist ein eigener
+Kasten ohne `canConfigure` davor.
+
+**Sechs Farben mit Namen.** `SEAT_COLOR_NAMES` in `shared`, gleiche Reihenfolge
+wie `SEAT_COLORS` und nur darueber verbunden — eine Tabelle von Farbwert auf
+Namen waere ein zweiter Ort, an dem jemand eine Farbe aendern koennte, ohne den
+Namen mitzuaendern. Eine Auswahl aus sechs Flecken laesst sich sonst weder
+vorlesen noch benennen, und Rot neben Orange ist nicht fuer jeden ein
+Unterschied.
+
+**Der freie Platz zeigt keine Farbe mehr.** Bis Etappe 9 stand er in der Farbe,
+die dieser Platz bekommen wuerde. Das war ein Versprechen, das der Wartebereich
+seit der Farbwahl nicht mehr halten kann — der Naechste sucht sie sich aus.
+Jetzt `currentColor`.
+
+**Das Siegpunktziel steht am Raum und geht beim Start ins RuleSet.** Eingestellt
+wird es im Wartebereich, und dort gibt es noch kein Spiel, in dem es stehen
+koennte. `startGame` schreibt `{ ...CLASSIC_RULES, victoryPointGoal }` genau
+einmal in die Partie; ab da traegt sie ihr eigenes Regelwerk (es geht als Teil
+des Startzustands auf die Platte), und eine spaetere Aenderung am Raum erreicht
+sie nicht mehr. Derselbe Grund, aus dem eine alte Partie eine Aenderung an
+`CLASSIC_RULES` ueberlebt.
+
+**Fuenf bis zwanzig, Vorgabe zehn — und die Grenzen stehen in `shared`.**
+`RuleSetSchema` laesst ab 2 alles zu; es beschreibt, was das Regelwerk
+darstellen kann, nicht was ein Tisch sinnvoll einstellt.
+`MIN_VICTORY_POINT_GOAL` und `MAX_VICTORY_POINT_GOAL` sind die Grenzen fuer die
+Bedienung, und sie stehen in `shared`, weil der Server dieselbe Grenze noch
+einmal prueft. Im Protokoll traegt das Feld eine Vorgabe: eingestellt wird es im
+Wartebereich, und ein Pflichtfeld zwaenge den Startbildschirm zu einer Frage, die
+dort niemand stellen will.
+
+**Vierter Migrationsschritt: `room_seats.color` und `rooms.victory_point_goal`.**
+Beides waren Ableitungen und deshalb keine Spalte. Wer sie einstellen kann, muss
+sie speichern — sonst sitzt nach jedem Neustart jeder wieder in der Farbe seines
+Platzes, und ein Wartebereich mit Ziel 15 startet mit 10. Der Bestand bekommt
+genau das, was vorher galt: die Farbe der Position und die Zehn aus der
+Schachtel. Die sechs Farbwerte stehen als Zeichenkette im Schritt und nicht als
+Import aus `SEAT_COLORS` — ein Schritt, der eine Konstante liest, aendert sein
+Ergebnis, sobald jemand die Konstante aendert, und waere dann nicht mehr der
+Schritt, der einmal veroeffentlicht wurde. Dieselbe Regel wie bei den 60 Tagen in
+`stepSessionExpiry`.
+
+**Umlaute nur dort, wo ein Spieler liest.** Betroffen sind die Wortlisten
+(`Hügel`, `Wüste`), die Verlaufssaetze, die Ablehnungstexte der Regeln und des
+Servers und die restlichen Oberflaechentexte im Client. **Nicht** angefasst:
+Kommentare, Testnamen und die geworfenen Invarianten, die ihre Funktion vorn im
+Satz nennen (`coastalEdgeRing:`, `resourceAt:`, `hexRing:`). Die sind an uns
+gerichtet und folgen derselben Konvention wie die Bezeichner. Die Grenze ist
+sichtbar: was ein `violation` oder ein `fail` traegt, hat Umlaute; was ein
+`throw new RangeError` traegt, nicht.
+
+**Ein leerer Name geht gar nicht erst hinaus.** Nebenbefund beim Umbau von
+`identify`: `DisplayNameSchema` verlangt mindestens ein Zeichen, und der Server
+haette damit die ganze Anmeldung abgewiesen statt nur den Namen. Getroffen haette
+das „Zurück in die Partie" bei geleertem `localStorage` — man kaeme in keine
+eigene Partie mehr hinein, mit einer Meldung ueber ein Feld, das man nirgends
+sieht.
+
+### Abweichungen von der Liste
+
+**Punkt 8 woertlich haette Annehmen _und_ Ablehnen entfernt.** Nach Rueckfrage
+bleibt Ablehnen stehen — Begruendung oben.
+
+**Punkt 3 ist ueber den Handelsdialog hinausgegangen.** Gefragt war das Kreuz im
+Handelsfenster; bekommen haben es alle vier schliessbaren Dialoge (Handel, Wen
+bestehlen, Erfindung/Monopol, Konto). Ein Kreuz, das nur in einem Fenster oben
+rechts sitzt, ist keine Stelle, an der man sucht.
+
+### Offene Punkte
+
+- **Kein Browser-Durchlauf.** Die Zahlen oben sind gemessen, die Oberflaeche ist
+  es nicht: auf 5173 lief bereits ein Dev-Server, und ein zweiter daneben waere
+  ein Streit um den Port gewesen. Ungesehen sind damit **alle** neuen Flaechen —
+  die roten Chips, die Vorratsanzeige neben den Wuerfeln, die Farbwahl und das
+  Ziel im Wartebereich, das Kreuz in den Dialogen und die drei farbigen
+  Antwortknoepfe. Zwei Stellen sind dabei am ehesten verdaechtig: die Ablage
+  unten links ist auf 14,5 rem gedeckelt (`.panel`), und Wuerfel plus Vorrat
+  teilen sich diese Breite jetzt zu zweit; und `.lobby__you` ist ein vierter
+  Kasten in einer Spalte, die vorher drei hatte.
+- **Die Farbwahl kennt keinen Tausch.** Wer die Farbe eines anderen will, muss
+  ihn bitten, sie freizugeben. Bewusst so — ein Tausch waere eine Verhandlung
+  mit Zusage, also eher ein zweites `tradePending` als eine Einstellung.
+- **Das Siegpunktziel steht nur im Wartebereich.** Waehrend der Partie sagt keine
+  Flaeche, gegen welche Zahl gespielt wird; sie liegt in
+  `view.rules.victoryPointGoal` und waere im Statusfeld unterzubringen.
+- **Umbenennen waehrend einer laufenden Partie ist erlaubt und im Browser
+  ungeprueft.** Der Verlauf behaelt dabei die alten Saetze — sie sind zu dem
+  Zeitpunkt entstanden, zu dem die Person noch so hiess. Das ist gewollt, koennte
+  aber beim Lesen verwirren.
+- **Die zwei Viewport-Breakpoints aus Etappe 8 sind weiterhin ungesehen**, und
+  die neuen Flaechen sind in ihnen erst recht nicht geprueft.
+- Die offenen Punkte aus Etappe 9 (Volume, HTTPS, Sicherung, Drossel im
+  Speicher, eine Instanz) gelten unveraendert weiter.
+
+### Naechste Etappe
+
+Diese hier im Browser ansehen, zu zweit ueber das Netz, mit dem Einladungslink —
+das ist die Probe, die alle neun Punkte gleichzeitig trifft. Danach der Rest von
+Etappe 9 (Volume, HTTPS) und dann Etappe 10.
+
+## Zweiter Durchgang nach dem Playtest — acht Anpassungen (2026-08-14, `etappe-10-playtest`)
+
+Stand: 2026-08-14, Branch `etappe-10-playtest`, direkt auf den ersten Durchgang
+gesetzt.
+
+Diesmal ging es weniger um Fehlendes als um Missverstaendliches: drei der acht
+Punkte betreffen Stellen, an denen die Oberflaeche etwas zeigte, das man anders
+gelesen hat, als es gemeint war.
+
+### Abnahme
+
+| Pruefung            | Ergebnis                                                                     |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `pnpm typecheck`    | gruen (`tsc -b`, alle drei Pakete)                                           |
+| `pnpm test`         | 976 Tests gruen (shared 576, server 161, client 239)                         |
+| `pnpm build`        | gruen, Client-Bundle 391,10 kB (115,96 kB gzip), CSS 29,73 kB (6,80 kB gzip) |
+| `pnpm format:check` | gruen                                                                        |
+| Browser             | **nicht gelaufen** — siehe „Offene Punkte"                                   |
+
+### Der Fall, der zuerst gemessen und dann erklaert wurde
+
+**„Am Brettrand sind die Strassen unsichtbar" — am Element lag es nicht.** Vor
+jeder Aenderung eine Sonde: ein Brett in eine Datei gerendert und nachgesehen,
+wo eine Kuestenstrasse landet. Ergebnis: alle 30 Kuestenkanten liegen in der
+`viewBox` (null Punkte ausserhalb), die Strasse traegt `road road--built`, sie
+traegt ihre Farbe im `style`, und sie steht in der Zeichenreihenfolge hinter
+allen Feldern. Es war also nichts weg — es war nur nichts zu sehen.
+
+Der Grund ist der Untergrund. Eine Strasse im Inneren liegt zwischen zwei hellen
+Gelaendefeldern; eine an der Kueste liegt zur Haelfte auf der dunklen See, und
+ein dunkelblauer (`#2c6fbb`) oder violetter (`#8e5bb5`) Streifen darauf
+verschwindet. Die Loesung ist die aus der Kartografie: **eine Kontur unter der
+Strasse**, in derselben Tinte wie die Feldraender.
+
+Die Kontur wird in einem **eigenen Durchgang** gezeichnet - erst alle Konturen,
+dann alle Strassen. Ein Wrapper je Kante waere naheliegender gewesen und haette
+an jeder Kreuzung die Kontur der zweiten Strasse ueber die Farbe der ersten
+gelegt.
+
+### Getroffene Entscheidungen
+
+**Ein Gegenangebot ist eine Frage und keine Auskunft.** Es stand als Zeile
+zwischen „lehnt ab" und „nimmt an", in derselben Form - und die Richtung stand
+aus der Sicht des Konternden da („Ben bietet 1 Erz für 3 Holz"). Wer sein
+eigenes Angebot vor Augen hat, liest das zwangslaeufig falsch herum. Jetzt ein
+eigener Kasten mit zwei **beschrifteten** Zeilen aus der Sicht dessen, der ihn
+liest: „Du gibst" und „Du bekommst". Keine Reihenfolge mehr, die man raten muss.
+
+**Neue Aktion `rejectCounter`.** Der Anbieter konnte ein Gegenangebot nur
+annehmen oder sein ganzes Angebot zuruecknehmen. Wer von einem von drei
+Mitspielern etwas bekam, das er nicht wollte, beendete damit die Runde fuer alle
+
+- auch fuer die, die noch ueberlegten. Das Gegenstueck zu `acceptTrade`, und wie
+  dieses ohne Mengen: welches Gegenangebot gemeint ist, steht in der Antwort des
+  Partners.
+
+**Eine vierte Antwortart `rejected` statt eines bequemen `declined`.** Sie als
+Ablehnung zu fuehren waere ein Feld weniger gewesen und im Verlauf eine Luege:
+dort staende, der Konternde habe abgelehnt, obwohl er gerade das Gegenteil getan
+hat. Sie traegt die Mengen des ausgeschlagenen Angebots weiter - geloescht
+stuende der Partner wieder auf `undefined` und duerfte erneut antworten, und aus
+dem Ausschlagen wuerde eine Einladung, dasselbe noch einmal zu schicken.
+
+**Ausschlagen laeuft ueber `withResponse` und nicht von Hand.** Dort steht die
+eine Stelle, an der eine Runde endet, sobald niemand mehr zusagt oder kontert -
+und genau das kann ein Ausschlagen ausloesen, wenn es die letzte offene Antwort
+war.
+
+**Wer geantwortet hat, sieht keine Knoepfe mehr.** Vorher standen drei gesperrte
+da und kein Wort darueber, worauf man wartet. Ein gesperrter Knopf ist ein
+Angebot, das man zurueckzieht, ohne es zu sagen. Jetzt steht da, was man getan
+hat („Du hast abgelehnt.") und was noch fehlt („Es fehlt noch die Antwort eines
+Mitspielers."). Ein **offenes** Gegenangebot zaehlt dabei nicht als fertige
+Antwort: der Anbieter kann es ausschlagen, und dann ist man wieder dran.
+
+**Gebaut wird in zwei Schritten.** Vorher leuchtete das Brett an jeder Stelle,
+an der irgendetwas moeglich war - Strassen, Siedlungen und Staedte gleichzeitig
+-, und was ein Klick brachte, ergab sich aus dem Ort. Jetzt sagt man erst was,
+dann zeigt das Brett wo. Der Knopf traegt dabei die eigentliche Auskunft: er ist
+genau dann bedienbar, wenn es Karten **und** eine Stelle gibt - beides steckt
+schon in `legalActions`, es wurde nur nie gezeigt.
+
+**Die Gruendung und der Raeuber bleiben einstufig.** Beides ist keine Wahl: in
+der Gruendung gibt es genau eine Sache zu setzen, und der Raeuber muss versetzt
+werden. Ein Knopf davor waere ein Schritt, der nichts entscheidet.
+
+**`buildable` zaehlt Stellen und liefert kein `boolean`.** „An drei Stellen
+moeglich" sagt mehr als „moeglich" (es steht im `title`), und eine Null ist
+dieselbe Auskunft wie ein `false`, nur ohne zweiten Typ.
+
+**Der Kaufstapel ist Material und kein Knopf.** „Karte kaufen" stand als dritter
+Knopf zwischen „Handel" und „Zug beenden", in derselben Form wie die Bedienung
+daneben - obwohl es das einzige Spielmaterial unter ihnen war. Jetzt ein Stapel
+aus drei Ruecken mit der Zahl darauf, zwischen Hand und Bauleiste. Der Ruecken
+traegt **kein Motiv**: was auf einer Entwicklungskarte steht, weiss beim Kauf
+niemand, auch der Kaeufer nicht.
+
+**Die Ablage ist eine Zeile geworden.** Sie liest sich von links nach rechts wie
+ein Zug: was man hat, was man kaufen kann, was man damit tut. Als Spalte war sie
+hoch und schmal; als Zeile wird sie flacher, und das Brett darueber gewinnt.
+
+**Die Stadt ist keine groessere Siedlung mehr.** Sie war derselbe Punkt mit
+groesserem Radius - die schwaechste Unterscheidung, die es gibt: Groesse liest
+man nur im Vergleich, und zwei eigene Bauwerke stehen selten nebeneinander. Jetzt
+ein Haus und ein Haus mit Anbau, unterscheidbar auch einzeln und in Graustufen.
+
+**Die Silhouetten stehen in `board/shapes.ts` und damit an einem Ort.** Brett,
+Wartebereich, Vorratsanzeige und Bauleiste zeichnen dieselben Pfade. Wer unten
+in seinem Vorrat eine Stadt sieht, erkennt sie oben auf dem Brett wieder; vier
+Zeichnungen fuer dasselbe Bauwerk waeren vier Gelegenheiten, dass eine abweicht.
+
+**Die Konturbreite steht im Pfadmass, nicht im Brettmass.** Der Pfad steckt in
+einem `scale(0.02)`; eine Linienbreite von 0.03 waere darin auf ein Sechzigstel
+geschrumpft. 1,4 im Pfadraum ergeben rund 0.03 auf dem Brett - genau so viel wie
+vorher am Punkt.
+
+**`key` ist die ganze Mechanik hinter „der Ausbau war nicht zu sehen".** Beim
+Ausbau zur Stadt bleibt der Knoten derselbe; React aktualisiert das Element,
+statt es neu einzuhaengen, und eine Animation, die beim Einhaengen laeuft, laeuft
+dann gar nicht. Mit `key={building.kind}` wird aus dem Ausbau ein neues Element,
+und der Ring geht auf. Dasselbe beim Raeuber: der Ring am Zielfeld haengt an
+`key={state.robber}`.
+
+**Der Raeuber zieht laenger und mit Bogen** (460 ms statt 300, `cubic-bezier`
+mit Ueberschwinger). Beides - Ring und Bogen - ist Beiwerk: wo er steht, sagt
+die Figur selbst und `data-hex` daneben. Bei abgeschalteter Bewegung steht der
+Ring sofort an seinem Ende, also unsichtbar, und das ist hier richtig.
+
+**Verlauf und Status haben die Ecken getauscht.** Wer am Zug ist, liest man
+staendig und beilaeufig; den Verlauf liest man selten und dann genau. Das
+Beilaeufige gehoert in die Naehe der Ablage, in der man ohnehin handelt. Vorher
+war es umgekehrt, und der Blick sprang bei jedem Zug quer ueber den Bildschirm.
+
+### Was beim Testen aufgefallen ist
+
+**Ein Test, der auf einen gesperrten Knopf drueckt, prueft nichts.** Der erste
+Entwurf zum Zwei-Schritt-Bauen tat genau das: er waehlte „Siedlung", und in
+diesem Stand sind nach der Gruendung alle Knoten durch die Abstandsregel
+gesperrt. Der Test war gruen und hat nichts gemessen. Nachgezaehlt (7 Strassen,
+2 Staedte, 0 Siedlungen), dann mit Strasse und Stadt geprueft.
+
+**Zwei Entwuerfe mit `if (disabled) return` sind ersatzlos geflogen.** Ein Test,
+der sich selbst ueberspringt, wenn die Vorbedingung fehlt, ist ein gruener
+Haken ohne Aussage. Statt dessen ein von Hand gesetzter Zustand mit Karten fuer
+alles - welche Rohstoffe die Gruendung abwirft, haengt am Seed.
+
+### Abweichungen
+
+**Punkt 6 hat auch die Siedlung angefasst.** Gefragt war nur die Stadt. Eine
+Stadt als Haus mit Anbau neben einer Siedlung als Punkt waeren aber zwei
+Formensprachen auf einem Brett gewesen.
+
+### Offene Punkte
+
+- **Weiterhin kein Browser-Durchlauf.** Die Zahlen sind gemessen, die Oberflaeche
+  nicht. Ungesehen sind vor allem: die Ablage als Zeile (sie reicht jetzt bis
+  `right: 15.5rem` und teilt sich die untere Bahn mit dem Statusfeld), die
+  Bauleiste, der Kaufstapel, die beiden neuen Silhouetten auf Brettgroesse und
+  die zwei Ringe.
+- **Ob die Kontur reicht, ist eine Vermutung mit Begruendung.** Gemessen ist,
+  dass am Element nichts fehlte; dass der Untergrund die Ursache war, folgt aus
+  den Farbwerten und nicht aus einem Bild. Sollte es weiter unsichtbar sein,
+  liegt es woanders, und dann ist die Sonde in der Aenderungsgeschichte der
+  richtige Anfang.
+- **Ein ausgeschlagenes Gegenangebot laesst sich nicht erneuern.** Wer
+  dagegengehalten hat und ausgeschlagen wurde, ist fuer diese Runde raus.
+  Bewusst so: alles andere waere eine Einladung, dasselbe noch einmal zu
+  schicken.
+- **Der Bau-Modus ueberlebt keinen fremden Zug.** Jeder neue Stand raeumt ihn
+  weg - was eben noch ging, kann jetzt am Vorrat oder am Nachbarn scheitern.
+  Online heisst das: waehrend andere ziehen, muss man neu waehlen.
+- Die offenen Punkte des ersten Durchgangs und aus Etappe 9 gelten weiter.
+
+### Naechste Etappe
+
+Unveraendert: diese beiden Durchgaenge im Browser ansehen, zu zweit ueber das
+Netz. Es ist inzwischen die einzige Probe, die noch aussteht - und die einzige,
+die die Haelfte dieser Punkte ueberhaupt beruehrt.
+
+## Ton und Einstellungen (2026-08-16, `etappe-10-ton`)
+
+Das Spiel war stumm. Jetzt hat es 23 Klaenge, einen Einstellungen-Dialog mit
+drei Lautstaerken und in der Online-Partie eine Abstufung: eigene Zuege voll,
+fremde gedaempft, was mich angeht wieder voll.
+
+Entwurf: `docs/superpowers/specs/2026-08-16-ton-und-einstellungen-design.md`,
+Plan: `docs/superpowers/plans/2026-08-16-ton-und-einstellungen.md`.
+
+### Der Fund, der alles bestimmt hat
+
+**Online erfaehrt der Client nie, welcher Zug geschehen ist.** `GameEvent` trug
+`version`, `view`, `actions`, `sentAt` und `entry` - einen fertigen deutschen
+Satz. Der Hotseat hat die `GameAction` in der Hand, online liegt nur Text vor.
+Ohne Eingriff braeuchte der Ton zwei Ableitungen: eine aus der Aktion, eine aus
+einem Satz oder aus dem Zustandsunterschied.
+
+Deshalb traegt `GameEvent` jetzt `move: { type, actor }` - **was** passiert ist.
+Was daraus wird, entscheidet der Empfaenger; eine Ausgabeanweisung gehoerte
+nicht ins Protokoll. `GameActionTypeSchema` ist ein `z.enum` mit zwei
+Waechtern: `satisfies` faengt Tippfehler, ein `AssertNever` faengt vergessene
+Zweige. Der zweite ist **exportiert**, weil `noUnusedLocals` einen lokalen Typ
+verwirft - und ein weggeworfener Waechter waecht nichts. Nachgewiesen: eine
+entfernte Zeile ergab `Type '"buildCity"' does not satisfy the constraint
+'never'`.
+
+Nebenbei faellt eine Kopie weg. `broadcastGame` bekommt statt des fertigen
+Satzes den Uebergang (`{ before, action, after }`) und rechnet `entry` **und**
+`move` selbst aus; vorher rief jede der vier Aufrufstellen `describeTransition`
+eigenhaendig, und die fuenfte Kopie fuer `move` waere dazugekommen. `seatsOf`
+in `ws/handlers/room.ts` ist damit ersatzlos verschwunden.
+
+### Aufbau
+
+Sieben Module unter `apps/client/src/audio/`, geschnitten nach dem, was eine
+Entscheidung trifft, und dem, was nur verdrahtet:
+
+- `cues.ts` - 23 Namen, `Sound`, `SoundEvent`, `Situation`
+- `cueFor.ts` - Zug plus Lage ergibt Klaenge. Rein, 10 Tests, kein DOM.
+- `situation.ts` - **zwei** Erheber, weil der Hotseat `GameState` haelt und
+  online nur `PlayerView` vorliegt. Eine Funktion mit zwei Zustandswelten
+  waeren zwei Funktionen mit einem Namen; dazwischen steht eine Erhebung aus
+  acht Feldern.
+- `voices.ts` - jeder Klang als **Daten** (Schichten aus Oszillator oder
+  gefiltertem Rauschen, Huellkurve in ms). Deshalb braucht das Wuerfelpoltern
+  keinen Sonderfall: fuenf Rauschschichten bei `at: 0, 90, 170, 260, 380`.
+- `samples.ts` - alle 23 Cues als auskommentierte Zeilen. Synthese ist die
+  Voreinstellung; eine mp3 ist die Ausnahme und faellt bei Fehler auf die
+  Synthese zurueck.
+- `settings.ts` - drei Busse, duldsam gelesen wie das Sitzungsgeheimnis.
+- `engine.ts` - die einzige Datei mit WebAudio, **bewusst ohne Test**: in node
+  gibt es keinen `AudioContext`, ein nachgebauter prueft den Nachbau.
+
+Der Klang landet als Feld im Zustand (`sound: { seq, sounds }`), abgespielt
+wird an der Kante. Die Reduzierer bleiben rein (Regel 2).
+
+Knopfklicks fassen **keinen** der rund hundert Knoepfe an: ein delegierter
+`pointerdown`-Listener am Fenster, `closest('button')`, `data-sound` als einzige
+Ausnahme. Derselbe Listener ist die Freischaltung - Browser geben Audio erst
+nach einer Nutzergeste frei, und die erste Geste ist ohnehin ein Klick.
+
+### Was der Browser-Durchlauf gefunden hat
+
+Diesmal **in** der Abnahme und nicht dahinter. Gemessen mit einer Sonde, die
+`AudioContext.createOscillator`/`createBufferSource` umhuellt und mitschreibt,
+was wirklich im Graphen landet.
+
+Bestaetigt: erster Klick erzeugt genau einen Kontext und eine Rauschstimme
+(`ui.click`), keine Autoplay-Warnung. `build.settlement` = ein Klopfen plus
+330 Hz (A3 x 1,5). `dice.land` folgt der Augensumme - 349 Hz bei einer Drei,
+415 Hz bei einer Sechs, 523 Hz bei einer Zehn; die Sieben bekommt stattdessen
+`dice.seven` auf 165 Hz. `moveRobber` = Tiefensweep plus 110 Hz.
+
+Drei Befunde, alle behoben:
+
+1. **Das Zahnrad war eine Sonne.** Ein Kreis mit acht Strahlen ohne Rad
+   herum ist ueberall das Helligkeitssymbol. Ein zweiter Kreis macht aus
+   Strahlen Zaehne.
+2. **Das Zahnrad lag auf dem Verlauf.** Gemessen: Knopf 1519-1553, Panel
+   1478-1556. Es dort liegen zu lassen waere der `.button--ghost`-Fehler
+   gewesen - seine Farbe ist fuer Tiefsee gemischt und auf Pergament kaum
+   sichtbar. Der Verlauf weicht deshalb nach unten aus (`top: 3.3rem`), nicht
+   zur Seite: so bleibt seine Kante an der Bildschirmkante.
+3. **Die Stimmensperre verschluckte den Ertrag.** Der Verlauf meldete
+   „Spieler 1 +2", und kein Blip kam. Ursache: `MAX_VOICES = 8` zaehlte
+   **Schichten**, und ein Wurf kostet allein sechs (Klick plus fuenf Ticks) -
+   alles danach fiel weg. Gezaehlt werden jetzt **Klaenge** (`MAX_CUES = 6`,
+   je Cue eine Uhr ueber seine Dauer). Ein Klang ist eine Einheit; angefangen
+   wird er ganz oder gar nicht.
+
+Dazu eine Luecke zwischen Spec und Code, die erst der Verlaufssatz sichtbar
+gemacht hat: `gain.self` spielte immer dieselbe Dreiklangfigur, versprochen war
+„ein Blip je Karte, bei vier gedeckelt". `Sound.count` kuerzt das Rezept jetzt
+auf die Zahl der Karten - bei „+1" klingt ein Blip, bei „+2" zwei.
+
+Und noch eine Messung: bei 392 px lagen die letzten drei Pixel von „Anmelden"
+unter dem Zahnrad - unsichtbar knapp, dort aber nicht mehr klickbar. Das
+Polster in der schmalen Media Query steht jetzt auf 3,25rem. Nachgemessen bei
+360, 396, 768 und 1280 px: keine Ueberlappung mehr.
+
+### Lehren
+
+- **Ein Effekt unter `StrictMode` laeuft doppelt.** Ohne die `seq`-Sperre in
+  `useCueSound` klaenge in der Entwicklung jeder Zug zweimal, und man suchte
+  den Fehler im Klang statt im Effekt.
+- **Eine Grenze, die die falsche Einheit zaehlt, ist ein Fehler.** Acht
+  Schichten klangen nach „reichlich" und waren weniger als zwei Klaenge.
+- **Der Verlaufssatz ist die beste Probe fuer den Ton.** „+2" gegen zwei Blips
+  ist eine Zusicherung, die man ohne Ohren pruefen kann - und sie hat beide
+  Klangfehler aufgedeckt.
+
+### Offene Punkte
+
+- **Gehoert hat das noch niemand.** Geprueft ist, _dass_ zur richtigen Zeit die
+  richtigen Frequenzen geplant werden, nicht _wie_ es klingt. Ob die 23
+  Rezepte zusammen einen Tisch ergeben, entscheidet das erste Zuhoeren.
+- **Die Abstufung fremder Zuege ist nur im Test belegt**, nicht zu zweit ueber
+  das Netz. Dafuer braucht es zwei Fenster und zwei Konten.
+- **Musik gibt es nicht.** Bus, Regler und Speicher stehen; die Spur ist leer.
+- Der Spielbildschirm hat weiterhin keine einzige Media Query - der
+  Verlaufs-Umzug aendert daran nichts.
+
+## Der Tisch — Layout ohne Rahmen, Haefen im Wasser (2026-08-19, `main`)
+
+Vier Sachen aus einer Sitzung: ein Bauwerk, das beim Bauen riesig ueber dem
+Brett stand, Haefen unter Strassen, ein neues Layout und der Zwei-Schritt-Bau
+in der Gruendung. Alle vier vom Menschen am Bildschirm gemeldet, keine davon
+von einem Test.
+
+### Das riesige Haus
+
+Beim Bauen erschien die Silhouette einmal ganz gross quer ueber dem Brett und
+sprang dann an ihren Platz. Der Pfad trug seine Lage als `transform`-Attribut
+und gleichzeitig ueber `.building` die Einblendung `settle`, die `transform`
+animiert. **Eine CSS-Animation schlaegt das gleichnamige
+Praesentationsattribut** - fuer 180 ms war `translate(...) scale(0.023)` schlicht
+weg, und der Pfad stand in seinem eigenen Mass da: rund 20 Einheiten breit, wo
+ein Feld eine misst, und am Nullpunkt statt am Knoten.
+
+Eingeschleppt wurde das in `dd3d467`: `settle` stammt aus `d8b8eea`, damals war
+das Bauwerk ein `<circle cx cy r>` ohne `transform` - kein Konflikt. Der
+Wechsel auf einen Pfad mit `transform`-Attribut hat die Kollision erst erzeugt.
+Jetzt traegt eine Gruppe die Lage und wird nie animiert, der Pfad darin bewegt
+sich in seinem eigenen Raum.
+
+### Haefen ins Wasser
+
+Die Marke sass auf `edgeMidpoint` - derselben Stelle, ueber die eine Strasse
+laeuft. Wer auf einer Hafenkante baute, legte seinen Balken mitten durch den
+Hafen, und weil die Strassen spaeter gezeichnet werden, blieb vom Hafen nichts.
+
+`harborAnchor` setzt sie jetzt `HARBOR_OFFSET = 0.42` in die See, im rechten
+Winkel von der Kante weg. Die Richtung kommt aus dem **angrenzenden Landfeld**
+und nicht aus dem Brettschwerpunkt: beim runden `classic34` liefe beides aufs
+selbe hinaus, bei einem laenglichen Szenario schoebe der Schwerpunkt die Marke
+aufs Land. Dazu zwei Stege zu den Endknoten - bis dahin stand **nirgends,
+welche zwei Knoten ein Hafen bedient**.
+
+### Der Tisch
+
+Regel: **was man anfassen koennte, behaelt einen Koerper; was nur Auskunft ist,
+wird Schrift auf dem Tisch.** Vier Dinge trugen denselben Pergamentkasten
+(Spielerliste, Status, Bedienleiste, Hand) - genau der liess das Spiel wie eine
+Anwendung aussehen. Karten, Wuerfel, Kaufstapel, Bauteile und Knoepfe behalten
+ihren hellen Koerper und bekommen `--lift`, einen kurzen Kontaktschatten dicht
+unter der Kante. Das ist die eigentliche Arbeit: Rahmen wegzunehmen macht Dinge
+nur flach, der Schatten macht sie liegend.
+
+Technisch haengt es an zwei Zeilen - `.panel` und `.hand` definieren `--ink`
+lokal auf die Farben fuer dunklen Grund um, und alles darin folgt. Dafuer gibt
+es `--ink-base`, das nie ueberschrieben wird, damit die hellen Dinge _innerhalb_
+ihre dunkle Tinte zurueckholen koennen.
+
+Dazu: `.game` ist ein Raster (`minmax(0, 1fr) auto`) statt `bottom: 11rem` im
+Einzug des Bretts - eine Zahl, die an zwei Stellen stimmen muss, stimmt
+irgendwann an einer nicht mehr. Der Vorrat steht am Bauknopf statt als eigene
+Liste darueber (`StockPanel` entfaellt; es waren zwei Zeilen je Bauteil, eine
+zum Zaehlen, eine zum Druecken). Der Verlauf liegt hinter einem Symbol neben
+dem Zahnrad - was man selten liest, braucht eine Tuer und keine Wand. Der
+Phasentext in der Bedienleiste ist weg, er stand woertlich doppelt.
+
+### Zwei Schritte auch in der Gruendung
+
+Die Gruendung war einstufig, begruendet mit „ein Knopf davor entscheidet
+nichts". Das stimmt fuer sich und geht am Punkt vorbei: die Gruendung ist der
+Moment, in dem man die Bedienung **lernt**. Wer seine ersten vier Zuege macht,
+indem er irgendwo auf ein leuchtendes Brett klickt, steht in der ersten
+Hauptrunde vor einem dunklen Brett. `buildKindOf` kennt jetzt
+`placeSetupSettlement` und `placeSetupRoad`, alles andere folgt daraus. Kostet
+zwoelf zusaetzliche Klicks ueber die Gruendung; in derselben Funktion wieder
+raus.
+
+### Was der Browser-Durchlauf gefunden hat
+
+Diesmal in der Abnahme. Drei Fehler, keinen davon hat ein Test gesehen.
+
+1. **Die Wuerfel waren zwei leere Kaestchen.** `.die__pip` benutzt `var(--ink)`,
+   und der Wuerfel liegt in der Bedienleiste, die `--ink` auf Cremeweiss
+   umstellt: cremefarbene Augen auf cremefarbenem Wuerfel. Genau die Falle, fuer
+   die `--ink-base` gebaut war - und ausgerechnet der Wuerfel war vergessen.
+2. **Zwoelf Prozent Bretthoehe an einen geratenen Rand verschenkt.** Fuer die
+   Haefen war `PADDING` von 0.6 auf 0.95 gesetzt worden, geschaetzt. Gemessen
+   mit `getBBox()`: das Brett zeichnete 8.69 von 9.90 viewBox-Einheiten, die
+   Haefen ragen tatsaechlich nur **0.35** ueber die Feldecken. Die Zahl ist
+   jetzt in ihre zwei Gruende zerlegt (`PADDING = 0.2` Luft plus
+   `HARBOR_REACH = 0.35`). Ausnutzung 88 % -> **95 %**, Brett 633 von 663 px
+   Flaechenhoehe bei 1920x889.
+3. **Das Verlaufsblatt blieb schmal, obwohl `max-width: 21rem` dranstand.** Es
+   haengt in `.log-corner`, und die ist nur so breit wie ihr Symbol (74 px) -
+   als Containing Block deckelt sie die verfuegbare Breite eines absolut
+   positionierten Kindes. `max-width` war nie erreichbar; `width` steht ueber
+   dieser Rechnung.
+
+Dazu eine Regression aus dem Umbau selbst: ohne Kasten ist `.hand__head` so
+breit wie die Kartenreihe, also wanderte die Gesamtzahl mit jeder neuen Sorte
+ueber den Bildschirm. Sie steht jetzt fest neben ihrer Beschriftung.
+
+Karten von 2,3rem auf 4,6rem (Flaeche 5,8rem, Motiv 3,1rem) - die alte Groesse
+war eine Rechnung um einen Rahmen herum, den es nicht mehr gibt.
+
+### Lehren
+
+- **Eine CSS-Animation schlaegt das gleichnamige Praesentationsattribut.**
+  Dasselbe Muster wie die unsichtbaren Strassen in Etappe 3, nur andersherum:
+  dort schlug eine Regel ein Attribut, hier eine Animation. Wer Lage und
+  Bewegung auf dieselbe Eigenschaft legt, verliert die Lage.
+- **Eine umdefinierbare Farbvariable braucht einen unverschiebbaren
+  Grundwert** - und dann muss man jeden hellen Koerper darin auch wirklich
+  finden. Der Wuerfel war vergessen, und kein Test kann das sehen.
+- **Zahlen, die man beim Umbau schaetzt, bleiben stehen.** 0.95 statt 0.55 hat
+  ueber eine Sitzung hinweg zwoelf Prozent Brett gekostet und faellt nur beim
+  Messen auf.
+- **Ein `max-width` ist nur so gross wie der Containing Block erlaubt.**
+
+### Offene Punkte
+
+- Der Spielbildschirm hat weiterhin keine einzige Media Query - der Umbau auf
+  ein Raster macht das nicht besser und nicht schlechter.
+- Links und rechts vom Brett stehen je rund 380 px leere See. Das ist
+  Geometrie und kein Fehler: das Brett ist fast quadratisch, das Fenster breit,
+  also begrenzt die Hoehe. Groesser wird es nur mit einer flacheren Ablage - und
+  die ist jetzt von den grossen Karten bestimmt.
+- Die Gruendung kostet zwoelf zusaetzliche Klicks. Ob das im Spiel zaeh wirkt,
+  entscheidet der naechste Playtest.
+
+## Der Vorrat als Material — Bauteile ohne Rahmen, ein Ruecken fuer die Bank (2026-08-19, `main`)
+
+Nachtrag zum Layout aus derselben Woche, wieder vom Menschen am Bildschirm
+gemeldet: der Tisch stimmt fast, aber die Bauteile stehen noch als Knoepfe
+darauf. Drei Aenderungen, alle in der Ablage.
+
+### Die Bauteile liegen jetzt, statt zu klicken
+
+`.build__pick` war eine Pergamentplatte mit Rand, Schatten und Beschriftung -
+also genau dieselbe Form wie „Handel" und „Zug beenden", mit einer 1.05rem
+grossen Silhouette darin. Der Kaufstapel daneben hatte diese Form schon
+verloren, weil er Material ist und keine Bedienung; die drei Bauteile im
+eigenen Vorrat sind dasselbe und behielten sie trotzdem.
+
+Jetzt: kein Rahmen, keine Flaeche, die Silhouette von 1.05rem auf 2.5rem, die
+Vorratszahl von rechts daneben nach **unten darunter**. Was von der Platte
+bleibt, ist der kurze `drop-shadow` dicht unter der Kante - er ist der
+Unterschied zwischen „liegt auf dem Tisch" und „ist auf den Tisch gemalt", und
+er sitzt jetzt am gezeichneten Umriss statt am Kasten drumherum.
+
+**Der Name ist weg.** Er stand neben einer Form, die auf dem Brett dasselbe
+bedeutet - Haus, Haus mit Anbau, Balken - und war die Beschriftung eines
+Bildes, das schon spricht. Er bleibt im `title` und als vorgelesener Name des
+Knopfes; die Silhouetten unterscheiden sich einzeln und nicht nur im Vergleich
+(deshalb hat die Stadt seit dem Playtest einen Anbau statt eines groesseren
+Radius).
+
+Ohne Rahmen braucht die **Auswahl** eine neue Form: sie war eine goldene
+Fuellung des Knopfes. Jetzt ist sie ein Lichtfleck auf dem Tisch
+(`radial-gradient` unter dem Stueck), das Stueck steht dabei angehoben, und die
+Zahl darunter wechselt auf den Akzent. Drei Traeger fuer eine Auskunft, damit
+nicht die Farbe allein sie traegt.
+
+### Der Kartenruecken traegt jetzt doch ein Motiv
+
+In `DeckPanel.tsx` stand seit dem Playtest: **„Der Ruecken traegt kein Motiv"** -
+was auf einer Entwicklungskarte steht, weiss beim Kauf niemand, ein Ritter
+darauf waere ein Versprechen, das der Stapel nicht halten kann.
+
+Der Satz stimmt und war trotzdem die falsche Regel. Er verbietet Motive, die
+vom **Inhalt** reden. Ein Ruecken redet aber vom **Stapel** - „diese Karten
+gehoeren zusammen und keine verraet sich" - und das ist die aelteste Aufgabe
+eines Kartenruecken ueberhaupt. Ohne ihn war die Bank ein leeres beiges
+Rechteck neben fuenf gezeichneten Handkarten.
+
+Das Motiv, drei Lagen, alle aus vorhandenem Material:
+
+1. **Das Feld** - ein Gitter kleiner Sechsecke, versetzt gesetzt. Das Sechseck
+   ist die Grundform des Bretts; als Papierstruktur gelesen macht es aus dem
+   Ruecken eine Karte _dieses_ Spiels statt einer Ruckseite mit Rautenmuster.
+2. **Die Fassung** - zwei eingerueckte Linien, aussen kraeftig, innen fein. Die
+   Grammatik jedes Kartenruecken, den es je gab: sie macht aus einem Rechteck
+   eine Karte.
+3. **Das Siegel** - eine Scheibe aus Tiefsee-Tinte mit goldenem Ring, darin ein
+   Sechseck aus Pergamentlinie, **und das Sechseck ist leer**. Genau da steckt
+   der alte Einwand: das Siegel sagt „verschlossen", nicht „Ritter". Der
+   gestrichelte Ring darum ist die Perforation, an der man aufbricht.
+
+Keine Farbe, die es nicht schon gab: Pergament, Tiefsee, der Akzent aus
+`--fields`. Alle Werte stehen in `index.css`, keiner in der Komponente
+(Designregel 2); das SVG traegt nur Klassen. Die Rueckseiten der **Handkarten**
+sind ein anderer Stapel und behalten ihr eigenes Streifenmuster - gleiche
+Zeichnung hiesse gleiche Herkunft, und die stimmt nicht.
+
+Dazu die Groesse: 3.1rem x 4.2rem -> **4.6rem x 5.8rem**, also Handkartenmass.
+Dieselbe Sorte Ding in zwei Groessen war schon vorher schief, und ein Motiv
+haette in der kleinen ohnehin nichts sagen koennen. Die Stapelzahl sass mitten
+auf der obersten Karte und steht jetzt **darunter**, auf derselben Hoehe wie
+die Vorratszahlen unter den Bauteilen; die Aufschrift („Karte kaufen" /
+„Stapel leer") steht darunter. Kaufbar heisst jetzt: der Ring am Siegel wird
+kraeftig - die Auskunft sitzt im Motiv, weil es den Rahmen nicht mehr gibt, der
+sie vorher trug.
+
+### Zwei Bewegungen, und beide sind ein Griff
+
+Designregel 5 sagt: Bewegung erklaert einen Zustandswechsel oder entfaellt. Das
+hier ist der Grenzfall, den sie nicht nennt - eine Bewegung, die keinen Wechsel
+erklaert, sondern eine **Moeglichkeit**:
+
+- Das Bauteil hebt sich beim Darueberfahren und wird groesser, sein Schatten
+  laenger und weicher. Ohne den wachsenden Schatten liest sich die Hebung als
+  Verschiebung.
+- Die oberste Karte des Stapels hebt sich und kippt leicht - die Bewegung, mit
+  der man eine Karte von einem Stapel nimmt, also genau das, was der Klick tut.
+  Die Ruecken darunter bleiben liegen, sonst huepft der ganze Stapel.
+
+Beide haengen an `:hover` **und** `:focus-visible`: eine Ruckmeldung, die nur
+die Maus bekommt, ist eine halbe.
+
+Bei `prefers-reduced-motion` faellt die Verschiebung ganz weg statt schneller
+zu werden. **Der globale Block ganz oben kuerzt nur die Dauer** - ein Sprung um
+0.22rem in 0.01ms ist immer noch ein Sprung, und zwar ein besonders
+unangenehmer. Uebrig bleiben der laengere Schatten und der Lichtfleck; beide
+stehen ohnehin still.
+
+### Lehren
+
+- **Ein Verbot im Kommentar kann richtig begruendet und trotzdem zu weit
+  gefasst sein.** „Kein Motiv, weil der Inhalt geheim ist" hat auch das Motiv
+  verboten, das gar nicht vom Inhalt redet. Wer eine Regel aufschreibt, schreibt
+  dazu, _worauf_ sie zielt - sonst gilt sie spaeter fuer den Nachbarfall mit.
+- **Wer einen Rahmen wegnimmt, nimmt auch alles weg, was am Rahmen hing.** Die
+  Auswahlmarkierung war eine Fuellung, der Bereit-Zustand ein Rand. Beides
+  musste neu erfunden werden, und zwar im Ding selbst.
+- **`prefers-reduced-motion` kuerzt nur, was man ihm nennt** - schon wieder.
+  Beim Hauptmenue war es die Verzoegerung, hier ist es der Zielwert einer
+  Transition.
+
+### Der Browser-Durchlauf (statische Vorschau)
+
+Diesmal **vor** der Abgabe, und nicht am Spiel, sondern an einer nachgebauten
+Seite mit denselben Regeln - der Kaufstapel und die Bauleiste haengen sonst an
+einer laufenden Partie.
+
+- Die **Sitzfarben auf der See** tragen: Rot und Blau stehen als 2.5rem grosse
+  Silhouette klar auf `--sea-900`, der `drop-shadow` trennt zusaetzlich. Der
+  befuerchtete Grenzfall Blau `#2c6fbb` ist keiner.
+- Das **Sechseckgitter war bei 4.6rem zu fein** - bei 74 px Kartenbreite und
+  0.45 Einheiten Strichbreite auf 14 % Deckkraft blieb ein Grauschleier ohne
+  Form. Kachel von 9.2x8 auf 12x12, Sechseck-Radius 1.8 -> 2.6, Strich 0.45 ->
+  0.55, Deckkraft 0.14 -> 0.2. Jetzt liest man die Form.
+- Das **Siegel war zu klein**, um in echter Groesse etwas zu sagen: Scheibe
+  9.6 -> 11.5, Sechseck darin 5.2 -> 6.9 mit Strich 1 -> 1.4, Perforation
+  12.4 -> 14.
+- Die **zwei Fassungslinien** lagen 1.8 Einheiten auseinander, also 2.9 px, und
+  verschmolzen zu einer dicken Kante. Die innere von 5.2 auf 6.4 nach innen.
+
+**Und die Messung selbst ging fast schief.** Zum Vergroessern hatte ich per
+JavaScript den Rest der Seite geloescht - und damit das `<defs>` mit Muster und
+Verlauf, die in einem _anderen_ SVG standen. Das Gitter war danach nicht
+schwach, sondern **weg**, und der Befund „traegt nicht" waere ein Befund ueber
+meinen eigenen Eingriff gewesen. Erst ein Nebeneinander alt/neu in einer Datei,
+jedes SVG mit eigenen Defs, hat die Frage beantwortet.
+
+### Offene Punkte
+
+- **Im Spiel selbst noch nicht gesehen.** Die Vorschau war ein Nachbau; offen
+  bleiben die Zeilenhoehe der Ablage mit dem groesseren Stapel und wie sich das
+  Ganze neben Brett und Handkarten macht.
+- Die **eigenen** Entwicklungskarten (`.devcard`) sind jetzt die letzten
+  Pergament-Chips in der Ablage: kleine Knoepfe mit Name und Zahl neben einer
+  grossen gezeichneten Bank. Entweder werden sie auch Karten - dann brauchen
+  sie fuenf Vorderseiten - oder sie bleiben bewusst eine Liste. Offen.
+
+## Duennere Strassen, groessere Haeuser, die Zugknoepfe nach unten links (2026-08-19, `main`)
+
+Drei Befunde vom Menschen am Bildschirm, alle aus derselben Beobachtung: das
+Brett ist der Held, aber auf ihm gewinnt die Tinte gegen die Spielerfarbe, und
+die Bedienung, die man in jedem Zug braucht, liegt am weitesten weg von dem,
+worauf man dabei sieht.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 298 / 33       |
+| `pnpm build`        | grün — `index.js` 406.97 kB (gzip 120.98), `index.css` 34.11 kB (7.65) |
+| `pnpm format:check` | grün (dabei fiel eine alte Kursiv-Schreibweise in PROGRESS.md an)      |
+| Browser             | lokale Partie, Gründung durchgespielt, 6 Siedlungen und 6 Strassen     |
+
+### Die Strasse war ein schwarzer Balken mit farbigem Kern
+
+Gerechnet, nicht geschaetzt: ein Balken von 0.16 lag in einer Kontur von 0.24.
+Das sind **0.04 Tinte auf jeder Seite**, also je Rand ein Viertel der
+Strassenbreite - quer ueber die drei Streifen gemessen war mehr Rand als
+Strasse. Die Spielerfarbe, an der man die Strasse ueberhaupt erkennen soll, war
+der kleinste Anteil an ihrer eigenen Zeichnung.
+
+Jetzt 0.115 in 0.15, also 0.0175 je Seite, und die Kontur steht auf 72 %
+Deckkraft statt voll. Eine Haarlinie, die die Form haelt, statt einer Fassung,
+die sie traegt. Was die Kontur einmal geloest hat - Strassen an der Kueste
+verschwanden auf der dunklen See -, loest sie in dieser Breite unveraendert:
+sie muss die Farbe **abgrenzen**, nicht einrahmen.
+
+**Die Trefferflaeche bleibt, wo sie war.** `.road` traegt weiter 0.14; nur die
+gebaute Strasse ist schmaler geworden. Eine freie Kante ist zum Anklicken da,
+und die soll nicht mitschrumpfen, weil das Ergebnis duenner aussehen soll. Die
+gestrichelte Vorschau (`.road--target`) liegt bei 0.125 - sie zeigt jetzt die
+Breite, die daraus wird, und nicht mehr eine breitere.
+
+### Die Haeuser waren kleiner als der Zahlenchip
+
+Auch das faellt erst auf, wenn man es nebeneinander legt: die Siedlung stand mit
+`scale(0.023)` auf 0.28 Brettbreite, der Zahlenchip in der Feldmitte hat 0.34
+Radius, also 0.68 Durchmesser. Das **Bauwerk** war weniger als halb so gross wie
+die Zahl auf dem Feld daneben - und ein Bauwerk ist das, was man auf einem
+Brett zaehlt.
+
+Jetzt 0.027 (Siedlung) und 0.0245 (Stadt): 0.32 und 0.44 breit. Die Stadt
+bekommt bewusst den kleineren Faktor, weil ihr Pfad breiter ist (18 Einheiten
+gegen 12) - der Unterschied zwischen beiden soll die **Form** tragen (Haus mit
+Anbau), nicht die Groesse, das steht seit dem Playtest so in `board/shapes.ts`.
+
+Dazu die Kontur von 1.4 auf 1.15 im Pfadraum. Sie skaliert mit dem Bauwerk mit,
+und 1.4 waeren bei `scale(0.027)` von 0.032 auf 0.038 gewachsen: das Haus haette
+seinen Rand mitwachsen lassen und waere **schwaerzer** geworden statt groesser.
+1.15 × 0.027 sind wieder 0.031 - dieselbe Haarlinie an einem groesseren Haus.
+
+### „Handel" und „Zug beenden" liegen jetzt unter den Handkarten
+
+Sie sassen am rechten Ende der Bedienleiste, in der Reihenfolge eines Zuges:
+werfen, bauen, handeln, beenden. Die Reihenfolge stimmt - die **Haeufigkeit**
+nicht. „Zug beenden" ist der Knopf, den man in jedem einzelnen Zug drueckt, und
+er lag diagonal gegenueber der Hand, auf die man beim Ueberlegen sieht. Genau
+der Befund, aus dem der Status schon zweimal umgezogen ist.
+
+Neu als eigene Komponente `panels/TurnPanel.tsx` und nicht als Rest von
+`ActionPanel`: die Leiste dort ist eine Zeile in der Ablage, dieser Block eine
+Spalte darunter - zwei Orte, also zwei Bausteine. Die linke Spalte ist damit ein
+Stapel aus drei Lagen: Handkarten, Entwicklungskarten, Zugknoepfe.
+
+**Was es kostet, und zwar gemessen.** Im Browser bei 1568×744: die Ablage waechst
+von 190 auf 233 px, das Brett schrumpft von 518 auf 475 px Hoehe - **43 px, also
+8,3 %**. Das Brett ist auf einem breiten Fenster immer hoehen- und nie
+breitenbegrenzt, deshalb ist jede Zeile in der Ablage direkt Bretthoehe. Der
+Preis ist bewusst bezahlt: die Ecke unten links trifft man mit der Maus ohne zu
+zielen, und der Weg vom Ueberlegen zum Beenden ist ein Blick nach unten statt
+einer Diagonale. Wer die 43 px zurueckwill, holt sie an der Kartengroesse
+(4.6rem) und nicht an den Knoepfen.
+
+### Der Browser-Durchlauf
+
+Diesmal am laufenden Spiel und nicht an einem Nachbau: lokale Partie mit drei
+Sitzen, Gruendung durchgespielt (6 Siedlungen, 6 Strassen), dann alt gegen neu
+verglichen, indem die alten Werte als Stilblock nachtraeglich ueber die neuen
+gelegt wurden. Der Unterschied ist im Nebeneinander deutlich und nicht
+uebersteuert: die Strassen lesen sich weiter als Balken in Spielerfarbe, nicht
+als Striche.
+
+Nebenbefund, kein Fehler: in der Gruendung leuchtet das Brett erst, nachdem man
+„Siedlung" bzw. „Strasse" gedrueckt hat. Das ist seit dem zweiten Playtest-Durchgang
+Absicht (`buildKindOf` nennt die Gruendungszuege) - die Gruendung ist der Moment,
+in dem man die Bedienung lernt.
+
+### Offene Punkte
+
+- **Der schwarze Rand der Felder** (`.hex`, 0.024 volle Tinte) ist unangetastet.
+  Gemeint war die Fassung der Strassen; falls das Gitter selbst zu praesent
+  wirkt, ist es dieselbe Sorte Aenderung und eine Zeile.
+- Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen -
+  und die linke Spalte ist mit den Knoepfen darunter hoeher geworden.
+
+## Zwei Rahmen, die niemand bestellt hat, und zwei Leinen statt einer Gabel (2026-08-19, `main`)
+
+Drei Befunde vom Menschen am Bildschirm, zwei davon derselbe Satz: „die Rahmen
+sind noch da und sollen weg". Einer davon war ein Fehler und kein Geschmack.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 298 / 33       |
+| `pnpm build`        | grün — `index.js` 407.36 kB (gzip 121.14), `index.css` 33.69 kB (7.58) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | lokale Partie, Gründung durchgespielt, ein Wurf, Hafen im Nahbild      |
+
+### Der Rahmen um die Handkarte war ein zweites `.card`
+
+Der Kasten um jede Handkarte stand nirgends im Kartenblatt - er kam aus dem
+Diagnoseblock **aus Etappe 0**. Dort lag ein zweites `.card`: Pergamentkasten
+mit `padding: 1rem`, Rand und Fläche, für eine Seite, die es seit Etappe 3 nicht
+mehr gibt. Es stand **weiter unten** im Blatt als die Handkarte und hat sie
+damit geschlagen — dieselbe Falle wie bei den heißen Zahlenchips, nur diesmal
+andersherum: nicht eine Regel, die nie gegriffen hat, sondern eine, die gegriffen
+hat, ohne dass sie jemand gemeint hätte.
+
+Im Browser gemessen, was das gekostet hat: von den 74 px, die `width: 4.6rem`
+ergibt, blieben der Karte selbst **40** — der Rest ging an einen Innenabstand,
+den niemand für sie geschrieben hat. Die Ablage war dadurch 46 px höher und das
+Brett genau so viel niedriger (642 statt 688 px bei 1920×911). Ein toter
+CSS-Block hat also fast genau so viel Bretthöhe gekostet, wie der Umzug der
+Zugknöpfe einen Commit vorher **bewusst** gekostet hat (43 px). Nur stand das
+nirgends.
+
+Gelöscht wurde der tote Block, nicht die Handkarte umbenannt: `.card__title`
+gehörte dazu und wurde ebenfalls von niemandem mehr benutzt (`ConnectionPanel`
+verwendet `.status`, `.metrics`, `.hint`, `.error`). Über der Handkarte steht
+jetzt, warum der Name einmal doppelt vergeben war.
+
+### Die Würfelschale ist weg, die Würfel bleiben
+
+`.dice--waiting` war eine Pergamentplatte mit Rand und Kontaktschatten — also
+derselbe Körper, den die Bauteile und der Kaufstapel in den zwei Commits davor
+verloren haben, und aus demselben Grund: **ein Würfel ist selbst das Ding.** Er
+hat eine helle Fläche, eine Kante und einen Schatten; eine zweite helle Fläche
+darunter macht daraus ein Bedienelement mit einem Bild darin.
+
+Was „du darfst werfen" jetzt trägt: das Atmen der Würfel, das Wort „Würfeln"
+darunter und der Zeiger. Das Wort ist der Träger, der ohne Bewegung auskommt —
+bei `prefers-reduced-motion` steht das Atmen still, und dann darf die Auskunft
+nicht mit ihm verschwinden.
+
+**Die zwei `--ink`-Zeilen mussten mit.** Sie stellten die Tinte auf dunkel, weil
+darunter Pergament lag. Ohne Pergament liegt die Wurfzahl auf der Tiefsee, und
+dunkle Tinte wäre dort dieselbe unsichtbare Schrift, die beim Tisch schon einmal
+die Würfelaugen verschluckt hat — nur andersherum. Im Browser nachgemessen:
+`.dice__total` steht jetzt auf `rgb(233 225 207)`.
+
+### Vom Hafen führen zwei Leinen an Land, keine Gabel
+
+Die Stege liefen als gerade Linien von der **Mitte** der Marke zu den zwei
+Knoten. Zwei gerade Linien von einem Punkt zu zwei Ecken sind eine Gabel; sie
+zeigt richtig auf beide Knoten und sieht dabei nach nichts aus.
+
+Jetzt ein `path` statt einer `line`: er fängt knapp **innerhalb** der Marke an
+(0.20 statt 0), damit unter dem Kreis kein Knick entsteht, und läuft in einem
+Bogen zum Knoten. Der Kontrollpunkt liegt in der Mitte der Strecke, um 0.055 von
+der Kantenmitte weggeschoben — dadurch biegen sich beide Leinen **nach außen**
+und spiegelbildlich, ohne dass irgendwo ein Vorzeichen von der Lage des Hafens
+auf dem Brett abhinge. Dazu 0.04 statt 0.045 Strichbreite.
+
+Der Bogen unterscheidet sie zugleich von allem anderen auf dem Brett: Straßen
+sind immer gerade. Und `fill: none` gehört dazu, sobald aus einer Linie ein Pfad
+wird - sonst füllt er die Fläche zwischen Sehne und Bogen aus.
+
+### Lehre
+
+**Ein Klassenname ist ein globaler Bezeichner, und CSS sagt nichts, wenn er
+doppelt vergeben ist.** Beide Blöcke waren für sich richtig, keiner war ein
+Tippfehler, und die Kaskade hat entschieden, wer gewinnt: der weiter unten. Wer
+eine Klasse anlegt, sucht sie einmal im Blatt — und wer einen Bildschirm
+abschafft, nimmt seine Regeln mit.
+
+### Offene Punkte
+
+- Weiterhin ungesehen: die zwei Viewport-Breakpoints (`26rem`, `62rem`).
+- Der schwarze Rand der Felder (`.hex`) ist nach wie vor unangetastet.
+
+## Das Brett bekommt die Fläche: Ablage in zwei Ecken (2026-08-19, `main`)
+
+Auftrag vom Menschen am Bildschirm: Überlappungen und überflüssige Auskünfte
+weg, und einmal genau hinsehen, wie das Brett steht und wie groß es ist. Dazu
+wurde eine lokale Partie im Browser gespielt und **gemessen**, statt geschätzt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                  |
+| ------------------- | ------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                            |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 298 / 33          |
+| `pnpm build`        | grün — `index.js` 407.35 kB (gzip 121.14), `index.css` 34.01 kB (7.67)    |
+| `pnpm format:check` | grün                                                                      |
+| Browser             | lokale Partie bei 1920×889, dazu 1280×800, 1024×700 und 900×950 im Rahmen |
+
+### Der Befund: das Brett hatte ein Drittel der Breite und drei Viertel der Höhe
+
+Gemessen bei 1920×889, gezeichnete Brettfläche (Felder plus Häfen, nicht das
+SVG-Element): **640 × 640 px.** Daneben lagen links und rechts je rund 640 px
+leere See, und darunter eine Ablage von 187 px, deren Mitte über gut 1200 px
+vollständig leer war. Das Brett ist mit `xMidYMid meet` auf jedem breiten
+Fenster höhen- und nie breitenbegrenzt — jede Zeile unter ihm geht ihm also
+direkt von der Größe ab, während der Platz daneben ungenutzt bleibt.
+
+### Die Ablage liegt jetzt in den zwei unteren Ecken
+
+`.game` ist eine Lage statt zweier Rasterzeilen; die Ablage liegt als
+Überlagerung darüber, links die Karten mit „Handel" und „Zug beenden", rechts
+Status, Kaufstapel, Würfel und Bauteile. Das Brett läuft über die volle Höhe.
+
+**Dass sich beide nie überdecken können, ist keine Sichtprüfung, sondern eine
+Rechnung.** Ein Wert trägt sie:
+
+```
+--tray-strip: max(14.75rem, (100vw - 1.5rem - 1.09 × (100vh - 1.5rem)) / 2)
+```
+
+Er ist zugleich der seitliche Einzug von `.board-area` **und** die Höchstbreite
+einer Ecke. Damit beginnt die Brettfläche genau dort, wo eine Ecke endet, und
+das Brett steht als `meet`-Einpassung immer mittig darin — es kann die Ecke also
+nicht erreichen. Der zweite Teil ist `max(...)`: wird der Streifen schmaler als
+der alte feste Einzug von 14.75rem, gilt wieder dieser, das Brett wird
+breitenbegrenzt und ist so groß wie vorher. **Das Brett wird an keiner
+Fenstergröße kleiner als vorher** — nachgemessen, indem die alten Regeln in der
+laufenden Partie wieder darübergelegt wurden:
+
+| Fenster  | vorher | nachher | Gewinn |
+| -------- | ------ | ------- | ------ |
+| 1920×889 | 640 px | 826 px  | +29 %  |
+| 1280×800 | 555 px | 698 px  | +26 %  |
+| 1024×700 | 459 px | 470 px  | +2 %   |
+| 900×950  | 358 px | 358 px  | ±0     |
+
+1.09 ist das Seitenverhältnis der `viewBox` (9.76 / 9.1 = 1.0725) plus Luft. Es
+steht als Zahl im Blatt, weil CSS `viewBoxOf` nicht fragen kann; ein zu kleiner
+Wert kostet nur Ecke, nie Brett.
+
+Was in einer schmalen Ecke nicht mehr in die Breite passt, bricht um und wächst
+**nach oben** — dort ist Platz, unter dem Brett nicht. Bei 1280×800 stapeln sich
+Kaufstapel, Würfel und Bauteile deshalb zu einer 321 px hohen Ecke, und das
+Brett bleibt unangetastet.
+
+### Zwei Auskünfte, die niemand brauchte
+
+**Die eigene Zeile am Tisch stand als `L2 H0 W0 K0 E1`** — fünf
+Anfangsbuchstaben mit Zahlen, an genau der Stelle, an der bei allen anderen „3
+Karten" steht. Zweierlei war daran falsch: dieselbe Auskunft liegt unten links
+als Kartenstapel, in Farbe und mit Motiv, und in dieser Form konnte sie niemand
+lesen, ohne den Code zu kennen. Der Tisch beantwortet die Frage, die man über
+**andere** stellt — wie viel hat er —, und die beantwortet er jetzt für alle
+gleich.
+
+**Der Name unter jeder Handkarte ist weg**, dieselbe Entscheidung wie beim
+Vorrat: er beschriftete ein Bild, das schon spricht (Geländefarbe plus Motiv),
+und kostete unter jeder Karte eine Zeile. Für Vorlesewerkzeuge steht er weiter
+da, zusammen mit der Menge; sichtbar bleibt er im `title`.
+
+### Überlappungen
+
+Bei 1920×889 wurden **alle** sichtbaren Elemente des Spielbildschirms paarweise
+auf Schnittflächen geprüft (99 Stück, ohne SVG-Innenleben). Übrig blieben nur
+gewollte: die Stapeltiefe hinter einer Karte und die Plakette auf ihrer Ecke.
+Die eine echte Kollision lag zwischen Verlaufs-Panel und Brett — sie ist mit der
+Ecken-Ablage weg, weil das Brett den oberen Rand nicht mehr braucht.
+
+### Offene Punkte
+
+- Der Verlauf legt sich beim Öffnen weiterhin über die See am rechten Rand; bei
+  einem sehr flachen Fenster reicht er ins Brett. Er ist ein Schalter, den man
+  wieder zumacht — beobachten.
+- Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen.
+- Der schwarze Rand der Felder (`.hex`) ist nach wie vor unangetastet.
+
+## Der Status nach oben, die Würfel in die Ecke — und die erste Musik (2026-08-19, `main`)
+
+Stand: nach `b467aab`. Zwei Umzüge auf dem Spielbildschirm und eine mp3, die zum
+ersten Mal im Image liegt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 303 / 33       |
+| `pnpm build`        | grün — `index.js` 407.88 kB (gzip 121.28), `index.css` 34.04 kB (7.69) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | **nicht gelaufen** — die Chrome-Erweiterung war nicht verbunden        |
+
+Die fünf Tests mehr im Client: drei zur Musik (`audio/useAudio.test.tsx`), zwei
+zu den Plätzen im Baum (`screens/GameScreen.test.tsx`).
+
+### Der Status stand zwischen Dingen, nach denen man greift
+
+Er ist einen Tag zuvor ans Ende der rechten Ablage gewandert, und dort saß er
+falsch — nicht zu weit weg, sondern in der falschen Sorte Fläche. Die rechte
+Ecke ist die Reihe, die die Maus abfährt: Kaufstapel, Bauteile, Würfel. Ein Satz
+darin ist kein Ding, sondern eine Unterbrechung, und er verschiebt beim
+Zugwechsel auch noch die Höhe der Ecke, weil er mal eine und mal zwei Zeilen
+braucht.
+
+Jetzt steht er **oben rechts, links neben der Verlaufstür**. Das ist kein
+Ausweichen auf freie Fläche, sondern eine Gruppe: Status und Verlauf sagen
+beide, wie die Partie steht — das eine ständig und beiläufig, das andere selten
+und dann genau. Ein Ort für „was ist gerade", einer für „was liegt auf dem
+Tisch". Der Statussatz ist rechtsbündig gesetzt, weil er mitwächst („Spieler 2
+ist am Zug" gegen „Gründung: Spieler 3 setzt eine Siedlung"); links ausgerichtet
+wanderte sein Ende bei jedem Zugwechsel und mit ihm der Abstand zum Knopf.
+
+Beides hängt in einem neuen `.topline`, und der trägt dieselbe
+`pointer-events`-Regelung wie `.tray`: die Zeile liegt über dem Brett, der
+Status ist Schrift ohne Körper, also fängt sie nichts, und der Verlaufsknopf
+holt sich das Fangen einzeln zurück. Ohne das läge ein unsichtbarer Kasten über
+den oberen Feldern.
+
+**Was dabei wegfiel:** `.log-corner` war bis hierher selbst am Bildschirmrand
+festgenagelt (`position: fixed` plus `top`/`right`) und ist jetzt das letzte
+Glied der Zeile. Der Ort ist derselbe geblieben — die Zeile endet dort, wo die
+Ecke endete —, aber der Abstand zum Nachbarn kommt aus einem `gap` statt aus
+einer zweiten festen Zahl.
+
+### Die Würfel lagen mitten in der Reihe
+
+Sie standen als erste Zeile in der Bauleiste, weil ein Zug mit ihnen anfängt.
+Nur ist die Reihenfolge im Ablauf nicht die Reihenfolge auf dem Tisch: nach dem
+Umbau der Ablage in zwei Ecken saßen sie zwischen Kaufstapel und Bauteilen, also
+an der Stelle einer Reihe, die man am schlechtesten trifft — mit Nachbarn auf
+beiden Seiten.
+
+Jetzt liegen sie **ganz außen, in der Bildschirmecke selbst**. Eine
+Bildschirmecke ist das einzige Ziel, das eine Maus ohne Zielen erreicht: man
+fährt hin, bis es nicht weiter geht. Genau das verdient der eine Knopf, mit dem
+jeder einzelne Zug anfängt. Es ist dieselbe Überlegung, die „Zug beenden" nach
+unten links gebracht hat — der Anfang eines Zuges und sein Ende liegen jetzt in
+je einer Ecke, und dazwischen liegt das Material.
+
+**Der Umzug ist ein Umzug im Baum, keine `order`-Regel.** Die Würfel hängen
+jetzt als eigenes Stück im `GameScreen` neben dem `ActionPanel` statt darin. Mit
+`order` in CSS wäre die Reihenfolge am Bildschirm eine andere als die im
+Dokument — und damit eine andere für Tastatur und Vorlesewerkzeug als für die
+Maus. Das ist die Art Trick, die genau einmal gutgeht.
+
+**Daraus folgt eine Vereinfachung, die niemand geplant hat:** das `ActionPanel`
+brauchte die `GameView` nur für die Augen und den Wurf. Ohne die Würfel bekommt
+es sie nicht mehr, und `onRoll` auch nicht — es stellt jetzt die Bauteile und
+die Absage des Servers, und was es dafür braucht, steht in der Klickkarte und im
+eigenen Vorrat. Ebenso weggefallen: `.tray__side`, die zweite Hülle um die
+rechte Ecke. Es gab sie nur, um den Statussatz auf eine eigene Zeile darüber zu
+heben. Eine Ecke, ein Element.
+
+### Die Musik ist die eine Ausnahme von „kein Audio-Byte im Image"
+
+Beim Ton war die Zusage eindeutig: 23 Klänge als Rezepte aus Zahlen,
+`samples.ts` führt sie als auskommentierte Einkaufsliste, und im Image liegt
+kein Byte Audio. Das gilt weiter — für **Effekte**. Ein Klick, ein Würfel, ein
+Handschlag lassen sich aus Hüllkurven bauen, und ein Rezept wiegt nichts. Ein
+Stück Musik lässt sich das nicht: synthetisiert wäre es eine Tonfolge und kein
+Stück.
+
+Deshalb liegt jetzt eine Datei da (`public/music/catan.mp3`, 2,22 MB) und
+kostet, was sie kostet. Das ist die bewusste Abweichung von der Zusage, und sie
+steht hier, damit sie beim nächsten Lesen kein Versehen ist. `samples.ts` bleibt
+leer.
+
+**Ein `<audio>`-Element und kein dekodierter Puffer.** Die Datei ist Minuten
+lang; über `decodeAudioData` läge sie als PCM im Speicher, also ein Vielfaches
+ihrer zwei Megabyte, und die Schleife müsste man selbst bauen. Das Element
+streamt und bekommt `loop` geschenkt. Über `createMediaElementSource` hängt es
+trotzdem am **selben Musik-Bus**, der seit dem Ton fertig dasteht — damit gilt
+für die Spur derselbe Regler wie für alles andere, ohne eine zweite
+Lautstärkerechnung daneben. Der Kommentar an `ensure()`, der das vorausgesagt
+hat, stimmte: an dieser Stelle hat sich nichts geändert.
+
+**Sie fängt bei der ersten Geste an, nicht beim Laden** — aus demselben Grund,
+aus dem der `AudioContext` erst beim ersten Klang entsteht. Der Anlauf hängt an
+`pointerdown` **und** `keydown`: wer mit der Tastatur spielt, hat sonst nie eine
+erste Geste. Und die Listener melden sich **nicht** nach dem ersten Mal ab. Das
+ist die eigentliche Entscheidung dahinter: `playMusic` tut bei laufender Spur
+nichts, und ein Anlauf, den der Browser abgelehnt hat, bekommt so bei der
+nächsten Geste einen zweiten. Ein `once: true` hätte genau diesen Fall
+verspielt — und man hätte ihm nicht angesehen, dass er fehlt.
+
+**Stumm heißt still, der Regler auf null heißt leise.** Das sind zwei
+verschiedene Absichten: wer den Regler herunterzieht, will das Stück leiser, und
+wenn er ihn wieder aufdreht, soll es dort weiterlaufen, wo es inzwischen steht.
+Wer stummschaltet, will es weg — dann soll es auch keine Leitung und keinen Takt
+kosten, also wird pausiert. Angehalten wird allerdings **nach** der Blende, mit
+120 ms Verzug: `pause()` mitten in der Gain-Rampe schneidet die Welle ab, wo sie
+gerade steht, und das hört man als Knacks. 120 ms sind rund das Sechsfache der
+Zeitkonstante der Rampe, also praktisch Stille.
+
+Jeder Ausfall ist still und keiner ist laut: kein `Audio` im Fenster, kein
+`MediaElementSource`, eine abgelehnte Wiedergabe — in allen drei Fällen bleibt
+es bei der Stille, und die Effekte klingen weiter. Dieselbe Zusage wie bei den
+Samples. Der Satz „Musik gibt es noch nicht — der Regler wartet auf sie" ist aus
+dem Einstellungen-Dialog verschwunden; er wartet nicht mehr.
+
+### Was jsdom prüfen kann und was nicht
+
+Zwei neue Tests im `GameScreen` prüfen die **Ordnung im Baum** und ausdrücklich
+nicht das Aussehen: der Status liegt im `.topline` und **vor** der Verlaufstür,
+die Würfel sind das letzte Kind von `.tray__controls` und haben die Bauteile
+links neben sich. jsdom hat keine Layout-Engine — wie breit etwas ist und ob
+sich zwei Dinge überdecken, kann hier niemand messen, das bleibt dem
+Browser-Durchlauf. Aber beide Umzüge sind mit einer verrutschten CSS-Regel
+wieder da, wo sie waren; mit einer verrutschten Klammer nicht, und genau das
+fangen die Tests.
+
+Drei Tests zur Musik in `audio/useAudio.test.tsx`: vor der ersten Geste nichts,
+nach einem Klick der Anlauf, nach einem Tastendruck ebenso. Dass dabei zwei
+Gesten zwei Anläufe erzeugen, steht als Zusage im Test — ob daraus zwei Spuren
+werden, entscheidet die Engine und nicht der Haken.
+
+### Offene Punkte
+
+- **Der Browser-Durchlauf fehlt wieder**, diesmal nicht aus Nachlässigkeit,
+  sondern weil die Chrome-Erweiterung nicht verbunden war. Ungesehen sind damit:
+  ob die Musik im Browser tatsächlich anspringt, ob der Status oben rechts bei
+  einem langen Phasensatz mit dem Brett ins Gehege kommt, und ob die Würfel in
+  der Ecke bei schmalem Fenster noch neben statt unter dem Brett liegen.
+- Der Statussatz hat `max-width: min(22rem, 34vw)`. Die Zahl ist gesetzt und
+  nicht gemessen — sie soll den Satz zweizeilig halten, geprüft ist das nicht.
+- Die 2,22 MB im Image sind nicht gemessen: was sie für den ersten Aufruf über
+  eine langsame Leitung heißen, weiß niemand. Die Spur lädt erst nach der ersten
+  Geste, blockt also nichts — aber sie teilt sich die Leitung mit allem anderen.
+- Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen.
+- Der schwarze Rand der Felder (`.hex`) ist nach wie vor unangetastet.
+
+### Nächste Etappe
+
+Etappe 10 (Erweiterungen) — davor steht weiter der Browser-Durchlauf über den
+ganzen Spielbildschirm, jetzt mit zwei Umzügen und einer Tonspur mehr darin.
+
+## Die Entwicklungskarten werden Karten (2026-08-19, `main`)
+
+Stand: nach `9b51b83`. Fünf gezeichnete Motive, ein Kartenkörper statt eines
+Textknöpfchens, und ein Knopf weniger, der nie angeht.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 306 / 33       |
+| `pnpm build`        | grün — `index.js` 410.11 kB (gzip 121.91), `index.css` 34.42 kB (7.75) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | **nicht gelaufen** — die Chrome-Erweiterung war weiter nicht verbunden |
+
+Statt des Durchlaufs ein Musterbogen als eigene Seite: die fünf Karten in
+Originalgröße neben einer Handkarte, die Motive einzeln auf 4,6 rem vergrößert,
+dazu die drei Zustände. Er ist ein **Abzug** und keine zweite Quelle — die Pfade
+darin sind aus `DevelopmentGlyph.tsx` kopiert und veralten, sobald dort jemand
+etwas ändert.
+
+### Der beste Platz für ein Motiv ist eine Karte
+
+Die Frage war, wo die Grafiken hingehören. Die Antwort steckte im Befund: es gab
+gar keinen Platz für eine. Die Entwicklungskarten waren das einzige Kartending
+am Tisch **ohne Kartenkörper** — ein Knopf mit `padding: 0.3rem 0.5rem` und
+0,72 rem Schrift, direkt neben Handkarten von 4,6 × 5,8 rem und einem
+Kaufstapel derselben Größe. Ein Motiv hätte dort nirgends hingepasst.
+
+Das ist derselbe Befund, aus dem der Kaufstapel im August seine heutige Größe
+bekommen hat — „eine Karte ist eine Karte, und 3.1rem neben 4.6rem hat aus der
+Bank ein Beiwerk gemacht" —, nur schärfer: eine Beschriftung neben einer Karte
+ist nicht ein kleineres Ding, sondern gar keins. Also bekommt jede
+Entwicklungskarte denselben Körper: 4,6 × 5,8 rem, dieselbe Stapeltiefe
+(gedeckelt bei vier), dieselbe Plakette (`.card__count`, wiederverwendet — es
+gibt genau eine Plakette in diesem Spiel), derselbe Kontaktschatten.
+
+**Pergament statt Geländefarbe** bleibt der Unterschied und ist der ganze
+Unterschied: Rohstoffe kommen vom Brett, Entwicklungskarten von der Bank. Woher
+etwas stammt, liest man am Material.
+
+**Am Bildschirm bleiben sie, wo sie waren** — zweite Reihe in der linken unteren
+Ecke, zwischen Hand und Zugknöpfen. Die eigenen Karten liegen bei den eigenen
+Karten; die Bank liegt gegenüber. Der Preis steht unter „Offene Punkte": die
+Ecke wird höher.
+
+### Der Name bleibt stehen, obwohl er unter den Handkarten weggefallen ist
+
+Unter den Rohstoffkarten ist er im August verschwunden, weil er ein Bild
+beschriftete, das schon spricht: Geländefarbe **und** Motiv tragen dort dieselbe
+Aussage doppelt. Hier tragen sie das nicht — alle fünf Karten sind dasselbe
+Pergament, das Motiv wäre der einzige Träger. Farbe oder Form allein dürfen nie
+allein tragen (Designregel 7), also steht der Name auf der Karte. Er steht
+**auf** ihr und nicht darunter: unter der Karte kostete er in jeder Reihe eine
+Zeile, die dem Brett abgeht, und auf einer Spielkarte steht ohnehin, was sie
+ist.
+
+### Fünf Motive, eine Handschrift
+
+Sie liegen in `panels/DevelopmentGlyph.tsx`, direkt neben `ResourceGlyph.tsx`,
+und halten sich an dieselben Regeln: 24 × 24 als Quadrat, einfarbig dunkel
+gefüllt, gleiche Kantenrundung. Wer beide Reihen übereinander sieht, soll zwei
+Sorten Karten erkennen und **einen** Zeichner.
+
+**Gezeigt wird die Wirkung, nicht der Name** (Designregel 8). „Erfindung" heißt
+die Karte, aber was sie tut, sind zwei Rohstoffe aus der Bank — also liegen dort
+zwei Karten und keine Glühbirne.
+
+- **Ritter** — ein geschlossener Helm. Sehschlitz, Nasensteg und zwei Luftlöcher
+  sind **Löcher im selben Pfad** (`fill-rule: evenodd`) und keine hellen Striche
+  darüber. Ein aufgemalter Schlitz stimmte nur auf einer Kartenfarbe; ein Loch
+  auf jeder.
+- **Straßenbau** — zwei Straßen. Derselbe Balken mit runden Enden, den eine
+  gebaute Straße auf dem Brett ist; wer die Karte spielt, sucht danach gleich
+  eine Kante. Sie berühren sich nicht, sonst wären sie ein Balken.
+- **Erfindung** — zwei Karten. Eine Karte ist in diesem Spiel die Form, in der
+  ein Rohstoff vorkommt, also zwei davon für zwei Rohstoffe, in der Sprache, die
+  der Tisch schon spricht. Sie überlappen **nicht**: zwei gleich gefüllte
+  Formen, die sich schneiden, sind eine Form.
+- **Monopol** — ein Sack mit zugebundenem Hals. Kein Pfeildiagramm; die
+  Nachbarn im Blatt sind Ziegel, Baum und Schaf, also Dinge. Der Sack ist die
+  dingliche Fassung von „alle geben dir ab".
+- **Siegpunkt** — eine Krone. Die einzige Karte ohne Handlung, also ein Zeichen
+  für den Ausgang und keines für ein Werkzeug.
+
+### Ein Knopf, der nie angeht, ist keiner
+
+Der Siegpunkt wird **nie** gespielt. Als Knopf wäre er in jeder Lage gesperrt,
+und ein Bedienelement, das in keinem Zustand jemals bedienbar wird, sagt „gerade
+nicht" über etwas, das nie geht. Blass daliegend sähe der eigene Punkt außerdem
+aus wie ein Fehler — dabei ist er das Beste, was auf der Hand liegen kann.
+
+Er ist deshalb ein `div` und kein `button`, in voller Deckkraft und ohne Ring:
+Besitz statt Handlung. Das ist dieselbe Unterscheidung, die der Tisch schon
+zwischen Dingen und Auskünften macht, nur eine Ebene tiefer — hier zwischen
+Material, das man anfasst, und Material, das man nur hat.
+
+### Offene Punkte
+
+- **Niemand hat die Zeichnungen gesehen.** Sie sind aus Koordinaten gebaut und
+  im Kopf geprüft, nicht am Bildschirm. Die drei wackligsten: der **Sack**
+  (könnte als Wolke lesen — Alternative wären drei zusammenlaufende Pfeile), die
+  **zwei Karten** bei 2,4 rem (könnten als zwei Türen lesen) und die **zwei
+  Straßen**, die knapp am Gleichheitszeichen liegen.
+- **Die linke Ecke wird höher.** Eine zweite Reihe echter Karten kostet rund
+  5,8 rem plus Fuge. Bei 1920×889 ist der Ecken-Streifen ~476 px breit, fünf
+  Karten passen nebeneinander; bei 1280×800 sind es nur 236 px, also drei je
+  Reihe — hält jemand vier oder fünf Sorten, bricht die Reihe um und die Ecke
+  wächst um weitere 5,8 rem. Ungemessen, ob sie dann noch unter dem Brett
+  vorbeikommt.
+- `GameScreen.test.tsx` → „sperrt das Bauen, solange nicht gewürfelt ist" lief
+  in einem Lauf **5032 ms** und damit knapp über die Standardfrist von 5000 ms;
+  im nächsten Lauf war er grün. Der Test klickt zwölf Gründungszüge durch und
+  liegt damit an der Grenze — er wird beim nächsten langsamen Rechner rot, ohne
+  dass jemand etwas kaputt gemacht hat.
+- Die Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen.
+
+### Nächste Etappe
+
+Unverändert Etappe 10 (Erweiterungen) — und davor weiterhin der
+Browser-Durchlauf, jetzt mit fünf ungesehenen Zeichnungen mehr auf der Liste.
+
+## Drei Befunde vom Spieltisch (2026-08-19, `main`)
+
+Stand: nach `6ae509a`. Drei Meldungen aus dem laufenden Spiel — die Farbe im
+Bankhandel, die unsichtbaren Ziele beim Stadtbau, die Augen über dem Chiprand.
+Alle drei haben eine nachweisbare Ursache im Blatt, keine ist Geschmack.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 309 / 33       |
+| `pnpm build`        | grün — `index.js` 410.70 kB (gzip 122.09), `index.css` 34.99 kB (7.87) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | **nicht gelaufen** — Chrome-Erweiterung weiterhin nicht verbunden      |
+
+### Die Augen ragten über den Chiprand — und der Grund stand schon in CLAUDE.md
+
+Gemeldet: „die Punkte von den Zahlen im Inneren der Felder überlappen mit dem
+Rand von dem Kreis". Die Ursache ist die **dritte** Wiederholung derselben
+Falle:
+
+```css
+.chip text {
+  font-size: 0.32px;
+} /* eine Klasse plus ein Typ */
+.chip__pips {
+  font-size: 0.19px;
+} /* eine Klasse allein — verliert */
+```
+
+Die 0,19 px haben nie gegolten. Gerendert wurden 0,32 px, und fünf Mittelpunkte
+in dieser Größe sind breiter als die Scheibe, in der sie liegen (Radius 0,34).
+Dieselbe Kaskadenfalle wie bei der roten Sechs, zwei Regeln weiter oben im
+selben Block — dort war sie mit einem schärferen Selektor behoben worden
+(`.chip text.chip__hot`), hier nicht.
+
+**Behoben wurde sie diesmal nicht mit einem schärferen Selektor, sondern mit dem
+Verzicht auf Schrift.** Die Augen sind jetzt gezeichnete Kreise (`ChipPips` in
+`BoardSvg.tsx`), Abstand 0,055, Radius 0,022. Der Grund ist der zweite, schwerere
+Teil des Befunds: die Breite eines `·` hängt an den Metriken einer Schrift. Wie
+viel Vorschub Segoe UI ihm gibt, lässt sich nicht ausrechnen, und auf einem
+Rechner ohne Segoe UI ist es eine andere Zahl — die Regel wäre also selbst dann
+nur zufällig richtig gewesen, wenn sie gegriffen hätte. Eine gezeichnete Form
+hat keine Metrik.
+
+Gerechnet: fünf Punkte spannen 0,22, der äußerste sitzt mit seinem Radius 0,272
+vom Mittelpunkt, der Chip misst 0,34. **Und das ist jetzt ein Test** — die Lage
+von Kreisen ist reine Attributrechnung und braucht keine Layout-Engine, also
+prüft `BoardSvg.test.tsx` für jeden Chip im Szenario, dass jeder Punkt innerhalb
+bleibt.
+
+### Beim Stadtbau blieb das Brett vollkommen ruhig
+
+Gemeldet: „beim Bauen von Städten sollen die Häuser markiert werden für
+Sichtbarkeit". Der Code sagt, warum: die Zielmarke hing am **leeren** Knoten.
+
+```tsx
+{
+  building === undefined ? isTarget ? <Marke /> : null : <Bauwerk />;
+}
+```
+
+Beim Ausbau zur Stadt sind aber _alle_ Ziele bebaut. Es gab also keinen Fall, in
+dem überhaupt etwas leuchtete: man drückt „Stadt", die Bauleiste bestätigt die
+Wahl, und das Brett bleibt, wie es war. Anklickbar waren die Häuser die ganze
+Zeit — der Klick hängt an der Gruppe, nicht an der Marke —, nur sah man nicht,
+welches gemeint ist. Das wirkt genau so, wie es aussieht: als ginge es nicht.
+
+Jede bebaute Zielstelle bekommt deshalb einen **Hof**: dieselbe Marke wie am
+leeren Knoten, größer (Radius 0,235) und **unter** dem Bauwerk. Gleiches
+Material, gleiche Aussage, und das Haus steht darauf statt darunter. Kein
+zweiter Ring — der hätte sich mit der Aufbau-Welle (`build-flash`, Radius 0,34)
+gestapelt und dieselbe Sache zweimal gesagt. Er ist blasser als die Marke am
+leeren Knoten (34 % statt 62 %): dort ist sie das einzige Zeichen, hier liegt
+ein Haus darauf, und das soll das laute Ding bleiben.
+
+Dazu wandert `cursor: pointer` von der Marke auf die Gruppe — das Bauwerk liegt
+über ihr, und wer auf das Haus zeigt, zeigt auf das Ziel.
+
+### „Weiß auf weiß" im Bankhandel — zwei Ursachen, beide behoben
+
+Die Meldung ließ zwei Lesarten zu, und beide Male steckte ein echter Fehler
+dahinter. Deshalb sind beide behoben.
+
+**Erstens: der Rohstoff hatte dort als einziger keine Farbe.** Auf der Hand ist
+ein Rohstoff eine Karte in der Geländefarbe mit seinem Motiv; in „Erfindung" und
+„Monopol" ebenso (`ResourcePickDialog`). Im Bankhandel standen fünf gleiche
+Pergamentpillen mit Text darin. Dieselbe Sache muss überall gleich aussehen,
+sonst ist es nicht mehr dieselbe Sache — also trägt sie auch hier Farbe und
+Motiv (`Choice` in `TradeDialog.tsx`).
+
+Das Feld bleibt dabei ein `radio`; ausgeblendet wird nur seine Zeichnung, nicht
+das Feld — die Gruppe ist weiter mit Pfeiltasten bedienbar, und `:has(input:
+focus-visible)` holt den Fokusring zurück. Die Zeile für den Bestand steht immer
+da, auch leer: beim Bekommen sagt ein Bestand nichts, und ohne sie wären die
+zwei Reihen verschieden hoch (derselbe Kniff wie bei der Aufforderung unter den
+Würfeln).
+
+**Gewählt wird mit zwei Ringen, innen Tinte und außen Gold** — und das ist kein
+Schmuck. Ein einzelner Ring geht auf fünf verschiedenen Geländefarben nicht:
+Gold allein verschwände auf dem Korn (beides `--fields`), Tinte allein säße auf
+dem dunklen Wald fast unsichtbar, und gegen die Pergamentfläche des Dialogs muss
+der Ring auch noch stehen. Zwei Ringe stehen auf jedem dieser Gründe.
+
+**Zweitens: `.button--ghost` ist auf Pergament creme auf creme.** Die Klasse
+setzt `color: var(--on-sea)` — richtig auf der Tiefsee, wo sie sonst überall
+steht, und im Dialog gemessene **1,05:1**. Betroffen: „Abbrechen" im Handel,
+„Auswahl zurücksetzen" bei Erfindung und Monopol, „Abbrechen" beim Räuberopfer.
+
+Der Befund selbst ist nicht neu — er steht seit dem Browser-Durchlauf im August
+in `CLAUDE.md` („cream auf Pergament = 1,05:1, an rund zehn Stellen
+unsichtbar"). Behoben wurden damals die drei Antwortknöpfe am Angebot und das
+Zahnrad; **die Klasse selbst blieb, wie sie war**, und damit alle anderen
+Stellen. Das ist die eigentliche Lehre: wer einen Befund an seinen Fundstellen
+repariert statt an seiner Ursache, bekommt ihn wieder.
+
+Repariert wird er jetzt an `.modal__box .button--ghost` und **nicht** in der
+Klasse. Der naheliegende Weg wäre `--ink: inherit` gewesen, damit der körperlose
+Knopf die Tinte seines Grundes nimmt — nur liegt `--ink` nicht an jedem Grund
+vor: `.mode` etwa trägt Tiefsee, definiert `--ink` aber nicht um, und dort wäre
+daraus dunkle Tinte auf dunklem Grund geworden. Also derselbe Fehler, nur
+woanders. Der Dialogkasten ist der eine Ort, an dem der Untergrund **immer**
+Pergament ist.
+
+### Ein Test mit eigener Frist statt eines Flakes
+
+`GameScreen.test.tsx` → „sperrt das Bauen, solange nicht gewürfelt ist" ist beim
+letzten Stand einmal an der 5000-ms-Standardfrist gescheitert und beim
+Nachschreiben dieser Abnahme noch einmal. Allein läuft er in 4,7 s, parallel
+neben `shared` und `server` reicht das nicht. Er hat jetzt 20 s.
+
+Erhöht und nicht gekürzt: was er prüft, braucht die zwölf Gründungszüge. Ein
+Test, der je nach Rechnerlast fällt, ist schlimmer als ein langsamer — er kostet
+jedes Mal die Frage, ob diesmal wirklich etwas kaputt ist.
+
+### Offene Punkte
+
+- **Weiterhin nichts davon im Browser gesehen.** Bei den ersten beiden Befunden
+  wiegt das leichter als sonst: der Chip ist gerechnet und getestet, der Hof ist
+  eine Marke, die es an anderer Stelle schon gibt. Die Farbkarten im Bankhandel
+  sind dagegen neu gesetzt — Breite 4 rem, Motiv 1,8 rem, fünf davon je Reihe in
+  einem Dialog von höchstens 34 rem. Ob das in einer Reihe bleibt oder umbricht,
+  ist ungemessen.
+- Eine Sorte, von der man nichts hat, lässt sich im Bankhandel weiter auswählen;
+  die Absage kommt erst am „Tauschen"-Knopf. Ableitbar wäre es (`canTrade` über
+  alle Empfangssorten), ohne eine Regel in den Client zu schreiben — bewusst
+  nicht gemacht, weil es über die Meldung hinausginge.
+- `.button--ghost` ist an seiner Ursache immer noch nicht heil: außerhalb von
+  Dialogen steht er weiter auf `--on-sea`, und der nächste helle Untergrund
+  außerhalb eines `.modal__box` bringt ihn zurück.
+- Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen.
+
+### Nächste Etappe
+
+Unverändert Etappe 10 — und davor der Browser-Durchlauf, der inzwischen die
+längste Liste des Projekts vor sich herschiebt.
+
+## Der Browser-Durchlauf, endlich (2026-08-19, `main`)
+
+Stand: nach `fd6a292`. Die Chrome-Erweiterung war verbunden, und damit ist zum
+ersten Mal seit Wochen nachgesehen statt behauptet worden. Bestätigt: alle drei
+Befunde vom Spieltisch, die Musik, das neue Layout, die Entwicklungskarten.
+Gefunden: drei Dinge, die kein Test sehen konnte.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 311 / 33       |
+| `pnpm build`        | grün — `index.js` 410.81 kB (gzip 122.12), `index.css` 35.07 kB (7.88) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | **gelaufen** — lokale Partie bei 1920×889, Gründung bis Runde 5        |
+
+### Was bestätigt ist — und zwar gemessen, nicht angesehen
+
+**Die Augen im Zahlenchip.** Radius der Scheibe 27,24 px, weiteste Reichweite
+eines Punktes 21,82 px — 80 % des Radius, 5,4 px Luft bis zum Rand. Der Befund
+ist weg und bleibt weg, weil dieselbe Rechnung jetzt im Test steht.
+
+**Die Häuser beim Stadtbau.** Nach dem Druck auf „Stadt" waren zwei Knoten
+markiert, beide mit Bauwerk, beide mit Hof darunter. Der helle Teller unter dem
+roten Haus liest sich auf Braun, Grau und Grün gleich gut.
+
+**Der Bankhandel.** Fünf Karten in Geländefarbe mit Motiv, die Bestände darunter
+(„0" blass), Doppelring bei der Auswahl — auf dem dunklen Wald und auf dem
+gelben Korn gleichermaßen sichtbar. „Abbrechen" misst jetzt `rgb(22 32 42)` auf
+`rgb(240 230 210)`, also rund 15:1 statt 1,05:1.
+
+**Das Layout.** Bei 1920×889: Status 1700–1819, Verlaufsknopf 1831–1865,
+Zahnrad 1871–1905 — eine Zeile, keine Überschneidung, 15 px Rand. Die Ablage
+endet rechts bei 1908, der Würfelbecher ist nicht angeschnitten. `scrollWidth`
+gleich `innerWidth`: nichts läuft seitlich über.
+
+**Die Musik läuft.** Nachgewiesen mit einer Sonde um `Audio`, `play()` und
+`AudioContext`, vor der ersten Geste gesetzt: nach dem ersten echten Klick steht
+im Protokoll `AudioContext` → `neu: /music/catan.mp3` → `play() gerufen` →
+`play() ok`, dazu `loop: true`, `paused: false`, `readyState: 4` und eine
+laufende Uhr. **Der erste Versuch, sie zu finden, ging daneben:**
+`document.querySelectorAll('audio')` fand nichts, weil `new Audio()` ein
+Element erzeugt, das gar nicht im Dokument hängt. Eine Sonde am falschen Ort
+sagt „kaputt" über etwas Heiles.
+
+**Die Entwicklungskarten** liegen als Karten unter der Hand, der Helm ist bei
+2,4 rem als Helm zu erkennen, der Name steht darunter.
+
+### Was der Durchlauf gefunden hat
+
+**1. Drei sichtbare Texte ohne Umlaute.** Im Handel stand „Der Kurs ergibt sich
+aus deinen **Haefen**", im Konto-Dialog „kommst du **ueber** dieses **Geraet**
+nicht mehr an sie heran" und „liegt **fuer** eine **spaetere**
+Passwort-Wiederherstellung". Die Grenze steht seit dem ersten Playtest im Blatt
+— alles, was ein Spieler liest, hat Umlaute — und ist an drei Stellen
+durchgerutscht. Gefunden mit einem Suchlauf über alle `.tsx` nach
+`ae|oe|ue`-Wörtern außerhalb von Kommentaren; **der erste Versuch fand nichts**,
+weil er nur Zeilen mit Anführungszeichen ansah und JSX-Text zwischen Tags keine
+hat.
+
+**2. Ein `+`, das nichts tut.** Im Abwurffenster stand „Lehm — von 0" mit einem
+bedienbaren `+` daneben. Beide Stepper (`DiscardDialog`, `TradeAmounts`) klemmen
+seit jeher **im Handler** und haben den Knopf nie gesperrt: an der Grenze
+passiert lautlos nichts. Aufgefallen ist es, weil ein Automatikklick genau
+darauf drückte und der Zähler stehenblieb.
+
+Es ist dieselbe Lüge wie der dauerhaft gesperrte Siegpunkt-Knopf, nur
+andersherum: dort sah etwas tot aus, das keine Handlung ist, hier sieht etwas
+lebendig aus, das nichts bewirkt. Behoben, indem **Knopfzustand und Wirkung
+dieselbe Funktion fragen** — `canStep` im Abwurf, das vorhandene `step` im
+Angebot, das ohnehin schon `null` für „geht nicht" zurückgibt. Zwei getrennte
+Ausdrücke derselben Regel wären auseinandergelaufen.
+
+Nach oben ist im Abwurf auch die geforderte Zahl eine Grenze: wer vier von vier
+gewählt hat, sieht alle `+` erlöschen.
+
+**3. Die Sperre war unsichtbar.** Und das ist der eigentliche Fund. Nach dem
+Einbau von `disabled` maß der Browser für gesperrten und offenen Stepper
+**exakt dieselbe** Schrift-, Grund- und Randfarbe und dieselbe Deckkraft:
+`disabled` allein ändert an einem Knopf mit eigenem Hintergrund nichts, und die
+Regel für den Zustand fehlte. Der Fix wäre also im Verhalten richtig und am
+Bildschirm nicht vorhanden gewesen — genau der Fehler, den er beheben sollte.
+`.cards__stepper button:disabled` trägt jetzt dieselben `opacity: 0.4` und
+`cursor: not-allowed` wie `.button:disabled` und `.pick__card:disabled`, damit
+„geht nicht" überall gleich aussieht. Dazu bekam die Hover-Regel ihr
+`:not(:disabled)`.
+
+### Wie das Durchspielen ging
+
+Die Gründung und ein paar Runden wurden per Skript geklickt (`dispatchEvent`
+auf die Knöpfe der Klickkarte). Zwei Dinge daran sind notierenswert:
+
+- **Synthetische Klicks reichen nicht überall.** Der Anlauf der Musik hängt an
+  `pointerdown`; ein abgeschicktes `click` löst ihn nicht aus. Was am Ton hängt,
+  muss echt geklickt werden.
+- **Ein Automat, der den ersten freien Knopf drückt, findet die toten.** Er hat
+  auf „Lehm +" gedrückt, weil der als erster nicht gesperrt war — und genau
+  daran ist Befund 2 aufgefallen. Ein Mensch hätte den Knopf gar nicht erst
+  probiert.
+
+### Offene Punkte
+
+- Die zwei Viewport-Breakpoints (`26rem`, `62rem`) sind weiterhin ungesehen —
+  nachgesehen wurde nur bei 1920×889.
+- Eine Sorte, von der man nichts hat, lässt sich im **Bankhandel** weiter
+  auswählen; nur die Stepper im Angebot sind jetzt ehrlich. Dieselbe Ableitung
+  wäre dort über `canTrade` möglich.
+- `.button--ghost` ist außerhalb von `.modal__box` weiter creme; der nächste
+  helle Untergrund bringt ihn zurück.
+- Der schwarze Rand der Felder (`.hex`) ist nach wie vor unangetastet.
+
+### Nächste Etappe
+
+Etappe 10 (Erweiterungen). Der Browser-Durchlauf steht zum ersten Mal seit
+Wochen **nicht** mehr davor.
+
+## Die Würfel fliegen über das Brett (2026-08-19, `main`)
+
+Stand: nach `8ef52c9`. Zwei CSS-3D-Kuben, ein Bogen über das Brett — und ein
+Tisch, der schweigt, solange sie unterwegs sind.
+
+**Entwurf.** Rolle: der Wurf ist der Augenblick, in dem eine Runde kippt; er
+gehört aufs Brett und nicht in eine Ecke. Aufbau: zwei Kuben springen aus der
+Ablage, taumeln über das Brett und fallen in ihren Platz zurück. Woran man sich
+erinnert: dass der Verlauf die Zahl erst verrät, wenn der Würfel sie zeigt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 319 / 34       |
+| `pnpm build`        | grün — `index.js` 412.51 kB (gzip 122.80), `index.css` 36.25 kB (8.17) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | lokale Partie bei 1920×889, Wurf im Flug und nach der Landung gemessen |
+
+Der ganze Wurf kostet **1,7 kB** im Skript und **1,2 kB** im Blatt.
+
+### Keine Bibliothek, keine Physik — und das ist kein Sparen
+
+`three.js` samt einer Physik-Engine wiegt 300–600 kB gegen ein Bundle von 410 kB.
+Das allein wäre schon ein Argument. Das eigentliche ist ein anderes:
+
+> **Das Ergebnis steht fest, bevor der Würfel fällt.**
+
+Es kommt aus dem Seed, der Reducer hat es ausgewürfelt (Architekturregel 2), und
+keine Simulation darf es bestimmen. Ein physikalisch geworfener Würfel, der sich
+auf eine andere Zahl legt als die, die im Zustand steht, wäre ein Fehler, den
+niemand mehr einfinge — man müsste ihn also ohnehin auf seine Fläche
+**steuern**. Damit fällt der Hauptgrund für echte Physik weg, und übrig bleibt
+das, was ein Würfel wirklich ist: sechs Flächen um eine Mitte.
+
+Der Kubus steht in `transform-style: preserve-3d`, seine sechs Seiten je um die
+halbe Kantenlänge nach außen geschoben. Gesteuert wird er über zwei Zahlen:
+`--fx` und `--fy` sind die Drehung, bei der genau die geworfene Fläche vorn
+steht (`FACE_TURN` in `DiceTray.tsx`, die Umkehrung des Würfelnetzes). Die
+Animation dreht von **drei ganzen Umdrehungen davor** in diese Lage hinein — das
+taumelt sichtbar und landet trotzdem exakt.
+
+Gegenüberliegende Flächen ergeben sieben, wie bei einem echten Würfel. Wer beim
+Taumeln zwei Kanten zugleich sieht, soll nichts Falsches sehen.
+
+Der Bogen fängt und endet bei `translate3d(0,0,0)`, also **an Ort und Stelle**.
+Damit muss niemand die Bildschirmkoordinaten der Ablage messen: der Würfel
+springt aus seinem Platz heraus und fällt in ihn zurück. Der Scheitel steht in
+`vw`/`vh` — wie weit „über das Brett" ist, weiß nur das Fenster. Das `scale` am
+Scheitel ist die Tiefe; ohne es sähe der Bogen aus wie ein Schieben auf der
+Tischplatte.
+
+### Der Haken war nicht die Grafik, sondern die Zeit
+
+Wurf, Verlaufszeile, die Zuwachsplaketten am Tisch und der Klang stammen alle
+aus **einer** Zustandsänderung und erscheinen deshalb im selben Augenblick.
+Solange die Würfel an Ort und Stelle umsprangen, war das richtig. Würfel, die
+eine Sekunde über das Brett trudeln, zeigen ihre Zahl dagegen erst am Ende — und
+dann steht sie im Verlauf schon, bevor sie fällt. Die Animation erklärte dann
+nicht mehr den Zustandswechsel (Designregel 5), sie käme ihm hinterher.
+
+Also hält `game/useSettledRoll.ts` **die ganze Vorführung** an: Sicht,
+Klickkarte, Verlauf und Klang. Wer wirft, sieht bis zur Landung genau den Tisch,
+den er vorher hatte.
+
+Drei Entscheidungen darin:
+
+**Er liegt um die Partie und nicht in ihr.** In `App.tsx` umschließt er
+`useLocalGame` beziehungsweise `online.state` — und zwar **vor** `useCueSound`.
+Stünde der Klang davor, wäre der Wurf zu hören, bevor er liegt. Online wartet
+damit auch der Bildschirm des Mitspielers, der nur zusieht: der Wurf ist für
+alle derselbe Augenblick.
+
+**Nur eine Auskunft geht vor der Landung durch:** der Wurf selbst, als
+`landing`. Die Würfel müssen wissen, worauf sie fallen sollen. Alles andere
+erfährt der Tisch erst, wenn sie liegen.
+
+**Ohne Bewegung gibt es auch kein Warten.** Bei `prefers-reduced-motion` fliegt
+nichts, und eine Sekunde Stillstand ohne sichtbaren Grund wäre kein
+Spannungsbogen, sondern eine hakende Oberfläche. Dasselbe gilt, wo es gar kein
+`matchMedia` gibt: im Zweifel wird nicht gewartet.
+
+Woran der Haken erkennt, dass ein Stand aus einem Wurf kam, wusste der Client
+schon — daran hängt seit dem Ton die Fall-Animation. Die Bedingung ist dafür aus
+dem Anzeigemodell in eine eigene Funktion gewandert (`cameFromRoll` in
+`game/view.ts`): **zwei Abschriften derselben Bedingung wären beim ersten Umbau
+auseinandergelaufen**, und dann hätte der Tisch gewartet, ohne dass etwas
+fliegt, oder umgekehrt.
+
+Dazu eine Kleinigkeit mit Folgen: **der Becher sperrt sich während des Fluges
+selbst.** Die Klickkarte stammt aus dem Stand von vorhin und lässt das Werfen
+selbstverständlich noch zu — ein zweiter Klick hätte einen zweiten Wurf
+geschickt.
+
+### Was ein Kubus nicht kann
+
+Sechs Flächen. Für einen achtseitigen Würfel aus einem späteren Regelwerk gäbe
+es keine Zuordnung, und eine erfundene wäre schlechter als keine — dann bleibt
+es beim Umspringen an Ort und Stelle. Gezeigt wird ohnehin, was in `spec` steht.
+
+### Im Browser gemessen
+
+Bei 1920×889, lokale Partie, echter Klick auf die Würfel:
+
+| Zeitpunkt  | Befund                                                                                  |
+| ---------- | --------------------------------------------------------------------------------------- |
+| im Flug    | zwei `.cube`, Phase noch „Spieler 1 muss würfeln", Becher gesperrt, „Die Würfel fallen" |
+| gesteuert  | `--fx: -90deg` (Fünf) und `--fy: 180deg` (Sechs)                                        |
+| nach 1,1 s | keine Kuben mehr, „Wurf: 5 und 6, zusammen 11", Summe 11                                |
+| Verlauf    | „Spieler 1 würfelt 11 — Spieler 1 +2, Spieler 2 +1" — erst jetzt                        |
+
+Keine Meldung in der Konsole.
+
+### Ein Test, der ohne Layout-Engine etwas beweist
+
+Vier Tests in `game/useSettledRoll.test.tsx` prüfen nicht, DASS etwas fliegt —
+das kann jsdom nicht sehen —, sondern **welchen Stand der Bildschirm bekommt und
+wann**: der Tisch bleibt bis zur Landung auf dem alten Stand samt seinem
+Verlauf, ein Stand ohne Wurf geht sofort durch, bei reduzierter Bewegung wird
+gar nicht gewartet, und ein Stand, der **während** des Fluges eintrifft, öffnet
+den Tisch nicht vorzeitig, geht aber auch nicht verloren — übernommen wird am
+Ende der neueste.
+
+Zwei Dinge daran waren beim Schreiben nicht offensichtlich:
+
+- **`advanceTimersByTime` allein reicht nicht.** Der Wecker feuert, aber was er
+  an Zustand setzt, hängt danach in der Warteschlange; ohne `act` liest der
+  nächste Blick den Bildschirm von **vor** der Landung, und der Test meldet
+  einen Fehler, den es nicht gibt.
+- **Die Wurfaktion heißt `rollDice`, nicht `roll`.** Im Client heißt das Feld
+  der Klickkarte `roll`, im Protokoll heißt der Zug anders — ein Test, der nach
+  dem falschen Namen sucht, findet nichts und behauptet, es gäbe keinen Wurf.
+
+Dazu vier in `DiceTray.test.tsx`: die Kuben stehen auf der geworfenen Zahl, die
+Summe bleibt bis zur Landung weg, während des Fluges nimmt der Becher keinen
+Klick an, und ein achtseitiger Würfel fliegt gar nicht erst.
+
+### Offene Punkte
+
+- **Der Klang liegt jetzt vollständig auf der Landung.** Schöner wäre das
+  Poltern (`dice.roll`) beim Abwurf und der Aufschlag (`dice.land`) beim
+  Auftreffen — dafür müsste die Klangliste eines Ereignisses aufgeteilt werden,
+  und das ist eine eigene Etappe wert.
+- Der Bogen ist an keiner anderen Fenstergröße als 1920×889 gesehen. Der
+  Scheitel steht in `vw`/`vh`, sollte also mitwandern — gemessen ist das nicht.
+- Reduzierte Bewegung ist im Test belegt, aber nicht im Browser nachgestellt.
+- Online ist der Haken ungesehen: dass **jeder** Bildschirm wartet, ist bisher
+  nur die Bauart, nicht die Beobachtung.
+
+### Nächste Etappe
+
+Etappe 10 (Erweiterungen).
+
+## Eine Karte für alle Rohstoffe — und ein Klang dafür (2026-08-19, `main`)
+
+Stand: nach `d05ab4c`. Die Kartenoptik aus dem Bankhandel gilt jetzt überall, wo
+ein Rohstoff vorkommt — und die Karten sind nicht mehr stumm.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                  |
+| ------------------- | ------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                            |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 320 / 34          |
+| `pnpm build`        | grün — `index.js` 413.16 kB (gzip 122.99), `index.css` 36.22 kB (8.17)    |
+| `pnpm format:check` | grün                                                                      |
+| Browser             | lokale Partie 1920×889: Bankhandel, Angebot, Gegenangebot, Klang gemessen |
+
+### Den Rohstoff gab es fünfmal
+
+Als Stapel auf der Hand, als Farbplatte in „Erfindung", als Karte im Bankhandel
+— und als **nackten Text** im Abwurffenster, im Angebotsformular und in den
+Bedingungen eines Angebots. Die drei letzten waren ausgerechnet die Stellen, an
+denen man unter einer laufenden Frist aussucht, was man hergibt.
+
+Jetzt gibt es **eine** Karte (`panels/ResourceCard.tsx`), und die Fenster bauen
+um sie herum: der Bankhandel legt ein `label` mit verstecktem Radiofeld darum,
+Abwurf und Angebot einen Schrittzähler darunter, die Bedingungen gar nichts. Wer
+die Karte ändert, ändert sie überall.
+
+**Die Handkarte bleibt draußen.** Sie ist 4,6 rem breit, trägt Stapeltiefe und
+liegt auf dem Tisch statt in einem Fenster — ein anderes Ding, nicht eine
+größere Ausgabe von diesem.
+
+Drei Kleinigkeiten, die dabei mit abfielen:
+
+- **`von 3` statt einer nackten Zahl.** Der Bankhandel schrieb den Bestand als
+  Ziffer unter den Namen; das Abwurffenster sagte „von 3". Jetzt sagen es beide
+  gleich — und die leere Zeile auf der Empfangsseite bleibt, sonst wären die
+  zwei Reihen verschieden hoch.
+- **Der Pergamentkasten um Abwurf und Angebot ist weg.** Er umrahmte einmal drei
+  Textzeilen; eine Karte in einem Kasten wäre ein Ding in einer Kiste.
+- **`.cards__label`, `.cards__held` und `.pick__name` sind gelöscht**, nicht nur
+  ungenutzt. Tote Klassennamen im Blatt sind in diesem Projekt schon einmal
+  teuer geworden.
+
+### Die Karten waren als einzige Bedienelemente im Spiel stumm
+
+Der delegierte Klick sucht `closest('button, [role="button"]')`. Eine wählbare
+Rohstoffkarte ist ein **`label`** mit einem versteckten Radiofeld darin — also
+fand er nichts, und im Bankhandel klickte jeder Knopf, nur die Karte nicht.
+
+Behoben an zwei Stellen:
+
+1. `[data-sound]` steht mit in der Auswahl. Wer einen Klang an ein Element
+   schreibt, meint damit auch, dass es einen bekommt — und das Attribut gab es
+   längst.
+2. Ein Klang mehr im Vokabular: **`ui.card`**, ein kurzer weicher Rauschstrich
+   nach unten (3400 → 2100 Hz, 75 ms, `gain` 0.13). Ein eigener Klang und nicht
+   `ui.click`, weil es kein Knopf ist: **eine Karte raschelt, ein Knopf klackt.**
+   Der Unterschied trägt eine echte Auskunft — am Ton hört man, ob man Material
+   bewegt oder etwas auslöst. Ihn tragen die Rohstoffkarten und die
+   Schrittzähler, die ja Kartenmengen stellen.
+
+Das Vokabular steht damit bei 24 Klängen; `samples.ts` führt den neuen wie alle
+anderen als auskommentierte Zeile.
+
+### Im Browser gemessen
+
+Sonde um `createBufferSource`/`createOscillator`, Zähler vor jedem Klick
+zurückgesetzt:
+
+| Klick                            | Ergebnis                                              |
+| -------------------------------- | ----------------------------------------------------- |
+| Schrittzähler `+` (ein `button`) | 1 Klangquelle, `data-sound="card"`, Wert 0 → 1        |
+| Rohstoffkarte (ein **`label`**)  | 1 Klangquelle, Radiofeld gewählt, `tagName` = `LABEL` |
+
+Der zweite ist der Beweis: vor der Änderung wäre der Zähler auf 0 geblieben.
+
+Gesehen: Bankhandel (zwei gleich hohe Reihen, „von 0/2/1"), Angebotsformular
+(Karten mit Zählern darunter, gesperrte `+` sichtbar blass), Bedingungen eines
+Angebots (**Korn ×2 „für" Holz ×1** als zwei Karten mit Plaketten statt „2 Korn
+für 1 Holz") und das Gegenangebot.
+
+### Offene Punkte
+
+- Im **Gegenangebot** brechen die zwei Spalten bei fünf Sorten auf je zwei
+  Zeilen um, und die zweite Zeile steht linksbündig unter der ersten. Es liest
+  sich, ist aber nicht schön — der Dialog ist dort am schmalsten.
+- `ui.card` ist nur über die Sonde belegt, **gehört** hat ihn noch niemand: der
+  Musikregler des Rechners steht auf 0 %, die Effekte auf 30 %.
+- Der Klang des Wurfs liegt weiterhin vollständig auf der Landung (siehe den
+  Abschnitt davor).
+
+### Nächste Etappe
+
+Etappe 10 (Erweiterungen).
+
+## Die Felder werden Material: matt und flächig texturiert (2026-08-20, `main`)
+
+Stand: nach `355d18b`. Ein Feld war bis hierher genau zwei Dinge: eine Füllfarbe
+und eine 0.024 breite Kontur. Damit war das Brett — nach Designregel 4 der Held
+des Bildschirms — die flachste Fläche darauf, flacher als die Karten, die Würfel
+und der Kaufstapel. Und die Farbe trug die Geländeinformation **allein**, was
+Regel 7 widerspricht.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                   |
+| ------------------- | -------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                             |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 324 / 35           |
+| `pnpm build`        | grün — `index.js` 415.94 kB (gzip 123.74), `index.css` 36.43 kB (8.24)     |
+| `pnpm format:check` | grün                                                                       |
+| Browser             | lokale Partie 1920×889: Gründung durchgeklickt, 6 Siedlungen und 6 Straßen |
+
+Vier neue Tests (`board/terrain.test.tsx`), dazu zwei bestehende in
+`BoardSvg.test.tsx` auf den Chip umgehängt, der jetzt außerhalb der Feldgruppe
+liegt (`data-testid="chip-…"` statt eines Weges über `parentElement`).
+
+### Zwei Fassungen, und die erste war eine Lehre
+
+**Fassung eins** setzte je Feld fünf gezeichnete Objekte in ein Band am unteren
+Rand — Tannen, Ähren, ein Schaf, Ziegel — und gab den Feldern einen
+Lichtverlauf mit heller Fase an der Oberkante. Beides war falsch, und beides
+sah man erst im Browser:
+
+- **Ein heller Grat an der Oberkante ist ein Glanzlicht, und Glanz heißt
+  glatt.** Ein Plättchen aus Karton oder ein Holzfeld hat keines. Das Brett sah
+  aus wie aus Plastik — technisch sauber, materiell falsch.
+- **Fünf Objekte in einem Band sind ein gesetztes Designelement, kein
+  Gelände.** Man sah ein Motiv auf einer leeren Fläche, nicht ein Feld, das aus
+  etwas besteht.
+
+**Fassung zwei** ist die ausgelieferte: matt und flächig. Die Verläufe sind weg,
+an ihrer Stelle steht eine **richtungslose** Randabdunklung (`hex-matte`, ein
+Radialverlauf von durchsichtig auf 13 %) — es gibt keine Lichtquelle mehr, also
+auch keinen Reflex, nur eine Kante, an der die Farbe in den Karton zieht. Die
+Tiefe kommt jetzt aus der Textur und aus dem Küstenschatten.
+
+### Die Textur ist eine Kachel, kein Motiv
+
+`board/terrain.tsx` hält sechs `<pattern>`-Kacheln: Tannen im Wald, Grasbüschel
+auf der Weide, Furchen im Acker, Ziegelverband in der Lehmgrube, Zacken im
+Gebirge, Dünenwellen in der Wüste. Das Feld wird damit gefüllt — ein zweites
+Sechseck über der Geländefarbe, **kein `clipPath` nötig**: eine Füllung endet am
+Rand ihrer Form, und die Form _ist_ das Feld.
+
+**`userSpaceOnUse` und nicht `objectBoundingBox`.** Das ist die eine
+Entscheidung, an der hier alles hängt: die Voreinstellung würde jede Kachel auf
+die Fläche des einzelnen Feldes rechnen, und zwei benachbarte Waldfelder zeigten
+zwei Kacheln statt eines Waldes. Mit `userSpaceOnUse` hängt die Textur am Brett;
+sie läuft über die Feldgrenze durch. Der Unterschied zwischen Landschaft und
+Raster kostet ein Attribut.
+
+Damit fällt auch die ganze Freistellungsrechnung der ersten Fassung weg: der
+Zahlenchip ist deckend, eine Textur darunter verdeckt nichts, und Straßen und
+Bauwerke liegen ohnehin darüber.
+
+### Die Textur ist sehr leise, und das ist der Punkt
+
+`.terrain-fill` steht auf 16 %, `.terrain-line` auf 17 % — gerechnet ergibt das
+zwischen Marke und Feld einen Kontrast von **1.22 (Wald) bis 1.39 (Wüste)**.
+
+Das ist bewusst weit weniger als die 46 %, mit denen das Motivband der ersten
+Fassung endete. Eine Fläche verträgt weniger Kontrast als ein Einzelmotiv: was
+über das **ganze** Feld läuft, läuft auch unter jeder Straße und hinter jedem
+Bauwerk durch. Die Geländeunterscheidung kommt jetzt aus dem **Muster** und
+nicht aus der Deutlichkeit einer einzelnen Form — Spitzen gegen Rundungen gegen
+Furchen liest man auch leise, weil sie eine Fläche füllen. Genau das war der
+Ausweg aus der Zwickmühle, in der Fassung eins steckte: dort musste eine einzige
+Lasur auf sechs ungleichen Geländefarben gleichzeitig sichtbar und
+zurückhaltend sein, und das ging nicht (Wald erreichte selbst bei 66 % nur 2.18,
+während die Wüste bei 4.9 zum Fleck wurde — derselbe feste Aufschlag auf
+ungleiche Werte wie bei der Aufprallwelle im Hauptmenü).
+
+### Was der Test prüft — und was er nicht mehr prüft
+
+Bei einer gekachelten Fläche ist das Wichtigste unsichtbar, solange es stimmt,
+und springt sofort ins Auge, sobald es nicht stimmt: **die Naht.** Eine Linie,
+die bei x = 0 auf einer anderen Höhe anfängt als sie bei x = Breite endet, macht
+aus jeder Kachelgrenze einen Knick — und aus einer Textur ein Gitter.
+`terrain.test.tsx` rechnet das für jeden Pfad nach, der die Kachel durchquert.
+
+Dazu: jedes Gelände hat eine Kachel, jede Kachel steht auf `userSpaceOnUse` (die
+Aussage oben ist damit eingerastet, nicht bloß aufgeschrieben), und keine
+gezeichnete Marke ragt aus ihrer Kachel — was hinausragt, wird abgeschnitten,
+und ein abgeschnittener Baum sieht aus wie ein Zeichenfehler. Geprüft werden
+dabei die **Stützpunkte**, nicht jede Zahl im `d`: die Dünenwelle braucht
+Kontrollpunkte außerhalb der Kachel, sonst bekäme sie ihren Ausschlag nicht.
+
+Weggefallen ist die Freistellungsrechnung der ersten Fassung (Abstand jedes
+Motivpunkts zu den sechs Kantengeraden und zum Chipradius). Sie hatte ihren
+Zweck erfüllt und dabei zweimal zugeschlagen — eine Tanne stand 0.24 Einheiten
+zu hoch, ein Schafskopf ragte in den Chip —, aber mit einer Textur, die überall
+durchläuft, prüft sie nichts mehr.
+
+### Zwei Fallen auf dem Weg, beide vom Messen aufgedeckt
+
+**`drop-shadow` rechnet an einem SVG-Element in Pixeln, nicht in Brettmaßen.**
+Der Küstenschatten stand zuerst auf `0 0.045px 0.07px` — in der Annahme, ein
+Feld messe 1, das wären also rund vier Pixel. Gerendert kam nichts heraus. Eine
+Probe in Rot zeigte: bei `0.4px` ist der Saum knapp zwei Pixel breit, nicht
+zwanzig. Er skaliert damit **nicht** mit dem Brett, und das ist richtig — er
+kommt nicht aus der Karte, sondern aus dem Licht im Raum.
+
+Die Probe selbst log dabei zweimal, bevor sie die Wahrheit sagte: ein Inline-Stil
+wurde vom nächsten React-Rendern überschrieben, und ein Wert im Blatt kam wegen
+hängendem CSS-HMR gar nicht an. Beide Male sah es aus, als zeige der Filter
+nichts. Erst `invert(1)` — sichtbar oder nicht, ohne Zwischentöne — bewies, dass
+die Regel überhaupt greift.
+
+**Zwei gleiche Marken in regelmäßigem Versatz sind immer ein Raster.** Das
+Gebirge hatte zuerst zwei identische Winkel je Kachel, um eine halbe Kachel
+versetzt. Am Bildschirm ergab das ein sauberes Rautengitter — eine Steppdecke,
+kein Gebirge. Erst vier Winkel in vier Größen an ungleichen Abständen lösen es
+auf. Wald und Weide haben aus demselben Grund je drei Marken statt zwei.
+
+Der Schlagschatten hängt weiterhin an **einer** Gruppe über allen Feldern: innen
+stoßen die Sechsecke ohne Lücke aneinander, dort kann nichts fallen, übrig
+bleibt der Umriss zur See. Neunzehn einzelne Schatten hätten aus einem Brett
+einen Stapel gemacht.
+
+### Offene Punkte
+
+- `hex-matte` und die sechs Kachel-Ids sind Dokument-IDs. Stünden zwei Bretter
+  zugleich im DOM, gäbe es sie doppelt; identisch definiert, also folgenlos,
+  aber es ist eine Annahme und keine Garantie.
+- Der Küstenschatten ist der einzige Wert am Brett, der nicht mitskaliert.
+- Die Textur ist bei 1.22 bis 1.39 Kontrast bewusst unterhalb jeder
+  Kontrastnorm. Sie ist ein **zusätzlicher** Träger neben der Farbe, kein Ersatz
+  — wer die Farbe nicht unterscheiden kann, unterscheidet die Muster, aber nur
+  bei ausreichender Feldgröße (siehe Nachtrag).
+
+### Nachtrag: die Breakpoints, gemessen — und ein Fund, der älter ist als diese Arbeit
+
+Das Fenster ließ sich nicht verkleinern (`resize_window` meldete Erfolg,
+`innerWidth` blieb bei 1920). Ein **Iframe auf `localhost:5173`** löst das: darin
+ist `100vw` die Iframe-Breite, also bekommt die App einen echten schmalen
+Viewport, ohne dass das Fenster mitspielen muss.
+
+**Der Startbildschirm ist in Ordnung.** Die `62rem`-Grenze schaltet wie gebaut:
+einspaltig bis 988 px, zweispaltig ab 1096 px, das Brett per `order: -1` oben.
+Auf 386 px misst es 335×312, also 34,3 px je Umkreisradius. Die Prägung ist
+dort am Rand ihrer Lesbarkeit — sie wirkt als Textur, einzelne Tannen oder Ähren
+liest man nicht mehr. Der Unterschied zwischen Spitzen (Wald), Zacken (Gebirge)
+und Senkrechten (Korn) bleibt trotzdem sichtbar, und die Zahlenchips sind
+lesbar. Nichts bricht.
+
+**Der Spielbildschirm ist auf einem Handy unbenutzbar**, und das hat mit dieser
+Arbeit nichts zu tun. `--tray-strip` ist der Einzug je Seite und fällt wegen
+`max(14.75rem, …)` **nie unter 236 px**; `.board-area` bekommt ihn zweimal als
+`margin`. Gemessene Reihe (Breite des Bretts über der Viewport-Breite):
+
+| Viewport | 382 | 496 | 636 | 764 | 896 | 1020 | 1196 | 1436 |
+| -------- | --- | --- | --- | --- | --- | ---- | ---- | ---- |
+| Brett    | 0   | 0   | 140 | 268 | 400 | 524  | 700  | 889  |
+
+Unter rund 500 px ist das Brett **null Pixel breit**. Nachgewiesen, dass es
+vorbestehend ist: mit `git stash` auf den Stand von `355d18b` zurück, dieselbe
+Messung im Iframe — Brett 0×816, `.terrain` 0 (der Stash griff also wirklich).
+Danach `git stash pop`.
+
+Das ist **nicht** in diesem Zug behoben: die Ecken-Ablage neben dem Brett ist
+eine bewusste Entscheidung aus `etappe-10`, und sie auf schmalen Geräten
+aufzulösen ist ein eigener Entwurf (die Ablagen müssten unter das Brett
+wandern), keine Zeile im Stilblatt. Es steht hier, damit es beim nächsten Mal
+nicht wieder als „ungesehen" durchgeht.
+
+### Nächste Etappe
+
+Etappe 10 (Erweiterungen) — unverändert. Davor lohnt der Spielbildschirm auf
+schmalen Geräten: er ist unter ~500 px Breite gemessen unbedienbar.
+
+## Ein Winkel für alles: Ziffern, Seekarte, Fase (2026-08-20, `main`)
+
+Stand: nach `9f46423`. Die Frage war nicht, ob die Oberfläche funktioniert — sie
+tut es —, sondern warum sie trotz aller Arbeit brav aussieht. Der Blick in den
+Browser hat es in einem Bild beantwortet: gezeichnetes Gelände mit Tannen,
+Zacken und Furchen, und darauf sitzen die Zahlenchips in **`Segoe UI Bold`**.
+Das meistbetrachtete Ding einer Partie war das einzige, das nach Webseite
+aussah.
+
+Der Befund dahinter ist größer. `Wordmark.tsx` hat dem Spiel ein eigenes
+Buchstabensystem gegeben — Versalhöhe 100, Stammbreite 17, Fase 17 außen und 10
+innen, „aus demselben Winkel geschnitten wie das Brett". Es stand **genau
+einmal** auf dem Hauptmenü und danach nie wieder. Ein guter Titel über einer
+Anwendung ist kein System.
+
+Drei Züge, alle aus diesem einen Winkel:
+
+1. **Die Ziffern** (`type/Numerals.tsx`) — zehn Zeichen auf dem Raster der
+   Wortmarke, auf dem Zahlenchip und an der Würfelsumme.
+2. **Die Seekarte** (`screens/SeaChart.tsx`) — Rhumbenlinien unter Brett und
+   Aufbau, statt eines leeren Radialverlaufs auf dem größten Anteil des Bildes.
+3. **Die Fase** — `corner-shape: bevel` auf allem Bedienbaren, statt des einen
+   Radius, der überall passt und nirgends gemeint ist.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                               |
+| ------------------- | ---------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                         |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 326 / 35       |
+| `pnpm build`        | grün — `index.js` 418.50 kB (gzip 124.69), `index.css` 37.12 kB (8.46) |
+| `pnpm format:check` | grün                                                                   |
+| Browser             | 1184×615 und 380×740: Menü, Aufbau, lokale Partie bis zum ersten Wurf  |
+
+Zwei neue Tests in `BoardSvg.test.tsx`, zwei bestehende umgehängt. Der Zuwachs
+ist echt und nicht nur Umbau: dass auf einem Chip **die richtige Zahl** steht,
+stand vorher nirgends — geprüft war nur die Markierung „heiß".
+
+### Die Ziffern: dieselbe Begründung, die die Augen schon hatten
+
+Die Punkte unter der Chipzahl sind in `d05ab4c` gezeichnete Kreise geworden, und
+der Grund stand schon damals da: **eine gezeichnete Form hat keine Metrik, die
+eine fehlende Schrift verändern könnte.** Für die Zahl darüber galt derselbe
+Satz die ganze Zeit mit — sie war nur nicht drangekommen. Jetzt ist sie es, und
+damit fallen `.chip text` und `.chip text.chip__hot` ersatzlos weg: genau die
+zwei Regeln, an denen sich die Spezifitätsfalle aus `CLAUDE.md` zweimal
+geschlossen hat. Was am Element steht, kann kein Selektor mehr überholen.
+
+**Alle zehn Ziffern haben denselben Vorschub (81), auch die schmale Eins.** Bei
+den Buchstaben ist er je Zeichen verschieden; hier wäre das ein Fehler. Regel 3
+verlangt Tabellenziffern, und „11" darf gegen „10" auf dem Nachbarchip nicht
+wackeln.
+
+### Ohne Browser gezeichnet — und trotzdem nachgesehen
+
+Zehn Ziffern von Hand als Pfaddaten zu schreiben und zu hoffen, ist keine
+Methode. Solange die Chrome-Erweiterung nicht verbunden war, ist deshalb erst
+ein **Scanline-Füller** entstanden, der `M/H/V/L/Z` nach even-odd rastert und
+als ASCII ausgibt. Er hat sich sofort bezahlt gemacht: sechs Ziffern saßen, drei
+nicht. Die **1** hatte eine zu kurze Fahne, die **3** eine so tiefe Taille, dass
+sie in Richtung „8" kippte, und die **7** stand mit dem Fuß so weit links, dass
+sie aus ihrem Vorschub fiel. Alle drei waren im ASCII in einem Blick zu sehen —
+und keine davon hätte ein Test gefunden.
+
+Später kam der Browser doch, und die Erweiterung hat ihre eigene Falle
+mitgebracht: der Viewport steht fest auf einer Größe, die `resize_window` nicht
+ändert, und **nach jedem `zoom` liefert `screenshot` weiter dessen Ausschnitt** —
+zweimal sah es aus, als sei die Seite zusammengebrochen. Beides löst ein neuer
+Tab; für echte Fensterbreiten bleibt der Iframe-Trick aus `9f46423`.
+
+### Die See war der größte leere Anteil des Bildes
+
+Der Spielbildschirm gibt dem Brett die Höhe und schiebt die Ablagen in die zwei
+unteren Ecken. Was dabei entsteht, sind links und rechts Streifen von je
+mindestens 236 px, dazu der Rand oben — zusammen rund ein Drittel der Fläche,
+und darauf stand ein Radialverlauf.
+
+Was dort jetzt liegt, ist nicht Zierat, sondern Material: das Netz der
+Kompasslinien ist **das** Kennzeichen einer Seekarte, und um dieses Brett herum
+ist Wasser mit Häfen daran. Sechzehn Peilungen, neun Knoten, und alle Knoten
+benutzen **dieselben** Richtungen — das ist der Punkt an einer Rhumbenlinie, sie
+hält ihre Peilung, und deshalb verzahnt sich das Netz, statt sternförmig zu
+zerfallen. **Der Hauptknoten sitzt in der Mitte, also unter dem Brett:** die
+Linien kommen nicht irgendwoher, sie kommen unter der Insel hervor.
+
+Acht Nebenknoten und nicht sechzehn wie in der Vorlage. Die Vorlage ist auch das
+ganze Blatt und hat kein Brett in der Mitte; bei sechzehn wird aus dem Netz ein
+Gewebe, und ein Gewebe trägt Textur — dann streitet die See mit dem Gelände
+darauf (Regel 4).
+
+**Auf dem Startbildschirm hängt eine engere Maske**, und das ist der Unterschied
+zwischen Wasser und Tapete. Mit der Maske des Spielbildschirms liefen die Linien
+quer durch Überschrift und Formular; ein Netz unter einem Text ist keine Karte
+mehr, sondern Zierat hinter einer Auskunft (Regel 6). Es bleibt jetzt bei der
+Ecke, in der wirklich See ist.
+
+### Die Fase kostet keinen Schatten — und das war die Bedingung
+
+`clip-path` hätte dieselbe Form gemacht **und den Kontaktschatten
+mitgeschnitten**, und der ist der ganze Unterschied zwischen „liegt auf dem
+Tisch" und „ist ein Rechteck". `corner-shape: bevel` schneidet stattdessen die
+Ecke, die `border-radius` ohnehin schon vermaßt hat: kein Betrag ändert sich,
+`box-shadow` folgt der neuen Kontur von selbst, und wo die Eigenschaft fehlt,
+bleibt die Ecke rund — also der Stand von vorher, kein Ausfall.
+
+Geschnitten wird nicht alles. **Karten, Würfel, Zahlenchips und Bauteile
+behalten ihre Form**, weil sie Spielmaterial sind und sie aus der Wirklichkeit
+haben — eine Spielkarte mit geschnittenen Ecken ist keine Karte mehr, sondern
+ein Plättchen. Die Trennlinie ist damit eine Auskunft und kein Geschmack:
+gedrucktes Papier gegen gestanzte Bedienung.
+
+### Zwei Fehler, gemessen statt geahnt
+
+**Der eine ist älter als diese Arbeit.** Die Würfelsumme stand mit **1.13:1** auf
+der Tiefsee, die Aufforderung „Würfeln" daneben mit **2.5:1**. Die Ursache steht
+seit `9b51b83` im Blatt — und zwar als Kommentar, der beschreibt, was gerade
+nicht passiert ist: an `.dice--waiting` heißt es, die zwei `--ink`-Zeilen seien
+gefallen, weil dunkle Tinte auf der Tiefsee „dieselbe unsichtbare Schrift" wäre.
+Gefallen sind sie; **umgestellt wurde nichts**, und ohne Umstellung fällt `--ink`
+auf den Grundwert aus `:root` zurück — und der ist dunkel.
+
+Die Lehre ist nicht die Farbe, sondern der Satz daneben: **ein Kommentar, der
+eine Absicht beschreibt, ist kein Nachweis, dass sie im Blatt steht.**
+Aufgefallen ist es erst, als die Summe eine gezeichnete Form wurde und jemand
+nachgesehen hat, ob sie ankommt. Die Zeilen stehen jetzt an `.dice-tray` und
+nicht an `.dice`: die Aufforderung ist eine Schwester der Würfel und keine
+Tochter, am Becher gesetzt hätte die Umstellung die Summe geholt und das Wort
+daneben stehen lassen — der halbe Fix, der aussieht wie ein ganzer. Gemessen
+jetzt **11.18:1** und **5.83:1**, der Würfel behält seine dunkle Tinte lokal
+(15.28:1 auf Pergament).
+
+**Der andere war frisch und selbst gemacht.** `.sea-chart` trug `inset: -0.75rem`,
+um das Polster von `.game` auszugleichen. Der Startbildschirm hat kein Polster,
+die Regel aber trotzdem geerbt: das Netz ragte dort 12 px über jede Seite hinaus
+und schob der Seite einen **waagerechten Rollbalken** unter — Regel 7, und
+ausgelöst von einem Element, das man nicht einmal anfassen kann. Der Ausgleich
+steht jetzt dort, wo das Polster steht (`.game .sea-chart`), und nicht im
+Bauteil. Gemessen auf allen drei Bildschirmen und bei 380 px: `scrollWidth -
+clientWidth` = 0.
+
+### Offene Punkte
+
+- Die Hafenmarken (`2:1`, `3:1`) stehen weiter in `Segoe UI` — mitten auf dem
+  Brett, neben den gezeichneten Chipzahlen. Sie brauchen einen Doppelpunkt, den
+  das Ziffernraster nicht kennt.
+- Kleine laufende Zahlen (`0 SP`, `0 Karten`, die Bauvorräte) bleiben
+  Fließtext. Das ist Absicht — eine Anzeigeschrift mitten im Satz ist keine
+  Persönlichkeit, sondern ein Setzfehler —, aber es ist eine Grenze, die jemand
+  anders ziehen könnte.
+- `corner-shape` ist jung. Wo es fehlt, ist die Ecke rund; geprüft wurde nur in
+  Chrome 151.
+- Die Deutlichkeit des Netzes (7 % Strahlen, 5 % Ring) ist am Auge gesetzt und
+  nicht gemessen. Sie liegt bewusst unter jeder Kontrastnorm — sie trägt keine
+  Information.
+
+### Nächste Etappe
+
+Etappe 10 (Erweiterungen) — unverändert. Der schmale Spielbildschirm aus dem
+Nachtrag zu `9f46423` steht weiter davor: unter rund 500 px ist das Brett 0 px
+breit, und das ist ein eigener Entwurf und keine Zeile im Stilblatt.
+
+## Das Gelände kommt an: Textur, Deckung, Küste (2026-08-20, `main`)
+
+Stand: nach `0b72a31`. Der Auftrag war „das Spielfeld ist ein bisschen
+charakterlos, der Stil ist aber gut" — also nicht die Farbwelt umwerfen,
+sondern herausfinden, warum die Handschrift, die Wortmarke und Ziffern
+inzwischen haben, an der Feldkante aufhört.
+
+Die Antwort war eine Messung und keine Geschmacksfrage.
+
+### Der Befund: die Textur stand im Blatt und kam nie an
+
+Bei 65 Pixeln je Bretteinheit — das Brett stand in einem 1184er Fenster auf
+644 Pixeln — war der Texturstrich **0.78 Pixel** breit. Unterhalb eines Pixels
+zeichnet der Browser nicht dünner, sondern blasser: er verteilt den Strich auf
+zwei Pixelreihen und rechnet die Deckung herunter. Von den 17 Prozent im Blatt
+kamen rund 13 an, auf einem Waldgrün, gegen das sie ohnehin nur **1.23:1**
+standen. Eine Tanne war dabei **6.8 Pixel** hoch.
+
+Die Textur war also nicht „leise" (so stand es im Kommentar) — sie war **weg**,
+und das Feld las sich als Farbfläche mit einer 1.56 Pixel starken Kante drum
+herum. Das Stärkste am Feld war seine Grenze. Genau daher der Eindruck
+„Farbraster statt Landschaft".
+
+**Ein Kommentar, der eine Absicht beschreibt, ist kein Nachweis, dass sie
+ankommt** — die Falle steht seit zwei Etappen in `CLAUDE.md`, und sie hat hier
+ein drittes Mal zugeschnappt, diesmal nicht über Spezifität, sondern über
+Subpixel.
+
+### Drei Züge
+
+1. **Der Strich auf 0.02** (1.3 Pixel). Das ist die Untergrenze, ab der eine
+   Deckkraft überhaupt bedeutet, was dasteht.
+2. **Die Stärke je Gelände**, gegen den eigenen Grund gerechnet statt einmal
+   für alle geraten — und die Richtung nach der Helligkeit des Grundes.
+3. **Ein Küstensaum** aus drei Untiefen, statt allein eines Schlagschattens.
+
+### Die Tinte: eine Farbe ist nicht sechsmal dieselbe Textur
+
+Die alte Einheitstinte stand auf der Wüste bei 1.41:1 und auf dem Wald bei
+1.23:1 — dort, wo das Feld am dunkelsten ist und die Unterscheidung am
+nötigsten wäre, war sie am schwächsten. Jeder Zielwert ist jetzt ausgerechnet
+(Luminanz nach WCAG, Tinte über Grund gemischt).
+
+**Die Richtung folgt aus der Helligkeit und aus nichts sonst.** Auf dem Wald
+(Luminanz 0.114) braucht dunkle Tinte 46 Prozent für das, wofür helle 20
+genügen; eine dunkle Marke auf einem dunklen Feld wird zum Loch, bevor sie
+sichtbar wird. Wald und Hügel zeichnen deshalb in Pergament, die vier helleren
+Gelände in Tiefsee-Tinte. Dieselbe Rechnung wie bei der Straßenkontur: was auf
+jedem Untergrund gelten soll, richtet sich nach dem Untergrund.
+
+### Der zweite Befund: Dichte ist nicht Kontrast
+
+Mit sechsmal 1.50 im Blatt sahen Hügel und Acker am Bildschirm trotzdem
+deutlich lauter aus als der Rest. Nachgemessen (Pfadlänge mal Strichbreite,
+bei gefüllten Marken die Fläche des abgetasteten Umrisses, gegen die
+Kachelfläche) belegt der Ziegelverband **25.3 Prozent** seiner Kachel, der Wald
+**9.8** — Faktor 2.58. Ein Muster aus durchlaufenden Linien füllt eine Fläche,
+ein Muster aus vereinzelten Marken tupft sie an; derselbe Kontrast je Strich
+ergibt dann nicht dieselbe Textur.
+
+Gedämpft wird mit `sqrt(11.2 / Deckung)`, gedeckelt bei 1 — die dichten
+Gelände werden leiser, die dünnen nicht lauter. **Die Wurzel ist ein Kompromiss
+und wird im Blatt auch so genannt:** voll linear korrigiert wäre der
+Ziegelverband auf 1.22 gefallen, also fast zurück auf den Zustand, den diese
+Etappe beheben sollte.
+
+| Gelände   | Deckung | Dämpfung | Ziel  | Alpha | Tinte     |
+| --------- | ------- | -------- | ----- | ----- | --------- |
+| forest    | 9.8 %   | 1.000    | 1.500 | 20 %  | Pergament |
+| pasture   | 12.0 %  | 0.965    | 1.483 | 23 %  | Tiefsee   |
+| mountains | 12.0 %  | 0.969    | 1.484 | 26 %  | Tiefsee   |
+| desert    | 15.9 %  | 0.841    | 1.421 | 19 %  | Tiefsee   |
+| fields    | 17.7 %  | 0.797    | 1.398 | 19 %  | Tiefsee   |
+| hills     | 25.3 %  | 0.666    | 1.333 | 19 %  | Pergament |
+
+### Was der Blick aus der Nähe noch gefunden hat
+
+Die viewBox lässt sich als Zoom benutzen — echtes SVG-Zoom, das alles korrekt
+größer rendert, im Gegensatz zum `zoom` der Chrome-Erweiterung, der weiter den
+alten Ausschnitt liefert. Vergrößert kamen zwei Dinge heraus, die im Ganzen
+nicht auffielen:
+
+- **Der Acker war ein Streifenmuster.** Zwischen zwei Furchen lag weniger als
+  das Vierfache der Strichbreite — dicht genug, dass das Auge es als Flimmern
+  liest statt als Furche. Kachelhöhe von 0.09 auf 0.115, und die Auslenkung ist
+  mitgewachsen: eine flachere Welle in einer höheren Kachel wäre eine gerade
+  Linie geworden.
+- **Die Weide war mit Vögeln bestreut.** Drei gerade Halme aus einem Punkt,
+  symmetrisch und gleich lang, sind kein Büschel, sondern ein **Ypsilon**. Die
+  äußeren Halme sind jetzt Bögen; der mittlere bleibt gerade, denn drei Bögen
+  wären eine Palme.
+
+### Die Küste: erst ein Glow, dann eine Karte
+
+Der Schlagschatten sagt „die Landmasse liegt auf der See". Er sagt nichts
+darüber, **was** die See ist — und der Hintergrund tut das bereits, mit
+Rhumbenlinien und Kompassrose. Es fehlte der Übergang.
+
+Die Säume sind kein eigener Umriss der Landmasse, sondern dieselben neunzehn
+Sechsecke noch einmal, als breite Kontur und unter den Feldern: was nach innen
+ragt, verschwindet unter den Nachbarn, sichtbar bleibt der Überstand zur See.
+Damit skalieren sie **mit** dem Brett, anders als der Schlagschatten — richtig,
+denn sie gehören zur Karte, nicht zum Licht im Raum.
+
+**Der erste Versuch war ein Glow.** Gleichmäßig verteilte Breiten und
+Deckkräfte (0.34/0.20/0.10 bei 7/10/15 Prozent) liefen zu einem weichen hellen
+Schein zusammen — genau das, was Designregel 5 hinauswirft. Was Wasser um eine
+Küste tut, ist etwas anderes: unmittelbar am Land flach und deutlich, nach
+außen sich verlierend. Das innerste Band ist deshalb schmal und mit Abstand das
+kräftigste (0.07 bei 26 Prozent).
+
+Die Deckkraft steht an der **Gruppe** und nicht am Strich: neunzehn Konturen
+überlappen sich an jeder Feldecke, und zwei halbdurchsichtige Striche
+übereinander sind dunkler als einer — am Strich gesetzt zeigte die Küste an
+jeder Ecke einen Knoten.
+
+### Ein fremder Testfehler, den die neue Last aufgedeckt hat
+
+`pnpm test` fiel plötzlich in `StartScreen.test.tsx`, mit Werten wie
+`"weiAnna"` und `"eiAnna"` — Restzeichen aus einem **vorherigen** Tippvorgang
+(`brett-zwei`), die verspätet im nächsten Feld landeten. Der fallende Test
+wechselte von Lauf zu Lauf.
+
+**Gemessen statt vermutet:** auf dem gestashten Stand, ohne eine einzige
+Änderung am Brett, fielen **zwei von drei** vollen Läufen. Der Fehler war
+vorher da; die vier neuen Tests haben nur die Last erhöht, unter der er
+sichtbar wird. Der grüne Lauf zu Beginn der Etappe war Glück.
+
+Zwei Ursachen greifen ineinander, und die erste Kur hat nur die erste
+erwischt (danach fiel noch einer von vier Läufen):
+
+1. Die **Direkt-API** von user-event legt für jeden Aufruf eine neue Sitzung
+   an; `clear` und `type` teilen deshalb keinen Zustand, und was die eine an
+   Tastendrücken in der Schlange hat, weiß die andere nicht. Dazu setzt
+   user-event echte Verzögerungen zwischen Tastendrücke — auf einer ruhigen
+   Maschine unsichtbar, unter 35 parallelen Testdateien nicht mehr. Kur: eine
+   gemeinsame Sitzung mit `delay: null`.
+2. Das Feld ist **kontrolliert**, sein Wert kommt aus dem React-Zustand
+   _zurück_. Wer unmittelbar nach dem Tippen das Brett ausliest, liest im
+   Zweifel das von vorher — und `zeichnet zu einem anderen Seed ein anderes
+Brett` vergleicht dann zweimal dasselbe. Kur: auf den Wert im Feld warten,
+   denn er stammt aus demselben Zustandswechsel wie das Brett.
+
+Danach fünf von fünf Läufen grün.
+
+### Ein Befund, der offen bleibt
+
+Beim Messen der schmalen Fenster (Iframe-Trick) kam heraus, dass der bekannte
+Layout-Befund **schlimmer ist als bisher notiert**. Weiter oben stand „unter
+~500 px Breite unbedienbar"; gemessen wird das Brett schon weit vorher
+unbrauchbar klein:
+
+| Fenster | Brett  |
+| ------- | ------ |
+| 1184 px | 684 px |
+| 900 px  | 400 px |
+| 700 px  | 200 px |
+| 560 px  | 60 px  |
+| 480 px  | 0 px   |
+
+Bei 900 px Fenster ist der Texturstrich wieder unter einem Pixel — aber das ist
+kein Texturbefund, sondern eine Folge davon, dass das Brett dort schon zu klein
+zum Spielen ist. Repariert wird die Ursache; die Textur zu deckeln wäre ein
+Pflaster auf dem falschen Problem. Der Befund gehört vor Etappe 10.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                                        |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 330 / 35                      |
+| `pnpm test` fünfmal | grün, fünf von fünf (vorher fielen zwei von drei)                                     |
+| `pnpm build`        | grün — `index.js` 419.02 kB (gzip 124.87), `index.css` 37.58 kB (8.56)                |
+| `pnpm format:check` | grün                                                                                  |
+| Browser             | Gründungsphase durchgeklickt: Straßen und Häuser lesen auf der lauteren Textur sauber |
+
+Vier neue Tests. Zwei halten die Kacheln (jede trägt ihre Geländeklasse — die
+Kopplung ins Blatt ist eine Zeichenkette und bricht sonst still; und keine
+Kachel schrumpft wieder unter die Größe, bei der eine Form eine Form bleibt).
+Zwei halten die Küste: dass die Säume **unter** den Feldern liegen (rutschen
+sie dahinter, liegt ein Pergamentschleier über dem ganzen Brett) und dass jedes
+Band jedes Feld säumt und von außen nach innen schmaler wird.
+
+## Drei Befunde aus dem Playtest: Raster, Stapel, Bumerang (2026-08-21, `main`)
+
+Drei Dinge am Tisch bemängelt, drei Ursachen, die alle drei messbar waren und
+keine davon Geschmack.
+
+### 1. „Alles zu symmetrisch in den Feldern"
+
+Und Acker und Wüste trugen obendrein **dieselbe** Textur: beide eine
+durchlaufende Sinuswelle, einmal 0.3 breit und einmal 0.34. Zwei verschiedene
+`d`-Zeichenketten, dieselbe Form — der Unterschied lag allein in der Füllfarbe,
+und damit war die Textur genau dort wirkungslos, wo sie gebraucht wird. Farbe
+ist nie der einzige Träger (Designregel 7).
+
+Der Rastereindruck hatte drei Ursachen:
+
+1. **Eine Kachel wiederholt sich, und zwar exakt** — das ist die Definition von
+   `<pattern>` und keine Schwäche der Zeichnung. Bei 0.4 Breite passte die
+   Waldkachel gut viermal in eine Feldbreite; das Auge braucht drei
+   Wiederholungen für ein Raster und bekam vier.
+2. **Gleich große Marken sind ein Gitter**, auch wenn sie unregelmäßig stehen —
+   drei Tannen derselben Höhe lesen sich als Punktraster mit Jitter.
+3. **Eine gespiegelte Marke ist die symmetrischste Form überhaupt.** Die
+   Gebirgszacken waren gleichschenklige Winkel, also viermal dieselbe Figur.
+
+Behoben in dieser Reihenfolge:
+
+- **Zwei Lagen je Gelände mit teilerfremden Perioden.** Wald ist 0.62 breit,
+  seine Streulage 0.97; dasselbe Bild kommt erst nach 0.62 × 97 = 60 Einheiten
+  wieder. Das Brett misst sieben — es gibt auf ihm keine zweite Stelle, die
+  aussieht wie eine erste. Kein `Math.random()`: Zufall in der Zeichnung wäre
+  ein Bild, das bei jedem Rendern anders aussieht.
+- **Die Streulage trägt die größten Marken** und ist dünn besetzt — der alte
+  Baum, der Doppelgipfel, der Dünenkamm, der Feldstein. Größe als Unterschied
+  wirkt nur, wenn das Große selten ist.
+- **Marken in verschiedenen Größen und Arten je Kachel.** Wald: sechs Tannen
+  von 0.1 bis 0.2, und `spread` variiert dazu die Breite je Höhe — ohne den
+  zweiten Freiheitsgrad ist jede Tanne dieselbe Tanne in einem anderen Zoom.
+  Neben den Graten liegt Geröll, neben den Furchen Stoppeln, neben den Rippeln
+  Kiesel.
+- **Kein Grat ist mehr gleichschenklig**; welche Flanke länger ist, wechselt.
+- **Der Ziegelverband ist wild statt regelmäßig** — vier Lagen von 0.09 bis
+  0.115 Höhe, zwei bis drei Steine je Lage, jeder anders lang. Der alte halbe
+  Versatz war ein Läuferverband, und ein Läuferverband ist gerade _das_ Gitter.
+  Keine Fuge liegt mehr auf der Kachelkante: eine Linie bei y = 0 wird von der
+  Kachel halbiert und käme schmaler heraus als ihre Nachbarinnen.
+- **Die Wüste ist neu gezeichnet:** gebrochene Rippel in fünf Längen plus zwei
+  Kiesel. Durchlaufend gegen gebrochen liest man auch leise — und das ist der
+  Unterschied zum Acker, den vorher nur die Farbe machte.
+
+**Drei neue Prüfungen, und alle drei hätten den alten Stand gefangen:**
+
+- dass die zwei Lagen sich erst nach mehr als zwölf Einheiten gemeinsam
+  wiederholen (sonst ist die zweite Lage nur eine zweite Kachel — 0.6 und 0.9
+  sieht harmlos aus und fällt auf 1.8),
+- dass die Marken einer Kachel mindestens anderthalbfach verschieden groß sind,
+- dass die **größte** Marke eines Geländes in keinem anderen noch einmal
+  vorkommt, **formgleich geprüft und nicht zeichengleich**: jede Marke wird auf
+  ihren eigenen Rahmen normiert, Größe und Ort fallen heraus. Genau daran wäre
+  Acker/Wüste gescheitert. Die Kontrollpunkte zählen dabei mit — die alte
+  Ackerwelle hatte drei Stützpunkte auf einer Geraden, ihre ganze Welle steckte
+  in den Kontrollpunkten.
+
+### 2. Die Kartenstapel fächern beim Darüberfahren auf
+
+Für alle drei Stapel an _einer_ Stelle im Blatt: Rohstoffe in der Hand,
+Entwicklungskarten daneben, Kaufstapel in der anderen Ecke. Drei Pixel zur
+Seite, drei nach oben und zwei Grad je Lage, Drehpunkt unten in der Mitte — die
+Bewegung, mit der man einen Stapel mit dem Daumen aufspreizt. Sie erklärt, was
+die Plakette behauptet: dass darunter noch welche liegen.
+
+**Der Versatz musste dafür erst aus dem `style`-Attribut heraus.** Er stand als
+fertiges `transform` an jeder Karte, und ein Inline-Stil schlägt jede Regel im
+Blatt — die Fächerregel wäre gelaufen und hätte nichts bewirkt. Das ist die
+Falle aus `CLAUDE.md` in der anderen Richtung (dort schlägt eine CSS-Regel ein
+SVG-Attribut); das Ergebnis ist dasselbe: eine Regel, die dasteht und nie
+greift. Übergeben wird jetzt nur `--i`, die Lage im Stapel.
+
+**`--fan` ist ein Schalter (0/1) und keine Strecke.** Der Grund steht bei
+`prefers-reduced-motion`: Bewegung abbestellen heißt, den Schalter
+zurückzulegen. `transform: none` hätte alle Karten aufeinandergelegt — aus einem
+Stapel wäre eine Karte geworden, und das ist keine ruhigere Oberfläche, sondern
+eine falsche. Hätte der Fächer seine Zielwerte selbst geführt, müsste die
+Ruhelage dort ein zweites Mal stehen; zwei Stellen mit denselben Zahlen laufen
+auseinander.
+
+Dazu hebt sich die oberste Karte um zwei Pixel und der Schatten geht von
+`--lift` auf das neue `--lift-raised` — ohne ihn ist die Verschiebung nur eine
+Verschiebung und keine Höhe. Beim spielbaren Ring musste die Spezifität
+nachgezählt werden: `box-shadow` ist eine Eigenschaft und keine Liste, die
+Anhebe-Regel wirft den Ring mit weg. Die Ausnahme hat dieselben drei Klassen
+und steht **später** — das ist der ganze Ausschlag.
+
+### 3. Was eine Entwicklungskarte tut, steht jetzt auf dem Bildschirm
+
+Der Satz stand im `title` und war damit praktisch nicht da: ein
+Browser-Kurzhinweis kommt nach rund einer Sekunde Stillstand, in der Schrift des
+Betriebssystems — und auf einem **gesperrten** Knopf in den meisten Browsern gar
+nicht. Ausgerechnet die gesperrte Karte ist die, bei der man nachliest; die
+spielbare drückt man.
+
+Jetzt eine Zeile über der Reihe: Name als Eyebrow, darunter der Satz. **Über der
+Reihe und nicht an der Karte** — ein Zettel an der Karte wäre 4.6rem breit und
+deckte beim Ritter fünf Zeilen lang die Nachbarn zu. **Absolut gesetzt**, damit
+die Karten nicht rücken, wenn er kommt und geht: eine Erklärung, die den Stapel
+verschiebt, auf den man gerade zielt, nimmt einem das Ziel weg. `pointer-events:
+none`, sonst flackerte sie an ihrer eigenen Unterkante.
+
+**Zeigen und Verbergen hängen am Listeneintrag, nicht am Knopf** — ein gesperrter
+Knopf feuert keine Mausereignisse. `onFocus`/`onBlur` daneben, weil eine
+Erklärung, die nur die Maus findet, für die Tastatur nicht existiert; dazu
+`aria-describedby` an jeder Karte, damit sie auch ohne Zeigegerät da ist.
+
+### 4. Der Wurf sah aus wie ein Bumerang — und das war die Verteilung
+
+„Kurz zur Mitte fliegen und dann zurück bouncen." Anfang und Ende sind derselbe
+Ort, die Bahn muss also umkehren; ob das nach Wurf oder nach Gummiband aussieht,
+entscheidet allein, **wo** der Rückweg stattfindet.
+
+**Gemessen, nicht vermutet** (Animation angehalten und Bild für Bild
+ausgelesen):
+
+| Zeit | alt: x / y      | neu: x / y      |
+| ---- | --------------- | --------------- |
+| 13 % | —               | −363 / −220     |
+| 15 % | −244 / **−271** | —               |
+| 26 % | —               | −461 / **−293** |
+| 30 % | −461 / −293     | —               |
+| 42 % | —               | **−313 / 0**    |
+| 52 % | **−89 / 0**     | −201 / −18      |
+| 63 % | −42 / **−82**   | —               |
+| 66 % | —               | −49 / 0         |
+
+Zwei Fehler stehen in dieser Tabelle:
+
+1. **Der Aufschlag lag zu spät und zu nah.** Von 460 Pixeln Rückweg lagen 370 in
+   der Luft und 90 auf dem Tisch — man sah einen Bogen hin und einen Bogen
+   zurück. Jetzt schlägt er bei 42 % auf und weit draußen (−313), und die
+   restlichen 58 % der Zeit rollt er über den Tisch. Das ist die längste
+   zusammenhängende Bewegung des ganzen Wurfs.
+2. **Der Aufstieg war viel zu schnell und die Sprünge viel zu hoch.** Nach der
+   Hälfte der Steigzeit stand der Würfel auf 92 % der Höhe und hing dann oben
+   herum; ein geworfener Körper ist zur Halbzeit auf drei Vierteln (`v·t −
+g·t²/2`), jetzt sind es 75 %. Und der zweite Sprung stand auf 0.28 des
+   Scheitels, also **82 Pixel** — ein Wurf, kein Aufprall. Die Sprunghöhen
+   stehen jetzt in `rem` und nicht im Verhältnis zum Scheitel: wie hoch ein
+   Würfel zurückkommt, hängt an ihm und nicht daran, wie weit jemand ihn
+   geworfen hat. 24, 10, 4 Pixel — je gut vier Zehntel des vorigen.
+
+Dafür ist der Wurf von **einem** `transform` auf **vier Lagen** gegangen: Weg,
+Sprung, Drehung, Schatten. In einem `transform` haben die vier nur _eine_
+Zeitkurve, und dann sieht jede aus wie der Mittelwert der drei anderen. Getrennt
+bekommt jede ihre eigene — waagerecht Reibung, senkrecht Schwerkraft (hinauf
+`ease-out`, herunter `ease-in`, je Halbwelle einzeln).
+
+**Der Schatten ist der eigentliche Tisch.** Er hängt an der waagerechten Bahn
+und nicht am Sprung: er folgt dem Wurf, aber nicht der Höhe — genau das macht
+ihn zur Fläche, auf der etwas liegen kann. Weit und blass heißt „weit oben", eng
+und dunkel heißt „gleich aufgeschlagen". `translateZ(-2.2rem)` statt `z-index`:
+in einem `preserve-3d`-Raum sortiert der Browser nach Tiefe, ein `z-index` ist
+dort wirkungslos, und der Schatten schnitte quer durch den Würfel.
+
+**Die Drehung rollt jetzt, statt zu taumeln.** Bis zum Aufschlag drehen sich
+beide Achsen, danach steht `--fx` fest und nur noch `rotateY` läuft — in
+Vierteln (270, 180, 90, 0) und auf denselben Prozentzahlen wie die Aufschläge:
+ein Würfel kippt beim Aufsetzen und nicht dazwischen.
+
+`THROW_MS` ist von 1080 auf 1180 mitgewachsen. Es ist die einzige Kopplung
+zwischen Blatt und Ablauf und bricht still.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                 |
+| ------------------- | ------------------------------------------------------------------------ |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                           |
+| `pnpm test`         | grün — shared 579 / 35 Dateien, server 163 / 20, client 335 / 35         |
+| `pnpm build`        | grün — `index.js` 422.14 kB (gzip 125.50), `index.css` 41.69 (9.07)      |
+| `pnpm format:check` | grün                                                                     |
+| Browser             | Brett im Spiel angesehen; Wurfbahn angehalten und Bild für Bild gemessen |
+
+Neun neue Tests. Fünf halten die Textur (beide Lagen je Gelände, das gemeinsame
+Vielfache der Perioden, der Größenunterschied in der Kachel, die eigene
+Leitmarke je Gelände, die Kachelgrößen jetzt für beide Lagen). Drei halten die
+Erklärzeile (sie kommt und geht, sie kommt **auch an der gesperrten Karte**, und
+der Satz hängt zusätzlich ohne Maus an jeder Karte). Einer hält die Grenze
+zwischen Komponente und Blatt: die Karte sagt, _wo_ sie im Stapel liegt, das
+Blatt entscheidet, _was_ daraus wird.
+
+### Was offen bleibt
+
+Der Layout-Befund von gestern steht unverändert: unter rund 900 px Fensterbreite
+ist das Brett zu klein zum Spielen. Er gehört weiter vor Etappe 10.
+
+## Der Auftakt: ausgewürfelt, wer beginnt (2026-08-22, `auftakt-karten-schmale-geraete`)
+
+Stand: nach `496843d`. Eine Partie fing bis hierher damit an, daß Spieler 1
+setzt — und Spieler 1 war, wer im Wartebereich zuerst geklickt hatte. Der beste
+Startplatz auf dem Brett gehörte damit der schnellsten Hand. Jetzt wird
+ausgewürfelt.
+
+Drei Entwürfe sind an diesem Tag entstanden (`docs/superpowers/specs/2026-08-22-*`),
+umgesetzt ist bislang der erste. Die anderen zwei — Entwicklungskarten vor dem
+Wurf, schmale Geräte — haben ihre Pläne und warten.
+
+### Eine Phase, aber keine Aktion
+
+Der Auftakt ist eine Phase vor der Gründung: `rolls` für die laufende Runde,
+`pending` als Warteschlange, `round` für das Stechen. Als Phase und nicht als
+Feld daneben, aus demselben Grund, den `phase.ts:56` schon für `tradePending`
+nennt — während ausgewürfelt wird, ist jede andere Aktion verboten, und als
+Phase ist ein zu früh gesetztes Haus derselbe gewöhnliche Regelverstoß wie
+jeder andere.
+
+**Eine neue Aktion gibt es dagegen nicht.** `rollDice` bedeutet, was die Phase
+sagt, und verzweigt an genau einer Stelle in `applyAction`. Das ist der Grund,
+warum Protokoll, Envelope, Serverräume, `legalActions` und die Wurfbahn im
+Client unverändert bleiben konnten: `rollDice` steht dort schon überall. Eine
+zweite Aktion `rollForOrder` hätte in acht Dateien einen Zwilling gebraucht,
+der dasselbe tut.
+
+Wer am höchsten wirft, rückt in `players` auf Index 0. Bei Gleichstand stechen
+nur die Gleichen, so oft wie nötig.
+
+### Der Verdacht, der keiner war — und der, der einer war
+
+**Die Rotation färbt niemanden um.** Farbe und Name hängen am `Seat` und werden
+per Id nachgeschlagen (`seats.ts`), nicht über den Index in `players`. Im
+Browser nachgemessen, nachdem Spieler 2 mit einer 8 gewonnen hatte: Spieler 2
+`rgb(44,111,187)`, Spieler 3 `rgb(224,138,46)`, Spieler 1 `rgb(192,57,43)` —
+jeder behielt seine Farbe, obwohl die Liste sich gedreht hat.
+
+**Der Entwurf hatte dafür an anderer Stelle unrecht.** Er behauptete, die
+Würfel flögen „ohne eine neue Zeile", weil der Auftakt `lastRoll` setzt. Das
+stimmte nicht: `cameFromRoll` erkannte einen Wurf allein daran, daß er
+`rollPending` verläßt — und im Auftakt bleibt die Phase dieselbe. Ohne den
+neuen Zweig hätte der Auftakt lautlos gewürfelt, die Würfel lägen einfach da.
+Woran man ihn jetzt erkennt: die Warteschlange wird kürzer, oder der Auftakt
+ist vorbei.
+
+### Was der Umbau gekostet hat
+
+`createGame` startet in der neuen Phase, und das brach **37 Tests** in allen
+drei Paketen — erwartet: bis hierher ging jeder Test davon aus, daß Spieler 1
+zuerst setzt. Repariert wurde nach einer Regel: `afterOpening(…)` um den Aufbau
+legen und alles, was am Index hing, an die Id binden. Die Startphase
+zurückzubiegen wäre die zweite Wahrheit gewesen, die dieser Zug gerade
+abschafft.
+
+Drei Tests spielen den Auftakt seither **wirklich mit** statt ihn zu
+überspringen: die ganze Partie in `shared`, die ganze Partie über die
+Klickkarten im Client, und der Raum im Server — letzterer über `applyAction`,
+also über den Weg, den ein echter Zug nimmt.
+
+Zwei kleine Helfer sind dabei entstanden, und bewußt zwei: `afterOpening` in
+`shared/game/fixtures.ts` und noch einmal in `apps/client/src/test/opening.ts`.
+Der `shared`-Helfer steht **nicht im Barrel** — Testmaterial gehört nicht zur
+öffentlichen Oberfläche des Pakets —, und diese Grenze aufzuweichen wäre teurer
+gewesen als zwölf Zeilen doppelt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                      |
+| ------------------- | ----------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                                |
+| `pnpm test`         | grün — shared 610 / 36 Dateien, server 163 / 20, client 351 / 36              |
+| `pnpm build`        | grün                                                                          |
+| `pnpm format:check` | grün                                                                          |
+| Browser             | Lokale Partie zu dritt: Auftakt durchgewürfelt, Sieger setzt, Farben gemessen |
+
+Im Browser der Reihe nach gesehen: die Auftakttafel liegt da, bevor irgend
+etwas gesetzt werden kann; der Würfelknopf wirkt reihum und die Würfel fliegen
+wie im Spiel (Spieler 1 eine 3, Spieler 2 eine 8, Spieler 3 eine 6); danach
+steht Spieler 2 vorn und setzt; die Bauleiste meldet „Siedlung: 54 Stellen",
+und die Setzung wird angenommen.
+
+**54 Stellen** ist nebenbei der Beleg für den zweiten offenen Entwurf: bei der
+ersten Setzung ist wirklich jeder Knoten des Bretts erlaubt, und genau deshalb
+ist ein Fingertipp dort mehrdeutig.
+
+33 neue Tests. Sie halten die Reihenfolge (jeder wirft genau einmal, nur der
+Vorderste darf), das Stechen (nur die Gleichen, und es endet — über einen
+Streifen fester Saaten erzwungen, weil ein Zweig, den die Prüfung nur manchmal
+betritt, ungeprüft ist), die Rotation, die Sperre (kein Haus im Auftakt), die
+Bestimmtheit, den Verlaufssatz und die Auftakttafel.
+
+### Was offen bleibt
+
+- **Keine Frist im Auftakt.** Wer nicht wirft, hält die Partie an — genau wie
+  heute schon in der Gründung. `deadlineOf` kennt weiter nur `tradePending`.
+- **Der Layout-Befund** steht unverändert: unter rund 900 px Fensterbreite ist
+  das Brett zu klein zum Spielen. Der Entwurf dazu liegt jetzt vor
+  (`2026-08-22-schmale-geraete-design.md`), umgesetzt ist er nicht.
+- **Entwicklungskarten vor dem Wurf** sind entworfen und geplant, nicht gebaut.
+
+## Entwicklungskarten vor dem Wurf (2026-08-22, `auftakt-karten-schmale-geraete`)
+
+Stand: nach `8278685`. Eine Entwicklungskarte durfte bis hierher erst nach dem
+Würfeln gespielt werden. Damit fehlte der Zug, um den es bei der Ritterkarte
+eigentlich geht: den Räuber vom eigenen Feld holen, **bevor** die Erträge
+fallen.
+
+### Die Freigabe war das Kleinste daran
+
+Drei Eingriffe, und der dritte trägt die anderen.
+
+`canActNow` prüfte für Kauf **und** Ausspielen dieselbe Bedingung („Das geht
+erst nach dem Würfeln"). Sie zerfällt jetzt in `canBuyNow` (nur `main`) und
+`canPlayNow` (`main` oder `rollPending`). Der Verstoßtext beim Ausspielen sagt
+dabei „nur im eigenen Zug" — der alte Satz war ab sofort schlicht nicht mehr
+wahr.
+
+**Der eigentliche Eingriff ist `resume` in `robberPending`.** `applyMoveRobber`
+setzte hart `phase: { kind: 'main' }`. Solange der Räuber nur nach einer Sieben
+oder nach einem Ritter _in_ der Hauptphase wanderte, war das richtig. Ein Ritter
+vor dem Wurf wäre über denselben Weg in die Hauptphase gekommen — und der Wurf
+dieser Runde wäre **ersatzlos ausgefallen**: Räuber versetzt, geerntet nie,
+und niemand hätte gesehen, wo es verlorenging. Die Phase trägt jetzt, was nach
+ihr kommt: nach einer Sieben `main`, nach einem Ritter die Phase, aus der er
+gespielt wurde.
+
+Kein Feld `rollOwed` daneben, aus dem Grund, den `phase.ts` überall angibt: der
+Automat sagte „Hauptphase", das Feld sagte „es fehlt noch ein Wurf", und jede
+Regel müßte beide lesen. `resume` beginnt mit dem Umweg und verschwindet mit
+ihm.
+
+### Was von selbst kam
+
+Die drei Karten mit Auswahl — Straßenbau, Erfindung, Monopol — brauchten
+**keine Zeile**. Sie stehen nicht als fertige Züge in `legalActions` (es wären
+dutzende Kombinationen), sondern kommen über `playableDevelopmentCards`, und
+das fragt `canPlayDevelopmentCard`. Mit der Trennung von Kauf und Ausspielen
+erlaubt es sie von selbst.
+
+**Der Client ebenso.** `view.playableCards` in der `PlayerView` kommt direkt
+aus derselben Funktion, und die Hand hat keine eigene Phasenabfrage. Der Plan
+hatte für diesen Fall zwei erlaubte Ausgänge vorgesehen; eingetreten ist der
+gute. Drei Wächtertests halten fest, daß es so bleibt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                   |
+| `pnpm test`         | grün — shared 626 / 36 Dateien, server 163 / 20, client 355 / 36 |
+| `pnpm build`        | grün                                                             |
+| `pnpm format:check` | grün                                                             |
+| Browser             | **nicht** — statt dessen ein Test durch die ganze Oberfläche     |
+
+Die letzte Zeile ist eine Entscheidung und kein Versäumnis. Um im Browser an
+eine spielbare Ritterkarte zu kommen, müßte eine Partie bis dorthin gespielt
+werden — viele Klicks für einen Blick, der nichts festhält. Statt dessen geht
+ein Test den Weg wirklich: über `useLocalGame` den Ritter anklicken, den Räuber
+versetzen, gegebenenfalls das Opfer wählen — und dann steht am Statussatz
+wieder „muß würfeln". Fiele der Wurf aus, stünde dort „ist am Zug".
+
+Abgelesen wird am **Statussatz** und nicht am Würfelknopf: dessen Beschriftung
+kommt vom letzten Wurf („Wurf: 2 und 6, zusammen 8") und nicht von der Phase.
+Das war beim Schreiben ein Fehlschlag und ist jetzt ein Kommentar im Test.
+
+13 neue Tests.
+
+### Was offen bleibt
+
+- **Der Layout-Befund.** Unverändert; der Entwurf und der Plan liegen vor.
+- **Ein Sieg durch eine Karte vor dem Wurf** ist möglich und richtig — `finalize`
+  läuft in `rollPending` genauso. Ein eigener Test dafür steht aus.
+
+## Schmale Geräte: das Brett bekommt seine Fläche zurück (2026-08-22, `auftakt-karten-schmale-geraete`)
+
+Stand: nach `cef82bd`. Der Befund vom 20. August ist abgeräumt — der, der seit
+zwei Durchgängen als „gehört vor Etappe 10" dastand: unter rund 900 px
+Fensterbreite war das Brett zu klein zum Spielen, unter 480 px **null Pixel
+breit**.
+
+### Zwei Hälften, und die zweite war die härtere
+
+**Die Fläche** war eine Medienabfrage. `--tray-strip` zieht je Seite mindestens
+236 px ab; das war für breite Bildschirme richtig (dort steht die Ablage in der
+leeren See, die das Brett ohnehin nicht braucht) und auf einem Handy verheerend.
+Unter `60rem` greift der Einzug nicht mehr, die Hand wird ein flacher Streifen
+am unteren Rand, Kaufstapel und Bauteile eine Knopfreihe am rechten. Dieselbe
+Regel wie bei den Panels, eine Bildschirmgröße weiter gedacht: **was einen
+Körper hat, legt sich auf die See, statt neben dem Brett Platz zu verlangen.**
+
+Der Umschaltpunkt hängt an der Breite und nicht an `orientation`: ein Tablet
+hochkant mit 800 px ist derselbe Fall wie ein Handy quer — und ein schmales
+Fenster am Schreibtisch auch.
+
+**Das Setzen** war das eigentliche Problem. Bei 330 px Brettbreite und 9,76
+viewBox-Einheiten sind das ~34 px je Umkreisradius; benachbarte Knoten liegen
+genau einen Radius auseinander, eine Fingerkuppe misst 44 px. Und bei der ersten
+Setzung ist **jeder** Knoten erlaubt — im Browser nachgezählt: die Bauleiste
+meldet „Siedlung: 54 Stellen". Trefferkreise in Fingergröße überlappen dort, und
+dann entschiede die Zeichenreihenfolge, welches Ziel gemeint war.
+
+Deshalb zwei Änderungen, die zusammengehören: **eine** durchsichtige Fangfläche
+über dem Brett, die `nearestTarget` fragt (rein, ohne DOM, zehn Tests) — und ein
+Zug, der zwischen Absicht und Ausführung stehenbleibt. Ein Tipp stellt den Geist
+hin, ein weiterer verschiebt ihn, „Hier setzen" führt aus.
+
+**Auf jedem Gerät derselbe Weg.** Ein Touch-Sonderweg wäre ein zweiter Satz
+Interaktionen, den kein Test am Schreibtisch je erwischt. Der Preis ist ein
+zweiter Klick mit der Maus; er nimmt dort mit, dass ein Fehlklick bis hierher
+sofort und unwiderruflich war.
+
+### Gemessen
+
+Im Iframe, weil `resize_window` in dieser Umgebung nicht wirkt (steht seit dem 20. August so da). Gemessen wird die **gezeichnete** Brettbreite — die Spanne
+über alle Felder —, nicht der SVG-Kasten: das Brett paßt sich mit
+`xMidYMid meet` ein und füllt seinen Kasten nur in einer Richtung.
+
+Bei 800 px Rahmenhöhe, gegen die alte Reihe:
+
+| Fenster | vorher | jetzt |
+| ------- | ------ | ----- |
+| 480     | 0      | 415   |
+| 560     | 60     | 486   |
+| 700     | 200    | 610   |
+| 900     | 400    | 749   |
+
+Im Handy-Querformat (360 px hoch) begrenzt die **Höhe** und nicht mehr die
+Breite: dort sind es bei 480, 560, 700, 740 und 900 px Fensterbreite jeweils
+**330 px** — vorher 0, 60, 200, 268 und 400. Die Zahl ist überall dieselbe, weil
+das Brett jetzt so groß wird, wie die Höhe es zuläßt. Genau das war der Sinn.
+
+### Ein Befund aus dem Bild, der ohne Browser nicht aufgefallen wäre
+
+Der erste Wurf klammerte die **ganze** untere Spalte auf 3,2 rem — und damit
+steckten „Handel" und „Zug beenden" mit im zugeklappten Teil. Gemessen: der Knopf
+endete bei 436 px in einem 356 px hohen Fenster, also unerreichbar. Die zwei sind
+die einzige Bedienung, die in jedem Zug angefaßt wird; sie dürfen nie weggeklappt
+sein. Geklammert wird jetzt die Kartenreihe, nicht die Spalte — danach endet
+„Zug beenden" bei 350 px und ist da.
+
+Ein Unit-Test hätte das nicht gefunden: jsdom rechnet kein Layout. Genau deshalb
+stand die Messung im Plan als Abnahme und nicht als Nettigkeit.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                |
+| ------------------- | ----------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                          |
+| `pnpm test`         | grün — shared 626 / 36 Dateien, server 163 / 20, client 373 / 37        |
+| `pnpm build`        | grün                                                                    |
+| `pnpm format:check` | grün                                                                    |
+| Browser             | Meßreihe oben; im 740×360-Rahmen Auftakt gewürfelt und Siedlung gesetzt |
+
+Im schmalen Rahmen der ganze Weg: Auftakt durchgewürfelt, „Siedlung" gedrückt,
+**sechs Pixel neben** einen Knoten getippt — der Geist erscheint —, „Hier
+setzen" gedrückt, und die Phase steht auf der zugehörigen Straße.
+
+Sieben bestehende Tests klickten Brettelemente direkt an; sie gehen jetzt
+denselben Weg wie ein Finger. Der Helfer dazu steht einmal in `test/board.ts`,
+samt der zwei Kunstgriffe, die jsdom nötig macht (Einheitsmatrix statt
+`getScreenCTM`, `fireEvent` statt `userEvent`, weil letzteres die Koordinaten
+rundet — auf einem Brett von keinen zehn Einheiten Breite wäre danach jede
+Genauigkeit weg).
+
+16 neue Tests.
+
+### Was offen bleibt
+
+- **Zoom und Verschieben.** Bewußt draußen: es verlagert die Arbeit auf den
+  Spieler und hilft an der Maus nichts. Sollte sich zeigen, daß 330 px auf einem
+  480-px-Gerät trotzdem zu klein sind, ist Zoom die nächste Antwort.
+- **Die Auftakttafel verdeckt im Querformat einen guten Teil des Bretts.** Sie
+  verschwindet nach dem Auftakt und kommt nie wieder — hingenommen, nicht
+  übersehen.
+- **Die Wurfbahn auf schmalen Geräten** ist nicht eigens vermessen: die Würfel
+  fliegen in die Ecke, in der jetzt Knöpfe stehen.
+
+## Die Tür aus der Partie — verlassen, aussteigen, abbrechen (2026-08-24, `main`)
+
+Aus dem Playtest, und es war eine Sackgasse: wer mitten in einer Online-Partie
+den Tab zumachte, kam beim nächsten Besuch in genau diese Partie zurück — der
+Server öffnet beim `hello` den einzigen Raum, an dem jemand sitzt — und von dort
+führte **kein Weg** zum Startbildschirm. Eine neue Partie war damit unerreichbar,
+obwohl nichts sie verhinderte.
+
+Zwei Dinge fehlten, und sie sind nicht dasselbe.
+
+### „Ich mache später weiter" und „ich komme nicht wieder"
+
+Der Unterschied ist zu groß für einen Knopf, deshalb sind es zwei Orte.
+
+**Verlassen** ist die Tür oben im Spielbildschirm, links vom Status und in der
+Größe des Verlaufssymbols daneben: zurück zum Start, der Platz bleibt stehen,
+die Karte „Deine Partien" führt wieder herein. Das ist `room.leave`, das es
+schon gab — es hatte nur nie eine Bedienung an dieser Stelle.
+
+**Aussteigen** ist neu und steht auf der Karte, nicht im Spiel: `room.abandon`.
+Es trägt einen Raumcode, und genau darin liegt der Grund für eine zweite
+Nachricht — `room.leave` heißt „ich gehe von _diesem_ Tisch weg", und welcher
+das ist, weiß die Sitzung. Ausgestiegen wird aber von einer Liste aus, an der
+man an keinem Tisch sitzt und eine von vier Karten meint.
+
+Was daraus folgt, hängt am Zustand des Raums und steht an einer Stelle
+(`abandonRoom`):
+
+- **Im Wartebereich** wird ein Platz frei. Der Tisch gehört den anderen weiter;
+  `leaveRoom` weiß längst, wie das geht.
+- **In einer laufenden Partie** ist sie vorbei — für alle. Einen Spieler aus dem
+  Zustand zu nehmen ginge nicht, ohne die Partie zu zerstören (dieselbe
+  Überlegung, aus der `leaveRoom` es nicht tut), und eine Partie, in der ein Sitz
+  nie wieder zieht, ist ohnehin keine mehr. Ein halber Abbruch, bei dem die
+  anderen weiter auf einen Zug warten, wäre die Sackgasse für sie.
+
+Der Client entscheidet das nicht mit. Er fragt nach — auf der Karte, um die es
+geht, und mit der Folge über den Knöpfen statt darunter — und bekommt in
+`ended` gesagt, was geschehen ist.
+
+### Abgebrochen ist nicht gelöscht
+
+`rooms.abandoned_at` als eigene Spalte neben `finished_at`, und aus demselben
+Grund, aus dem es beide gibt: das sind nicht dieselben Enden. Eine beendete
+Partie hat einen Sieger, eine abgebrochene keinen. Ein gemeinsames `ended_at`
+mit einem Flag daneben wäre dieselbe Auskunft in zwei Spalten statt in einer.
+
+Die Zeile bleibt stehen, samt Startzustand und Log. Nur `loadAll` übergeht sie
+ab jetzt — abgebrochen heißt, daß dort niemand mehr weiterspielt, nicht, daß es
+die Partie nie gab. `registry.abandon` ist deshalb nicht `registry.remove`:
+`remove` ist für Räume, die es nicht hätte geben müssen (ein leerer Tisch, den
+`sweep` einsammelt), und da ist nichts aufzuheben.
+
+`UPDATE … WHERE abandoned_at IS NULL` hält den **ersten** Abbruch fest. Käme ein
+zweiter hinterher — zweiter Tab, doppelter Klick —, verschöbe er sonst den
+Zeitpunkt auf den späteren; abgebrochen wurde die Partie aber, als der erste
+ausgestiegen ist.
+
+### `room.over` bekommt seinen ersten Absender
+
+Das Ereignis stand seit Etappe 6 im Protokoll und im Client, und niemand hat es
+je geschickt. Jetzt tut es der Abbruch — **bevor** der Raum aus dem Verzeichnis
+fällt: `broadcastOver` verteilt an die Sitzenden, und danach gibt es keine mehr,
+an die zu verteilen wäre.
+
+Der Client filtert dabei auf den Tisch, an dem dieser Bildschirm gerade sitzt.
+Wer in mehreren Räumen sitzt, bekommt jedes Ende gemeldet; ohne diese Zeile
+legte der Abbruch einer nebenher laufenden Partie eine Meldung über die, die man
+gerade spielt.
+
+Wer eine Absage nicht bekommt: ein Fremder. `abandonRoom` gibt für einen, der
+nicht am Tisch sitzt, `none` zurück, und die Antwort sieht aus wie die auf einen
+Raum, den es nicht mehr gibt — aus einer Ablehnung soll sich nicht ablesen
+lassen, ob ein Raumcode vergeben ist.
+
+### `away`: verlassen hält jetzt auch einen Neuladen aus
+
+Die halbe Tür war keine. Der Server öffnet beim `hello` den einzigen Raum, an
+dem jemand sitzt — wer die Partie verließ und dann F5 drückte, stand wieder
+darin, und die Tür wäre eine Geste geblieben statt einer Entscheidung.
+
+Der Sitz weiß es jetzt selbst: `RoomSeat.away`. Der Unterschied zu `connected`
+ist der zwischen **Widerfahrnis und Entscheidung** — `connected` fällt weg, wenn
+das WLAN ausgeht, und kommt von allein wieder; `away` setzt jemand selbst, indem
+er aufsteht, und nur er nimmt es zurück, indem er zurückkommt. Daran hängen drei
+Zeilen und sonst nichts:
+
+- `leaveRoom` setzt es in einer laufenden Partie (im Wartebereich fällt der Sitz
+  ganz weg, da gibt es nichts zu merken).
+- `joinRoom` nimmt es zurück — und zwar an derselben Stelle, an der seit
+  Etappe 4 der bekannte Sitz wiedererkannt wird. Ein eigener Weg für die
+  Rückkehr wäre ein zweiter Weg für dieselbe Sache.
+- `hello` filtert damit, welche Räume für das automatische Öffnen überhaupt
+  zählen (`isAway`).
+
+**In der Datenbank**, anders als `connected`: `room_seats.away` mit `DEFAULT 0`
+(Migrationsschritt 6). `connected` steht dort nicht, weil es zu einem Serverlauf
+gehört und mit ihm endet. Eine Entscheidung überlebt den Prozeß, in dem sie
+gefallen ist — sonst säße nach jedem Neustart jeder wieder an dem Tisch, den er
+verlassen hat. Die 0 ist dabei kein Vorgabewert, sondern genau das, was für
+jeden Bestandssitz galt: bis hierher gab es die Tür nicht.
+
+Belegt und nicht behauptet: mit entferntem Filter fällt genau ein Test um
+(`Neuladen > setzt niemanden an einen Tisch zurueck, den er verlassen hat`), der
+Rest der Datei bleibt grün.
+
+### Ein Fall, den die Tür erst erreichbar gemacht hat
+
+`room.leave` traf eine laufende Partie vorher nie — es gab keinen Weg aus ihr
+heraus. Jetzt schon, und damit war ein Loch offen: wer während eines offenen
+Handelsangebots aufsteht, ließ den Tisch auf jemanden warten, der auf dem
+Startbildschirm sitzt. Der Austritt trägt deshalb dieselbe vorläufige Ablehnung
+ein wie ein Verbindungsverlust (`dropFromTrade`, über den `system`-Helfer, den
+es dafür schon gibt). Vorläufig heißt: die Rückkehr nimmt sie wieder weg.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                   |
+| `pnpm test`         | grün — shared 626 / 36 Dateien, server 182 / 20, client 388 / 37 |
+| `pnpm build`        | grün                                                             |
+| `pnpm format:check` | grün (bis auf `public/mess.html`, unversioniert und älter)       |
+
+25 neue Tests: der Übergang selbst, beide Stores, zwei Migrationsschritte, der
+Handler samt `room.over` und Fremdenabwehr, die drei Neulade-Fälle
+(verlassen / zurückgekommen / abgerissen), das Angebot beim Aufstehen, die
+Rückfrage auf der Karte, die Tür im Spielbildschirm und die Filterung des Endes
+im Client.
+
+### Was offen bleibt
+
+- **Am Tisch sieht man den Unterschied nicht.** Wer gegangen ist, steht bei den
+  anderen als „nicht verbunden" da wie einer, dem die Leitung abgerissen ist —
+  `away` geht nicht auf die Leitung. Für „wartet ihr noch auf jemanden?" wäre
+  das die nützlichere Auskunft; es ist aber eine Anzeige und kein Fehler.
+- **Zwei Tabs derselben Person hängen aneinander.** Verläßt einer die Partie,
+  gilt der Sitz als `away`, obwohl der andere Tab weiterspielen kann. Dieselbe
+  Lockerheit hat das Mehrtab-Verhalten schon vorher gehabt.
+- **Niemand kann einen Abbruch aufhalten.** Wer am Tisch sitzt, darf ihn
+  beenden, ohne die anderen zu fragen. Bei drei Freunden am selben Abend ist das
+  richtig; in einer Runde Fremder wäre eine Mehrheit die bessere Regel.
+
+## Das Rubberband, der Gastgeber und ein Vorspann zu viel (2026-08-24, `main`)
+
+Vier Befunde vom Tisch, gleich nach der Tür.
+
+### Man wurde an den Tisch zurückgezogen, den man gerade verlassen hatte
+
+Der auffälligste zuerst, weil die anderen drei an ihm hängen: wer die Partie
+verließ, stand nach einer Weile wieder im **Wartebereich** — auf ebender Seite,
+auf der der Gastgeber Tischgröße, Seed und Siegpunktziel einstellt.
+
+Die Kette ist kurz und jedes Glied für sich richtig. Verlassen läßt den Sitz
+stehen (das ist der Sinn von `away`), also ging jeder weitere Raumstand weiter
+an ihn hinaus. Beim nächsten Ereignis am Tisch — einer meldet sich ab, jemand
+benennt sich um, eine Frist läuft ab — kam ein `room.state` an, der Client setzte
+`state.room` wieder, und weil `left` seinen Spielstand weggeräumt hatte, war
+`view` dabei `null`. `App` liest genau diese beiden: Raum ohne Sicht heißt
+Wartebereich. Fertig war das Gummiband.
+
+Behoben an der Wurzel und nicht am Symptom: **`broadcastRoom` und `broadcastGame`
+überspringen einen Sitz, der `away` ist.** Zugestellt wird, wer am Tisch sitzt,
+und wer aufgestanden ist, sitzt nicht daran — derselbe Satz, mit dem seit
+Etappe 4 begründet ist, warum ein Verlassender kein `room.state` mehr bekommt.
+Er galt nur bisher nicht für den, dessen Platz stehenblieb. Zurück kommt der
+Stand mit der Rückkehr: `room.join` nimmt `away` weg und verteilt danach.
+
+Belegt: mit wiedereingesetzter Zustellung fallen genau zwei Tests um — der
+Zustellungstest und der, der das Rubberband über den Handler nachstellt (Cem
+benennt sich um, Ben darf davon nichts merken).
+
+### Der Gastgeber räumt auf
+
+`room.delete`, und der Unterschied zum Abbruch ist nicht die Höflichkeit,
+sondern der Bestand: eine abgebrochene Partie bleibt nachlesbar in der
+Datenbank, eine gelöschte ist fort — der Fremdschlüssel nimmt Sitze und Log
+gleich mit. Deshalb zwei Bedingungen, beide Regeln und keine
+Vorsichtsmaßnahmen:
+
+- **Nur der Gastgeber.** Dieselbe Grenze wie beim Umstellen und beim Starten.
+- **Nur, wenn sonst niemand mehr am Tisch sitzt.** Sonst wäre es der Abbruch,
+  nur ohne Spur und ohne Nachricht an die, denen die Partie ebenfalls gehörte.
+
+„Alle sind gegangen" sieht in den beiden Phasen verschieden aus, weil das
+Verlassen es tut: im Wartebereich ist der Sitz weg, in der laufenden Partie
+steht er und trägt `away`. `isDeserted` faßt beides in einer Zeile. Und die
+Gastgeberrolle wandert im Wartebereich mit (`leaveRoom` setzt den ersten
+Verbliebenen) — ein Tisch soll nicht unaufräumbar werden, bloß weil der Gründer
+als erster ging.
+
+Auf der Karte steht dann **„Partie löschen" an der Stelle von „Partie
+abbrechen"**, nicht daneben: zwei Ausgänge nebeneinander laden dazu ein, den
+falschen zu treffen. Ob es erlaubt ist, sagt `RoomSummary.deletable` — eine
+fertige Antwort und keine Angaben zum Selberrechnen. Die Regel steht auf dem
+Server, weil er sie durchsetzt; stünde sie zusätzlich im Client, gäbe es zwei
+Fassungen davon.
+
+### Der Vorspann und die Marke
+
+Unter der Wortmarke stand „Drei bis sechs Spieler. Sechs Geräte oder eins." Er
+sagte nichts, was die vier Reiter darunter nicht besser sagen, und war die
+einzige Fließtextzeile auf einem Bildschirm aus lauter Bedienung. Weg damit —
+und was er an Platz freigibt, geht an die Marke: die Panel-Spalte wächst von
+27rem auf 34rem, innen also von 21rem auf 28rem, und genau so breit steht die
+Marke jetzt da (+33 %). Ihre Schranke steigt auf 34rem mit, damit sie unterhalb
+von 62rem — wo die zweite Spalte wegfällt — nicht am alten Maß hängenbleibt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                   |
+| `pnpm test`         | grün — shared 626 / 36 Dateien, server 197 / 20, client 390 / 37 |
+| `pnpm build`        | grün                                                             |
+| `pnpm format:check` | grün (bis auf `public/mess.html`, unversioniert und älter)       |
+
+15 neue Tests. **Nicht im Browser nachgemessen** — die Erweiterung war nicht
+verbunden. Die Marke ist deshalb gerechnet und nicht gesehen: 34rem Spalte
+minus zweimal 3rem Rand ergibt 28rem, und `max-width` bindet dort nicht. Wer
+als nächstes davorsitzt, schaut bitte hin.
+
+### Was offen bleibt
+
+- **Die Vorschau wird schmaler.** Was die Spalte gewinnt, verliert das Brett
+  daneben — zwischen 62rem und rund 80rem Fensterbreite merkt man das.
+- **Am Tisch sieht man weiterhin nicht, wer gegangen ist** und wer bloß
+  offline: `away` geht nach wie vor nicht auf die Leitung. Seit der Zustellung
+  ist das sogar spürbarer geworden, denn ein Weggegangener aktualisiert für die
+  anderen nichts mehr.
+
+## Preise, Richtung, Verlauf (2026-08-24, `main`)
+
+Vier Befunde aus derselben Sitzung, alle von der Sorte „stand nirgends".
+
+### Was ein Haus kostet, stand nirgends
+
+Man weiß es nach der dritten Partie auswendig. Davor rät man, und der Knopf
+sagte bloß „geht nicht", ohne je zu verraten, woran es fehlt. Beim Darüberfahren
+liegt jetzt der Preis über dem Bauteil und neben dem Kaufstapel.
+
+**Eine Marke je Karte, keine Zahl daneben.** „2× Korn" ist eine Rechnung, zwei
+Kornmarken sind ein Blick — am Tisch aus Pappe legt man die Karten hin und zählt
+sie nicht vor. Die Marken tragen Geländefarbe und Motiv, dieselben zwei Träger
+wie jede Karte im Spiel (Designregel 7). Die teuerste Sache kostet fünf Karten;
+nebeneinander wäre die Reihe breiter als die Ecke, also bricht sie nach drei um
+und ist dann das, was sie ohnehin wäre: ein kleiner Stapel.
+
+**Der Preis erscheint auch am gesperrten Bauteil**, und das ist der Punkt — dort
+ist er am meisten wert. Dafür mußte `opacity: 0.32` vom Knopf herunter: es traf
+alles darin, seit heute also auch den Preis, und der wäre ausgerechnet dort das
+Blasseste am Bildschirm gewesen. Jetzt blassen die zwei Dinge, die den Zustand
+meinen — das Stück und seine Zahl.
+
+**Der Kaufstapel ist kleiner geworden, und das nimmt eine frühere Entscheidung
+zurück.** In `DeckPanel.tsx` stand: dieselbe Größe wie die Handkarten, denn
+„3.1rem neben 4.6rem hat aus der Bank ein Beiwerk gemacht". Der Satz stimmt — er
+galt für einen Stapel, der allein dastand. Jetzt sind es zwei Dinge in einer
+Ecke von `--tray-strip` Breite: die Karte gibt genau ab, was die Preisspalte
+braucht (3.7 + 0.25 + 0.85 ≈ 4.8rem gegen vorher 4.6rem allein), und das Paar
+nimmt zusammen den Platz ein, den die Karte vorher für sich hatte.
+
+Die Marken kommen gestaffelt an, `--i` mal 40 ms — dieselbe Staffelung wie am
+Eingang. Bei abbestellter Bewegung bleibt das Ein- und Ausblenden (ein Wechsel
+der Deckkraft ist keine Bewegung), weg fallen Anheben, Skalierung und vor allem
+die Staffelung: fünf Marken, die nacheinander eintrudeln, sind genau das, was
+dort abbestellt wurde.
+
+### „X für Y" liest jeder aus seiner eigenen Richtung
+
+Im Angebotsdialog standen die zwei Kartenreihen mit einem „für" dazwischen — in
+der Richtung dessen, der anbietet. Wer angeboten _bekommt_, liest sie damit
+zwangsläufig falsch herum: links stand, was man bekommt, rechts, was man
+hergibt. Unter einer ablaufenden Frist ist das die denkbar schlechteste Stelle
+zum Umdrehen im Kopf.
+
+Genau dieser Befund hat vor einer Weile schon den Kasten für Gegenangebote
+geformt (dort steht seither „Du gibst" / „Du bekommst"). Er gilt für das Angebot
+selbst genauso, und deshalb ist es jetzt dieselbe Form — eine gemeinsame
+`.terms`-Regel statt zweier fast gleicher. Die Beschriftung ist beide Male
+dieselbe, nur die Zuordnung dreht sich: wer anbietet, gibt sein `give`, wer
+angeboten bekommt, gibt das `want` des anderen.
+
+### Der Verlauf endete nach zwanzig Zeilen
+
+„Mehr als zwanzig braucht niemand im Blick" — das galt für ein Panel, das
+dauerhaft in der Ecke stand und nebenbei mitlief. Als Blatt, das man aufzieht,
+gilt das Gegenteil: aufgezogen wird es, weil eine Frage im Raum steht (wer hatte
+den Räuber, wann ist das Erz weggekommen), und die Antwort liegt fast nie in den
+letzten zwanzig Zeilen. Abgeschnitten hat er dabei nicht einmal gesagt, daß er
+abschneidet.
+
+Jetzt reicht er bis zum Anfang der Partie. Die Höhe bemißt sich am Bildschirm
+statt an einer Zeilenzahl, über dem Rollbereich steht die Zahl der Einträge, und
+**je Runde steht eine Wegmarke** vor deren erstem Eintrag: zwanzig Zeilen liest
+man am Stück, zweihundert sind eine Landschaft und brauchen Anhaltspunkte. Die
+Rundennummer stand ohnehin an jedem Eintrag, sie wurde bloß nie gezeigt.
+
+Die Marke klebt bewußt _nicht_ oben am Rollbereich. `position: sticky` wäre eine
+Zusage, die die Verschachtelung nicht halten kann — sie sitzt im `li` ihres
+ersten Eintrags und käme nie über diesen Kasten hinaus, klebte also genau eine
+Zeile lang. Dafür müßte jede Runde eine eigene Liste bekommen, und das ist mehr
+Verschachtelung, als eine Wegmarke wert ist.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                   |
+| `pnpm test`         | grün — shared 626 / 36 Dateien, server 197 / 20, client 400 / 37 |
+| `pnpm build`        | grün                                                             |
+| `pnpm format:check` | grün (bis auf `public/mess.html`, unversioniert und älter)       |
+
+12 neue Tests. **Wieder nicht im Browser nachgemessen** — die Chrome-Erweiterung
+ist weiterhin nicht verbunden. Geprüft ist damit, _was_ dasteht (die richtigen
+Karten in der richtigen Zahl, die Richtung der Bedingungen, alle Einträge, die
+Wegmarken); _wann_ es erscheint, ist eine Hover-Regel im Blatt, und jsdom rechnet
+kein Layout.
+
+### Was offen bleibt
+
+- **Der Preis sagt nicht, ob man ihn zahlen kann.** Die Marken zeigen die
+  Kosten, nicht den eigenen Bestand — daß es gerade nicht geht, sagt weiterhin
+  nur der gesperrte Knopf. Die fehlende Karte blaß zu zeichnen wäre die nächste
+  Antwort, ist aber eine zweite Bedeutung im selben Zeichen.
+- **Der Verlauf hat keine Suche.** Bei zweihundert Zeilen ist die Wegmarke die
+  Krücke; wer nach „Räuber" sucht, scrollt.
+
+## Der Würfel schlägt jetzt an (2026-08-24, `main`)
+
+Aus dem Playtest, in einem Satz: **„man merkt nicht, daß man dran ist."**
+
+### Sieben Prozent sind am Bildrand nicht da
+
+Die Aufforderung zum Werfen war ein Atmen — `scale(1)` bis `scale(1.07)`, eine
+Sinuswelle über 1,6 Sekunden. Auf einem Standbild nebeneinandergelegt sieht man
+den Unterschied; im Spiel sieht man ihn nicht, und das hat zwei Gründe, die sich
+addieren. Die Würfel liegen in der äußersten unteren rechten Ecke, also im
+peripheren Sehen — und das ist für Kontrast- und Formänderungen fast blind,
+während es auf Bewegung mit **Anschlag** stark anspricht. Eine Sinuswelle hat
+aber keinen Anschlag: sie ist an jeder Stelle ungefähr gleich schnell und hat
+damit keinen Anfang, an dem das Auge hängenbleibt.
+
+Deshalb ist aus dem Atmen ein **Schlag** geworden — nicht lauter dasselbe,
+sondern eine andere Bewegung: schnell hinauf auf `scale(1.17)`, langsamer
+zurück, ein kleinerer Nachschlag auf `1.1`, und dann eine Pause, die länger ist
+als beide Schläge zusammen. Zwei Herzschläge und Stille. Die Marken sitzen bei
+11 % und 36 % statt bei 50 %, und die zweite Hälfte des Zyklus ist leer; genau
+diese Leere macht den nächsten Anschlag wieder zu einem Anschlag. Etwas, das
+ununterbrochen wackelt, wird nach zehn Sekunden Tapete.
+
+**Dazu ein Schein statt eines Rahmens.** Die Würfel liegen auf der Tiefsee, und
+ein warmes Licht darauf sieht man auch dann, wenn man gerade das Brett anschaut
+— Helligkeit trägt in der Peripherie weiter als Form. Er kommt und geht mit dem
+Schlag (`drop-shadow` von 0 auf 18 px und zurück) und steht nie: ein stehender
+Schein wäre ein Rahmen, und Rahmen sind an dieser Stelle schon zweimal gefallen
+(erst der helle Schleier, dann der Pergamentkörper).
+
+Der Ruf „Würfeln" darunter blinkt im **selben Takt** mit und trägt jetzt das
+Akzentgelb statt grauer Kleinschrift. Zwei Dinge, die verschieden schnell
+blinken, sind zwei Aufforderungen. Er bleibt der Träger, der ohne Bewegung
+auskommt: bei `prefers-reduced-motion` steht der Schlag still, die Farbe nicht.
+
+### Was beim Lautermachen aufgefallen ist
+
+`dice--waiting` hängt an `canRoll`, und die Klickkarte gilt **während des
+Fluges weiter** — die Schale war also die ganze Flugzeit über „wartend", und die
+Animation lief auf genau dem Element, das als Perspektive für die fliegenden
+Kuben dient. Bei einem Prozent Größe sah das niemand. Ein Schlag mit Schein
+hätte den Raum, durch den die Würfel gerade fliegen, im Takt skaliert und
+beleuchtet.
+
+Der Selektor heißt jetzt `.dice--waiting .dice__faces:not(.dice__faces--flying)`.
+Der Befund ist allgemeiner als die Zeile: **wer eine Bewegung lauter macht, muß
+zuerst nachsehen, wo sie überall läuft.** Eine leise Animation am falschen Ort
+ist ein Fehler, den man nicht meldet, weil man ihn nicht sieht.
+
+Die Glanzfarbe steht als `--glow: 224 179 74` an `.dice-tray` — ein Schein ist
+nichts als Alpha, und aus `var(--accent)` läßt sich keins herausdrehen. Einmal
+an der Hülle statt dreimal in den Keyframes.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                   |
+| `pnpm test`         | grün — shared 626 / 36 Dateien, server 197 / 20, client 401 / 37 |
+| `pnpm format:check` | grün (bis auf `public/mess.html`, unversioniert und älter)       |
+
+Ein neuer Test: der Ruf trägt `dice__call--waiting` genau dann, wenn man werfen
+darf und nichts fliegt. Geprüft ist die Klasse, nicht die Animation — jsdom
+sieht keine Keyframes, aber die Klasse ist das Einzige, woran die Bewegung
+hängt, und damit die einzige Stelle, an der sich der Flug-Fehler oben überhaupt
+fangen ließe. **Im Browser nicht nachgemessen**, die Chrome-Erweiterung ist
+weiterhin nicht verbunden; wie laut der Schlag tatsächlich ist, entscheidet der
+nächste Playtest.
+
+### Was offen bleibt
+
+- **Der Schlag hat keinen Ton.** Die Aufforderung ist rein visuell; wer
+  weggeschaut hat, merkt weiterhin nichts. Ein Klang wäre der stärkere Träger,
+  ist aber eine Entscheidung über die Tonspur und nicht über die Würfel.
+- **Er hört nie von selbst auf.** Wer eine Minute überlegt, bekommt eine Minute
+  Blinken. Nach einigen Zyklen ruhiger zu werden wäre ehrlicher — dann trägt
+  aber die Dauer eine Bedeutung, die es im Spiel noch nicht gibt.
+
+## Schafe, Häfen und ein Wartebereich, der ins Fenster paßt (2026-08-25, `main`)
+
+Drei Dinge, alle drei im Browser nachgesehen — und das ist bei diesem Abschnitt
+der Punkt, denn die Oberfläche war laut dem eigenen Stand „durchgehend **nicht**
+im Browser nachgesehen worden". Der Dev-Server lief, Chrome war verbunden, und
+jede Zahl unten ist gemessen.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                     |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                               |
+| `pnpm test`         | grün — shared 638 / 37 Dateien, server 202 / 22, client **417** / 39         |
+| `pnpm build`        | grün — `index.js` 438.29 kB (gzip 129.67), `index.css` 48.93 kB (gzip 10.38) |
+| `pnpm format:check` | drei Warnungen, **keine davon aus dieser Arbeit** (siehe unten)              |
+
+Die drei Warnungen betreffen `public/mess.html` (unversioniert, bekannt),
+`screens/StartScreen.test.tsx` und `shared/src/rules/ruleset.test.ts`. Die
+beiden Testdateien stehen unverändert im Diff — `git status` führt sie nicht;
+sie waren auf `main` schon unformatiert und sind hier nur aufgefallen, weil
+dieser Abschnitt den Lauf zum ersten Mal seit einer Weile wieder abdruckt.
+
+Ein neuer Test (`LobbyScreen.test.tsx`, 21 statt 20): die gestrichenen
+Erklärsätze dürfen nicht wiederkommen.
+
+### Die Weide hat Schafe bekommen
+
+**Sie liegen in der Streulage und nicht in der Grundlage, und das ist eine
+Rechnung.** Eine Grundkachel der Weide mißt 0.53 × 0.45; ein Feld trägt rund
+vierzehn davon. Ein Schaf je Grundkachel wären vierzehn Tiere auf einem Feld —
+das ist keine Weide, sondern eine Tapete mit Schafen. Die Streukachel ist gut
+doppelt so groß, also rund sechseinhalb je Feld; mit Mutterschaf und Lamm je
+Kachel stehen etwa ein Dutzend Tiere in sechs Gruppen im Gras. Das Gras trägt
+die Fläche weiter allein, das Schaf ist die Ausnahme darauf — dieselbe Rolle,
+die die Streulage für den alten Baum und den Doppelgipfel schon spielt.
+
+**Gefüllt und nicht gestrichen, als einzige Marke der Weide.** Ein Umriß in
+Strichbreite 0.02 um einen Körper von 0.13 Höhe wäre zu einem Sechstel Kontur.
+Die Silhouette ist das, was ein Schaf auf diese Entfernung ausmacht — und damit
+ist es dieselbe Zeichnung wie auf der Wollkarte (`panels/ResourceGlyph.tsx`):
+dunkler Körper, runder Kopf, zwei Beine. Wer die Karte kennt, erkennt das Feld,
+das sie abwirft.
+
+**Das Tier grast, und das ist eine Entscheidung über Lesbarkeit.** Die erste
+Fassung stand mit waagerechtem Kopf neben dem Widerrist; im Browser vergrößert
+verschwand der Kopf darin, und übrig blieb ein Klumpen mit vier Beinen. Ein
+gesenkter Kopf hängt schräg unter der Rückenlinie und ist damit die einzige
+Kante der Figur, die weder waagerecht noch senkrecht läuft. Genau daran erkennt
+man auf achtzehn Pixel ein Tier und nicht bloß einen Fleck. Zwischenstand war
+außerdem ein zu langer, zu dünner Hals — das sah aus wie ein Lama; er ist kurz
+und der Kopf klobig geworden.
+
+**Und die Textur der Weide mußte deshalb leiser werden.** Die Schafe sind
+gefüllte Flächen und damit die dichteste Marke, die das Feld je getragen hat:
+die Deckung steigt von 12.0 auf **15.2 Prozent** (nachgerechnet mit derselben
+Methode wie die Tabelle in `index.css` — Pfadlänge mal Strichbreite, bei
+gefüllten Marken die Fläche des abgetasteten Umrisses, gegen die Kachelfläche).
+Nach der Dämpfungsregel `sqrt(11.2 / Deckung)` fällt die Dämpfung von 0.965 auf
+0.857, das Kontrastziel von 1.483 auf 1.429, und das Alpha von 23 auf **21
+Prozent** (gerechnet 1.421). Wer die 23 hätte stehen lassen, hätte die Weide
+zum lautesten Feld des Bretts gemacht, ohne eine Zeile darüber zu ändern.
+
+Die Rechenmethode ist vorher **gegen den Bestand geprüft** worden: mit denselben
+Formeln kommen für alle sechs Geländearten die Kontrastwerte heraus, die in der
+Tabelle als Ziel stehen (forest 1.501 gegen 1.500, hills 1.332 gegen 1.333,
+mountains 1.490 gegen 1.484 …). Die absoluten Deckungszahlen weichen ab, weil
+Überlappungen und Strichkappen anders gezählt wurden; für eine **Änderung** an
+einer Zeile zählt der Kontrast, und der stimmt auf zwei Stellen.
+
+### Die Häfen sind Münzen geworden
+
+**Der Befund: die Ringfarbe war der einzige Träger.** Ein cremefarbener Kreis,
+ein farbiger Ring, die Aufschrift „2:1" — welchen Hafen man vor sich hatte,
+sagte allein die Farbe. Das verstößt gegen Regel 7. Wer Grün und Gelb schlecht
+unterscheidet, sah neun gleiche Kreise; der ausgeschriebene Name stand nur im
+`title`, also erst nach einer Sekunde Zeigen und auf einem Tastbildschirm nie.
+
+**Jetzt trägt der Hafen dieselben zwei Träger wie die Handkarte:** die Farbe der
+Ressource **und** ihr Motiv. Das Motiv ist buchstäblich dasselbe —
+`RESOURCE_SHAPES` ist aus `panels/ResourceGlyph.tsx` exportiert, und Karte wie
+Hafen setzen denselben Pfad, die eine in ein eigenes `<svg>`, der andere in eine
+`<g>` mit Transformation. Zwei Zeichnungen desselben Dings wären zwei
+Gelegenheiten, sie verschieden zu machen.
+
+**Der Körper bleibt Pergament und wird nicht zur Geländefarbe.** Eine Münze in
+Waldgrün mit dunklem Motiv wäre die Karte selbst — ein zweites Stück
+Spielmaterial an einer Stelle, an der keines liegt. Auf dem Brett heißt heller
+Körper mit dunkler Tinte „hier steht eine Auskunft"; das ist die Sprache, die
+der Zahlenchip schon spricht.
+
+**Der 3:1-Hafen zeigt einen Anker.** Er nimmt jede Ware, hat also kein Motiv,
+das ihm gehörte, und ein leerer Kreis wäre die Auskunft „hier fehlt etwas". Was
+ihn auszeichnet, ist der Hafen selbst, also trägt er dessen Zeichen. Seine
+Ringfarbe ist die **Pergamentkante** und nicht mehr die Tiefsee-Tinte: ein
+dunkler Ring auf der dunklen See war im Browser schlicht nicht zu sehen —
+derselbe Befund wie bei den Straßen am Brettrand, nur hat ihn hier niemand
+gemeldet, weil der cremefarbene Körper darunter ja dastand.
+
+**Und die Anzeigeschrift hat ein Satzzeichen bekommen.** Das Verhältnis war ein
+`<text>` in 'Segoe UI Bold' — derselbe Bruch, den die Chipzahl schon einmal war.
+`Ratio` in `type/Numerals.tsx` setzt es jetzt aus den gezeichneten Ziffern, mit
+einem Doppelpunkt aus **zwei Quadraten der Stammbreite** und ohne Fase: bei
+einem Zeichen von 17 × 17 wäre eine Fase von 17 der ganze Punkt, aus dem Quadrat
+würde eine Raute, und eine Raute liest sich nicht als Doppelpunkt.
+
+Die Marke ist von 0.23 auf **0.27** gewachsen, damit Motiv und Ziffern
+nebeneinander Platz haben. `HARBOR_REACH` zieht mit (0.35 → 0.39): im Browser
+gemessen ragen die Hafengruppen **0.384** über die äußersten Feldecken hinaus.
+Die beiden Zahlen hängen aneinander, und das steht jetzt auch dort.
+
+### Der Wartebereich: links der Tisch, rechts das Brett
+
+**Er war rund 1300 Pixel hoch.** Code, Link, Tisch und drei gleich schwere
+Einstellungskästen untereinander, darunter der einzige Knopf, der etwas bewirkt
+— in einem gewöhnlichen Fenster lag „Partie starten" unterhalb des Randes. Auf
+der einzigen Fläche des Spiels, auf der es nichts zu tun gibt außer warten, war
+damit die eine Handlung, die es doch gibt, unsichtbar.
+
+**Er folgt jetzt derselben Ordnung wie der Eingang: links das Bedienbare, rechts
+das Brett.** Der Startbildschirm beantwortet die Frage „welches Brett bekommen
+wir" mit dem Brett selbst; der Wartebereich hat sie bis hierher mit einer
+Zeichenkette beantwortet. **„Neu würfeln" würfelte damit etwas, das niemand
+sieht** — der Knopf änderte sichtbar acht Zeichen und unsichtbar das ganze
+Spiel. Jetzt steht die Vorschau daneben, und sie ist nicht _wie_ das spätere
+Brett, sondern es: `generateScenario` ist rein und hängt nur an Blueprint und
+Seed (Regel 2), beide stehen im Raumstand, und erzeugt wird mit denselben
+Funktionen wie auf dem Startbildschirm. Zwei Wege zu einem Bild wären zwei
+Gelegenheiten, daß eines davon lügt. Im Browser nachgesehen: wer die Tischgröße
+von sechs auf drei stellt, sieht das Brett von `classic56` auf `classic34`
+wechseln.
+
+Innerhalb der linken Hälfte bleiben Tisch und Einstellungen nebeneinander; die
+Hälfte ist dafür breiter geworden (44rem statt 34). Dazu:
+
+1. **Eine Einstellungsliste statt drei Kästen** (`.lobby__row`). Drei
+   Umrandungen, drei Polster und dreimal mittige Setzung sagen „drei gleich
+   wichtige Dinge"; es sind aber drei Zeilen — Name, Brett, Ziel. Als Zeilen
+   brauchen sie ein Drittel der Höhe. Die Trennlinie steht als `border-top` an
+   jeder außer der ersten und nicht als `border-bottom` an allen außer der
+   letzten: die erste Zeile fällt weg, wenn man gar nicht am Tisch sitzt, und
+   eine Regel mit `:first-child` hätte dann die falsche getroffen.
+2. **Zwei Knöpfe nebeneinander** im Fuß statt untereinander. Der Rang steht in
+   der Farbe, nicht in der Reihenfolge.
+3. **Der Code ist kleiner geworden** — Obergrenze 4rem statt 7. Sieben
+   Zentimeter Schrift auf einem Bildschirm, der dafür scrollen muß, sind keine
+   Größe mehr, sondern ein Platzproblem, und in einer halben Breite erst recht.
+
+**Beide Hälften sind danach noch einmal gewachsen.** Die linke von 44rem auf
+**50rem**, das Brett von `max-height: 82vh` auf **94vh** — und das ist kein
+Nullsummenspiel, obwohl es so aussieht: das Brett hängt gar nicht an der Breite.
+Seine viewBox ist mit 9.84 zu 9.18 annähernd quadratisch, in einer Zelle, die
+deutlich breiter als hoch ist, entscheidet allein die Höhe, und die Breite blieb
+ungenutzt. Gemessen: das Brett ist von 781 × 729 auf **1072 × 836** gegangen,
+während die linke Spalte gleichzeitig 96 Pixel dazubekam. Ringsum bleiben 24
+Pixel links und rechts, 27 oben und unten — nichts ist beschnitten. Wer das
+Brett das nächste Mal größer haben will, dreht an `max-height` und nicht an der
+Spaltenaufteilung.
+
+**Und der Code steht mittig in seiner Spalte, nicht im Bildschirm.** Das ist der
+Unterschied, der hier zählt: er saß in der Mitte des Fensters, weil der
+Wartebereich eine Spalte war. Seit rechts das Brett liegt, wäre dieselbe Mitte
+irgendwo zwischen beiden Hälften und damit auf keiner. Kopf und Fuß stehen jetzt
+auf derselben Achse — ein Kopf in der Mitte und ein Fuß an der linken Kante
+wären zwei Ordnungen in einer Spalte.
+
+**Gemessen im Browser, schlechtester Fall:** sechs Plätze, alle Einstellungen
+offen — **693 Pixel** Panelinhalt bei 889 Pixel Fensterhöhe, kein Scrollbalken
+(`document.documentElement.scrollHeight > innerHeight` ist `false`). Auch die
+Spaltenaufteilung innerhalb des Panels ist gemessen und nicht geraten: „Platz
+entfernen" und „Platz hinzufügen" nebeneinander brauchen rund 290 Pixel, sonst
+rutscht der zweite in eine eigene Zeile — zwei Knöpfe, die dasselbe Paar sind,
+untereinander. Deshalb 1.08 zu 1 und nicht 1 zu 1.15. Die sechs Farbknöpfe
+brechen dafür in zwei Zeilen um; das dürfen sie, weil sechs Kacheln in zwei
+Zeilen immer noch sechs Kacheln sind.
+
+Unter 62rem wird wieder eine Spalte daraus, und das Brett steht oben
+(`order: -1`, wie auf dem Startbildschirm): wer beitritt, sieht dann erst,
+worauf gespielt wird, und darunter, wer schon da ist. Dort darf gescrollt
+werden — die Rechnung „paßt ohne Scrollen" gilt für das Querformat, in dem
+gespielt wird.
+
+**Was erklärt wurde, steht nicht mehr da.** Unter dem Seed stand „Gleicher Seed,
+gleiches Brett — bei euch und bei allen anderen", unter dem Ziel je nach Zahl
+„Zehn wie in der Schachtel" oder „Zwischen 5 und 20 — zehn sind die Vorgabe".
+Zwei Formulierungen für dieselbe Auskunft, und die Grenzen stehen ohnehin an den
+Knöpfen: wer bei 5 angekommen ist, findet das Minus gesperrt vor. Übrig bleibt
+**„10 sind das Original"** — das eine, was man nicht sehen kann. Der erste Satz
+ist außerdem doppelt gefallen: auf dem Startbildschirm stand hinter dem
+Brettnamen „— gleicher Seed, gleiches Brett", und das erklärte, was die Vorschau
+daneben **zeigt**. Eine Zusage neben ihrem eigenen Beweis ist eine Zeile zu
+viel — und seit der Wartebereich sein Brett hat, gilt derselbe Satz dort.
+
+**Zwei weitere Zeilen sind danach gefallen.** Unter dem Code stand „Vorlesen
+oder den Link schicken — beides führt an denselben Tisch": er erklärte den Code
+und das Feld darunter, und beide erklären sich selbst — vier große Zeichen auf
+Pergament und ein Link neben einem Knopf „Link kopieren". (Er war vorher noch
+ein Fall für sich: mit `max-width: 34ch` brach er auf zwei Zeilen um, mit 52ch
+waren es gemessen 403 Pixel und immer noch zu wenig. Eine Zeilenbreite in `ch`
+zu raten war hier überhaupt der falsche Griff — und jetzt erübrigt sie sich.)
+
+Im Fuß stand für den Gastgeber „Es fehlen noch 3 Mitspieler" — eine Zahl, die
+drei Zentimeter darüber schon als drei gestrichelte Plätze dasteht, und zwar
+besser: man sieht sie, ohne zu lesen. Der gesperrte Startknopf sagt dasselbe ein
+drittes Mal. Für alle **anderen** bleibt der Satz stehen, denn „Wartet auf Anna"
+sagt etwas, das nirgends sonst steht: wer starten muß. Wer der Gastgeber ist,
+ist der Sitzliste nicht anzusehen — und das bleibt als offener Punkt liegen.
+
+Der Test dazu ist mitgezogen: `LobbyScreen.test.tsx` prüfte „Es fehlt noch 1"
+und prüft jetzt die Sperre **und** den offenen Sitz. Dieselbe Auskunft an ihren
+zwei verbliebenen Orten.
+
+### Was offen bleibt
+
+- **Die restlichen Menüs sind nicht angefaßt.** Auf dem Startbildschirm stehen
+  die „Handkarten"-Optionen weiterhin als **native Radioknöpfe** — als einzige
+  Auswahl im ganzen Spiel, während Reiter und Tischgröße eigene Kacheln tragen.
+  Und die Hauptaktion sieht je Reiter anders aus: „Partie erstellen" ist gelb
+  (`button--go`), „Beitreten" und „Lokale Partie starten" sind gewöhnliche
+  Knöpfe. Beides ist derselbe Fehler — ein Bedienmuster, das an einer Stelle
+  etwas anderes bedeutet als an der anderen.
+- **Kein Test auf die Hafenmünze und den Doppelpunkt.** Daß das Motiv da ist,
+  daß das Verhältnis gezeichnet und nicht gesetzt ist, daß `.harbor__coin` den
+  alten Selektor `.harbor circle` ersetzt hat — nichts davon hält ein Test fest.
+  Der alte Selektor wäre inzwischen über den zweiten Kreis **im Anker** gelaufen
+  und hätte ihn cremefarben ausgefüllt; die Klasse behebt das, aber nur, solange
+  jemand daran denkt.
+- **Die Schafe sind nicht auf einem schmalen Gerät nachgesehen.** Bei
+  wesentlich kleinerem Brett fällt ein Tier unter die Grenze, ab der eine
+  Silhouette ein Fleck wird — dieselbe Grenze, an der die Tannen schon einmal
+  standen (6.8 Pixel). Gemessen ist nur der Querformat-Fall.
+- **Der einspaltige Wartebereich unter 62rem ist ungesehen.** Die Chrome-Ecke
+  ändert die Fenstergröße nicht zuverlässig; geprüft ist die Regel, nicht ihr
+  Ergebnis. Das betrifft auch das Brett, das dort nach oben rutscht.
+- **Wer der Gastgeber ist, steht nirgends.** Seit die Zeile „Es fehlen noch n
+  Mitspieler" gefallen ist, sagt dem Gastgeber nichts mehr, daß er es ist —
+  außer daß er als einziger den Startknopf sieht. Für die anderen steht es im
+  Satz „Wartet auf Anna". Der saubere Ort wäre die Sitzliste selbst; das kostet
+  aber eine Entscheidung darüber, was dann aus „verbunden" und „getrennt" wird,
+  und die gehört nicht in diesen Abschnitt.
+- **Die Vorschau im Wartebereich kennt die Sitzfarben nicht.** Sie bekommt
+  `defaultSeats(room.seatCount)` und nicht die Farben, die sich die Leute
+  ausgesucht haben. Solange nichts auf dem Brett steht, sieht man das nicht —
+  sobald jemand eine Vorschau mit Bauwerken zeigen wollte, wäre es falsch.
+
+### Nächste Etappe
+
+Die Menüs zu Ende: Auswahlkacheln statt nativer Radios auf dem Startbildschirm
+und eine einheitliche Hauptaktion je Reiter.
+
+## Der Titelbildschirm kommt zurück — und eine Animation, die nie lief (2026-08-25, `main`)
+
+Der Wartebereich hatte gerade sein Brett bekommen, und damit sahen Einrichtung
+und Wartebereich gleich aus: links ein Panel, rechts das Brett, zweimal derselbe
+Bau. **Ein Eingang, der aussieht wie die Fläche dahinter, ist kein Eingang.**
+Das Hauptmenü, das in `Aus einer laufenden Partie führte kein Weg heraus`
+(`7946b6a`) gestrichen worden war, ist wieder da — als `MenuScreen.tsx`, aus der
+Historie zurückgeholt.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                             |
+| ------------------- | -------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                       |
+| `pnpm test`         | grün — shared 638 / 37 Dateien, server 202 / 22, client **427** / 40 |
+| `pnpm format:check` | zwei Warnungen (`public/mess.html`, `shared/rules/ruleset.test.ts`)  |
+
+`StartScreen.test.tsx` stand seit längerem in dieser Liste und steht nicht mehr
+drin: die Datei wurde für den Umbau ohnehin angefasst, und eine Datei, die man
+anfaßt, läßt man nicht unformatiert liegen. Zehn Tests kommen mit dem
+wiederhergestellten `MenuScreen.test.tsx` zurück (417 → 427).
+
+### Warum er zurückkommt, obwohl der Grund für seinen Wegfall stimmte
+
+Der Wegfall war richtig begründet: das Menü stellte eine Frage, und der
+Bildschirm dahinter wiederholte die Antwort als **Überschrift**. Zwei Flächen
+für eine Entscheidung.
+
+Genau diese Doppelung kommt nicht mit zurück. `StartScreen` trägt keine
+Wortmarke mehr — sie steht jetzt einmal auf dem Titel und ist dort der Inhalt
+statt der Kopfzeile eines Formulars. Was bleibt, ist die Reiterreihe, und die
+ist **kein Vortrag der Antwort, sondern das Bedienelement, mit dem man sie
+ändert**, ohne zurückzugehen. Dazu ein „‹ Zurück" über den Reitern: zurück ist
+keine vierte Wahl neben Online, Lokal und Beitreten, sondern eine Ebene darüber.
+
+**Der Einladungslink überspringt den Titel.** Wer ihm gefolgt ist, hat bereits
+entschieden; ihn vor eine Auswahl zu stellen, deren Antwort er mitgebracht hat,
+wäre wieder genau die Doppelung, wegen der der Titel einmal ging. `App.tsx`
+setzt den Weg deshalb aus `roomFromLocation()` vor.
+
+**Der Weg ist ein Anfangswert, keine Steuerung.** `initialWay` setzt den Reiter
+beim Aufschlagen und zählt zugleich als getroffene Entscheidung — sonst zöge der
+Sprung auf „Weiterspielen", der eintrifft, sobald `myRooms` da ist, den Reiter
+unter der Hand weg. Auf dem Titel steht „Weiterspielen (n)" ohnehin als eigener
+Eintrag. Danach gehört der Reiter dem Bildschirm; hielte ihn der Titel, hielte
+er einen Zustand, den er nicht mehr sieht.
+
+`App.tsx` hat damit wieder vier Zustände statt drei. Die zwei Eingangsfälle
+stehen in **einem** Zweig (`room === null`) mit einer Ternäre darin und nicht in
+zwei Zweigen nebeneinander: zwei getrennte `room === null`-Zweige sagen dem
+Compiler nichts über den dritten, und `room.started` weiter unten war prompt
+„possibly null".
+
+### Der Fund: `@keyframes enter-drop` gab es nicht
+
+Beim Wegfall des Hauptmenüs ist `menu-rise` zu `enter-rise` geworden und
+mitgezogen. `menu-drop` wurde zu `enter-drop` **umbenannt, aber nicht
+mitgenommen.** Seither stand an `.corner`, `.start__ways` und `.start__form` ein
+`animation: enter-drop 300ms …` auf einen Namen, den es im Blatt nicht gab — und
+eine Animation ohne Keyframes ist keine Animation, sondern nichts.
+
+**Die ganze Eingangschoreografie des Startbildschirms lief also zwei Etappen
+lang gar nicht**, und es ist niemandem aufgefallen, weil die Elemente ja
+dastanden. Das ist die Falle aus `CLAUDE.md` („Ein Kommentar, der eine Absicht
+beschreibt, ist kein Nachweis, daß sie im Blatt steht") in ihrer stillsten Form:
+der Kommentar daneben beschrieb die Absicht weiter richtig, und der Browser
+meldet einen unbekannten Animationsnamen nicht. Die Keyframes stehen jetzt im
+Menüblock und bedienen beide Bildschirme.
+
+**Wer eine Regel umbenennt, sucht nach ihrem alten Namen und nach ihrem neuen.**
+Ein `grep` auf `enter-drop` hätte drei Fundstellen gezeigt, alle drei
+Verwendungen und keine Definition — die Prüfung kostet eine Zeile.
+
+### Was dabei noch abfiel
+
+`.start__title` und `.start__brand` sind tote Regeln geworden und gefallen. Die
+Wortmarke selbst darf wieder so groß sein, wie sie einmal war: `max-width` geht
+von 34rem zurück auf `min(78vw, 40rem)`. Die 34rem waren die Breite der
+Panel-Spalte, in der sie zuletzt saß — mit `78vw` hätte `.start` mit seinem
+`overflow: hidden` sie auf einem breiten Fenster abgeschnitten. Jetzt sitzt sie
+wieder mittig auf einer freien Fläche und hat den Grund für die Einschränkung
+nicht mehr.
+
+### Was offen bleibt
+
+- **Der Titel und die Einrichtung teilen sich das Hexfeld.** Beide zeichnen es,
+  beide lassen die Aufprallwelle laufen — wer vom Titel weitergeht, sieht die
+  Choreografie ein zweites Mal. Das erklärt keinen Zustandswechsel mehr
+  (Regel 5), sondern begleitet ihn nur. Ein Übergang, der die Welle beim zweiten
+  Mal ausläßt, wäre die ehrlichere Lösung.
+- **Kein Test auf die Verdrahtung.** Daß `App.tsx` bei `way === null` den Titel
+  zeigt, bei gesetztem Weg die Einrichtung und beim Einladungslink direkt
+  „Beitreten", hält kein Test fest — geprüft ist es nur im Browser. Die beiden
+  Bildschirme haben ihre eigenen Tests; der Schalter dazwischen hat keinen.
+
+## Der Einrichtungsbildschirm fällt weg — jeder Weg führt direkt an seinen Ort (2026-08-25, `main`)
+
+Der Titelbildschirm war einen Tag alt, und dahinter stand weiter die Einrichtung
+mit ihrer Reiterreihe: Titel wählt den Weg, Einrichtung zeigt ihn noch einmal
+als Reiter, und **erst dahinter** kam der Bildschirm, auf dem etwas passiert.
+Zwei Klicks bis zur Sache, und der mittlere fragte nichts, was nicht auch später
+zu beantworten gewesen wäre.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                                     |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `pnpm typecheck`    | grün (`tsc -b`, keine Ausgabe)                                               |
+| `pnpm test`         | grün — shared 638 / 37 Dateien, server 202 / 22, client **422** / 40         |
+| `pnpm build`        | grün — `index.js` 439.52 kB (gzip 130.02), `index.css` 51.79 kB (gzip 10.82) |
+| `pnpm format:check` | zwei Warnungen (`public/mess.html`, `shared/rules/ruleset.test.ts`)          |
+
+Alle vier Wege sind im Browser durchgeklickt: Titel → online → Wartebereich
+(Raum QQTG entstand sofort), Titel → lokal, Titel → beitreten, und über
+„Beitreten" mit Code zurück in einen bestehenden Raum.
+
+### „Online" ist keine Frage mehr, sondern eine Handlung
+
+Die Einrichtung wollte für den Online-Weg drei Angaben: Tischgröße, Seed, Name.
+**Jede einzelne davon steht im Wartebereich noch einmal** — die Tischgröße als
+Platz hinzufügen/entfernen, der Name unter „Dein Platz", das Siegpunktziel
+sowieso. Ein Bildschirm, dessen ganzer Inhalt eine Fläche weiter ein zweites Mal
+steht, ist ein Zwischenhalt und keine Station.
+
+Der Raum entsteht deshalb sofort, mit gewürfeltem Seed und dem kleinsten Tisch.
+Das ist der Unterschied zwischen einer **Vorgabe** und einer **Frage**: wer
+nichts anfaßt, hat trotzdem eine gültige Partie, und wer etwas anderes will,
+findet es eine Zeile weiter. Der Name darf dabei leer bleiben — `identify`
+schickt ihn dann gar nicht hinaus, und der Server behält den, den er kennt
+(diese Vorsichtsmaßnahme stand schon da, für den Fall „geleerter Speicher").
+
+**Was nur die Einrichtung konnte, ist mitgezogen.** Dort ließ sich ein Seed
+**eintippen**, und das ist die einzige Art, ein bestimmtes Brett
+wiederzubekommen — „Neu würfeln" allein kann das nicht. Der Wartebereich hat
+jetzt ein Seedfeld statt einer Seedzeile, mit derselben Mechanik wie das
+Namensfeld daneben: der Wert gehört dem Feld, solange jemand tippt, und geht
+erst beim Verlassen hinaus. Ein `onChange`, das jeden Tastendruck schickt, wäre
+eine Nachricht je Buchstabe und ein neu gewürfeltes Brett je Zeichen. **Wer
+einen Bildschirm streicht, nimmt mit, was nur er konnte.**
+
+### Die drei übrigen Wege bekommen je einen eigenen Bildschirm
+
+Die Reiterreihe ist gefallen. Sie sagte zweierlei — **welche** Wege es gibt und
+auf **welchem** man steht —, und das Erste sagt jetzt der Titel. Übrig bleibt
+das Zweite, und dafür genügt eine Überschrift: Kleinlabel plus ein großes Wort,
+dieselbe Setzung wie „RAUMCODE / 9RDW" im Wartebereich, damit die Bildschirme
+als eine Familie lesbar bleiben, ohne gleich auszusehen.
+
+- **lokal** → „Partie starten / An einem Gerät", links Tischgröße, Seed, Namen
+  und Handkarten, rechts das Brett.
+- **beitreten** → „Partie beitreten / Raumcode", links Name und Code.
+- **weiterspielen** → „Weiterspielen / Deine Partien", links die Karten.
+
+**Ohne Brett fällt die zweite Spalte weg, nicht bloß ihr Inhalt.** Beitreten und
+Weiterspielen kennen keinen Seed und können kein Brett zeigen; bliebe die Spalte
+stehen, stünde das Panel in einem Drittel des Fensters und daneben zwei Drittel
+Nichts. `.start:not(:has(.start__preview))` fragt dabei nach dem, was wirklich da
+ist, statt eine Klasse zu setzen, die dasselbe noch einmal behauptet — eine
+Klasse und ein Kind, die auseinanderlaufen können, sind zwei Wahrheiten.
+
+**Ein Befund aus dem Browser:** auf dem Beitreten-Bildschirm stand unten rechts
+„Euer Brett zum Seed 2v4c305c" — unter einer leeren Fläche, über ein Brett, das
+niemand bekommt. Die Bildunterschrift stand außerhalb der Bedingung, die das
+Brett selbst gesteuert hat, und beschrieb damit den Seed eines Formulars, das
+gar nicht mehr sichtbar war. Eine Unterschrift ohne Bild beschreibt irgendetwas.
+
+**Der Weg zurück heißt „Zum Titel" und nicht „Zurück".** Auf dem Weg
+„Weiterspielen" steht auf jeder Karte „Zurück in die Partie" beziehungsweise
+„Zurück an den Tisch" — zwei Knöpfe mit demselben ersten Wort, die in
+entgegengesetzte Richtungen führen. Ein Wort bleibt durch den ganzen Ablauf
+gleich (Regel 8), und „zurück" gehört hier denen, die in eine Partie führen.
+
+### Was die Tests dabei gelernt haben
+
+`StartScreen.test.tsx` schaltete zwölfmal über die Reiter um (`aufDenWeg`). Das
+ging nicht mehr — und es soll auch nicht mehr gehen, denn ein Bildschirm zeigt
+jetzt genau einen Weg. Die Tests reichen den Weg deshalb als `initialWay` herein
+statt ihn zu klicken; fünf Tests, die ausschließlich das Umschalten prüften
+(Reiterreihenfolge, „immer nur einen Weg", der Sprung auf Weiterspielen und sein
+Gegenstück), sind gefallen — vier davon prüft `MenuScreen.test.tsx` inzwischen an
+der richtigen Stelle.
+
+Aus 28 wurden 23 Tests in dieser Datei, im Paket 427 → 422. **Eine sinkende
+Testzahl ist hier kein Verlust an Prüfung, sondern einer an Doppelung** — was
+zweimal geprüft wurde, weil es zweimal dastand, wird jetzt einmal geprüft.
+
+### Was offen bleibt
+
+- **„Weiterspielen" hängt am Sitz, nicht am Raum.** `roomsOf` liefert die Räume,
+  in denen man einen **Sitz** hat (`registry.ts`); wer Gastgeber ist, aber
+  gerade keinen Sitz belegt, sieht seinen eigenen Raum nicht in der Liste. Im
+  Browser beobachtet: nach einem Neustart des Entwicklungsservers zeigte der
+  Titel keinen Eintrag „Weiterspielen", obwohl Raum 9RDW mit demselben
+  Gastgeber in der Datenbank stand — der Sitz war weg, der Raum nicht. Über
+  „Partie beitreten" mit dem Code war er sofort wieder erreichbar, und der Sitz
+  wurde beim Beitreten prompt wieder geschrieben. **Nicht zu Ende diagnostiziert
+  und deshalb hier notiert statt behoben:** ob der Sitz beim Neustart verloren
+  geht oder schon vorher, ist nicht gemessen. Wer es angeht, fängt bei
+  `sqliteStore` und `registry.load` an.
+- **Vom Wartebereich führt kein Weg zum Titel außer „Tisch verlassen".** Das war
+  vorher genauso, fällt aber jetzt stärker auf: alle anderen Bildschirme haben
+  „Zum Titel", dieser hat einen Ausgang, der den Sitz freigibt.
+- **Die „Handkarten"-Optionen sind weiterhin native Radioknöpfe** — als einzige
+  Auswahl im Spiel ohne eigene Kachel. Steht seit zwei Abschnitten offen.
+- **Kein Test auf die Verdrahtung.** Daß der Titel bei „online" einen Raum
+  anlegt statt einen Bildschirm zu zeigen, hält kein Test fest; geprüft ist es
+  im Browser.
+
+## Nachtrag: die letzte Formularauswahl, die Bildunterschrift und der Sechserfall (2026-08-25, `main`)
+
+Drei kleine Sachen aus demselben Durchgang, alle drei im Browser nachgemessen.
+
+**Die „Handkarten"-Auswahl ist weg.** Sie war die letzte Stelle im Spiel, an der
+eine Auswahl wie ein Formular aussah: zwei nackte `<input type="radio">` unter
+lauter gezeichneten Kacheln — direkt über ihnen die Tischgröße als
+Sechseck-Kacheln, technisch dasselbe Bedienelement, optisch zwei Welten. Statt
+sie umzugestalten ist sie gefallen: **zugedeckt war ohnehin die Vorgabe, und sie
+ist dieselbe Regel, nach der online gespielt wird** — Handkarten sind geheim
+(Regel 4). Wer nebeneinander sitzt und sowieso alles sieht, drückt einmal mehr
+auf „Karten ansehen"; das ist ein Klick, wo vorher eine Frage vor der Partie
+stand. `LocalOptions` ist damit ganz gefallen — der Typ trug genau dieses eine
+Feld, und `App.tsx` sagt die Zusage jetzt als feste Zeile.
+
+**Die Bildunterschrift „Euer Brett zum Seed …" ist weg.** Sie stand unten rechts
+unter der Vorschau und wiederholte, was zwei Handbreit weiter links im Seedfeld
+steht — und im Wartebereich gibt es sie ohnehin nicht, dort steht der Seed in
+der Einstellungsliste. Eine Zeile, die eine andere Zeile auf demselben Bildschirm
+vorliest.
+
+**Bei sechs Spielern wird nicht mehr gescrollt.** Gemessen: das Panel stand auf
+**902 Pixel in einem 889 Pixel hohen Fenster** — dreizehn Pixel, für die die
+ganze Seite einen Rollbalken bekam. Zwei Ursachen, beide behoben:
+
+1. **Die Rasterzeile wuchs mit.** `.start` hatte `min-height: 100vh` und sonst
+   nichts; ein Rasterfeld ist von Haus aus mindestens so hoch wie sein Inhalt.
+   Jetzt begrenzt `max-height: 100vh` die Zeile, und `min-height: 0` am Panel
+   ist die Bedingung dafür, dass die Begrenzung überhaupt greifen darf. Das
+   `overflow-y: auto`, das dort seit jeher als Notausgang steht, fängt den Rest
+   ab, statt ihn nach außen durchzureichen.
+2. **Sechs Namenszeilen sind das, was den Ausschlag gibt** — bei vier paßte es
+   immer. Panelabstand 1.15rem → 0.9rem, Sitzabstand 0.4 → 0.3rem, Polster der
+   Namensfelder 0.5 → 0.42rem.
+
+Nachgemessen mit sechs Spielern: **870 Pixel Inhalt, 19 Pixel Luft**, kein
+Rollbalken an der Seite und keiner im Panel. Unter 62rem Breite bleibt
+`max-height` aus — untereinander paßt es nicht ins Fenster, und die Rechnung
+„ohne Scrollen" gilt für das Querformat.
+
+**Was das kostet, und warum es trotzdem richtig ist:** neunzehn Pixel sind
+knapp. In einem deutlich niedrigeren Fenster scrollt dann das **Panel** statt der
+Seite — das ist der Notausgang, der dort ohnehin vorgesehen war, und er ist die
+bessere von zwei schlechten Möglichkeiten (abgeschnitten wäre schlimmer,
+Regel 7). Wer hier eine Zeile hinzufügt, mißt nach.
+
+| Prüfung          | Ergebnis                                                 |
+| ---------------- | -------------------------------------------------------- |
+| `pnpm typecheck` | grün                                                     |
+| `pnpm test`      | grün — shared 638 / 37, server 202 / 22, client 422 / 40 |
+
+---
+
+## Die Auszeichnungen kommen auf den Tisch (2026-08-25, `main`)
+
+Längste Handelsstraße und Größte Rittermacht standen seit Etappe 2 richtig im
+Zustand und wurden bis eben **nirgends gezeigt** — außer im Endstand, also nach
+der Partie. Zwei Siegpunkte je Stück, ein Wettlauf über die ganze Partie, und
+kein Spieler konnte sehen, ob er ihn führt. Dazu kam ein zweites Loch: **wie
+viele Ritter jemand ausgespielt hat, stand ebenfalls nirgends.** Die Karte
+verschwindet beim Ausspielen aus der Hand, und genau daran hängt, ob sich der
+nächste Ritter lohnt.
+
+### Der Entwurf in drei Sätzen (Designregel 1)
+
+**Rolle:** die Karte wandert, statt daß eine Anzeige sie beschreibt. Am Tisch
+liegt die Längste Handelsstraße in der Mitte, bis jemand sie nimmt; dann liegt
+sie vor ihm, sichtbar für alle, bis einer sie ihm wegnimmt.
+
+**Aufbau:** genau drei Orte, und der Ort sagt schon, wem sie gehört.
+
+- **Frei** → rechte Ecke beim übrigen Bankmaterial, mit ihrer Bedingung („ab 5
+  Straßen"). Solange sie niemand hat, ist die Bedingung die einzige Auskunft,
+  die zählt.
+- **Eigen** → unten links bei den eigenen Karten, als quadratische Karte.
+- **Fremd** → als kleine Plakette neben dem Namen am Tisch, oben links.
+
+**Woran man sich erinnert:** daß die Karte umzieht. Sie verschwindet aus der
+Ecke, in der sie eine Partie lang lag, und taucht bei jemandem auf.
+
+### Getroffene Entscheidungen
+
+**Ein Stück liegt an genau einem Ort.** Die naheliegende Fassung wäre gewesen,
+die Auszeichnung immer rechts stehen zu lassen und ihren Inhaber
+danebenzuschreiben — dann stünde dieselbe Sache an zwei Stellen, und zwei
+Stellen können auseinanderlaufen. Die Tests prüfen deshalb nicht nur, daß etwas
+erscheint, sondern daß es an den beiden anderen Stellen **nicht** erscheint.
+
+**Die eigene Auszeichnung steht nicht zusätzlich am Tisch.** Der Tisch
+beantwortet die Frage, die man über _andere_ stellt — der Satz steht seit Etappe
+4 in `TablePanel` und trägt hier zum zweiten Mal.
+
+**Die Ritterzahl dagegen steht bei allen, auch bei einem selbst.** Sie ist ein
+Zähler und kein Besitz: die Auszeichnung liegt irgendwo als Karte, die
+ausgespielten Ritter liegen nirgends. Ohne die Plakette müßte man sie sich
+merken.
+
+**Ein Anzeigemodell statt zweier `if` im JSX** (`game/awards.ts`). Beide
+Auszeichnungen sind dasselbe Ding in drei Lagen, und an jeder der drei Stellen
+wird dieselbe Frage gestellt: wer hält sie, mit welchem Wert, was bräuchte man
+dafür. Gerechnet wird nichts — `holder`, `length` und `size` kommen fertig aus
+der Sicht, Schwelle und Punktwert aus dem RuleSet (Regel 3). Der Endstand liest
+seither dasselbe Modell und nennt die Auszeichnungen damit endlich so wie der
+Rest des Spiels: „Straße" und „Heer" standen dort als Kurzformen, die es
+nirgends sonst gibt (Designregel 8).
+
+**„Gleichauf bei 7" ist keine Zierde, sondern ein Fall, den der Zustand
+hergibt.** `recomputeLongestRoad` läßt die Straße bei Gleichstand ohne Inhaber
+liegen und **führt ihre Länge trotzdem**. Eine Karte, die dann „ab 5 Straßen"
+sagt, ist schlicht falsch — die fünf sind längst überboten. Ein eigener Test
+hält den Fall.
+
+**Quadratisch, und das ist der Unterschied, den man zuerst sieht.** Alle anderen
+Karten des Spiels stehen hoch (4.6 auf 5.8rem); diese beiden liegen quer. Wer
+die Ecke überfliegt, trennt sie an der Form von Rohstoff- und
+Entwicklungskarten, bevor er ein Motiv gelesen hat. Die Breite bleibt die der
+übrigen Karten — eine Karte ist eine Karte.
+
+**Zwei neue Motive, und beide mußten zweimal lesbar sein.** Dasselbe Zeichen
+steht auf einer 4.6rem großen Karte und als 0.95rem kleine Plakette am Tisch,
+also rund vierzehn Pixel. Was dort noch durchkommt, ist eine einzige kräftige
+Silhouette.
+
+- **Handelsstraße: eine gezogene Strecke**, als einziges Motiv des Spiels nicht
+  gefüllt. Ein Kantenzug ist ein Weg, der durchgeht — das zeigt eine Linie mit
+  runden Ecken, und eine Ansammlung von Balken zeigt es nicht. Die
+  „Straßenbau"-Karte daneben hat zwei parallele Balken, weil sie zwei Straßen
+  hergibt; hier ist es eine Strecke mit Knick. Strichbreite steht im Blatt und
+  nicht als Attribut am Pfad — die Falle aus `CLAUDE.md`, an der einmal jede
+  gebaute Straße unsichtbar geworden ist.
+- **Rittermacht: zwei gekreuzte Klingen, kein zweiter Helm.** Der Helm gehört
+  der Ritterkarte und heißt dort „ein Ritter"; ihn hier zu wiederholen hieße
+  „ein Ritter" für „das größte Heer". Drei kleine Helme nebeneinander wären die
+  naheliegende Lösung und fallen an der Größe: in der Plakette bekäme jeder vier
+  Pixel. Wie viele Ritter jemand wirklich hat, sagt daneben die Helmplakette
+  mit ihrer Zahl — Form **und** Zahl, nie die Form allein (Designregel 7).
+
+**Der Helm ist jetzt zweimal im Gebrauch**, auf der Karte und in der Plakette.
+`DevelopmentGlyph` nimmt deshalb eine Klasse entgegen; zwei gezeichnete Helme
+wären zwei, die auseinanderlaufen, und die Größe ist das einzige, was sich
+unterscheiden soll.
+
+**Die eigenen Auszeichnungen erscheinen auch bei zugedeckter Hand.** Sie sind
+kein Geheimnis — daß jemand die Längste Handelsstraße hält, steht bei allen
+anderen offen am Tisch, und was am Tisch offen liegt, kann der eigene
+Bildschirm nicht verdecken.
+
+### Abnahme
+
+| Prüfung             | Ergebnis                                                 |
+| ------------------- | -------------------------------------------------------- |
+| `pnpm typecheck`    | grün                                                     |
+| `pnpm test`         | grün — shared 638 / 37, server 202 / 22, client 432 / 42 |
+| `pnpm build`        | grün, Client-Bundle 442 kB (131 kB gzip), CSS 52.9 kB    |
+| `pnpm format:check` | grün — nach dem Nachziehen von `public/mess.html`        |
+
+Zehn neue Tests: fünf auf dem Anzeigemodell (`game/awards.test.ts`), fünf auf
+dem Bildschirm (`panels/awards.test.tsx`).
+
+**Die Zeile `format:check` stand hier zuerst auf „grün", ohne daß sie gemessen
+war.** Sie war rot, und zwar seit `25ea393`: der Meßrahmen `public/mess.html`
+ist eingecheckt und war nie durch Prettier gelaufen. Die zwei Abschnitte davor
+führen die Warnung noch ehrlich mit; hier ist sie stillschweigend zu „grün"
+geworden. Die Datei ist jetzt formatiert, und damit stimmt die Zeile auch.
+Eine geschätzte Zahl in dieser Tabelle macht die ganze Tabelle wertlos — das
+steht in `CLAUDE.md` und ist genau hier passiert.
+
+Ein Fehler in der ersten Fassung der Bildschirmtests ist erwähnenswert, weil er
+jederzeit wiederkommt: sie hielten `defaultSeats(3)[0]` für „ich". **Der Auftakt
+würfelt aus, wer beginnt, und ordnet `players` danach um** — je nach Seed prüfte
+der Test damit die Zeile eines Mitspielers. Wer in einem Bildschirmtest „ich"
+braucht, nimmt ihn aus dem Zustand (`state.players[0]`), nicht aus der Sitzliste.
+
+### Offene Punkte
+
+- **Nicht im Browser nachgemessen.** Die Erweiterung war in dieser Sitzung nicht
+  verbunden; geprüft sind Typen, Tests, Build und Format, nicht das Bild. Die
+  Rechnung geht auf (zwei Karten zu 73.6 px plus Fuge in einer Ecke von
+  mindestens 236 px; Kartenhöhe 73.6 px gegen rund 57 px Inhalt), aber gemessen
+  ist sie nicht. Der nächste Durchgang sieht die rechte Ecke an — sie trägt
+  jetzt vier Stücke und bricht um.
+- **Der Verlauf sagt nichts, wenn eine Auszeichnung den Besitzer wechselt.** Die
+  Karte zieht um, und niemand erklärt warum — genau die Lücke, die Designregel 5
+  sonst schließt. `describeTransition` in `shared` wäre der Ort, mit Test; hier
+  bewußt nicht mitgemacht, weil es Spiellogik ist und nicht Oberfläche.
+
+---

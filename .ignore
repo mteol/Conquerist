@@ -1,0 +1,4 @@
+# Für Suchwerkzeuge (ripgrep): Archiv und abgeschlossene Pläne nicht mit durchsuchen.
+# Direkt lesen geht weiter; bei Bedarf gezielt mit Pfad suchen.
+docs/archiv/
+docs/superpowers/plans/
