@@ -272,8 +272,30 @@ describe('Der Ereigniswuerfel', () => {
     render(tray({ spec: CITIES, roll: wurf(5, 3, 1), total: 8 }));
 
     expect(screen.getByTestId('dice').getAttribute('aria-label')).toBe(
-      'Wurf: 5 und 3, zusammen 8, Ereignis: Barbarenschiff',
+      'Wurf: 5 und 3 (rot), zusammen 8, Ereignis: Barbarenschiff',
     );
+  });
+
+  it('faerbt am Tisch mit Ereigniswuerfel den zweiten Augenwuerfel rot', () => {
+    const { container } = render(tray({ spec: CITIES, roll: wurf(5, 3, 1), total: 8 }));
+
+    const dice = container.querySelectorAll('.dice__faces > .die');
+    expect(dice[1]?.classList.contains('die--red')).toBe(true);
+    expect(dice[0]?.classList.contains('die--red')).toBe(false);
+  });
+
+  it('laesst im Basisspiel beide Augenwuerfel weiss', () => {
+    const { container } = render(
+      tray({
+        roll: [
+          { die: 'first', value: 5 },
+          { die: 'second', value: 3 },
+        ],
+        total: 8,
+      }),
+    );
+
+    expect(container.querySelector('.die--red')).toBeNull();
   });
 
   it('wirft alle drei und gibt jedem einen eigenen Scheitel', () => {

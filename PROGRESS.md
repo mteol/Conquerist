@@ -117,6 +117,31 @@ Tests halten den neuen Ort fest (`awards.test.tsx`, `GameScreen.test.tsx`).
 Aufgeräumt: gemergte lokale Branches gelöscht (die Commits stehen in `main`),
 alte SDD-Arbeitsordner unter `.superpowers/sdd` entfernt.
 
+## Roter Würfel und die Bauleiste bei den Würfeln (2026-09-17, `rotwuerfel-und-bauleiste`)
+
+Aus dem ersten Blick auf den Testserver.
+
+**Kartenmengen zu fünft und sechst geprüft** (`CITIES_RULES_56` gegen Regeltext
+Abschnitt 2 und 13): 24 je Rohstoff (19 + 5 aus der Ergänzung), 18 je
+Handelsware (12 + 6), keine zusätzlichen Fortschrittskarten (54 bleiben 54),
+je Person 15 Straßen, 5 Siedlungen, 4 Städte, 3 Mauern, 6 Ritter. Stimmt alles.
+
+**Der zweite Augenwürfel ist rot** — aber nur an einem Tisch mit
+Ereigniswürfel. Er entscheidet über die Fortschrittskarten, und die Regel nennt
+ihn beim Namen; ohne Farbe musste man wissen, dass es der zweite ist. Im
+Basisspiel heißt derselbe Würfel ebenfalls `second` und bleibt weiß. Die
+Vorleseansage sagt jetzt „5 und 3 (rot)". Farbe allein trägt nichts: die Ansage
+und die Stellung neben dem Ereigniswürfel sagen dasselbe.
+
+**Bauleiste und Ritterleiste stehen unten, direkt über den Würfeln** — wie am
+Basistisch. Vorher standen sie ganz oben in der Ecke, mit Tableau und
+Fortschrittsstapeln dazwischen: gemessen 500 px zwischen dem Wurf und dem, was
+man danach baut. Tableau und Stapel werden seltener angefasst und rücken nach
+oben. Gemessen bei 1500x820: Bauleiste endet bei 731, Würfel beginnen bei 739.
+
+Im Browser gesehen (lokal, 5 Personen): roter Würfel mit hellen Augen neben
+dem Ereigniswürfel, Bauteile über der Schale.
+
 ## Nächste Etappe
 
 Mit 10e ist der Etappenplan aus der Spec für Städte & Ritter

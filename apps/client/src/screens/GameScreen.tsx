@@ -1266,28 +1266,6 @@ export function GameScreen({
             />
           )}
 
-          <ActionPanel
-            targets={targets}
-            error={error}
-            stock={you === undefined ? null : { piecesLeft: you.piecesLeft, color: you.color }}
-            costs={view.rules.buildCosts}
-            buildMode={buildMode}
-            onBuildMode={setBuildMode}
-            onDismissError={onDismissError}
-          />
-
-          {/*
-           * Die Ritterleiste steht neben der Bauleiste, nicht darin: die eine
-           * fragt "was baue ich", die andere "was tue ich mit dem, was steht".
-           * An einem Basistisch erscheint sie gar nicht.
-           */}
-          <KnightPanel
-            targets={targets}
-            costs={view.rules.buildCosts}
-            mode={knightMode}
-            onMode={setKnightMode}
-          />
-
           {/*
            * Das Fortschritt-Tableau steht daneben, aus demselben Grund wie die
            * Ritterleiste: eine dritte Frage, kein drittes Bauteil. An einem
@@ -1332,6 +1310,36 @@ export function GameScreen({
                 ? beginPick({ kind: 'progressHex', card })
                 : beginPick({ kind: 'progressBoard', card, first: null })
             }
+          />
+
+          {/*
+           * Die Ritterleiste steht neben der Bauleiste, nicht darin: die eine
+           * fragt "was baue ich", die andere "was tue ich mit dem, was steht".
+           * An einem Basistisch erscheint sie gar nicht.
+           */}
+          <KnightPanel
+            targets={targets}
+            costs={view.rules.buildCosts}
+            mode={knightMode}
+            onMode={setKnightMode}
+          />
+
+          {/*
+           * Bauleiste und Ritterleiste stehen unten, direkt ueber den Wuerfeln -
+           * wie am Basistisch, wo die Bauleiste gleich ueber der Schale liegt.
+           * Bei Staedte & Ritter standen sie zuerst ganz oben, und Leitern und
+           * Fortschrittsstapel lagen dazwischen: gemessen rund 500 px zwischen
+           * dem Wurf und dem, was man danach baut. Tableau und Stapel werden
+           * seltener angefasst und ruecken nach oben.
+           */}
+          <ActionPanel
+            targets={targets}
+            error={error}
+            stock={you === undefined ? null : { piecesLeft: you.piecesLeft, color: you.color }}
+            costs={view.rules.buildCosts}
+            buildMode={buildMode}
+            onBuildMode={setBuildMode}
+            onDismissError={onDismissError}
           />
 
           {/*

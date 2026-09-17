@@ -82,6 +82,12 @@
   --ok-ink: #2f6b3a;
   --warn-ink: #a8741a;
   --bad-ink: #a52a1e;
+  /*
+   * Der rote Augenwuerfel von Staedte & Ritter. Dunkler als `--bad`, damit die
+   * hellen Augen darauf tragen (Pergament auf diesem Rot: 6,04:1), und kein
+   * Warnrot - er meldet nichts, er ist ein Stueck Material.
+   */
+  --die-red: #9e2a20;
 
   /*
    * Und dieselben Bedeutungen noch einmal als **Schrift auf der Tiefsee**.
@@ -4829,6 +4835,12 @@ body {
     var(--lift);
   color: var(--ink);
   font-weight: 700;
+}
+
+.die--red {
+  border-color: rgb(0 0 0 / 35%);
+  --ink: var(--parchment);
+  background: var(--die-red);
 }
 
 .die--numeral {

@@ -1,6 +1,7 @@
 import type { CSSProperties, JSX } from 'react';
 import {
   EVENT_FACES,
+  PROGRESS_DIE,
   type DiceSpec,
   type DieSpec,
   type EventFace,
@@ -72,6 +73,16 @@ export function DiceTray({
   }));
 
   /*
+   * Der rote Wuerfel - aber nur an einem Tisch mit Ereigniswuerfel.
+   *
+   * Seine Augen entscheiden, wer eine Fortschrittskarte zieht, und die Regel
+   * spricht ihn beim Namen („roter Wuerfel"). Ohne Farbe muesste man wissen,
+   * dass es der zweite ist. Im Basisspiel heisst derselbe Wuerfel ebenfalls
+   * `second` und bleibt weiss - dort bedeutet er nichts Besonderes.
+   */
+  const redDie = spec.some((die) => die.render === 'event') ? PROGRESS_DIE : null;
+
+  /*
    * Geworfen wird nur, was ein Wuerfel im Wortsinn ist.
    *
    * Ein Kubus hat sechs Flaechen - fuer einen achtseitigen Wuerfel aus einem
@@ -110,9 +121,17 @@ export function DiceTray({
           aria-hidden="true"
         >
           {thrown === null
-            ? shown.map(({ die, value }) => <Die key={die.id} die={die} value={value} />)
+            ? shown.map(({ die, value }) => (
+                <Die key={die.id} die={die} value={value} red={die.id === redDie} />
+              ))
             : spec.map((die, index) => (
-                <Cube key={die.id} die={die} value={thrown[index]!} index={index} />
+                <Cube
+                  key={die.id}
+                  die={die}
+                  value={thrown[index]!}
+                  index={index}
+                  red={die.id === redDie}
+                />
               ))}
         </span>
 
@@ -164,9 +183,12 @@ function labelFor(
   if (canRoll) return 'Würfeln';
   if (total === null) return 'Noch kein Wurf';
 
+  const hasEvent = shown.some(({ die }) => die.render === 'event');
   const eyes = shown
     .filter(({ die }) => die.render !== 'event')
-    .map(({ value }) => value ?? 0)
+    .map(({ die, value }) =>
+      hasEvent && die.id === PROGRESS_DIE ? `${value ?? 0} (rot)` : String(value ?? 0),
+    )
     .join(' und ');
 
   const event = shown.find(({ die }) => die.render === 'event');
@@ -224,10 +246,12 @@ function Cube({
   die,
   value,
   index,
+  red = false,
 }: {
   readonly die: DieSpec;
   readonly value: number;
   readonly index: number;
+  readonly red?: boolean;
 }): JSX.Element {
   const face = FACE_TURN[value] ?? FACE_TURN[1]!;
 
@@ -267,7 +291,7 @@ function Cube({
         >
           {CUBE_FACES.map((side) => (
             <span key={side.name} className={`cube__face cube__face--${side.name}`}>
-              <Die die={die} value={side.value} />
+              <Die die={die} value={side.value} red={red} />
             </span>
           ))}
         </span>
@@ -332,11 +356,15 @@ const FACE_TURN: Readonly<Record<number, { readonly x: number; readonly y: numbe
 function Die({
   die,
   value,
+  red = false,
 }: {
   readonly die: DieSpec;
   readonly value: number | null;
+  /** Der rote Augenwuerfel von Staedte & Ritter. */
+  readonly red?: boolean;
 }): JSX.Element {
-  if (value === null) return <span className="die die--blank" />;
+  const base = red ? 'die die--red' : 'die';
+  if (value === null) return <span className={`${base} die--blank`} />;
 
   /*
    * Was auf einer Seite steht, sagt die Wuerfelschale und nicht die Seitenzahl.
@@ -356,13 +384,13 @@ function Die({
     );
   }
 
-  if (die.faces > PIPS.length) return <span className="die die--numeral">{value}</span>;
+  if (die.faces > PIPS.length) return <span className={`${base} die--numeral`}>{value}</span>;
 
   const pattern = PIPS[value - 1];
-  if (pattern === undefined) return <span className="die die--numeral">{value}</span>;
+  if (pattern === undefined) return <span className={`${base} die--numeral`}>{value}</span>;
 
   return (
-    <span className="die">
+    <span className={base} data-testid={red ? 'die-red' : undefined}>
       {pattern.map((filled, index) => (
         <span key={index} className={filled ? 'die__pip' : 'die__pip die__pip--empty'} />
       ))}
