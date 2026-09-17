@@ -15,9 +15,8 @@ Im Archiv nur gezielt suchen (`grep` nach Stichwort), nie ganz lesen.
 
 ## Aktueller Stand (2026-09-17)
 
-- `main` = `049546d`: 10d-3 abgeschlossen (Regelfragen aus 10d-2, Regel 11 im
-  Browser gesehen, alle drei Auslegungen bestätigt). Details: Archiv 10d.
-- **10e auf Branch `etappe-10e-burgen`**, Abschnitt unten.
+- `main` = `373e14d`: **10e abgeschlossen** (Burg 1 / Burg 2, Abschnitt unten).
+  Davor 10d-3 (Regelfragen aus 10d-2), Details im Archiv 10d.
 
 ## Offene Punkte
 
@@ -102,6 +101,6 @@ Text („Burg 1"), nicht nur Farbe; ihr `title` erklärt den Zug.
 
 ## Nächste Etappe
 
-Nach dem Merge von 10e ist der Etappenplan aus der Spec für Städte & Ritter
+Mit 10e ist der Etappenplan aus der Spec für Städte & Ritter
 abgearbeitet. Kandidaten: Befunde C–F, Zugzeit für `main`/`rollPending`, die
 Frage nach der Geheimhaltung abgegebener Fortschrittskarten.
