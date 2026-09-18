@@ -59,6 +59,8 @@ export function BarbarianTrack({
     <section
       className="barbarians"
       aria-label={`Die Barbaren sind ${barbarians.position} von ${track - 1} Feldern nah`}
+      data-hint-title="Barbaren"
+      data-hint={barbarianHint(track - 1 - barbarians.position, strength, defenders).join('\n')}
     >
       <div className="barbarians__lane">
         <ol className="barbarians__stations">
@@ -125,6 +127,26 @@ export function BarbarianTrack({
       </p>
     </section>
   );
+}
+
+/**
+ * Die Regel hinter der Leiste, in Sätzen. Zwei Zahlen und ein Schiff sagen,
+ * *wie* es steht - aber nicht, was beim Ankommen passiert, und genau das
+ * entscheidet, ob man jetzt einen Ritter braucht.
+ */
+export function barbarianHint(left: number, strength: number, defenders: number | null): string[] {
+  return [
+    left <= 0
+      ? 'Das Schiff ist an der Küste.'
+      : `Rückt bei jedem Schiff auf dem Ereigniswürfel ein Feld vor - noch ${left} bis zur Küste.`,
+    `Angriffsstärke ${strength}: eine je Stadt auf dem Brett.`,
+    defenders === null
+      ? 'Dagegen zählen alle aktivierten Ritter.'
+      : `Dagegen zählen alle aktivierten Ritter: zusammen ${defenders}.`,
+    'Halten sie: wer am meisten beiträgt, bekommt einen Siegpunkt (bei Gleichstand je eine Fortschrittskarte).',
+    'Unterliegen sie: wer am wenigsten beiträgt, verliert eine Stadt.',
+    'Danach sind alle Ritter wieder passiv.',
+  ];
 }
 
 /**

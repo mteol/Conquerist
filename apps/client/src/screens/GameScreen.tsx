@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type JSX,
+} from 'react';
 import {
   barbarianStrength,
   tradeRateFor,
@@ -177,7 +185,7 @@ function DoorMark(): JSX.Element {
 /** Der Satz zum zweiten Schritt - benannt wird, was der Spieler tut (Regel 8). */
 const BUILD_HINTS: Readonly<Record<BuildableKind, string>> = {
   road: 'Straße bauen: Kante auf dem Brett wählen',
-  settlement: 'Siedlung bauen: Knoten auf dem Brett wählen',
+  settlement: 'Siedlung bauen: Kreuzung auf dem Brett wählen',
   city: 'Stadt bauen: eigene Siedlung auf dem Brett wählen',
   wall: 'Stadtmauer bauen: eigene Stadt auf dem Brett wählen',
   knight: 'Ritter bauen: freie Kreuzung am eigenen Straßennetz wählen',
@@ -204,8 +212,8 @@ function setupHint(kind: BuildableKind, setting: BuildableKind): string {
       : 'Gründung: Straße an der eben gesetzten Siedlung wählen';
   }
   return kind === 'city'
-    ? 'Gründung: Knoten für die Stadt wählen'
-    : 'Gründung: Knoten für die Siedlung wählen';
+    ? 'Gründung: Kreuzung für die Stadt wählen'
+    : 'Gründung: Kreuzung für die Siedlung wählen';
 }
 
 /**
@@ -519,12 +527,16 @@ export function GameScreen({
    * Die Panels schalten ihre Knoepfe um und melden deshalb `null` fuer "aus".
    * Das ist ihre Sprache und nicht die der Absicht - hier wird uebersetzt.
    */
+  const inSetup = view.phase.kind === 'setup';
   const setBuildMode = useCallback(
     (kind: BuildableKind | null) => {
-      if (kind === null) cancelPick();
-      else beginPick({ kind: 'build', build: kind });
+      // In der Gruendung ist das Setzen Pflicht (siehe unten): der zweite Klick
+      // auf das vorgewaehlte Bauteil laesst es stehen, statt das Brett zu leeren.
+      if (kind === null) {
+        if (!inSetup) cancelPick();
+      } else beginPick({ kind: 'build', build: kind });
     },
-    [beginPick, cancelPick],
+    [beginPick, cancelPick, inSetup],
   );
 
   const setKnightMode = useCallback(
@@ -588,6 +600,25 @@ export function GameScreen({
     // ihr, weil er zu ihr gehoert.
     cancelPick();
   }, [view.version, cancelPick]);
+
+  /*
+   * **In der Gruendung ist das Bauteil schon gewaehlt.** Dort gibt es genau
+   * eines, das geht - Siedlung (bzw. Stadt), danach Strasse -, und die Wahl
+   * davor war ein Schritt, der nichts entscheidet. Im Playtest stand der Satz
+   * „setzt eine Siedlung" ueber einem ruhigen Brett, und niemand wusste, dass
+   * erst unten das Haus gedrueckt werden muss. Jetzt leuchten die Plaetze
+   * sofort, und das Haus in der Bauleiste steht gedrueckt da - so lernt man
+   * die zwei Schritte trotzdem, nur ohne daran zu scheitern.
+   *
+   * Nach dem Aufraeumen darueber (Effekte laufen in dieser Reihenfolge).
+   */
+  useEffect(() => {
+    if (view.phase.kind !== 'setup') return;
+    const open = (Object.keys(targets.buildable) as BuildableKind[]).filter(
+      (kind) => targets.buildable[kind] > 0,
+    );
+    if (open.length === 1) beginPick({ kind: 'build', build: open[0]! });
+  }, [view.version, view.phase.kind, targets, beginPick]);
 
   /**
    * Der Preis einer Entwicklungskarte - `undefined`, wenn dieser Tisch keine
@@ -1030,8 +1061,38 @@ export function GameScreen({
           return player === undefined ? [] : [player];
         });
 
+  /*
+   * **Wo der Modusbalken hin darf, wird gemessen und nicht geschaetzt.** Er
+   * steht unter dem Statussatz, und der bricht je nach Breite und Satz in eine
+   * oder zwei Zeilen um - eine feste Hoehe ueberlappte bei 396 px (Status bis
+   * 70 px, Balken ab 62). Im schmalen Hochformat liegt darunter die linke
+   * Spalte; sie rueckt um die Hoehe des Balkens nach unten (`index.css`).
+   * Nach jedem Bild, weil Status und Balken mit dem Zustand wechseln, und beim
+   * Aendern der Fenstergroesse.
+   */
+  const gameRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const game = gameRef.current;
+    if (game === null) return;
+
+    const measure = () => {
+      const top = game.getBoundingClientRect().top;
+      const topline = game.querySelector('.topline')?.getBoundingClientRect();
+      const mode = game.querySelector('.mode')?.getBoundingClientRect();
+      const below = topline === undefined ? 0 : Math.round(topline.bottom - top);
+      // Samt Luft darunter (0,4rem wie ueber ihm), damit die Spalte nicht anstoesst.
+      const space = mode === undefined ? 0 : Math.round(mode.height + 6);
+      game.style.setProperty('--topline-bottom', `${below}px`);
+      game.style.setProperty('--mode-space', `${space}px`);
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  });
+
   return (
-    <main className="game">
+    <main className="game" ref={gameRef}>
       <div className="board-area">
         <BoardSvg
           state={view}
@@ -1042,6 +1103,7 @@ export function GameScreen({
             color: player.color,
           }))}
           onPick={pick}
+          hintRules={{ commodities: view.rules.barbarianTrack > 0 }}
           pending={pending}
         />
 
@@ -1325,42 +1387,55 @@ export function GameScreen({
           />
 
           {/*
-           * Bauleiste und Ritterleiste stehen unten, direkt ueber den Wuerfeln -
-           * wie am Basistisch, wo die Bauleiste gleich ueber der Schale liegt.
-           * Bei Staedte & Ritter standen sie zuerst ganz oben, und Leitern und
-           * Fortschrittsstapel lagen dazwischen: gemessen rund 500 px zwischen
-           * dem Wurf und dem, was man danach baut. Tableau und Stapel werden
-           * seltener angefasst und ruecken nach oben.
-           */}
-          <ActionPanel
-            targets={targets}
-            error={error}
-            stock={you === undefined ? null : { piecesLeft: you.piecesLeft, color: you.color }}
-            costs={view.rules.buildCosts}
-            buildMode={buildMode}
-            onBuildMode={setBuildMode}
-            onDismissError={onDismissError}
-          />
-
-          {/*
-           * Die Wuerfel haengen nicht mehr in der Bauleiste, sondern daneben.
+           * **Bauleiste und Wuerfel stehen nebeneinander, nicht uebereinander.**
            *
-           * Sie standen dort als erste Zeile, weil ein Zug mit ihnen anfaengt -
-           * nur ist die Reihenfolge im Ablauf nicht dieselbe wie die auf dem
-           * Tisch. Als eigenes Stueck koennen sie in die Ecke, und die Leiste
-           * daneben ist wieder das, was ihr Name sagt: was man baut.
+           * Beide gehoeren ans untere Ende der Ecke - die Leiste stand deshalb
+           * zuletzt direkt *ueber* den Wuerfeln. Am Tisch aus Holz liegt die
+           * Baukostenkarte aber *neben* der Wuerfelschale, und das ist kein
+           * Geschmack: uebereinander schiebt jedes Bauteil, das dazukommt, die
+           * Wuerfel eine Zeile tiefer, und in einem niedrigen Fenster wandert die
+           * Leiste dabei nach oben unter Leitern und Stapel. Nebeneinander sitzt
+           * beides in derselben Zeile am Rand und bleibt, wo es war.
+           *
+           * Eine eigene Huelle und nicht bloss eine Reihenfolge: `.tray__controls`
+           * bricht um, und ohne die Huelle waeren Leiste und Wuerfel zwei
+           * Umbruchkandidaten statt eines Paars. Wird es zu eng, bricht die Huelle
+           * selbst um, und dann stehen sie wieder untereinander - das ist die
+           * schmale Ausweichstellung, nicht der Normalfall.
            */}
-          <DiceTray
-            spec={display.dice}
-            roll={display.lastRoll}
-            total={display.rollTotal}
-            canRoll={targets.roll !== null}
-            fell={display.rolled}
-            landing={landing}
-            onRoll={() => {
-              if (targets.roll !== null) onAct(targets.roll);
-            }}
-          />
+          <div className="tray__throw">
+            <ActionPanel
+              targets={targets}
+              error={error}
+              stock={you === undefined ? null : { piecesLeft: you.piecesLeft, color: you.color }}
+              costs={view.rules.buildCosts}
+              hand={revealed ? (you?.resources ?? null) : null}
+              setup={view.phase.kind === 'setup'}
+              buildMode={buildMode}
+              onBuildMode={setBuildMode}
+              onDismissError={onDismissError}
+            />
+
+            {/*
+             * Die Wuerfel haengen nicht mehr in der Bauleiste, sondern daneben.
+             *
+             * Sie standen dort als erste Zeile, weil ein Zug mit ihnen anfaengt -
+             * nur ist die Reihenfolge im Ablauf nicht dieselbe wie die auf dem
+             * Tisch. Als eigenes Stueck koennen sie in die Ecke, und die Leiste
+             * daneben ist wieder das, was ihr Name sagt: was man baut.
+             */}
+            <DiceTray
+              spec={display.dice}
+              roll={display.lastRoll}
+              total={display.rollTotal}
+              canRoll={targets.roll !== null}
+              fell={display.rolled}
+              landing={landing}
+              onRoll={() => {
+                if (targets.roll !== null) onAct(targets.roll);
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -1624,9 +1699,12 @@ export function GameScreen({
           <span>
             {view.phase.kind === 'setup' ? setupHint(buildMode, setupKind) : BUILD_HINTS[buildMode]}
           </span>
-          <button type="button" className="button button--ghost" onClick={cancelPick}>
-            Abbrechen
-          </button>
+          {/* In der Gruendung gibt es nichts abzubrechen: das Setzen ist Pflicht. */}
+          {view.phase.kind === 'setup' ? null : (
+            <button type="button" className="button button--ghost" onClick={cancelPick}>
+              Abbrechen
+            </button>
+          )}
         </div>
       )}
 

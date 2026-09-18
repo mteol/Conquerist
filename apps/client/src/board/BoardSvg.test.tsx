@@ -8,7 +8,7 @@ import {
   generateScenario,
   setupPlayer,
 } from '@conquerist/shared';
-import { fireEvent, render, screen, userEvent } from '../test/dom';
+import { act, fireEvent, render, screen, userEvent } from '../test/dom';
 import { defaultSeats } from '../seats';
 import { EMPTY_TARGETS, actionTargets } from '../game/targets';
 import { BoardSvg } from './BoardSvg';
@@ -611,5 +611,70 @@ describe('BoardSvg mit Metropolen', () => {
 
     expect(screen.queryByTestId(`wall-${vertex}`)).not.toBeNull();
     expect(screen.queryByTestId(`metropolis-${vertex}`)).not.toBeNull();
+  });
+});
+
+describe('BoardSvg: Auskunft per langem Druecken', () => {
+  function setup() {
+    const onPick = vi.fn();
+    const vertex = boardOf(scenario).topology.vertices[10]!;
+    const { container } = render(
+      <BoardSvg
+        state={start}
+        targets={{
+          ...EMPTY_TARGETS,
+          vertices: new Map([
+            [vertex, { type: 'placeSetupSettlement', player: seats[0]!.id, vertex } as never],
+          ]),
+        }}
+        seats={seats}
+        onPick={onPick}
+      />,
+    );
+    const svg = container.querySelector('svg')!;
+    svg.getScreenCTM = () =>
+      ({ inverse: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) }) as unknown as DOMMatrix;
+    const catcher = container.querySelector('[data-testid="board-catcher"]')!;
+    return { onPick, catcher, at: vertexPoint(vertex) };
+  }
+
+  it('zeigt nach langem Druecken das Kaertchen und setzt beim Loslassen nichts', () => {
+    vi.useFakeTimers();
+    try {
+      const { onPick, catcher, at } = setup();
+      const touch = { pointerType: 'touch', clientX: at.x, clientY: at.y };
+
+      fireEvent.pointerDown(catcher, touch);
+      act(() => {
+        vi.advanceTimersByTime(600);
+      });
+      expect(screen.getByRole('tooltip').textContent).toContain('Hier bauen');
+
+      fireEvent.pointerUp(catcher, touch);
+      fireEvent.click(catcher, touch);
+      expect(onPick).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('laesst einen kurzen Tipp ein Tipp sein', () => {
+    vi.useFakeTimers();
+    try {
+      const { onPick, catcher, at } = setup();
+      const touch = { pointerType: 'touch', clientX: at.x, clientY: at.y };
+
+      fireEvent.pointerDown(catcher, touch);
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      fireEvent.pointerUp(catcher, touch);
+      fireEvent.click(catcher, touch);
+
+      expect(onPick).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('tooltip')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

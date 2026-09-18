@@ -41,6 +41,15 @@ const KNIGHT_LABELS: Readonly<Record<KnightMode, string>> = {
   chase: 'Räuber vertreiben',
 };
 
+/** Was ein Modus tut - der Knopf zeigt nur ein Zeichen. */
+const KNIGHT_WHAT: Readonly<Record<KnightMode, string>> = {
+  activate:
+    'Setzt einem Ritter den Helm auf (1 Korn). Nur aktivierte Ritter zählen gegen die Barbaren.',
+  upgrade: 'Einfach zu Stark, Stark zu Mächtig (1 Wolle, 1 Erz). Mächtig erst mit der Festung.',
+  move: 'Zieht einen aktivierten Ritter entlang eigener Straßen - er kann dabei schwächere fremde Ritter verdrängen. Danach ist er passiv.',
+  chase: 'Ein aktivierter Ritter neben dem Räuber schickt ihn weg. Danach ist der Ritter passiv.',
+};
+
 /**
  * Was der Knopf verspricht, wenn nichts geht.
  *
@@ -97,6 +106,13 @@ export function KnightPanel({
                 ? KNIGHT_EMPTY[entry]
                 : `${KNIGHT_LABELS[entry]}: ${count} ${count === 1 ? 'Stelle' : 'Stellen'}`
             }
+            data-hint-title={KNIGHT_LABELS[entry]}
+            data-hint={[
+              KNIGHT_WHAT[entry],
+              count === 0
+                ? `Gerade nicht: ${KNIGHT_EMPTY[entry].split(': ')[1] ?? ''}.`
+                : `${count} ${count === 1 ? 'Stelle' : 'Stellen'} möglich - anklicken, dann auf dem Brett wählen.`,
+            ].join('\n')}
             // Noch einmal derselbe Knopf schaltet den Modus wieder aus - sonst
             // klebt eine Absicht am Brett, die man nur durch Ziehen loswird.
             onClick={() => onMode(active ? null : entry)}

@@ -182,12 +182,18 @@ function TrackStep({
     </>
   );
 
+  const hint = {
+    'data-hint-title': `${TRACK_NAMES[track]}, Stufe ${step}: ${stepName(track, step)}`,
+    'data-hint': trackStepHint(track, step, built).join('\n'),
+  };
+
   if (!isNext) {
     return (
       <div
         className={built ? 'tracks__step tracks__step--built' : 'tracks__step'}
         data-testid={testId}
         data-built={built ? 'true' : 'false'}
+        {...hint}
       >
         {marks}
       </div>
@@ -205,9 +211,37 @@ function TrackStep({
       data-built="false"
       disabled={!offered}
       title={`${stepName(track, step)}: ${price} ${COMMODITY_LABELS[TRACK_COMMODITY[track]]}`}
+      {...hint}
       onClick={() => onImprove(track)}
     >
       {marks}
     </button>
   );
+}
+
+/** Was die Zusatzstufe (Stufe 3) eines Bereichs erlaubt. */
+const BONUS_TEXTS: Readonly<Record<TrackId, string>> = {
+  trade: 'Gilde: Handelswaren tauschst du 2:1 bei der Bank.',
+  politics: 'Festung: Starke Ritter dürfen zu Mächtigen aufsteigen.',
+  science: 'Aquädukt: bringt dir ein Wurf nichts, nimmst du einen Rohstoff nach Wahl.',
+};
+
+/**
+ * Die Auskunft an einer Sprosse. Die Leiter zeigt Zahl, Wort und Aufsatz -
+ * was sie *bedeuten*, stand nirgends: dass die Zahl der rote Würfel ist, dass
+ * Stufe 4 um eine Metropole kämpft, was eine Gilde kann.
+ */
+export function trackStepHint(track: TrackId, step: number, built: boolean): string[] {
+  const commodity = COMMODITY_LABELS[TRACK_COMMODITY[track]];
+  const price = improvementCost(track, step)[TRACK_COMMODITY[track]] ?? 0;
+  const lines = [
+    built ? 'Ausgebaut.' : `Kostet ${price} ${commodity}. Du brauchst dafür eine Stadt.`,
+    `Fortschrittskarte ${TRACK_NAMES[track]}, wenn das Stadttor fällt und der rote Würfel höchstens ${progressThreshold(step)} zeigt.`,
+  ];
+  if (step === TRACK_BONUS_LEVEL[track]) lines.push(BONUS_TEXTS[track]);
+  if (step === METROPOLIS_LEVEL) {
+    lines.push('Wer als Erster Stufe 4 erreicht, macht eine Stadt zur Metropole (+2 Siegpunkte).');
+  }
+  if (step === 5) lines.push('Stufe 5 holt die Metropole von jedem, der nur Stufe 4 hat.');
+  return lines;
 }

@@ -167,15 +167,14 @@ describe('GameScreen', () => {
     await userEvent.click(screen.getByTestId('build-settlement'));
     placeVertex(container, firstSetupVertex());
 
-    // Nach der Siedlung ist die Strasse an der Reihe - und wie ueberall sonst
-    // bleibt das Brett ruhig, bis sie gewaehlt ist.
-    expect(
-      screen.getAllByTestId(/^(vertex|edge)-/).filter((node) => node.dataset['target'] === 'true'),
-    ).toHaveLength(0);
+    // Nach der Siedlung ist die Strasse an der Reihe - vorgewaehlt, weil sie
+    // das einzige ist, was jetzt geht, und die Kanten leuchten sofort.
     expect(screen.getByTestId('build-road')).toHaveProperty('disabled', false);
+    expect(screen.getByTestId('build-road').getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByTestId('build-settlement')).toHaveProperty('disabled', true);
-
-    await userEvent.click(screen.getByTestId('build-road'));
+    expect(
+      screen.getAllByTestId(/^vertex-/).filter((node) => node.dataset['target'] === 'true'),
+    ).toHaveLength(0);
     expect(
       screen.getAllByTestId(/^edge-/).filter((node) => node.dataset['target'] === 'true').length,
     ).toBeGreaterThan(0);
@@ -219,17 +218,28 @@ describe('GameScreen', () => {
     );
   });
 
-  it('legt die Wuerfel als Letztes in die rechte Ecke', () => {
+  it('stellt die Bauleiste neben die Wuerfel, nicht darueber', () => {
     render(<LocalGame />);
 
     const corner = screen.getByTestId('dice').closest('.tray__controls');
     expect(corner).not.toBeNull();
 
-    // Aeusserstes Kind heisst am Bildschirm: in der Ecke selbst. Was links
-    // davon liegt, sind die Bauteile.
-    const own = screen.getByTestId('dice').closest('.dice-tray');
-    expect(corner!.lastElementChild).toBe(own);
-    expect(corner!.querySelector('[data-testid="build-road"]')).not.toBeNull();
+    // Die Wurfzeile ist das aeusserste Stueck der Ecke - am Bildschirm also
+    // ganz unten, dort wo ein Zug anfaengt.
+    const row = screen.getByTestId('dice').closest('.tray__throw');
+    expect(row).not.toBeNull();
+    expect(corner!.lastElementChild).toBe(row);
+
+    // Und in dieser Zeile liegen beide: die Bauteile zuerst, die Wuerfel
+    // dahinter - gelesen von links nach rechts heisst das "Leiste, dann
+    // Schale in der Ecke". Stuende die Leiste wieder ueber den Wuerfeln,
+    // waere sie gar nicht erst in dieser Zeile.
+    const build = row!.querySelector('[data-testid="build-road"]');
+    expect(build).not.toBeNull();
+
+    const dice = screen.getByTestId('dice').closest('.dice-tray');
+    expect(row!.lastElementChild).toBe(dice);
+    expect(build!.compareDocumentPosition(dice!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it('zeigt genau eine offene Hand und von allen nur die Anzahl', () => {
@@ -386,10 +396,20 @@ describe('Bauen in zwei Schritten', () => {
    * anzunehmen, dass es je anders liefe. Der eine Druck, der nichts
    * entscheidet, bringt bei, wie das Spiel bedient wird.
    */
-  it('haelt das Brett auch in der Gruendung ruhig, bis ein Bauteil gewaehlt ist', () => {
+  it('waehlt in der Gruendung das einzige Bauteil vor, und das Brett leuchtet sofort', () => {
     render(<LocalGame />);
 
-    expect(litUp()).toBe(0);
+    expect(screen.getByTestId('build-settlement').getAttribute('aria-pressed')).toBe('true');
+    expect(litUp()).toBeGreaterThan(0);
+  });
+
+  it('laesst die Pflichtwahl der Gruendung beim zweiten Klick stehen', async () => {
+    render(<LocalGame />);
+
+    await userEvent.click(screen.getByTestId('build-settlement'));
+
+    expect(screen.getByTestId('build-settlement').getAttribute('aria-pressed')).toBe('true');
+    expect(litUp()).toBeGreaterThan(0);
   });
 
   it('leuchtet in der Gruendung, sobald die Siedlung gewaehlt ist', async () => {

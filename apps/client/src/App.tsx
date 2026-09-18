@@ -3,6 +3,7 @@ import type { GameState } from '@conquerist/shared';
 import type { Seat } from './seats';
 import { AudioProvider, useCueSound } from './audio/useAudio';
 import { AccountDialog } from './dialogs/AccountDialog';
+import { HintLayer } from './panels/HintCard';
 import { GameScreen } from './screens/GameScreen';
 import { SettingsButton } from './screens/SettingsButton';
 import { LobbyScreen } from './screens/LobbyScreen';
@@ -59,6 +60,7 @@ export function App(): JSX.Element {
    */
   return (
     <AudioProvider>
+      <HintLayer />
       {local === null ? (
         <Online onStartLocal={(game, seats) => setLocal({ game, seats })} />
       ) : (

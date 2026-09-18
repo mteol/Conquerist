@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import type { RuleSet } from '@conquerist/shared';
+import type { CardAmounts, CardId, RuleSet } from '@conquerist/shared';
 import {
   CITY_PATH,
   KNIGHT_MAST_PATH,
@@ -64,6 +64,13 @@ export interface ActionPanelProps {
    * irgendwann etwas anderes behauptet als das Brett.
    */
   readonly costs: RuleSet['buildCosts'];
+  /**
+   * Die eigene Hand - nur fuer die Auskunft „dir fehlt ...". `null`, solange
+   * sie verdeckt ist oder es keinen eigenen Sitz gibt.
+   */
+  readonly hand?: CardAmounts | null;
+  /** Gruendung: gesetzt wird ohne Preis. */
+  readonly setup?: boolean;
   /** Welches Bauteil gerade gewaehlt ist. `null` heisst: das Brett ist ruhig. */
   readonly buildMode: BuildableKind | null;
   readonly onBuildMode: (kind: BuildableKind | null) => void;
@@ -118,6 +125,8 @@ export function ActionPanel({
   error,
   stock,
   costs,
+  hand = null,
+  setup = false,
   buildMode,
   onBuildMode,
   onDismissError,
@@ -184,6 +193,8 @@ export function ActionPanel({
                   ? `${BUILD_LABELS[piece]}: gerade nicht möglich`
                   : `${BUILD_LABELS[piece]}: ${spots} ${spots === 1 ? 'Stelle' : 'Stellen'}`
               }
+              data-hint-title={BUILD_LABELS[piece]}
+              data-hint={buildHint({ spots, left, cost, hand, setup }).join('\n')}
               // Noch einmal derselbe Knopf schaltet den Modus wieder aus - sonst
               // klebt eine Auswahl am Brett, die man nur durch Bauen loswird.
               onClick={() => onBuildMode(active ? null : piece)}
@@ -244,6 +255,53 @@ export function ActionPanel({
       )}
     </section>
   );
+}
+
+/**
+ * Die Auskunft am Bauteil: was es kostet und - wenn es gerade nicht geht -
+ * woran es haengt. Der graue Knopf allein sagt nur „nein"; hier steht, warum.
+ */
+export function buildHint({
+  spots,
+  left,
+  cost,
+  hand,
+  setup,
+}: {
+  readonly spots: number;
+  readonly left: number | null;
+  readonly cost: CardAmounts | undefined;
+  readonly hand: CardAmounts | null;
+  readonly setup: boolean;
+}): string[] {
+  const lines: string[] = [];
+
+  if (setup) lines.push('In der Gründung kostenlos.');
+  else if (cost !== undefined) lines.push(`Kostet ${resourceList(cost)}.`);
+
+  if (spots > 0) {
+    lines.push(
+      `${spots} ${spots === 1 ? 'Stelle' : 'Stellen'} möglich - anklicken, dann auf dem Brett wählen.`,
+    );
+  } else if (left === 0) {
+    lines.push('Keins mehr im Vorrat.');
+  } else {
+    const missing: Partial<Record<CardId, number>> = {};
+    if (!setup && cost !== undefined && hand !== null) {
+      for (const [card, need] of Object.entries(cost) as [CardId, number][]) {
+        const short = need - (hand[card] ?? 0);
+        if (short > 0) missing[card] = short;
+      }
+    }
+    lines.push(
+      Object.keys(missing).length > 0
+        ? `Dir fehlt ${resourceList(missing as CardAmounts)}.`
+        : 'Gerade nicht möglich - nicht am Zug oder keine passende Stelle frei.',
+    );
+  }
+
+  if (left !== null && left > 0) lines.push(`Noch ${left} im Vorrat.`);
+  return lines;
 }
 
 /**

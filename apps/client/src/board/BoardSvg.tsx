@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 import {
   boardOf,
   hexFromId,
@@ -20,6 +20,8 @@ import {
   type Point,
 } from './layout';
 import { nearestTarget, targetPoints } from './pick';
+import { boardHintAt, type BoardHint, type HintRules } from './hint';
+import { HintCard, LONG_PRESS } from '../panels/HintCard';
 import {
   CITY_PATH,
   KNIGHT_HELMET_PATH,
@@ -70,6 +72,8 @@ export interface BoardSvgProps {
   readonly onPick: (place: Place) => void;
   /** Was angetippt, aber noch nicht ausgefuehrt ist - `null`, wenn nichts. */
   readonly pending?: Place | null;
+  /** Sonderregeln fuer die Auskunft beim Darueberfahren (`hint.ts`). */
+  readonly hintRules?: HintRules;
 }
 
 /**
@@ -212,6 +216,7 @@ export function BoardSvg({
   seats,
   onPick,
   pending = null,
+  hintRules,
 }: BoardSvgProps): JSX.Element {
   const board = boardOf(state.scenario);
   const colors = seatsById(seats);
@@ -223,420 +228,510 @@ export function BoardSvg({
   const viewBox = viewBoxOf(board.topology.hexes, PADDING + HARBOR_REACH);
   const [boxX = 0, boxY = 0, boxWidth = 0, boxHeight = 0] = viewBox.split(' ').map(Number);
   const picks = targetPoints(targets);
+  const [hover, setHover] = useState<{ hint: BoardHint; x: number; y: number } | null>(null);
+  /**
+   * Ein Finger, der liegen bleibt: nach `LONG_PRESS` wird daraus eine Auskunft,
+   * und der Klick beim Loslassen setzt dann nichts (`fired`).
+   */
+  const press = useRef<{
+    timer: ReturnType<typeof setTimeout>;
+    x: number;
+    y: number;
+    fired: boolean;
+  } | null>(null);
+  useEffect(() => () => clearTimeout(press.current?.timer), []);
+
+  const hintAtClient = (svg: SVGSVGElement | null, x: number, y: number) => {
+    const point = svg === null ? null : viewBoxPointOf(svg, x, y);
+    const hint = point === null ? null : boardHintAt(point, state, targets, seats, hintRules);
+    return hint === null ? null : { hint, x, y };
+  };
 
   return (
-    <svg
-      className="board"
-      viewBox={viewBox}
-      preserveAspectRatio="xMidYMid meet"
-      role="img"
-      aria-label="Spielbrett"
-    >
-      {/*
-       * Matt und nicht glaenzend - und das ist eine Korrektur.
-       *
-       * Hier standen zwei Verlaeufe: einer ueber der Flaeche, einer als Fase
-       * mit einem hellen Grat an der Oberkante. Ein heller Grat ist ein
-       * **Glanzlicht**, und Glanz heisst glatt. Ein Plaettchen aus Karton oder
-       * ein Holzfeld hat keines; das Brett sah damit aus wie aus Plastik.
-       *
-       * Uebrig bleibt eine richtungslose Randabdunklung: kein Licht von oben,
-       * also auch kein Reflex - nur eine Kante, an der die Farbe in den Karton
-       * zieht. Die Tiefe kommt aus der Textur und aus dem Schlagschatten an
-       * `.hexfields`, nicht aus einer Beleuchtung.
-       */}
-      <defs>
-        <radialGradient id="hex-matte" cx="0.5" cy="0.5" r="0.62">
-          <stop offset="0.58" stopColor="#000000" stopOpacity="0" />
-          <stop offset="1" stopColor="#000000" stopOpacity="0.13" />
-        </radialGradient>
+    <>
+      <svg
+        className="board"
+        viewBox={viewBox}
+        preserveAspectRatio="xMidYMid meet"
+        role="img"
+        aria-label="Spielbrett"
+      >
+        {/*
+         * Matt und nicht glaenzend - und das ist eine Korrektur.
+         *
+         * Hier standen zwei Verlaeufe: einer ueber der Flaeche, einer als Fase
+         * mit einem hellen Grat an der Oberkante. Ein heller Grat ist ein
+         * **Glanzlicht**, und Glanz heisst glatt. Ein Plaettchen aus Karton oder
+         * ein Holzfeld hat keines; das Brett sah damit aus wie aus Plastik.
+         *
+         * Uebrig bleibt eine richtungslose Randabdunklung: kein Licht von oben,
+         * also auch kein Reflex - nur eine Kante, an der die Farbe in den Karton
+         * zieht. Die Tiefe kommt aus der Textur und aus dem Schlagschatten an
+         * `.hexfields`, nicht aus einer Beleuchtung.
+         */}
+        <defs>
+          <radialGradient id="hex-matte" cx="0.5" cy="0.5" r="0.62">
+            <stop offset="0.58" stopColor="#000000" stopOpacity="0" />
+            <stop offset="1" stopColor="#000000" stopOpacity="0.13" />
+          </radialGradient>
+
+          {/*
+           * Der Kuestenschatten - als **SVG-Filter** und nicht als CSS-Filter.
+           *
+           * Hier stand `filter: drop-shadow(...)` im Blatt, und das hat einen
+           * halbdurchsichtigen schwarzen **Kasten** ueber die ganze Bounding-Box
+           * des Bretts gelegt: 943 Pixel breit, rund zehn Prozent dunkler als
+           * die Flaeche daneben, mit einer harten Kante an jeder Seite. Gemessen
+           * betrug der Sprung an der linken Brettgrenze 3.6 Helligkeitseinheiten
+           * mit dem Filter und 0.7 ohne ihn - und 0.7 ist der Hintergrundverlauf
+           * allein.
+           *
+           * **Der Kasten hat obendrein den Verlauf plattgedrueckt.** Ausserhalb
+           * seiner Grenze lag die See bei 54.1, innerhalb bei ebenfalls 54.1 -
+           * ohne ihn sind es 57.2 zu 54.1. Der Radialverlauf, der dem
+           * Spielbildschirm seine Tiefe gibt, war innerhalb des Bretts also gar
+           * nicht zu sehen.
+           *
+           * Ein SVG-`filter` mit ausdruecklicher Region tut dasselbe ohne den
+           * Kasten (nachgemessen: Kante 0.7, wie ohne jeden Filter). Der Preis
+           * ist, dass die Masse jetzt in **Brettmassen** stehen und damit mit dem
+           * Brett wachsen - anders als vorher, wo sie CSS-Pixel waren. Das ist
+           * hier zu verschmerzen und sogar stimmiger: der Saum gehoert zur Karte
+           * und nicht zum Licht im Raum.
+           */}
+          <filter
+            id="coast-shadow"
+            filterUnits="objectBoundingBox"
+            x="-20%"
+            y="-20%"
+            width="140%"
+            height="140%"
+          >
+            <feDropShadow
+              dx="0"
+              dy="0.03"
+              stdDeviation="0.03"
+              floodColor="#040e15"
+              floodOpacity="0.62"
+            />
+          </filter>
+
+          <TerrainPatterns />
+        </defs>
 
         {/*
-         * Der Kuestenschatten - als **SVG-Filter** und nicht als CSS-Filter.
+         * Alle Felder in **einer** Gruppe, damit der Schlagschatten die Landmasse
+         * meint und nicht jedes Feld einzeln.
          *
-         * Hier stand `filter: drop-shadow(...)` im Blatt, und das hat einen
-         * halbdurchsichtigen schwarzen **Kasten** ueber die ganze Bounding-Box
-         * des Bretts gelegt: 943 Pixel breit, rund zehn Prozent dunkler als
-         * die Flaeche daneben, mit einer harten Kante an jeder Seite. Gemessen
-         * betrug der Sprung an der linken Brettgrenze 3.6 Helligkeitseinheiten
-         * mit dem Filter und 0.7 ohne ihn - und 0.7 ist der Hintergrundverlauf
-         * allein.
-         *
-         * **Der Kasten hat obendrein den Verlauf plattgedrueckt.** Ausserhalb
-         * seiner Grenze lag die See bei 54.1, innerhalb bei ebenfalls 54.1 -
-         * ohne ihn sind es 57.2 zu 54.1. Der Radialverlauf, der dem
-         * Spielbildschirm seine Tiefe gibt, war innerhalb des Bretts also gar
-         * nicht zu sehen.
-         *
-         * Ein SVG-`filter` mit ausdruecklicher Region tut dasselbe ohne den
-         * Kasten (nachgemessen: Kante 0.7, wie ohne jeden Filter). Der Preis
-         * ist, dass die Masse jetzt in **Brettmassen** stehen und damit mit dem
-         * Brett wachsen - anders als vorher, wo sie CSS-Pixel waren. Das ist
-         * hier zu verschmerzen und sogar stimmiger: der Saum gehoert zur Karte
-         * und nicht zum Licht im Raum.
+         * Ein Filter sieht die fertig gezeichnete Gruppe: innen stossen die Felder
+         * ohne Luecke aneinander, dort gibt es also keine Kante, an der etwas
+         * fallen koennte. Uebrig bleibt genau der Umriss zur See - die Kueste.
+         * Neunzehn einzelne Schatten haetten dagegen jedes Feld ueber seinen
+         * Nachbarn gehoben, und aus einem Brett waere ein Stapel geworden.
          */}
-        <filter
-          id="coast-shadow"
-          filterUnits="objectBoundingBox"
-          x="-20%"
-          y="-20%"
-          width="140%"
-          height="140%"
-        >
-          <feDropShadow
-            dx="0"
-            dy="0.03"
-            stdDeviation="0.03"
-            floodColor="#040e15"
-            floodOpacity="0.62"
-          />
-        </filter>
+        <g className="hexfields">
+          {state.scenario.hexes.map((placement) => {
+            const points = hexCorners(hexFromId(placement.hex))
+              .map((corner) => `${corner.x},${corner.y}`)
+              .join(' ');
+            const isTarget = targets.hexes.has(placement.hex);
 
-        <TerrainPatterns />
-      </defs>
+            return (
+              <g key={placement.hex}>
+                <polygon
+                  data-testid={`hex-${placement.hex}`}
+                  data-target={isTarget ? 'true' : 'false'}
+                  className={isTarget ? 'hex hex--target' : 'hex'}
+                  points={points}
+                  fill={TERRAIN_COLORS[placement.terrain]}
+                />
 
-      {/*
-       * Alle Felder in **einer** Gruppe, damit der Schlagschatten die Landmasse
-       * meint und nicht jedes Feld einzeln.
-       *
-       * Ein Filter sieht die fertig gezeichnete Gruppe: innen stossen die Felder
-       * ohne Luecke aneinander, dort gibt es also keine Kante, an der etwas
-       * fallen koennte. Uebrig bleibt genau der Umriss zur See - die Kueste.
-       * Neunzehn einzelne Schatten haetten dagegen jedes Feld ueber seinen
-       * Nachbarn gehoben, und aus einem Brett waere ein Stapel geworden.
-       */}
-      <g className="hexfields">
+                {/*
+                 * Die Textur ist dasselbe Sechseck noch einmal, nur mit der
+                 * Kachel gefuellt. Kein `clipPath` noetig: eine Fuellung endet am
+                 * Rand ihrer Form, und die Form **ist** das Feld.
+                 *
+                 * **Zweimal, und das ist der Grund.** Ein `<pattern>` wiederholt
+                 * sich exakt; eine Lage allein ist deshalb immer ein Raster, egal
+                 * wie unregelmaessig die Kachel gezeichnet ist. Die zweite Lage
+                 * laeuft auf einer Periode, die mit der ersten keinen gemeinsamen
+                 * Teiler hat - gemeinsam wiederholen sie sich erst nach Dutzenden
+                 * von Einheiten, und das Brett misst sieben. Warum das noetig
+                 * war, steht in `board/terrain.tsx`.
+                 */}
+                {LAYERS.map((layer) => (
+                  <polygon
+                    key={layer}
+                    className="terrain"
+                    data-layer={layer}
+                    pointerEvents="none"
+                    points={points}
+                    fill={terrainFill(placement.terrain, layer)}
+                  />
+                ))}
+
+                <polygon className="hex__matte" pointerEvents="none" points={points} />
+              </g>
+            );
+          })}
+        </g>
+
+        {/*
+         * Die Zahlenchips liegen **ausserhalb** der Feldgruppe.
+         *
+         * Sie sind kein Gelaende, sondern etwas, das darauf gelegt wurde - und
+         * genau so sollen sie aussehen. Drinnen haetten sie ausserdem den Filter
+         * der Gruppe mitbekommen, und der rastert, was er anfasst: die Zahl waere
+         * durch den Schlagschatten gegangen, den sie gar nicht wirft.
+         */}
         {state.scenario.hexes.map((placement) => {
-          const points = hexCorners(hexFromId(placement.hex))
-            .map((corner) => `${corner.x},${corner.y}`)
-            .join(' ');
-          const isTarget = targets.hexes.has(placement.hex);
+          if (placement.chip === undefined) return null;
+          const center = hexCenter(hexFromId(placement.hex));
 
           return (
-            <g key={placement.hex}>
-              <polygon
-                data-testid={`hex-${placement.hex}`}
-                data-target={isTarget ? 'true' : 'false'}
-                className={isTarget ? 'hex hex--target' : 'hex'}
-                points={points}
-                fill={TERRAIN_COLORS[placement.terrain]}
-              />
-
+            <g
+              className="chip"
+              key={placement.hex}
+              data-testid={`chip-${placement.hex}`}
+              pointerEvents="none"
+            >
+              <circle cx={center.x} cy={center.y} r={0.34} />
               {/*
-               * Die Textur ist dasselbe Sechseck noch einmal, nur mit der
-               * Kachel gefuellt. Kein `clipPath` noetig: eine Fuellung endet am
-               * Rand ihrer Form, und die Form **ist** das Feld.
+               * Die Zahl ist gezeichnet und nicht gesetzt - dieselben Ziffern,
+               * aus denen auch die Wortmarke geschnitten ist (`type/Numerals`).
                *
-               * **Zweimal, und das ist der Grund.** Ein `<pattern>` wiederholt
-               * sich exakt; eine Lage allein ist deshalb immer ein Raster, egal
-               * wie unregelmaessig die Kachel gezeichnet ist. Die zweite Lage
-               * laeuft auf einer Periode, die mit der ersten keinen gemeinsamen
-               * Teiler hat - gemeinsam wiederholen sie sich erst nach Dutzenden
-               * von Einheiten, und das Brett misst sieben. Warum das noetig
-               * war, steht in `board/terrain.tsx`.
+               * Der Chip ist das meistbetrachtete Ding einer Partie. Er lag
+               * bisher als 'Segoe UI Bold' auf einem Gelaende, dessen Tannen,
+               * Zacken und Furchen von Hand gezeichnet sind; dieser eine Bruch
+               * hat das ganze Brett nach Anwendung aussehen lassen.
+               *
+               * Nebenbei faellt damit die alte Falle weg. Die Augen darunter
+               * sind aus genau diesem Grund schon Kreise geworden - eine
+               * gezeichnete Form hat keine Metrik, die eine fehlende Schrift
+               * veraendern koennte. Fuer die Zahl darueber galt derselbe Satz
+               * die ganze Zeit mit, sie war nur nicht drangekommen.
+               *
+               * Die heisse Sechs und die heisse Acht stehen eine Spur groesser
+               * (0.29 gegen 0.26) - so wie vorher 0.36 gegen 0.32. Die Farbe
+               * kommt als `style` und nicht aus dem Blatt: `.chip text.chip__hot`
+               * hat zwei Etappen lang nicht gegolten, weil `.chip text` darueber
+               * stand, und ein `style` kann das nicht passieren.
                */}
-              {LAYERS.map((layer) => (
-                <polygon
-                  key={layer}
-                  className="terrain"
-                  data-layer={layer}
-                  pointerEvents="none"
-                  points={points}
-                  fill={terrainFill(placement.terrain, layer)}
-                />
-              ))}
-
-              <polygon className="hex__matte" pointerEvents="none" points={points} />
+              <Numeral
+                value={placement.chip}
+                cx={center.x}
+                cy={center.y - 0.03}
+                cap={isHot(placement.chip) ? 0.29 : 0.26}
+                fill={isHot(placement.chip) ? 'var(--bad-ink)' : 'var(--ink-base)'}
+                className={
+                  isHot(placement.chip) ? 'chip__numeral chip__numeral--hot' : 'chip__numeral'
+                }
+              />
+              {/*
+               * Die Augen als **gezeichnete Punkte** und nicht als eine Reihe
+               * Mittelpunkte in einem `text`.
+               *
+               * Als Text ragten sie ueber den Chiprand hinaus, und der Grund
+               * war zweifach. Erstens die alte Falle aus CLAUDE.md: die
+               * Schriftgroesse stand in `.chip__pips` (eine Klasse), darueber
+               * aber `.chip text` (eine Klasse plus ein Typ) - die 0.19px
+               * haben nie gegolten, gerendert wurden 0.32px. Fuenf Punkte in
+               * dieser Groesse sind breiter als der Chip, in den sie gehoeren.
+               * Zweitens, und schlimmer: die Breite haengt an den Metriken
+               * einer Schrift. Wieviel Vorschub ein `·` in Segoe UI
+               * bekommt, laesst sich nicht ausrechnen, und auf einem Rechner
+               * ohne Segoe UI ist es eine andere Zahl.
+               *
+               * Gezeichnete Kreise haben keine Metrik. Fuenf Punkte im
+               * Abstand 0.055 sind 0.22 breit, der aeusserste sitzt damit
+               * 0.272 vom Mittelpunkt - der Chip misst 0.34. Das gilt in
+               * jeder Schrift und auf jedem Rechner.
+               */}
+              <ChipPips
+                count={PIPS[placement.chip] ?? 0}
+                x={center.x}
+                y={center.y + 0.225}
+                hot={isHot(placement.chip)}
+              />
             </g>
           );
         })}
-      </g>
 
-      {/*
-       * Die Zahlenchips liegen **ausserhalb** der Feldgruppe.
-       *
-       * Sie sind kein Gelaende, sondern etwas, das darauf gelegt wurde - und
-       * genau so sollen sie aussehen. Drinnen haetten sie ausserdem den Filter
-       * der Gruppe mitbekommen, und der rastert, was er anfasst: die Zahl waere
-       * durch den Schlagschatten gegangen, den sie gar nicht wirft.
-       */}
-      {state.scenario.hexes.map((placement) => {
-        if (placement.chip === undefined) return null;
-        const center = hexCenter(hexFromId(placement.hex));
+        {/*
+         * Haefen: die Marke liegt in der See, zwei Stege fuehren an Land.
+         *
+         * Bis hierher sass sie auf der Kuestenkante - derselben Stelle, ueber die
+         * eine Strasse laeuft. Wer dort baute, legte seinen Balken mitten durch
+         * den Hafen, und weil die Strassen spaeter gezeichnet werden, blieb vom
+         * Hafen nichts uebrig. Zwei verschiedene Dinge auf einer Geometrie; die
+         * Kante gehoert der Strasse, das Wasser dem Hafen.
+         *
+         * Die Stege sind dabei kein Schmuck. Bis jetzt stand nirgends, **welche
+         * zwei Knoten** einen Hafen bedienen - man las es aus der Lage der Marke,
+         * und genau die war verdeckt. Jetzt zeigen zwei Linien darauf.
+         *
+         * **Was in der Marke steht, steht in `board/harbor.tsx`** - sie ist von
+         * einem Kreis mit Aufschrift zu einer kleinen Muenze geworden: das Motiv
+         * der Ressource, wie es auch auf der Handkarte liegt, und darunter das
+         * Verhaeltnis in den gezeichneten Ziffern. Bis dahin war die Ringfarbe
+         * die **einzige** Auskunft darueber, welchen Hafen man vor sich hat, und
+         * das verstoesst gegen Regel 7 in `CLAUDE.md`. Der ausgeschriebene Name
+         * („2:1 Erz") bleibt im `title`: er passt bei dieser Groesse nicht
+         * lesbar aufs Brett und ist fuer Vorlesewerkzeuge da.
+         *
+         * Die Farbe des allgemeinen Hafens ist die Pergamentkante und nicht mehr
+         * die Tiefsee-Tinte. Ein dunkler Ring auf der dunklen See war im Browser
+         * schlicht nicht zu sehen - derselbe Befund wie bei den Strassen am
+         * Brettrand, nur hat ihn hier niemand gemeldet, weil der cremefarbene
+         * Koerper darunter ja dastand.
+         */}
+        {state.scenario.harbors.map((harbor) => {
+          const mark = harborAnchor(harbor.edge, onBoard);
+          const tint =
+            harbor.resource === undefined
+              ? 'var(--parchment-edge)'
+              : RESOURCE_COLORS[harbor.resource];
 
-        return (
-          <g
-            className="chip"
-            key={placement.hex}
-            data-testid={`chip-${placement.hex}`}
-            pointerEvents="none"
-          >
-            <circle cx={center.x} cy={center.y} r={0.34} />
-            {/*
-             * Die Zahl ist gezeichnet und nicht gesetzt - dieselben Ziffern,
-             * aus denen auch die Wortmarke geschnitten ist (`type/Numerals`).
-             *
-             * Der Chip ist das meistbetrachtete Ding einer Partie. Er lag
-             * bisher als 'Segoe UI Bold' auf einem Gelaende, dessen Tannen,
-             * Zacken und Furchen von Hand gezeichnet sind; dieser eine Bruch
-             * hat das ganze Brett nach Anwendung aussehen lassen.
-             *
-             * Nebenbei faellt damit die alte Falle weg. Die Augen darunter
-             * sind aus genau diesem Grund schon Kreise geworden - eine
-             * gezeichnete Form hat keine Metrik, die eine fehlende Schrift
-             * veraendern koennte. Fuer die Zahl darueber galt derselbe Satz
-             * die ganze Zeit mit, sie war nur nicht drangekommen.
-             *
-             * Die heisse Sechs und die heisse Acht stehen eine Spur groesser
-             * (0.29 gegen 0.26) - so wie vorher 0.36 gegen 0.32. Die Farbe
-             * kommt als `style` und nicht aus dem Blatt: `.chip text.chip__hot`
-             * hat zwei Etappen lang nicht gegolten, weil `.chip text` darueber
-             * stand, und ein `style` kann das nicht passieren.
-             */}
-            <Numeral
-              value={placement.chip}
-              cx={center.x}
-              cy={center.y - 0.03}
-              cap={isHot(placement.chip) ? 0.29 : 0.26}
-              fill={isHot(placement.chip) ? 'var(--bad-ink)' : 'var(--ink-base)'}
-              className={
-                isHot(placement.chip) ? 'chip__numeral chip__numeral--hot' : 'chip__numeral'
-              }
-            />
-            {/*
-             * Die Augen als **gezeichnete Punkte** und nicht als eine Reihe
-             * Mittelpunkte in einem `text`.
-             *
-             * Als Text ragten sie ueber den Chiprand hinaus, und der Grund
-             * war zweifach. Erstens die alte Falle aus CLAUDE.md: die
-             * Schriftgroesse stand in `.chip__pips` (eine Klasse), darueber
-             * aber `.chip text` (eine Klasse plus ein Typ) - die 0.19px
-             * haben nie gegolten, gerendert wurden 0.32px. Fuenf Punkte in
-             * dieser Groesse sind breiter als der Chip, in den sie gehoeren.
-             * Zweitens, und schlimmer: die Breite haengt an den Metriken
-             * einer Schrift. Wieviel Vorschub ein `·` in Segoe UI
-             * bekommt, laesst sich nicht ausrechnen, und auf einem Rechner
-             * ohne Segoe UI ist es eine andere Zahl.
-             *
-             * Gezeichnete Kreise haben keine Metrik. Fuenf Punkte im
-             * Abstand 0.055 sind 0.22 breit, der aeusserste sitzt damit
-             * 0.272 vom Mittelpunkt - der Chip misst 0.34. Das gilt in
-             * jeder Schrift und auf jedem Rechner.
-             */}
-            <ChipPips
-              count={PIPS[placement.chip] ?? 0}
-              x={center.x}
-              y={center.y + 0.225}
-              hot={isHot(placement.chip)}
-            />
-          </g>
-        );
-      })}
+          return (
+            <g
+              key={harbor.edge}
+              className="harbor"
+              pointerEvents="none"
+              data-testid={`harbor-${harbor.edge}`}
+              data-harbor={harbor.resource ?? 'any'}
+            >
+              <title>{harborLabel(harbor)}</title>
+              {edgeSegment(harbor.edge).map((landing, index) => (
+                <path
+                  key={index}
+                  className="harbor__dock"
+                  d={dockPath(mark, landing, edgeMidpoint(harbor.edge))}
+                  style={{ stroke: tint }}
+                />
+              ))}
+              <HarborMark harbor={harbor} at={mark} tint={tint} />
+            </g>
+          );
+        })}
 
-      {/*
-       * Haefen: die Marke liegt in der See, zwei Stege fuehren an Land.
-       *
-       * Bis hierher sass sie auf der Kuestenkante - derselben Stelle, ueber die
-       * eine Strasse laeuft. Wer dort baute, legte seinen Balken mitten durch
-       * den Hafen, und weil die Strassen spaeter gezeichnet werden, blieb vom
-       * Hafen nichts uebrig. Zwei verschiedene Dinge auf einer Geometrie; die
-       * Kante gehoert der Strasse, das Wasser dem Hafen.
-       *
-       * Die Stege sind dabei kein Schmuck. Bis jetzt stand nirgends, **welche
-       * zwei Knoten** einen Hafen bedienen - man las es aus der Lage der Marke,
-       * und genau die war verdeckt. Jetzt zeigen zwei Linien darauf.
-       *
-       * **Was in der Marke steht, steht in `board/harbor.tsx`** - sie ist von
-       * einem Kreis mit Aufschrift zu einer kleinen Muenze geworden: das Motiv
-       * der Ressource, wie es auch auf der Handkarte liegt, und darunter das
-       * Verhaeltnis in den gezeichneten Ziffern. Bis dahin war die Ringfarbe
-       * die **einzige** Auskunft darueber, welchen Hafen man vor sich hat, und
-       * das verstoesst gegen Regel 7 in `CLAUDE.md`. Der ausgeschriebene Name
-       * („2:1 Erz") bleibt im `title`: er passt bei dieser Groesse nicht
-       * lesbar aufs Brett und ist fuer Vorlesewerkzeuge da.
-       *
-       * Die Farbe des allgemeinen Hafens ist die Pergamentkante und nicht mehr
-       * die Tiefsee-Tinte. Ein dunkler Ring auf der dunklen See war im Browser
-       * schlicht nicht zu sehen - derselbe Befund wie bei den Strassen am
-       * Brettrand, nur hat ihn hier niemand gemeldet, weil der cremefarbene
-       * Koerper darunter ja dastand.
-       */}
-      {state.scenario.harbors.map((harbor) => {
-        const mark = harborAnchor(harbor.edge, onBoard);
-        const tint =
-          harbor.resource === undefined
-            ? 'var(--parchment-edge)'
-            : RESOURCE_COLORS[harbor.resource];
+        {/*
+         * Der Raeuber wird verschoben statt neu gesetzt: `transform` laesst sich
+         * weich uebergehen, `cx`/`cy` nicht zuverlaessig. Sein Feld steht als
+         * `data-hex` daneben - die Endlage ist die Information, der Weg dorthin
+         * ist Beiwerk und faellt bei abgeschalteter Bewegung ersatzlos weg.
+         */}
+        {/*
+         * Der Ring am Zielfeld.
+         *
+         * Eigenes Element mit `key={state.robber}`: React haengt es bei jedem
+         * Versetzen neu ein, und nur dadurch laeuft die Animation ueberhaupt ein
+         * zweites Mal. Ohne ihn ist das Versetzen im Playtest niemandem
+         * aufgefallen - eine Figur, die 300 ms lang leise von einem Feld zum
+         * naechsten gleitet, sieht nur, wer schon hinschaut.
+         *
+         * Er traegt nichts, was nicht auch ohne ihn dastuende: wo der Raeuber
+         * steht, sagt die Figur selbst und `data-hex` daneben.
+         */}
+        <circle
+          key={state.robber}
+          className="robber__flash"
+          pointerEvents="none"
+          cx={robber.x}
+          cy={robber.y}
+          r={0.5}
+        />
 
-        return (
-          <g
-            key={harbor.edge}
-            className="harbor"
-            pointerEvents="none"
-            data-testid={`harbor-${harbor.edge}`}
-            data-harbor={harbor.resource ?? 'any'}
-          >
-            <title>{harborLabel(harbor)}</title>
-            {edgeSegment(harbor.edge).map((landing, index) => (
-              <path
-                key={index}
-                className="harbor__dock"
-                d={dockPath(mark, landing, edgeMidpoint(harbor.edge))}
-                style={{ stroke: tint }}
+        <g
+          className="robber"
+          pointerEvents="none"
+          data-testid="robber"
+          data-hex={state.robber}
+          style={{ transform: `translate(${robber.x}px, ${robber.y}px)` }}
+        >
+          <circle cx={0} cy={0} r={0.2} />
+          <circle cx={0} cy={-0.16} r={0.1} />
+        </g>
+
+        {/*
+         * Die Konturen unter den Strassen - **alle** zuerst, dann alle Strassen.
+         *
+         * Im Playtest waren die Strassen am Brettrand „unsichtbar". Am Element
+         * lag es nicht: gemessen liegen die Kuestenkanten in der viewBox und
+         * tragen ihre Klasse und ihre Farbe. Es lag am Untergrund. Eine Strasse
+         * im Inneren hat auf beiden Seiten helles Gelaende; eine an der Kueste
+         * hat auf einer Seite die dunkle See, und ein dunkelblauer oder
+         * violetter Streifen darauf verschwindet schlicht. Die Kontur loest das
+         * unabhaengig davon, worauf die Strasse liegt - dasselbe, was eine
+         * Landkarte mit ihren Strassen macht.
+         *
+         * **Zwei Durchgaenge und nicht einer je Kante.** Sonst liegt an einer
+         * Kreuzung die Kontur der zweiten Strasse ueber der Farbe der ersten und
+         * beisst ihr die Spitze ab. So liegen erst alle Konturen, dann alle
+         * Farben - und keine Kontur kann eine fremde Strasse ueberdecken.
+         */}
+        {board.topology.edges
+          .filter((edge) => state.roads[edge] !== undefined)
+          .map((edge) => {
+            const [from, to] = edgeSegment(edge);
+
+            return (
+              <line
+                key={`casing-${edge}`}
+                className="road__casing"
+                pointerEvents="none"
+                x1={from.x}
+                y1={from.y}
+                x2={to.x}
+                y2={to.y}
               />
-            ))}
-            <HarborMark harbor={harbor} at={mark} tint={tint} />
-          </g>
-        );
-      })}
+            );
+          })}
 
-      {/*
-       * Der Raeuber wird verschoben statt neu gesetzt: `transform` laesst sich
-       * weich uebergehen, `cx`/`cy` nicht zuverlaessig. Sein Feld steht als
-       * `data-hex` daneben - die Endlage ist die Information, der Weg dorthin
-       * ist Beiwerk und faellt bei abgeschalteter Bewegung ersatzlos weg.
-       */}
-      {/*
-       * Der Ring am Zielfeld.
-       *
-       * Eigenes Element mit `key={state.robber}`: React haengt es bei jedem
-       * Versetzen neu ein, und nur dadurch laeuft die Animation ueberhaupt ein
-       * zweites Mal. Ohne ihn ist das Versetzen im Playtest niemandem
-       * aufgefallen - eine Figur, die 300 ms lang leise von einem Feld zum
-       * naechsten gleitet, sieht nur, wer schon hinschaut.
-       *
-       * Er traegt nichts, was nicht auch ohne ihn dastuende: wo der Raeuber
-       * steht, sagt die Figur selbst und `data-hex` daneben.
-       */}
-      <circle
-        key={state.robber}
-        className="robber__flash"
-        pointerEvents="none"
-        cx={robber.x}
-        cy={robber.y}
-        r={0.5}
-      />
-
-      <g
-        className="robber"
-        pointerEvents="none"
-        data-testid="robber"
-        data-hex={state.robber}
-        style={{ transform: `translate(${robber.x}px, ${robber.y}px)` }}
-      >
-        <circle cx={0} cy={0} r={0.2} />
-        <circle cx={0} cy={-0.16} r={0.1} />
-      </g>
-
-      {/*
-       * Die Konturen unter den Strassen - **alle** zuerst, dann alle Strassen.
-       *
-       * Im Playtest waren die Strassen am Brettrand „unsichtbar". Am Element
-       * lag es nicht: gemessen liegen die Kuestenkanten in der viewBox und
-       * tragen ihre Klasse und ihre Farbe. Es lag am Untergrund. Eine Strasse
-       * im Inneren hat auf beiden Seiten helles Gelaende; eine an der Kueste
-       * hat auf einer Seite die dunkle See, und ein dunkelblauer oder
-       * violetter Streifen darauf verschwindet schlicht. Die Kontur loest das
-       * unabhaengig davon, worauf die Strasse liegt - dasselbe, was eine
-       * Landkarte mit ihren Strassen macht.
-       *
-       * **Zwei Durchgaenge und nicht einer je Kante.** Sonst liegt an einer
-       * Kreuzung die Kontur der zweiten Strasse ueber der Farbe der ersten und
-       * beisst ihr die Spitze ab. So liegen erst alle Konturen, dann alle
-       * Farben - und keine Kontur kann eine fremde Strasse ueberdecken.
-       */}
-      {board.topology.edges
-        .filter((edge) => state.roads[edge] !== undefined)
-        .map((edge) => {
+        {board.topology.edges.map((edge) => {
           const [from, to] = edgeSegment(edge);
+          const owner = state.roads[edge];
+          const isTarget = targets.edges.has(edge);
 
           return (
             <line
-              key={`casing-${edge}`}
-              className="road__casing"
-              pointerEvents="none"
+              key={edge}
+              data-testid={`edge-${edge}`}
+              data-target={isTarget ? 'true' : 'false'}
+              className={roadClass(owner !== undefined, isTarget)}
               x1={from.x}
               y1={from.y}
               x2={to.x}
               y2={to.y}
+              /*
+               * Die Farbe steht im `style` und nicht als `stroke`-Attribut. Eine
+               * CSS-Regel schlaegt immer das gleichnamige Praesentationsattribut,
+               * und `.road` setzt `stroke: transparent`, damit freie Kanten
+               * unsichtbare Trefferflaechen sind. Als Attribut waere jede gebaute
+               * Strasse durchsichtig - genau der Fehler, den `roads.test.tsx`
+               * festhaelt.
+               */
+              style={owner === undefined ? undefined : { stroke: colorOf(owner) }}
             />
           );
         })}
 
-      {board.topology.edges.map((edge) => {
-        const [from, to] = edgeSegment(edge);
-        const owner = state.roads[edge];
-        const isTarget = targets.edges.has(edge);
-
-        return (
-          <line
-            key={edge}
-            data-testid={`edge-${edge}`}
-            data-target={isTarget ? 'true' : 'false'}
-            className={roadClass(owner !== undefined, isTarget)}
-            x1={from.x}
-            y1={from.y}
-            x2={to.x}
-            y2={to.y}
-            /*
-             * Die Farbe steht im `style` und nicht als `stroke`-Attribut. Eine
-             * CSS-Regel schlaegt immer das gleichnamige Praesentationsattribut,
-             * und `.road` setzt `stroke: transparent`, damit freie Kanten
-             * unsichtbare Trefferflaechen sind. Als Attribut waere jede gebaute
-             * Strasse durchsichtig - genau der Fehler, den `roads.test.tsx`
-             * festhaelt.
-             */
-            style={owner === undefined ? undefined : { stroke: colorOf(owner) }}
+        {board.topology.vertices.map((vertex) => (
+          <VertexMark
+            key={vertex}
+            vertex={vertex}
+            state={state}
+            isTarget={targets.vertices.has(vertex)}
+            colorOf={colorOf}
           />
-        );
-      })}
+        ))}
 
-      {board.topology.vertices.map((vertex) => (
-        <VertexMark
-          key={vertex}
-          vertex={vertex}
-          state={state}
-          isTarget={targets.vertices.has(vertex)}
-          colorOf={colorOf}
+        {/*
+         * Die Fangflaeche: **ein** Ort, an dem aus einem Klick ein Ziel wird.
+         *
+         * Bis hierher trug jedes Ziel seinen eigenen Trefferkreis. Auf einem
+         * Handy im Querformat liegen benachbarte Knoten aber rund 34 px
+         * auseinander und eine Fingerkuppe misst 44 px - Trefferkreise in
+         * Fingergroesse ueberlappen dort, und dann entschiede die
+         * Zeichenreihenfolge, welches Ziel gemeint war. Statt dessen liegt hier
+         * eine durchsichtige Flaeche ueber allem, und `nearestTarget` beantwortet
+         * die Frage genau einmal und nachrechenbar.
+         *
+         * Sie liegt als letztes Kind im SVG, also ueber allem anderen - und weil
+         * sie durchsichtig ist, sieht man davon nichts.
+         */}
+        {pending !== null && <PendingMark place={pending} targets={targets} />}
+
+        <rect
+          data-testid="board-catcher"
+          className="board__catcher"
+          x={boxX}
+          y={boxY}
+          width={boxWidth}
+          height={boxHeight}
+          fill="transparent"
+          onClick={(event) => {
+            // Nach langem Druecken war es eine Frage, kein Zug.
+            if (press.current?.fired) {
+              press.current = null;
+              return;
+            }
+
+            const svg = event.currentTarget.ownerSVGElement;
+            if (svg === null) return;
+
+            const point = viewBoxPointOf(svg, event.clientX, event.clientY);
+            if (point === null) return;
+
+            const place = nearestTarget(point, picks);
+            if (place !== null) onPick(place);
+          }}
+          /*
+           * Die Auskunft (`hint.ts`): mit der Maus beim Darueberfahren, mit dem
+           * Finger per langem Druecken. Ein kurzer Tipp bleibt ein Klick - ein
+           * Kaertchen, das bei jedem Tipp unter dem Finger aufginge, verdeckte
+           * genau das, was man trifft.
+           */
+          onPointerMove={(event) => {
+            if (event.pointerType === 'mouse') {
+              setHover(
+                hintAtClient(event.currentTarget.ownerSVGElement, event.clientX, event.clientY),
+              );
+              return;
+            }
+            const held = press.current;
+            if (held !== null && !held.fired) {
+              if (Math.hypot(event.clientX - held.x, event.clientY - held.y) > 10) {
+                clearTimeout(held.timer);
+                press.current = null;
+              }
+            }
+          }}
+          onPointerLeave={(event) => {
+            if (event.pointerType === 'mouse') setHover(null);
+          }}
+          onPointerDown={(event) => {
+            setHover(null);
+            clearTimeout(press.current?.timer);
+            press.current = null;
+            if (event.pointerType === 'mouse') return;
+
+            const svg = event.currentTarget.ownerSVGElement;
+            const { clientX: x, clientY: y } = event;
+            press.current = {
+              x,
+              y,
+              fired: false,
+              timer: setTimeout(() => {
+                const shown = hintAtClient(svg, x, y);
+                if (press.current !== null) press.current.fired = shown !== null;
+                setHover(shown);
+              }, LONG_PRESS),
+            };
+          }}
+          onPointerUp={() => {
+            const held = press.current;
+            if (held !== null && !held.fired) {
+              clearTimeout(held.timer);
+              press.current = null;
+            }
+          }}
+          onContextMenu={(event) => {
+            if (press.current !== null) event.preventDefault();
+          }}
         />
-      ))}
-
-      {/*
-       * Die Fangflaeche: **ein** Ort, an dem aus einem Klick ein Ziel wird.
-       *
-       * Bis hierher trug jedes Ziel seinen eigenen Trefferkreis. Auf einem
-       * Handy im Querformat liegen benachbarte Knoten aber rund 34 px
-       * auseinander und eine Fingerkuppe misst 44 px - Trefferkreise in
-       * Fingergroesse ueberlappen dort, und dann entschiede die
-       * Zeichenreihenfolge, welches Ziel gemeint war. Statt dessen liegt hier
-       * eine durchsichtige Flaeche ueber allem, und `nearestTarget` beantwortet
-       * die Frage genau einmal und nachrechenbar.
-       *
-       * Sie liegt als letztes Kind im SVG, also ueber allem anderen - und weil
-       * sie durchsichtig ist, sieht man davon nichts.
-       */}
-      {pending !== null && <PendingMark place={pending} targets={targets} />}
-
-      <rect
-        data-testid="board-catcher"
-        className="board__catcher"
-        x={boxX}
-        y={boxY}
-        width={boxWidth}
-        height={boxHeight}
-        fill="transparent"
-        onClick={(event) => {
-          const svg = event.currentTarget.ownerSVGElement;
-          if (svg === null) return;
-
-          const point = viewBoxPointOf(svg, event.clientX, event.clientY);
-          if (point === null) return;
-
-          const place = nearestTarget(point, picks);
-          if (place !== null) onPick(place);
-        }}
-      />
-    </svg>
+      </svg>
+      {hover === null ? null : (
+        <HintCard
+          hint={hover.hint}
+          anchor={{
+            left: hover.x,
+            right: hover.x,
+            top: hover.y - 14,
+            bottom: hover.y + 22,
+          }}
+        />
+      )}
+    </>
   );
 }
 

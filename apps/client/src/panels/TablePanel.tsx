@@ -109,10 +109,21 @@ function PlayerRow({
 
       <SeatMarks player={player.id} awards={awards} knights={player.playedKnights} />
 
-      <span className="seat__points">{player.victoryPoints} SP</span>
+      <span
+        className="seat__points"
+        data-hint-title={`${player.victoryPoints} Siegpunkte`}
+        data-hint="Siedlung 1, Stadt 2 - dazu Metropolen, Auszeichnungen und manche Karten."
+      >
+        {player.victoryPoints} SP
+      </span>
 
-      <span className="seat__hand" data-testid={`hand-count-${player.id}`}>
-        {player.cardCount} Karten
+      <span
+        className="seat__hand"
+        data-testid={`hand-count-${player.id}`}
+        data-hint-title={`${player.cardCount} ${player.cardCount === 1 ? 'Karte' : 'Karten'} auf der Hand`}
+        data-hint="Rohstoffe und Handelswaren. Bei einer 7 wirft ab, wer zu viele hat."
+      >
+        {player.cardCount} {player.cardCount === 1 ? 'Karte' : 'Karten'}
       </span>
 
       {/*

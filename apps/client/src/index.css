@@ -374,7 +374,8 @@ body {
 .offline__text,
 .devcards__hint,
 .variantpick label,
-.counter {
+.counter,
+.hintcard {
   corner-shape: bevel;
 }
 
@@ -2221,12 +2222,19 @@ body {
  *
  * Oben statt unten: unten liegt die Ablage, und was gerade zu tun ist, soll
  * nicht dorthin, wo man ohnehin schon hinsieht.
+ *
+ * **Unter dem Statussatz, rechtsbuendig - nicht mehr mittig.** Mittig stiess
+ * der Balken an den Status oben rechts: bei 1184 px mit drei Personen stand
+ * „Gründung: Kreuzung für die Siedlung wählen" ueber „Gründung: Spieler 3
+ * setzt eine Siedlung". Beide sagen dasselbe Thema - was gerade dran ist -,
+ * also stehen sie jetzt als Paar untereinander.
  */
 .mode {
   position: absolute;
-  top: 0.75rem;
-  left: 50%;
+  top: calc(var(--topline-bottom, 3.25rem) + 0.4rem);
+  right: 0.95rem;
   z-index: 6;
+  max-width: calc(100% - 1.9rem);
   display: flex;
   gap: 0.75rem;
   align-items: center;
@@ -2236,7 +2244,6 @@ body {
   background: var(--sea-800);
   box-shadow: var(--shadow);
   font-size: 0.85rem;
-  transform: translateX(-50%);
 }
 
 /* --- Wartebereich --------------------------------------------------------- *
@@ -3317,6 +3324,69 @@ body {
    * x 546. Zusammen mit `flex-wrap` an `.build` bricht sie statt dessen um.
    */
   min-width: 0;
+}
+
+/*
+ * Die unterste Zeile der rechten Ecke: Bauleiste und Wuerfel nebeneinander.
+ *
+ * Die Wuerfel aussen, die Leiste daneben nach innen - wie am Tisch aus Holz,
+ * wo die Baukostenkarte neben der Schale liegt und nicht darauf. Der Grund
+ * steht bei `tray__throw` in `GameScreen.tsx`.
+ *
+ * **Eine Zeile, und sie bricht nicht.** Weder die Zeile selbst (`nowrap` hier)
+ * noch die Leiste darin (`nowrap` unten): was hier steht, steht nebeneinander,
+ * und zwar bei jeder Fenstergroesse. `align-items: flex-end` stellt beide auf
+ * dieselbe Grundlinie - die Leiste ist hoeher als die Schale, und oben
+ * ausgerichtet haetten die Wuerfel in der Luft gehangen.
+ *
+ * **Sie darf dabei ueber das Brett ragen, und das ist eine Entscheidung und
+ * kein Versehen.** Die Ecke ist sonst so breit wie der Streifen neben dem Brett
+ * (`--tray-strip`), und dieser Streifen ist die Garantie, dass sich Ablage und
+ * Brett nie ueberdecken. Fuer diese Zeile gilt sie nicht: gemessen ist der
+ * Streifen 266 px breit (1366x768) bis 372 px (1920x1080), fuenf Bauteile in
+ * einer Reihe sind 341 px, mit der Schale daneben 509. Entweder die Zeile
+ * bricht um - dann steht die Leiste wieder ueber den Wuerfeln, und genau das
+ * war der Befund -, oder sie legt sich ueber den Brettrand. Das Zweite ist
+ * gewollt.
+ *
+ * Wie weit sie ragt, entscheidet ihr Inhalt: `width: max-content` und eine
+ * automatische linke Aussenlinie geben ihr genau ihre Inhaltsbreite und
+ * schieben den Ueberhang nach links, wo die unterste Reihe des Sechsecks
+ * ohnehin schmaler ist als seine Mitte. Bei breiten Fenstern ragt nichts.
+ */
+.tray__throw {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.6rem;
+  align-items: flex-end;
+  justify-content: flex-end;
+
+  /*
+   * Die Zeile nimmt sich ihre Inhaltsbreite, auch wenn die Ecke schmaler ist -
+   * sonst schluckt `max-width` an `.tray__controls` den Ueberhang und die
+   * Leiste wird doch wieder gequetscht. `margin-left: auto` haelt sie am
+   * rechten Rand: die Wuerfel bleiben in der Ecke, gewachsen wird nach links.
+   */
+  width: max-content;
+  max-width: none;
+  margin-left: auto;
+}
+
+/*
+ * Die Leiste gibt nichts ab: volle Breite, eine Reihe, kein Umbruch.
+ *
+ * `flex: 0 0 auto` und `nowrap` sagen dasselbe von zwei Seiten - das Stueck
+ * darf nicht schrumpfen, und sein Inhalt darf nicht umbrechen. Ohne beides
+ * stellte die Leiste ihre Bauteile in zwei oder drei Reihen, sobald die Ecke
+ * eng wird; gemessen waren das bei 1184x615 fuenf Bauteile untereinander.
+ */
+.tray__throw > .panel--actions {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+.tray__throw .build {
+  flex-wrap: nowrap;
 }
 
 /*
@@ -6117,17 +6187,42 @@ body {
 
 /* --- Dialoge -------------------------------------------------------------- */
 
+/*
+ * **Der Dialog ist erreichbar, auch wenn er hoeher ist als das Fenster.**
+ *
+ * Er stand in einem Raster mit `place-items: center` und ohne jeden Ueberlauf,
+ * und `.game` darueber schneidet ab (`overflow: hidden`). Auf einem Handy quer
+ * gemessen (844x390, Staedte & Ritter, acht Kartensorten): der Handeldialog ist
+ * **630 px** hoch, „Tauschen" und „Abbrechen" liegen bei y 584-628 - also 194
+ * bis 238 px unter dem Fensterrand, und gerollt hat nichts
+ * (`scrollHeight === clientHeight` am Dokument). Handeln ging auf dem Handy
+ * damit gar nicht: der Dialog ging auf, und der Knopf, der ihn abschliesst, war
+ * nicht da.
+ *
+ * Gerollt wird die **Huelle** und nicht der Kasten: der Kasten traegt sein Kreuz
+ * absolut in der Ecke, und in einem eigenen Rollbereich waere ausgerechnet das
+ * Kreuz nach oben aus dem Bild gefahren.
+ *
+ * `margin: auto` am Kasten und nicht `align-items: center` an der Huelle, und
+ * das ist der ganze Trick: eine automatische Aussenlinie verteilt nur **freien**
+ * Platz. Ist keiner da, faellt sie auf 0 zurueck und der Kasten sitzt am Anfang
+ * - zentriert, solange er passt, und vollstaendig erreichbar, sobald er nicht
+ * mehr passt. Zentrierung ueber die Ausrichtung schiebt statt dessen die
+ * **obere** Haelfte aus dem Rollbereich hinaus, wo sie niemand mehr holt.
+ */
 .modal {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
   padding: 1rem;
+  overflow: auto;
+  overscroll-behavior: contain;
   background: rgb(6 16 22 / 62%);
 }
 
 .modal__box {
   position: relative;
+  margin: auto;
   min-width: min(22rem, 100%);
   max-width: min(92vw, 34rem);
   padding: 1.1rem 1.3rem;
@@ -7284,7 +7379,56 @@ body {
  * beginnt dort deshalb unter der Leiste statt neben ihr.
  */
 @media (width <= 40rem) {
+  /*
+   * Und steht ein Modusbalken unter der Leiste, beginnt sie unter ihm - er ist
+   * dort so breit wie das Fenster (`--mode-space` misst `GameScreen`).
+   */
   .leftrail {
-    top: 4.75rem;
+    top: calc(max(4.75rem, var(--topline-bottom, 0px) + 0.4rem) + var(--mode-space, 0px));
   }
+}
+
+/* --- Auskunft beim Darueberfahren (panels/HintCard.tsx) -------------------- *
+ *
+ * Pergament wie die Dialoge, aber leiser: kein Rahmen um eine Frage, sondern
+ * ein Zettel neben dem Ding, das er erklaert. Durchlaessig fuer den Zeiger,
+ * sonst stuende er selbst unter der Maus und loeste sein eigenes Verschwinden
+ * aus.
+ */
+.hintcard {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-width: 17rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--radius);
+  background: var(--parchment);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  font-size: 0.8rem;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  pointer-events: none;
+}
+
+.hintcard__title {
+  font-weight: 700;
+}
+
+.hintcard__line {
+  color: var(--ink-muted);
+}
+
+/*
+ * Was eine Auskunft traegt, nimmt den Zeiger an - auch in Anzeigen, die sonst
+ * `pointer-events: none` stehen (`.leftrail`, `.barbarians`), damit sie keine
+ * Klicks aufs Brett schlucken. Die Auskunft ist der Grund, dort hinzufahren;
+ * die Flaeche ist klein und liegt neben dem Brett, nicht auf einem Ziel.
+ */
+[data-hint-title] {
+  pointer-events: auto;
 }

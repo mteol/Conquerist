@@ -290,6 +290,12 @@ export function ProgressPanel({
             key={track}
             role="group"
             aria-label={`Fortschrittsstapel ${TRACK_NAMES[track]}`}
+            data-hint-title={`Fortschrittskarten ${TRACK_NAMES[track]}`}
+            data-hint={[
+              `Noch ${view.progressDeckSizes[track] ?? 0} Karten im Stapel.`,
+              `Du ziehst eine, wenn der Ereigniswürfel das Tor ${TRACK_NAMES[track]} zeigt und der rote Würfel nicht höher ist als die Zahl auf deiner Ausbaustufe.`,
+              'Mehr als 4 Fortschrittskarten darfst du nicht halten.',
+            ].join('\n')}
             className="progress__deck"
             style={{ '--deck-color': TRACK_COLORS[track] } as CSSProperties}
           >
