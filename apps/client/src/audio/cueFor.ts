@@ -39,7 +39,7 @@ export function cueFor(move: Move, situation: Situation): readonly Sound[] {
     case 'rollDice':
       add('dice.roll');
       if (situation.diceTotal !== null) {
-        if (situation.diceTotal === 7) add('dice.seven');
+        if (situation.diceTotal === 7 && !situation.opening) add('dice.seven');
         else add('dice.land', situation.diceTotal);
       }
       break;

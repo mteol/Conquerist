@@ -37,6 +37,9 @@ export function situationFromGame(
     offerToMe: false,
     finished: before.phase.kind !== 'finished' && after.phase.kind === 'finished',
     diceTotal: after.lastRoll === null ? null : yieldTotal(after.rules.dice, after.lastRoll),
+    // Gelesen aus dem Stand **vor** dem Zug: der letzte Auftaktwurf entscheidet
+    // und steht danach schon in der Gruendungsphase.
+    opening: before.phase.kind === 'opening',
   };
 }
 
@@ -78,5 +81,8 @@ export function situationFromView(
     offerToMe: after.phase.kind === 'tradePending' && move.actor !== me,
     finished: after.phase.kind === 'finished' && before?.phase.kind !== 'finished',
     diceTotal: after.lastRoll === null ? null : yieldTotal(after.rules.dice, after.lastRoll),
+    // Vorher **oder** nachher: der letzte Auftaktwurf fuehrt schon in die
+    // Gruendungsphase, und wer gerade erst beitritt, hat kein Vorher.
+    opening: before?.phase.kind === 'opening' || after.phase.kind === 'opening',
   };
 }

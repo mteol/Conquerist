@@ -31,6 +31,24 @@ function afterSetup(): GameState {
   return state;
 }
 
+/**
+ * Eine Partie, die Auftakt und Gruendung wirklich hinter sich hat.
+ *
+ * Nimmt stur die erste erlaubte Aktion - wer sie machen darf, sagt
+ * `legalActions` selbst, indem es fuer alle anderen leer bleibt.
+ */
+function afterRoll(): GameState {
+  let state = createGame(scenario, CLASSIC_RULES, ids, 'ton-probe');
+
+  while (state.phase.kind !== 'rollPending') {
+    const action = ids.flatMap((id) => legalActions(state, id))[0];
+    if (action === undefined) throw new Error(`keine Aktion in ${state.phase.kind}`);
+    state = apply(state, action);
+  }
+
+  return state;
+}
+
 function apply(state: GameState, action: GameAction): GameState {
   const result = reduce(state, action);
   if (!result.ok) throw new Error(result.error.message);
@@ -101,6 +119,20 @@ describe('situationFromGame (Hotseat)', () => {
     const total = after.lastRoll!.reduce((sum, die) => sum + die.value, 0);
 
     expect(situationFromGame(before, after, action).diceTotal).toBe(total);
+  });
+
+  it('erkennt den Auftakt am Stand vor dem Zug', () => {
+    const opening = createGame(scenario, CLASSIC_RULES, ids, 'ton-probe');
+    expect(opening.phase.kind).toBe('opening');
+
+    const action: GameAction = { type: 'rollDice', player: ids[0]! };
+    const after = apply(opening, action);
+
+    expect(situationFromGame(opening, after, action).opening).toBe(true);
+
+    const running = afterRoll();
+    const rollAction: GameAction = { type: 'rollDice', player: running.players[0]!.id };
+    expect(situationFromGame(running, apply(running, rollAction), rollAction).opening).toBe(false);
   });
 
   it('meldet die Abwurfaufforderung nur beim Uebergang', () => {

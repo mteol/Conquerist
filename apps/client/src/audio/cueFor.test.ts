@@ -11,6 +11,7 @@ const quiet: Situation = {
   offerToMe: false,
   finished: false,
   diceTotal: null,
+  opening: false,
 };
 
 const cues = (sounds: readonly { readonly cue: string }[]): string[] =>
@@ -43,6 +44,16 @@ describe('cueFor', () => {
     const sounds = cueFor({ type: 'rollDice', actor: 'a' }, { ...quiet, diceTotal: 7 });
 
     expect(cues(sounds)).toEqual(['dice.roll', 'dice.seven']);
+  });
+
+  it('laesst die Sieben im Auftakt eine Zahl wie jede andere bleiben', () => {
+    const sounds = cueFor(
+      { type: 'rollDice', actor: 'a' },
+      { ...quiet, diceTotal: 7, opening: true },
+    );
+
+    expect(cues(sounds)).toEqual(['dice.roll', 'dice.land']);
+    expect(sounds[1]!.note).toBe(7);
   });
 
   it('haengt den Ertrag an und sagt, wie viele Karten kamen', () => {

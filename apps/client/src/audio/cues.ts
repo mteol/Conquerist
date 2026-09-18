@@ -110,6 +110,14 @@ export interface Situation {
   /** Die Partie ist mit genau diesem Zug vorbei. */
   readonly finished: boolean;
   readonly diceTotal: number | null;
+  /**
+   * Der Wurf gehoert zum Auftakt - es wird ausgewuerfelt, wer anfaengt.
+   *
+   * Dort ist die Sieben eine Zahl wie jede andere: kein Raeuber, kein Abwerfen,
+   * kein Ertrag. Sie darf deshalb nicht nach dem Raeuber klingen, sonst meldet
+   * der Ton ein Ereignis, das gar nicht stattfindet.
+   */
+  readonly opening: boolean;
 }
 
 export type { Move };
