@@ -20,6 +20,37 @@ Im Archiv nur gezielt suchen (`grep` nach Stichwort), nie ganz lesen.
 - **10e abgeschlossen** (Burg 1 / Burg 2, Abschnitt unten).
   Davor 10d-3 (Regelfragen aus 10d-2), Details im Archiv 10d.
 
+## Playtest-Runde Städte & Ritter (2026-10-15, uncommittet in `main`)
+
+Abnahme: `pnpm typecheck` grün; Tests shared 1283, server 222, client 644;
+Build Client 556,04 kB (161,98 kB gzip), CSS 63,34 kB; `format:check` grün.
+Im Browser über eine temporäre Vorschauseite (1568 px) gesehen bzw. per
+Rechteck-Messung geprüft.
+
+- **Räuber ohne Frist** (`deadline.ts`): wer ihn versetzt, ist ohnehin am Zug;
+  der automatische Zug in `timeout.ts` und sein Verlaufssatz entfallen.
+- **Diplomat: Ritter am Straßenende schützt** (`openRoads`), auch ein fremder -
+  wie ein Bauwerk. Gebaute Zielstraßen tragen jetzt eine eigene Marke
+  (`.road__removable`); vorher kannte `roadClass` für gebaute Straßen kein Ziel.
+- **Feldwahl sichtbar** (Räuber, Händler, Bischof): wählbare Felder mit
+  gestricheltem Rand, die übrigen gedimmt.
+- **Barbarenleiste war um eins verschoben:** gelandet wird auf `track` (7), die
+  Leiste zeigte 0–6. Jetzt 8 Stationen und die Zeile „Angriff in N Schiffen".
+- **Siegpunkte nach Quelle:** `publicVictoryPointParts` in `scoring.ts`
+  (die Summe ist `publicVictoryPointsOf`), in der `PlayerView` als `pointParts`;
+  am Tisch Plaketten für Retter, Händler, Metropolen, Fortschrittskarten und die
+  ganze Rechnung in der Auskunft am Punktestand.
+- **Händlerfigur auf dem Brett** (`MerchantMark`), vorher gar nicht gezeichnet.
+- **Metropole:** Turm mit Zinnen hinter der Stadt und Bereichszeichen auf heller
+  Scheibe (Münze/Krone/Zahnrad, `METROPOLIS_EMBLEMS`); auch in der Ausbauleiter.
+- **Handelswaren:** ganzflächig im Ton der Herkunft (Papier waldgrün, Tuch weidegrün, Münzen blau; `--ware-*`) statt
+  Pergament mit Rand, heller Innenrahmen als Warenzeichen, neue Motive
+  (Schriftrolle, Stoffballen, Münzstapel).
+- **Überlappungen:** Vorrat-Symbole hatten Kartengröße (3,1 rem in 1-rem-Spalte);
+  Kostenplakette der Ausbauleiter lag auf „Gilde/Festung/Aquädukt"; die
+  Auskunft beim Darüberfahren saß auf den Baukosten (`anchorOf` in `HintCard`).
+  Der Vorrat zeigt jetzt auch Handelswaren.
+
 ## Offene Punkte
 
 - **Keine Zugzeit** für `main` und `rollPending`: wer nicht würfelt oder den Zug

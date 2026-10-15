@@ -32,46 +32,51 @@ export function CardGlyph({ card }: { readonly card: CardId }): JSX.Element {
  */
 export const COMMODITY_SHAPES: Readonly<Record<CommodityId, JSX.Element>> = {
   /**
-   * Papier: ein Bogen mit umgeschlagener Ecke.
+   * Papier: eine Schriftrolle mit zwei Zeilen.
    *
-   * Die Ecke ist der ganze Unterschied zu einem Rechteck - ohne sie waere es
-   * eine Flaeche, mit ihr ist es ein Blatt. Zeilen darauf waeren huebsch und
-   * bei vierzehn Pixeln weg.
+   * Der Bogen mit Eselsohr sah aus wie ein Dokument-Symbol aus einer
+   * Buerosoftware. Die Rolle oben und unten macht daraus Pergament, und zwei
+   * kraeftige Zeilen ueberstehen auch die kleine Auswahlkarte.
    */
   paper: (
     <g>
-      <path d="M5 3 H14.5 L19 7.5 V21 H5 Z" />
-      <path d="M14.5 3 L14.5 7.5 L19 7.5" className="card__glyph-cut" />
+      <path d="M6 5.5 H18 V18.5 H6 Z" />
+      <rect x="4" y="3" width="16" height="4" rx="2" />
+      <rect x="4" y="17" width="16" height="4" rx="2" />
+      <path d="M8.5 10.5 H15.5 M8.5 14 H13.5" className="card__glyph-cut" />
     </g>
   ),
 
   /**
-   * Tuch: drei gefaltete Lagen mit gerundetem Bruch.
+   * Tuch: ein Stoffballen von der Stirnseite, dessen Bahn sich abwickelt.
    *
-   * Ein Ballen Stoff hat keine gerade Kante - der Bruch rechts macht aus drei
-   * Balken einen Stapel Bahnen. Die mittlere Lage ragt weiter heraus, damit
-   * die drei nicht wie ein Gitter aussehen.
+   * Die Wicklung (zwei Ringe) sagt „Ballen", der gewellte Saum der Bahn sagt
+   * „Stoff". Drei Balken - der alte Stapel - lasen sich als Liste.
    */
   cloth: (
     <g>
-      <path d="M4 5.5 H16 A2.25 2.25 0 0 1 16 10 H4 Z" />
-      <path d="M4 10 H19 A2.25 2.25 0 0 1 19 14.5 H4 Z" />
-      <path d="M4 14.5 H14 A2.25 2.25 0 0 1 14 19 H4 Z" />
+      <path d="M9 5 H19 L21 8 L19 11 L21 14 L19 17 L21 20 H9 Z" />
+      <circle cx="9" cy="12.5" r="7" />
+      <circle cx="9" cy="12.5" r="4.4" className="card__glyph-cut" />
+      <circle cx="9" cy="12.5" r="1.8" className="card__glyph-cut" />
     </g>
   ),
 
   /**
-   * Muenzen: drei gestapelte Scheiben.
+   * Muenzen: ein Stapel und eine Muenze davor.
    *
-   * In Aufsicht gekippt (Ellipsen), weil ein Stapel Kreise von vorn ein Turm
-   * waere und nichts mit Geld zu tun haette. Die Schnittlinien trennen die
-   * Scheiben - ohne sie liefen die drei Fuellungen zu einem Klumpen zusammen.
+   * Der gekippte Stapel allein sah aus wie eine Dose. Die Rollen links sagen
+   * „Geldstapel", die Muenze mit Praegerand rechts sagt „Geld" - und keine
+   * Wicklung wie beim Tuch, damit die beiden Waren sich nicht gleichen.
    */
   coin: (
     <g>
-      <path d="M4.5 8 a7.5 4 0 0 1 15 0 v8 a7.5 4 0 0 1 -15 0 Z" />
-      <ellipse cx="12" cy="8" rx="7.5" ry="4" className="card__glyph-cut" />
-      <path d="M4.5 12 a7.5 4 0 0 0 15 0" className="card__glyph-cut" />
+      <rect x="2.5" y="16.4" width="10" height="3.4" rx="1.5" />
+      <rect x="2.5" y="12.6" width="10" height="3.4" rx="1.5" />
+      <rect x="2.5" y="8.8" width="10" height="3.4" rx="1.5" />
+      <circle cx="15.5" cy="13" r="6.5" />
+      <circle cx="15.5" cy="13" r="6.5" className="card__glyph-cut" />
+      <circle cx="15.5" cy="13" r="4" className="card__glyph-cut" />
     </g>
   ),
 };

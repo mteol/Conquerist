@@ -447,8 +447,6 @@ function describeTimeout(before: GameState, nameOf: (id: PlayerId) => string): s
       const verb = names.length === 1 ? 'wirft' : 'werfen';
       return `Die Zeit ist abgelaufen - ${nameList(names)} ${verb} von selbst ab`;
     }
-    case 'robberPending':
-      return 'Die Zeit ist abgelaufen - der Räuber zieht von selbst weiter';
     case 'displacePending':
       return `Die Zeit ist abgelaufen - ${nameOf(phase.owner)}s Ritter weicht von selbst aus`;
     case 'progressDiscardPending':
@@ -459,6 +457,8 @@ function describeTimeout(before: GameState, nameOf: (id: PlayerId) => string): s
       return `Die Zeit ist abgelaufen - ${nameOf(phase.pending[0] ?? '')} nimmt nichts aus dem Aquädukt`;
     case 'progressPending':
       return `Die Zeit für ${PROGRESS_NAMES[phase.payload.card]} ist abgelaufen`;
+    // Ohne Frist (auch der Raeuber seit dem Playtest) - der Reducer weist ab.
+    case 'robberPending':
     case 'opening':
     case 'setup':
     case 'rollPending':

@@ -262,10 +262,11 @@ describe('Der Ereigniswuerfel', () => {
   it('setzt in jedes Tor das Motiv seiner Handelsware', () => {
     const { container } = render(tray({ spec: CITIES, roll: wurf(5, 3, 4), total: 8 }));
 
-    // Das Tuchmotiv sind drei gefaltete Lagen.
+    // Das Tuchmotiv ist ein Ballen: die Bahn und drei Kreise (Rolle, zwei Wicklungen).
     const motiv = container.querySelector('.die__event-gate--trade .die__event-motif');
     expect(motiv).not.toBeNull();
-    expect(motiv?.querySelectorAll('path')).toHaveLength(3);
+    expect(motiv?.querySelectorAll('path')).toHaveLength(1);
+    expect(motiv?.querySelectorAll('circle')).toHaveLength(3);
   });
 
   it('nennt das Ereignis in der Vorleseansage statt es zu zaehlen', () => {

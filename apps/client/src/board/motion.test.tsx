@@ -31,6 +31,7 @@ function tableView(gains: ReadonlyMap<string, number>): GameView {
       name: seat.name,
       color: seat.color,
       victoryPoints: 0,
+      pointParts: {},
       cardCount: 3,
       resources: null,
       piecesLeft: CLASSIC_RULES.pieceStock,

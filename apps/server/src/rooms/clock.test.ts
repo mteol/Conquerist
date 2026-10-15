@@ -209,9 +209,9 @@ describe('createRoomClock in einer Wartephase', () => {
 
     const game = registry.get('K7X2')!.game!;
     expect(game.players.find((player) => player.id === 'u2')!.resources.lumber).toBe(4);
-    // Nach der Sieben kommt der Raeuber - mit eigener Frist, also ein zweiter Wecker.
+    // Nach der Sieben kommt der Raeuber - ohne Frist, also kein zweiter Wecker.
     expect(game.phase.kind).toBe('robberPending');
-    expect(runs).toHaveLength(2);
+    expect(runs).toHaveLength(1);
   });
 });
 
@@ -264,7 +264,7 @@ describe('createRoomClock und der faellige Zeitpunkt', () => {
     expect(clock.dueAt('K7X2')).toBeUndefined();
   });
 
-  it('schickt nach dem Klingeln schon den Zeitpunkt der naechsten Frist mit', () => {
+  it('schickt nach dem Klingeln keinen Zeitpunkt mit, wenn keine Frist folgt (Raeuber)', () => {
     const registry = registryWithDiscard();
     const sinks = new SinkHub();
     const seen: unknown[] = [];
@@ -291,9 +291,8 @@ describe('createRoomClock und der faellige Zeitpunkt', () => {
     time = 60_000;
     runs[0]!();
 
-    const total = registry.get('K7X2')!.game!.rules.pendingAnswerMs;
     expect(seen).toHaveLength(1);
-    expect((seen[0] as { dueAt?: number }).dueAt).toBe(60_000 + total);
+    expect((seen[0] as { dueAt?: number }).dueAt).toBeUndefined();
   });
 });
 

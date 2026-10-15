@@ -28,7 +28,9 @@ import {
   KNIGHT_MAST_PATH,
   KNIGHT_PATH,
   KNIGHT_PENNANTS,
-  METROPOLIS_PATHS,
+  METROPOLIS_EMBLEMS,
+  METROPOLIS_EMBLEM_AT,
+  METROPOLIS_TOWER_PATH,
   SETTLEMENT_PATH,
   WALL_PATH,
 } from './shapes';
@@ -63,6 +65,8 @@ export interface BoardSource {
   /** Wer wo steht. Oeffentlich wie Siedlungen und Staedte. */
   readonly knights: GameState['knights'];
   readonly robber: GameState['robber'];
+  /** Der Haendler (Staedte & Ritter) - oeffentlich, er steht auf dem Brett. */
+  readonly merchant?: GameState['merchant'];
 }
 
 export interface BoardSvgProps {
@@ -377,6 +381,28 @@ export function BoardSvg({
         </g>
 
         {/*
+         * Wohin der Raeuber (oder Haendler, Bischof) darf - sichtbar und nicht
+         * nur am Mauszeiger. Im Playtest blieb das Brett beim Versetzen ruhig,
+         * und niemand wusste, dass jetzt ein Feld gefragt ist: die Felder ohne
+         * Wahl treten zurueck, die waehlbaren tragen einen Rand, der atmet.
+         * Ohne Bewegung (`prefers-reduced-motion`) bleibt der Rand stehen.
+         */}
+        {targets.hexes.size > 0 ? (
+          <g className="hexgoals" pointerEvents="none" data-testid="hex-goals">
+            {state.scenario.hexes.map((placement) => {
+              const points = hexCorners(hexFromId(placement.hex))
+                .map((corner) => `${corner.x},${corner.y}`)
+                .join(' ');
+              return targets.hexes.has(placement.hex) ? (
+                <polygon key={placement.hex} className="hexgoal" points={points} />
+              ) : (
+                <polygon key={placement.hex} className="hexgoal--off" points={points} />
+              );
+            })}
+          </g>
+        ) : null}
+
+        {/*
          * Die Zahlenchips liegen **ausserhalb** der Feldgruppe.
          *
          * Sie sind kein Gelaende, sondern etwas, das darauf gelegt wurde - und
@@ -553,6 +579,23 @@ export function BoardSvg({
         </g>
 
         {/*
+         * Der Haendler - eine eigene Figur und nicht nur ein Punkt am Tisch.
+         * Er steht rechts neben der Feldmitte, damit Chip und Raeuber frei
+         * bleiben, und traegt die Farbe seines Besitzers mit einer Muenze in
+         * der Hand: er bringt einen Siegpunkt und 2:1 auf den Rohstoff des
+         * Feldes. Wechselt er das Feld, haengt `key` ihn neu ein, und die
+         * Einblendung `settle` laeuft noch einmal.
+         */}
+        {state.merchant != null ? (
+          <MerchantMark
+            key={`merchant-${state.merchant.hex}`}
+            at={hexCenter(hexFromId(state.merchant.hex))}
+            color={colorOf(state.merchant.owner)}
+            owner={colors.get(state.merchant.owner)?.name ?? state.merchant.owner}
+          />
+        ) : null}
+
+        {/*
          * Die Konturen unter den Strassen - **alle** zuerst, dann alle Strassen.
          *
          * Im Playtest waren die Strassen am Brettrand „unsichtbar". Am Element
@@ -614,6 +657,30 @@ export function BoardSvg({
             />
           );
         })}
+
+        {/*
+         * Eine **gebaute** Strasse als Ziel (Diplomat): ohne eigene Marke war sie
+         * nicht von den anderen zu unterscheiden - `roadClass` kennt fuer gebaute
+         * Strassen kein Ziel. Darueber liegt deshalb ein heller, gestrichelter
+         * Streifen, der atmet; die Strassenfarbe bleibt darunter lesbar.
+         */}
+        {board.topology.edges
+          .filter((edge) => state.roads[edge] !== undefined && targets.edges.has(edge))
+          .map((edge) => {
+            const [from, to] = edgeSegment(edge);
+            return (
+              <line
+                key={`removable-${edge}`}
+                className="road__removable"
+                data-testid={`removable-${edge}`}
+                pointerEvents="none"
+                x1={from.x}
+                y1={from.y}
+                x2={to.x}
+                y2={to.y}
+              />
+            );
+          })}
 
         {board.topology.vertices.map((vertex) => (
           <VertexMark
@@ -773,6 +840,43 @@ function pushedFrom(point: Point, origin: Point, distance: number): Point {
 /** Drei Nachkommastellen reichen auf einem Brett, das rund zehn Einheiten misst. */
 function round(value: number): string {
   return value.toFixed(3);
+}
+
+/** Die Haendlerfigur: Hut, Kopf, Gewand und eine Muenze. */
+function MerchantMark({
+  at,
+  color,
+  owner,
+}: {
+  readonly at: Point;
+  readonly color: string;
+  readonly owner: string;
+}): JSX.Element {
+  return (
+    <g
+      data-testid="merchant"
+      pointerEvents="none"
+      transform={`translate(${round(at.x + 0.47)} ${round(at.y + 0.02)})`}
+    >
+      {/* `building` innen: die Einblendung animiert `transform` und haette die Lage ueberschrieben. */}
+      <g className="merchant building">
+        <title>{`Händler von ${owner}: 1 Siegpunkt, 2:1 auf den Rohstoff dieses Feldes`}</title>
+        <ellipse className="merchant__shadow" cx={0} cy={0.2} rx={0.15} ry={0.035} />
+        <path
+          className="merchant__body"
+          d="M -0.14 0.2 L -0.085 -0.03 L 0.085 -0.03 L 0.14 0.2 Z"
+          style={{ fill: color }}
+        />
+        <circle className="merchant__head" cx={0} cy={-0.095} r={0.058} />
+        <path
+          className="merchant__body"
+          d="M -0.13 -0.135 L 0.13 -0.135 L 0.065 -0.17 L 0.05 -0.245 L -0.05 -0.245 L -0.065 -0.17 Z"
+          style={{ fill: color }}
+        />
+        <circle className="merchant__coin" cx={0.135} cy={0.06} r={0.055} />
+      </g>
+    </g>
+  );
 }
 
 function roadClass(built: boolean, isTarget: boolean): string {
@@ -972,6 +1076,18 @@ function VertexMark({
             key={building.kind}
             transform={`translate(${point.x} ${point.y}) scale(${BUILDING_SCALE[building.kind]})`}
           >
+            {/*
+             * Der Turm **vor** dem Stadtpfad und damit dahinter: das Haus
+             * deckt seinen Fuss, uebrig bleibt der Schaft ueber dem Dach.
+             */}
+            {building.metropolis !== null ? (
+              <path
+                key={`tower-${building.metropolis}`}
+                className="metropolis__tower building"
+                d={METROPOLIS_TOWER_PATH}
+                style={{ fill: colorOf(building.owner) }}
+              />
+            ) : null}
             <path
               className={`vertex__building building building--${building.kind}`}
               d={building.kind === 'city' ? CITY_PATH : SETTLEMENT_PATH}
@@ -996,10 +1112,10 @@ function VertexMark({
               />
             ) : null}
             {/*
-             * Der Metropolenaufsatz - **nach** dem Bauwerkspfad und aus
-             * demselben Grund wie die Mauer: davor gezeichnet wäre er vom
-             * Stadtpfad verdeckt. Er sitzt über dem Dach (`METROPOLIS_PATHS`
-             * bleibt bei y kleiner -8), die Mauer bleibt darunter am Sockel -
+             * Das Bereichszeichen - **nach** dem Bauwerkspfad und aus
+             * demselben Grund wie die Mauer: davor gezeichnet wäre es vom
+             * Stadtpfad verdeckt. Es sitzt am Turmschaft über dem Dach
+             * (`METROPOLIS_EMBLEM_AT`), die Mauer bleibt darunter am Sockel -
              * eine ummauerte Metropole zeigt beides, und keins verdeckt das
              * andere.
              *
@@ -1016,14 +1132,21 @@ function VertexMark({
              * überall sonst auf dem Brett.
              */}
             {building.metropolis !== null ? (
-              <path
+              <g
                 key={`metropolis-${building.metropolis}`}
-                data-testid={`metropolis-${vertex}`}
-                data-track={building.metropolis}
-                className="metropolis building"
-                d={METROPOLIS_PATHS[building.metropolis]}
-                style={{ fill: TRACK_COLORS[building.metropolis] }}
-              />
+                transform={`translate(${METROPOLIS_EMBLEM_AT.x} ${METROPOLIS_EMBLEM_AT.y})`}
+              >
+                {/* Die helle Scheibe traegt das Zeichen - auf der Spielerfarbe allein ging es unter. */}
+                <circle className="metropolis__disc building" r={3.3} />
+                <path
+                  data-testid={`metropolis-${vertex}`}
+                  data-track={building.metropolis}
+                  className="metropolis building"
+                  d={METROPOLIS_EMBLEMS[building.metropolis]}
+                  transform="scale(0.88)"
+                  style={{ fill: TRACK_COLORS[building.metropolis] }}
+                />
+              </g>
             ) : null}
           </g>
         </>

@@ -12,7 +12,7 @@ import { BarbarianTrack } from './BarbarianTrack';
  * Barbaren sind.
  */
 describe('BarbarianTrack', () => {
-  it('zeigt sieben Stationen und das Schiff auf seinem Feld', () => {
+  it('zeigt Start, sieben Felder bis zur Kueste und das Schiff auf seinem Feld', () => {
     render(
       <BarbarianTrack
         barbarians={{ position: 2, attacks: 0 }}
@@ -22,7 +22,8 @@ describe('BarbarianTrack', () => {
       />,
     );
 
-    expect(screen.getAllByTestId('barbarian-station')).toHaveLength(7);
+    expect(screen.getAllByTestId('barbarian-station')).toHaveLength(8);
+    expect(screen.getByTestId('barbarian-eta').textContent).toBe('Angriff in 5 Schiffen');
     expect(screen.getByTestId('barbarian-ship').getAttribute('data-position')).toBe('2');
   });
 
@@ -34,7 +35,7 @@ describe('BarbarianTrack', () => {
     render(
       <BarbarianTrack
         barbarians={{ position: 3, attacks: 0 }}
-        track={7}
+        track={6}
         strength={1}
         defenders={null}
       />,
@@ -130,7 +131,7 @@ describe('BarbarianTrack', () => {
       />,
     );
 
-    expect(screen.getByLabelText('Die Barbaren sind 4 von 6 Feldern nah')).toBeDefined();
+    expect(screen.getByLabelText('Die Barbaren sind 4 von 7 Feldern nah')).toBeDefined();
   });
 
   it('bleibt weg, wenn an diesem Tisch kein Schiff faehrt', () => {

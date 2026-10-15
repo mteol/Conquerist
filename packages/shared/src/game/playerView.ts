@@ -22,7 +22,7 @@ import { PhaseSchema } from './phase.js';
 import { PlayerIdSchema } from './player.js';
 import type { PlayerId } from './player.js';
 import { countCards } from './cards.js';
-import { publicVictoryPointsOf, victoryPointsOf } from './scoring.js';
+import { publicVictoryPointParts, publicVictoryPointsOf, victoryPointsOf } from './scoring.js';
 import { catanStrength } from './cities/knights.js';
 import { BarbarianStateSchema, BuildingSchema, KnightSchema } from './state.js';
 import type { GameState } from './state.js';
@@ -87,6 +87,11 @@ export const PlayerInViewSchema = z.object({
   defenderPoints: z.number().int().min(0).default(0),
   piecesLeft: z.record(z.string(), z.number().int().min(0)),
   victoryPoints: z.number().int().min(0),
+  /**
+   * Die oeffentlichen Punkte nach Quelle (`publicVictoryPointParts`). Was
+   * `victoryPoints` darueber hinaus zaehlt, sind verdeckte Siegpunktkarten.
+   */
+  pointParts: z.record(z.string(), z.number().int().min(0)).default({}),
   /**
    * Erreichte Ausbaustufe je Bereich, 0 bis 5. **Oeffentlich** - die
    * Ausbaustufen liegen am Tisch offen sichtbar, es ist keine geheime
@@ -344,6 +349,7 @@ export function playerViewOf(
           settled || player.id === viewer
             ? victoryPointsOf(state, player.id)
             : publicVictoryPointsOf(state, player.id),
+        pointParts: publicVictoryPointParts(state, player.id),
       };
     }),
     currentPlayerIndex: state.currentPlayerIndex,

@@ -103,56 +103,39 @@ export const WALL_PATH =
   'L 8.2 1.6 L 8.2 3.2 L 10 3.2 L 10 8 Z';
 
 /**
- * Der Metropolenaufsatz je Bereich, im Raster von `VIEWBOX`.
+ * Der Turm der Metropole, im Raster von `VIEWBOX` - hinter der Stadt gezeichnet.
  *
- * Er sitzt **über** dem Dach: die Stadt reicht bis zu ihrem First bei
- * y -8 (dem Punkt `-3 -8` in `CITY_PATH`), und jeder Aufsatz bleibt darüber,
- * also bei y kleiner als -8 - der einzige freie Streifen im Raster, zwischen
- * dem First und dem oberen Rand der `VIEWBOX` bei y -9. Zentriert ist er auf
- * denselben Punkt `-3`, an dem das Dach seine Spitze hat, nicht auf den
- * Nullpunkt: er krönt den First und nicht die Mitte der Gruppe.
- *
- * Farbe trägt nur den Bereich, nicht die Form (Designregel 7) - wer die drei
- * Farben nicht auseinanderhält, muß die drei Umrisse auseinanderhalten. Die
- * Waage ist ein breiter, gerader Balken mit zwei Waagschalen an den Enden -
- * rechteckig und liegend. Die Krone ist ein Band mit drei spitzen Zacken,
- * die mittlere am höchsten - ein Zickzack, keine Waagerechte. Die
- * Zahnrad-Sonne ist eine Nabe mit fünf dünnen Strahlen, die strahlenförmig
- * auseinanderlaufen - ein Stern um einen Punkt, keine der beiden anderen
- * Formen hat eine Mitte, von der etwas ausgeht.
+ * Der alte Aufsatz war ein Streifen von einer Einheit Hoehe ueber dem First,
+ * auf dem Brett rund ein Pixel: niemand hat eine Metropole erkannt. Jetzt
+ * waechst aus dem Haupthaus ein Turm mit drei Zinnen bis y -16, fast doppelt so
+ * hoch wie die Stadt - die Silhouette allein sagt „Metropole", auch ohne Farbe.
+ * Er steht auf demselben Punkt -3 wie der First, also mittig ueber dem Haus.
  */
-export const METROPOLIS_PATHS: Readonly<Record<TrackId, string>> = {
-  /**
-   * Handel: die Waage. Balken und zwei Waagschalen, symmetrisch um den First -
-   * eine liegende, rechteckige Form ohne Zacken und ohne Mittelpunkt, an dem
-   * mehrere Linien zusammenlaufen.
-   */
+export const METROPOLIS_TOWER_PATH =
+  'M -6 0 L -6 -13 L -6.8 -13 L -6.8 -16 L -5 -16 L -5 -14.6 L -3.9 -14.6 L -3.9 -16 ' +
+  'L -2.1 -16 L -2.1 -14.6 L -1 -14.6 L -1 -16 L 0.8 -16 L 0.8 -13 L 0 -13 L 0 0 Z';
+
+/** Wo das Bereichszeichen am Turm sitzt - auf seinem Schaft, ueber dem First. */
+export const METROPOLIS_EMBLEM_AT = { x: -3, y: -11.3 } as const;
+
+/**
+ * Das Bereichszeichen der Metropole, um den Nullpunkt, Radius rund 3.
+ *
+ * Farbe traegt den Bereich, die Form traegt ihn noch einmal (Designregel 7):
+ * Handel ist eine Muenze mit Vierkantloch, Politik eine Krone mit drei
+ * Zacken, Wissenschaft ein Zahnrad mit Nabe. Drei Umrisse, die sich auch bei
+ * zehn Pixeln nicht gleichen - rund, gezackt nach oben, gezahnt rundum.
+ * Loecher per `fill-rule: evenodd`.
+ */
+export const METROPOLIS_EMBLEMS: Readonly<Record<TrackId, string>> = {
   trade:
-    'M -3.25 -8.05 L -3.25 -8.55 L -2.75 -8.55 L -2.75 -8.05 Z ' +
-    'M -7.8 -8.55 L -7.8 -8.75 L 1.8 -8.75 L 1.8 -8.55 Z ' +
-    'M -3.15 -8.75 L -2.85 -8.75 L -3 -9 Z ' +
-    'M -8.6 -8.55 L -7 -8.55 L -7.3 -8.05 L -8.3 -8.05 Z ' +
-    'M 1 -8.55 L 2.6 -8.55 L 2.3 -8.05 L 1.3 -8.05 Z',
-  /**
-   * Politik: die Krone. Ein Band mit drei Zacken, die mittlere am höchsten -
-   * ein Zickzack über einer geraden Kante, ohne Waagschalen und ohne
-   * ausstrahlende Spitzen.
-   */
-  politics:
-    'M -7 -8.05 L -7 -8.3 L 1 -8.3 L 1 -8.05 Z ' +
-    'M -6.3 -8.3 L -4.7 -8.3 L -5.5 -8.75 Z ' +
-    'M -3.8 -8.3 L -2.2 -8.3 L -3 -9 Z ' +
-    'M -1.3 -8.3 L 0.3 -8.3 L -0.5 -8.75 Z',
-  /**
-   * Wissenschaft: die Zahnrad-Sonne. Eine kleine Nabe mit fünf dünnen
-   * Strahlen, die von ihr ausgehen wie ein Stern - der First trägt keine
-   * andere Form, aus der mehrere Linien strahlenförmig auseinanderlaufen.
-   */
+    'M 2.9 0 A 2.9 2.9 0 1 0 -2.9 0 A 2.9 2.9 0 1 0 2.9 0 Z ' +
+    'M -0.85 -0.85 L 0.85 -0.85 L 0.85 0.85 L -0.85 0.85 Z',
+  politics: 'M -3 2.1 L -3 -2.2 L -1.55 -0.3 L 0 -3 L 1.55 -0.3 L 3 -2.2 L 3 2.1 Z',
   science:
-    'M -3 -8.15 L -2.65 -8.5 L -3 -8.85 L -3.35 -8.5 Z ' +
-    'M -3.35 -8.4 L -3.35 -8.6 L -8.6 -8.25 Z ' +
-    'M -3.15 -8.65 L -3.35 -8.55 L -5.6 -8.85 Z ' +
-    'M -3.15 -8.75 L -2.85 -8.75 L -3 -9 Z ' +
-    'M -2.85 -8.65 L -2.65 -8.55 L -0.4 -8.85 Z ' +
-    'M -2.65 -8.4 L -2.65 -8.6 L 2.6 -8.25 Z',
+    'M -0.39 -2.97 L 0.39 -2.97 L 0.84 -2.03 L 1.34 -1.75 L 2.38 -1.83 L 2.77 -1.15 ' +
+    'L 2.18 -0.29 L 2.18 0.29 L 2.77 1.15 L 2.38 1.83 L 1.34 1.75 L 0.84 2.03 L 0.39 2.97 ' +
+    'L -0.39 2.97 L -0.84 2.03 L -1.34 1.75 L -2.38 1.83 L -2.77 1.15 L -2.18 0.29 ' +
+    'L -2.18 -0.29 L -2.77 -1.15 L -2.38 -1.83 L -1.34 -1.75 L -0.84 -2.03 Z ' +
+    'M 0.9 0 A 0.9 0.9 0 1 0 -0.9 0 A 0.9 0.9 0 1 0 0.9 0 Z',
 };

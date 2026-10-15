@@ -23,48 +23,67 @@ import type { GameState } from './state.js';
  * die volle.
  */
 export function publicVictoryPointsOf(state: GameState, player: PlayerId): number {
+  return Object.values(publicVictoryPointParts(state, player)).reduce(
+    (sum, points) => sum + (points ?? 0),
+    0,
+  );
+}
+
+/** Woher oeffentliche Siegpunkte kommen - je Quelle eine Zeile am Tisch. */
+export type PointSource =
+  | 'settlement'
+  | 'city'
+  | 'metropolis'
+  | 'longestRoad'
+  | 'largestArmy'
+  | 'defender'
+  | 'progressCard'
+  | 'merchant';
+
+/**
+ * Dieselben Punkte wie `publicVictoryPointsOf`, nach Quelle aufgeschluesselt.
+ *
+ * Die Summe ist **die** Rechnung und nicht eine zweite daneben:
+ * `publicVictoryPointsOf` addiert genau diese Teile. Quellen mit null Punkten
+ * fehlen, damit der Tisch nur zeigt, was zaehlt.
+ */
+export function publicVictoryPointParts(
+  state: GameState,
+  player: PlayerId,
+): Partial<Record<PointSource, number>> {
   const values = state.rules.victoryPoints;
-  let points = 0;
+  const parts: Partial<Record<PointSource, number>> = {};
+  const add = (source: PointSource, points: number): void => {
+    if (points > 0) parts[source] = (parts[source] ?? 0) + points;
+  };
 
   for (const building of Object.values(state.buildings)) {
     if (building.owner !== player) continue;
-    points += building.kind === 'city' ? values.city : values.settlement;
+    if (building.kind === 'city') add('city', values.city);
+    else add('settlement', values.settlement);
     // Oeffentlich, weil der Aufsatz auf dem Brett steht - zusaetzlich zu den
     // zwei Punkten der Stadt, die die Zeile darueber schon zaehlt.
-    if (building.metropolis !== null) points += values.metropolis;
+    if (building.metropolis !== null) add('metropolis', values.metropolis);
   }
 
-  if (state.longestRoad.holder === player) points += values.longestRoad;
-  if (state.largestArmy.holder === player) points += values.largestArmy;
+  if (state.longestRoad.holder === player) add('longestRoad', values.longestRoad);
+  if (state.largestArmy.holder === player) add('largestArmy', values.largestArmy);
 
   /*
    * Die Siegpunkt-Chips "Retter Catans" liegen offen vor dem Spieler - deshalb
-   * **hier** und nicht erst in `victoryPointsOf`. Wer sie nicht mitzaehlt,
-   * kann den Punktestand am Tisch nicht nachrechnen. An einem Basistisch ist
+   * **hier** und nicht erst in `victoryPointsOf`. An einem Basistisch ist
    * `defenderPoints` null und `values.defender` ebenfalls.
    */
   const hand = state.players.find((entry) => entry.id === player);
-  points += (hand?.defenderPoints ?? 0) * values.defender;
+  add('defender', (hand?.defenderPoints ?? 0) * values.defender);
 
-  /*
-   * Buchdruck und Verfassung liegen offen vor dem Spieler, sobald gespielt -
-   * anders als die verdeckte Siegpunkt-Entwicklungskarte, die erst unten in
-   * `victoryPointsOf` zaehlt. Wer sie hier nicht mitzaehlte, kann den
-   * Punktestand am Tisch nicht nachrechnen.
-   */
-  points += (hand?.openProgressCards.length ?? 0) * values.progressCard;
+  // Buchdruck und Verfassung liegen offen vor dem Spieler, sobald gespielt.
+  add('progressCard', (hand?.openProgressCards.length ?? 0) * values.progressCard);
 
-  /*
-   * Der Haendler sitzt auf dem Brett und gehoert diesem Spieler - sein Punkt ist
-   * oeffentlich wie die Belegung aller anderen Felder. Nur der aktuelle Besitzer
-   * zaehlt den Punkt, auch wenn der Haendler irgendwann von jemand anderem auf
-   * ein neues Feld gezogen wird.
-   */
-  if (state.merchant?.owner === player) {
-    points += values.merchant;
-  }
+  // Der Haendler sitzt auf dem Brett - sein Punkt gehoert dem aktuellen Besitzer.
+  if (state.merchant?.owner === player) add('merchant', values.merchant);
 
-  return points;
+  return parts;
 }
 
 /** Die Siegpunkte eines Spielers aus dem aktuellen Brett. */

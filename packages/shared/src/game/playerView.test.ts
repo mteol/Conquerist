@@ -520,7 +520,8 @@ describe('Ziele der Fortschrittskarten mit Angabe in der Sicht', () => {
         [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: null },
         [HARBOR3_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
       },
-      roads: { [CENTER_EDGE]: 'p1', [NEXT_EDGE]: 'p1' },
+      // Die dritte Strasse hat ein freies Ende - die anderen beiden bewachen Ritter.
+      roads: { [CENTER_EDGE]: 'p1', [NEXT_EDGE]: 'p1', 'e:0,1|1,1': 'p1' },
       knights: {
         [ADJACENT_VERTEX]: {
           owner: 'p1',

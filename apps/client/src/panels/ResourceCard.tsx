@@ -1,4 +1,4 @@
-import type { CSSProperties, JSX } from 'react';
+import type { JSX } from 'react';
 import { CARD_IDS, isCommodity, type CardAmounts, type CardId } from '@conquerist/shared';
 import { CARD_COLORS, CARD_LABELS } from '../game/labels';
 import { CardGlyph } from './CardGlyph';
@@ -26,11 +26,8 @@ import { CardGlyph } from './CardGlyph';
  * der Name steht ohnehin dabei.
  *
  * **Die Handelsware ist dieselbe Karte in anderer Ausfuehrung**, nicht eine
- * zweite Komponente. Ein Rohstoff ist ganzflaechig gelaendefarben; eine
- * Handelsware hat einen Pergamentkoerper mit gelaendefarbenem **Rand**. Papier
- * kommt aus dem Wald, aber Holz und Papier duerfen nicht gleich aussehen - man
- * haelt beide gleichzeitig auf der Hand und waehlt unter Zeitdruck aus.
- * Gleiche Farbe, andere Flaeche heisst "vom selben Land, andere Art von Ware".
+ * zweite Komponente: eigene Farbe (`COMMODITY_COLORS`) plus heller
+ * Innenrahmen, der „Ware, kein Rohstoff" sagt.
  *
  * Zwei Komponenten waeren zwei Gelegenheiten auseinanderzulaufen - genau die
  * Begruendung, die oben schon fuer die eine Karte steht.
@@ -58,17 +55,8 @@ export function ResourceCard({ card, held, count }: ResourceCardProps): JSX.Elem
   return (
     <span
       className={ware ? 'rescard rescard--ware' : 'rescard'}
-      /*
-       * Bei der Handelsware faerbt die Gelaendefarbe den Rand, bei einem
-       * Rohstoff die Flaeche. Beides per `style`, weil eine Variable im Blatt
-       * die Farbe nicht kennen kann - und eine CSS-Regel schlaegt ein
-       * gleichnamiges Attribut (die Falle aus `CLAUDE.md`).
-       */
-      style={
-        ware
-          ? ({ '--ware-edge': CARD_COLORS[card] } as CSSProperties)
-          : { background: CARD_COLORS[card] }
-      }
+      // Per `style`: eine Regel im Blatt kann die Sorte nicht kennen.
+      style={{ background: CARD_COLORS[card] }}
       title={CARD_LABELS[card]}
     >
       <CardGlyph card={card} />

@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import type { PointSource } from '@conquerist/shared';
 import { awardsHeldBy, type Award } from '../game/awards';
 import type { GameView, PlayerRow as PlayerRowData } from '../game/view';
 import { SeatMarks } from './Awards';
@@ -111,8 +112,9 @@ function PlayerRow({
 
       <span
         className="seat__points"
+        data-testid={`points-${player.id}`}
         data-hint-title={`${player.victoryPoints} Siegpunkte`}
-        data-hint="Siedlung 1, Stadt 2 - dazu Metropolen, Auszeichnungen und manche Karten."
+        data-hint={pointLines(player).join('\n')}
       >
         {player.victoryPoints} SP
       </span>
@@ -145,6 +147,63 @@ function PlayerRow({
       {player.connected ? null : <span className="seat__pending">getrennt</span>}
 
       {showTracks ? <TrackStrip player={player.id} levels={player} /> : null}
+
+      <PointBadges player={player} />
     </div>
+  );
+}
+
+/** Wie eine Quelle am Tisch heisst - dieselben Woerter wie im Verlauf. */
+const POINT_LABELS: Readonly<Record<PointSource, string>> = {
+  settlement: 'Siedlungen',
+  city: 'Städte',
+  metropolis: 'Metropolen',
+  longestRoad: 'Handelsstraße',
+  largestArmy: 'Rittermacht',
+  defender: 'Retter gegen Barbaren',
+  progressCard: 'Fortschrittskarten',
+  merchant: 'Händler',
+};
+
+/**
+ * Die Quellen, die nicht schon als Bauwerk auf dem Brett stehen oder als
+ * Auszeichnung neben dem Namen (`SeatMarks`) - genau die, nach denen im
+ * Playtest gefragt wurde: Barbaren, Haendler, Metropolen, Karten.
+ */
+const BADGE_SOURCES: readonly PointSource[] = [
+  'defender',
+  'merchant',
+  'metropolis',
+  'progressCard',
+];
+
+/** Die ganze Rechnung fuer die Auskunft am Punktestand. */
+export function pointLines(player: PlayerRowData): string[] {
+  const parts = player.pointParts;
+  const lines = (Object.keys(POINT_LABELS) as PointSource[])
+    .filter((source) => (parts[source] ?? 0) > 0)
+    .map((source) => `${POINT_LABELS[source]}: ${parts[source]}`);
+  const shown = Object.values(parts).reduce((sum, points) => sum + (points ?? 0), 0);
+  const hidden = player.victoryPoints - shown;
+  if (hidden > 0) lines.push(`Siegpunktkarten: ${hidden}`);
+  return lines.length > 0 ? lines : ['Noch keine Siegpunkte.'];
+}
+
+function PointBadges({ player }: { readonly player: PlayerRowData }): JSX.Element | null {
+  const badges = BADGE_SOURCES.filter((source) => (player.pointParts[source] ?? 0) > 0);
+  if (badges.length === 0) return null;
+
+  return (
+    <span className="seat__sources" data-testid={`point-sources-${player.id}`}>
+      {badges.map((source) => (
+        <span
+          key={source}
+          className={`seat__source seat__source--${source}`}
+          title={`${POINT_LABELS[source]}: ${player.pointParts[source]} SP`}
+        >
+          {POINT_LABELS[source]} +{player.pointParts[source]}
+        </span>
+      ))}
+    </span>
   );
 }

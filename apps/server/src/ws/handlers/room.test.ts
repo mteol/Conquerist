@@ -645,8 +645,8 @@ describe('Der faellige Zeitpunkt im Spielstand', () => {
     expect(lastGame(cemsPost).dueAt).toBe(total);
   });
 
-  it('stellt sich mit einem Zug neu - und der Stand dieses Zuges traegt schon die neue Frist', async () => {
-    const { sinks, router, time, total, ben, cem } = waitingTable();
+  it('stellt sich mit einem Zug neu - und der Raeuber danach laeuft ohne Frist', async () => {
+    const { sinks, router, time, ben, cem } = waitingTable();
     const cemsPost = listener(sinks, cem.user.id);
 
     time.now = 20_000;
@@ -656,7 +656,7 @@ describe('Der faellige Zeitpunkt im Spielstand', () => {
     );
 
     expect(response.ok).toBe(true);
-    // Jetzt der Raeuber - mit eigener, frisch gestellter Frist.
-    expect(lastGame(cemsPost).dueAt).toBe(20_000 + total);
+    // Jetzt der Raeuber - ohne Frist, also ohne Zeitpunkt im Stand.
+    expect(lastGame(cemsPost).dueAt).toBeUndefined();
   });
 });

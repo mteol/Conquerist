@@ -47,20 +47,24 @@ export function BarbarianTrack({
 }: BarbarianTrackProps): JSX.Element | null {
   if (barbarians === null || track <= 0) return null;
 
-  const stations = Array.from({ length: track }, (_unused, index) => index);
+  // Start (0) bis Kueste (`track`): gelandet wird erst auf `track` - so zaehlt
+  // auch `hasLanded` in shared. Mit nur `track` Stationen stand die Kueste
+  // eine Station zu frueh, und „noch 0" kam einen Wurf vor dem Angriff.
+  const stations = Array.from({ length: track + 1 }, (_unused, index) => index);
+  const left = Math.max(0, track - barbarians.position);
 
   /*
    * Wie weit das Schiff auf der Strecke steht, als Anteil. Die Umrechnung in
    * Pixel macht das Blatt - es kennt die Breite, die Komponente nicht.
    */
-  const progress = track <= 1 ? 0 : barbarians.position / (track - 1);
+  const progress = Math.min(1, barbarians.position / track);
 
   return (
     <section
       className="barbarians"
-      aria-label={`Die Barbaren sind ${barbarians.position} von ${track - 1} Feldern nah`}
+      aria-label={`Die Barbaren sind ${barbarians.position} von ${track} Feldern nah`}
       data-hint-title="Barbaren"
-      data-hint={barbarianHint(track - 1 - barbarians.position, strength, defenders).join('\n')}
+      data-hint={barbarianHint(left, strength, defenders).join('\n')}
     >
       <div className="barbarians__lane">
         <ol className="barbarians__stations">
@@ -68,7 +72,7 @@ export function BarbarianTrack({
             <li
               key={index}
               className={
-                index === track - 1
+                index === track
                   ? 'barbarians__station barbarians__station--coast'
                   : 'barbarians__station'
               }
@@ -88,6 +92,14 @@ export function BarbarianTrack({
           <ShipMark />
         </span>
       </div>
+
+      <p className="barbarians__eta" data-testid="barbarian-eta">
+        {left <= 0
+          ? 'Angriff jetzt'
+          : left === 1
+            ? 'Angriff beim nächsten Schiff'
+            : `Angriff in ${left} Schiffen`}
+      </p>
 
       {/*
        * Die beiden Zahlen stehen **gegeneinander**, und die Leiste sagt, wer

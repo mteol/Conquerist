@@ -1,7 +1,7 @@
 import { useState, type JSX } from 'react';
-import { RESOURCE_IDS, type CardAmounts, type ResourceId } from '@conquerist/shared';
-import { RESOURCE_LABELS } from '../game/labels';
-import { ResourceGlyph } from './ResourceGlyph';
+import { CARD_IDS, type CardAmounts, type CardId } from '@conquerist/shared';
+import { CARD_LABELS } from '../game/labels';
+import { CardGlyph } from './CardGlyph';
 
 /**
  * Was von den Stapeln noch da ist.
@@ -94,29 +94,32 @@ export function SupplyPanel({ bank, start, deckLeft, deckStart }: SupplyPanelPro
       {open ? (
         <section className="supply__sheet" aria-label="Vorrat der Bank">
           <ul className="supply__list">
-            {RESOURCE_IDS.map((resource: ResourceId) => (
+            {/* Handelswaren nur, wo es sie gibt - im Basisspiel ist ihr Bestand null. */}
+            {CARD_IDS.filter((card: CardId) => (start[card] ?? 0) > 0).map((card) => (
               <Row
-                key={resource}
-                testId={`supply-${resource}`}
-                label={RESOURCE_LABELS[resource]}
-                left={bank[resource]}
-                total={start[resource]}
-                glyph={<ResourceGlyph resource={resource} />}
+                key={card}
+                testId={`supply-${card}`}
+                label={CARD_LABELS[card]}
+                left={bank[card] ?? 0}
+                total={start[card] ?? 0}
+                glyph={<CardGlyph card={card} />}
               />
             ))}
 
-            <Row
-              testId="supply-deck"
-              label="Entwicklungskarten"
-              left={deckLeft}
-              total={deckStart}
-              glyph={
-                /* Ein Kartenruecken, keine bestimmte Karte - der Stapel liegt verdeckt. */
-                <svg className="card__glyph" viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="5" y="3" width="14" height="18" rx="2" />
-                </svg>
-              }
-            />
+            {deckStart === 0 ? null : (
+              <Row
+                testId="supply-deck"
+                label="Entwicklungskarten"
+                left={deckLeft}
+                total={deckStart}
+                glyph={
+                  /* Ein Kartenruecken, keine bestimmte Karte - der Stapel liegt verdeckt. */
+                  <svg className="card__glyph" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="5" y="3" width="14" height="18" rx="2" />
+                  </svg>
+                }
+              />
+            )}
           </ul>
         </section>
       ) : null}

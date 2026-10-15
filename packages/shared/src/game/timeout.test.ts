@@ -7,7 +7,6 @@ import { RuleViolationCode } from './errors.js';
 import {
   ADJACENT_VERTEX,
   CENTER_EDGE,
-  CENTER_VERTEX,
   FAR_VERTEX,
   HARBOR3_VERTEX,
   NEXT_EDGE,
@@ -64,7 +63,6 @@ describe('deadlineOf', () => {
   it('nennt fuer jede Wartephase die Antwortfrist und wem sie gehoert', () => {
     const cases: Array<[GameState['phase'], PlayerId]> = [
       [{ kind: 'discardPending', pending: ['p2', 'p3'], counts: {}, resume: 'seven' }, 'p2'],
-      [{ kind: 'robberPending', resume: 'main' }, 'p1'],
       [
         {
           kind: 'displacePending',
@@ -94,6 +92,10 @@ describe('deadlineOf', () => {
   it('nennt nichts, wo niemand auf eine Antwort wartet', () => {
     expect(deadlineOf(testGame())).toBeNull();
     expect(deadlineOf(testGame({ phase: { kind: 'rollPending' } }))).toBeNull();
+  });
+
+  it('laesst dem Raeuber Zeit - wer ihn versetzt, ist ohnehin am Zug', () => {
+    expect(deadlineOf(testGame({ phase: { kind: 'robberPending', resume: 'main' } }))).toBeNull();
   });
 });
 
@@ -243,29 +245,11 @@ describe('eine Pflicht wird abgenommen', () => {
     expect(playerNamed(after, 'p2').progressCards).toEqual(['warlord', 'bishop', 'spy', 'mining']);
   });
 
-  it('schickt den Raeuber auf die Wueste, wenn er dort nicht schon steht', () => {
+  it('nimmt das Versetzen des Raeubers nicht ab - es laeuft keine Frist', () => {
     const state = testGame({ robber: '1,0', phase: { kind: 'robberPending', resume: 'main' } });
-    const after = expire(state, 'p1');
+    const result = reduce(state, { type: 'timeout', player: 'p1', at: 0 });
 
-    expect(after.robber).toBe('0,0');
-    expect(after.phase).toEqual({ kind: 'main' });
-  });
-
-  it('schickt den Raeuber sonst auf das erste Feld ohne fremdes Bauwerk', () => {
-    const state = testGame({
-      phase: { kind: 'robberPending', resume: 'main' },
-      buildings: {
-        [CENTER_VERTEX]: { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
-        // Am ersten legalen Feld '-1,0' - sonst waere das erste harmlose Feld
-        // zugleich das erste legale, und der Test koennte nicht rot werden.
-        'v:-2,0|-1,-1|-1,0': { owner: 'p2', kind: 'settlement', wall: false, metropolis: null },
-      },
-    });
-    const after = expire(state, 'p1');
-
-    // Der Raeuber steht auf der Wueste '0,0'; '-1,0', '1,-1' und '1,0' tragen
-    // p2s Siedlungen. Das naechste legale Feld nach Id ist '-1,1'.
-    expect(after.robber).toBe('-1,1');
+    expect(result.ok).toBe(false);
   });
 
   it('setzt den Vertriebenen auf die erste legale Kreuzung', () => {

@@ -1577,9 +1577,7 @@ describe('GameScreen mit Rittern', () => {
 
       await userEvent.click(screen.getByRole('button', { name: /Diplomat/ }));
       placeEdge(document.body, removable!);
-      expect(screen.getByTestId('progress-board-mode').textContent).toContain(
-        'Stelle für den Neubau',
-      );
+      expect(screen.getByTestId('progress-board-mode').textContent).toContain('Straße neu legen');
       expect(litEdges()).toContain(`edge-${rebuildAt}`);
 
       placeEdge(document.body, rebuildAt);

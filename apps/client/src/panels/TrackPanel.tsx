@@ -19,7 +19,7 @@ import {
   TRACK_COLORS_ON_SEA,
   TRACK_NAMES,
 } from '../game/labels';
-import { METROPOLIS_PATHS } from '../board/shapes';
+import { METROPOLIS_EMBLEMS } from '../board/shapes';
 import { NumeralText } from '../type/Numerals';
 import type { ActionTargets } from '../game/targets';
 
@@ -61,14 +61,8 @@ export interface TrackPanelProps {
   readonly onImprove: (track: TrackId) => void;
 }
 
-/**
- * Der Ausschnitt für `METROPOLIS_PATHS` in einem eigenen kleinen `<svg>`.
- *
- * Nachgemessen aus den Pfaddaten selbst und nicht geraten: alle drei Formen
- * liegen zusammen bei x -8,6 bis 2,6 und y -9 bis -8,05 (`shapes.ts`) - mit
- * 0,2 Einheiten Luft an den Seiten und 0,1 oben wie unten.
- */
-const METROPOLIS_VIEWBOX = '-8.8 -9.1 11.6 1.15';
+/** Der Ausschnitt für `METROPOLIS_EMBLEMS`: Radius 3 plus Luft fuer den Rand. */
+const METROPOLIS_VIEWBOX = '-3.4 -3.4 6.8 6.8';
 
 export function TrackPanel({
   targets,
@@ -174,7 +168,8 @@ function TrackStep({
            * demselben Grund steht - hier gilt dieselbe Antwort.
            */}
           <path
-            d={METROPOLIS_PATHS[track]}
+            d={METROPOLIS_EMBLEMS[track]}
+            fillRule="evenodd"
             style={{ fill: built ? TRACK_BUILT_WORD_COLORS[track] : TRACK_COLORS[track] }}
           />
         </svg>

@@ -260,8 +260,8 @@ function progressBoardHint(card: ProgressBoardCard, first: string | null): strin
         : 'Straßenbau: zweite Straße wählen, falls eine geht';
     case 'diplomat':
       return first === null
-        ? 'Diplomat: zu entfernende Straße wählen'
-        : 'Diplomat: Stelle für den Neubau wählen, falls eine geht';
+        ? 'Diplomat: markierte offene Straße wählen - an Bauwerk oder Ritter ist sie geschützt'
+        : 'Diplomat: deine Straße neu legen - markierte Stelle wählen, falls eine geht';
   }
 }
 

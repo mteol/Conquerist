@@ -8,6 +8,7 @@ import {
   type GameState,
   type PlayerId,
   type PlayerView,
+  type PointSource,
   type CardAmounts,
   type Roll,
   type RuleSet,
@@ -34,6 +35,8 @@ export interface PlayerRow {
   readonly name: string;
   readonly color: string;
   readonly victoryPoints: number;
+  /** Die oeffentlichen Punkte nach Quelle - der Rest sind verdeckte Siegpunktkarten. */
+  readonly pointParts: Partial<Record<PointSource, number>>;
   readonly cardCount: number;
   /** `null` heisst: gehoert jemand anderem. Die Anzahl bleibt sichtbar. */
   readonly resources: CardAmounts | null;
@@ -364,6 +367,7 @@ export function gameViewOf(view: PlayerView, previous?: PlayerView): GameView {
     name: player.name,
     color: player.color,
     victoryPoints: player.victoryPoints,
+    pointParts: player.pointParts as Partial<Record<PointSource, number>>,
     cardCount: player.cardCount,
     resources: player.resources,
     piecesLeft: player.piecesLeft,

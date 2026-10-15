@@ -1,17 +1,10 @@
 import { CARD_IDS } from '../scenario/index.js';
-import { boardOf } from './board.js';
 import { takeMostHeld } from './cards.js';
 import { deadlineOf } from './deadline.js';
 import { RuleViolationCode, violation, type RuleViolation } from './errors.js';
 import type { Phase } from './phase.js';
 import type { PlayerId } from './player.js';
-import {
-  applyDiscard,
-  applyMoveRobber,
-  canPlaceRobberAt,
-  discardCountFor,
-  victimsAt,
-} from './robber.js';
+import { applyDiscard, discardCountFor } from './robber.js';
 import {
   findPlayer,
   ok,
@@ -102,9 +95,6 @@ export function applyTimeout(state: GameState, at: number): ReduceResult {
     case 'progressDiscardPending':
       return discardFirstCountingCard(state, phase.pending[0]!);
 
-    case 'robberPending':
-      return moveRobberForCurrent(state);
-
     case 'displacePending':
       return placeDisplaced(state, phase);
 
@@ -112,6 +102,7 @@ export function applyTimeout(state: GameState, at: number): ReduceResult {
       return autoAnswerProgress(state);
 
     // `canTimeout` hat diese Phasen schon abgewiesen - der Zweig haelt `tsc` erschoepfend.
+    case 'robberPending':
     case 'opening':
     case 'setup':
     case 'rollPending':
@@ -146,33 +137,6 @@ function discardFirstCountingCard(state: GameState, player: PlayerId): ReduceRes
     );
   }
   return applyDiscardProgressCard(state, player, card);
-}
-
-/**
- * Wueste, sonst das erste Feld ohne fremdes Bauwerk, sonst das erste legale -
- * je nach Feld-Id sortiert. Wer dort Karten hat, wird bestohlen wie sonst auch.
- */
-function moveRobberForCurrent(state: GameState): ReduceResult {
-  const player = state.players[state.currentPlayerIndex]!.id;
-  const board = boardOf(state.scenario);
-
-  const legal = [...board.hexes.keys()]
-    .filter((hex) => canPlaceRobberAt(state, hex) === null)
-    .sort();
-  const desert = legal.filter((hex) => board.hexes.get(hex)?.terrain === 'desert');
-  const harmless = legal.filter(
-    (hex) =>
-      !(board.topology.hexVertices.get(hex) ?? []).some((vertex) => {
-        const building = state.buildings[vertex];
-        return building !== undefined && building.owner !== player;
-      }),
-  );
-
-  const hex = desert[0] ?? harmless[0] ?? legal[0];
-  if (hex === undefined) {
-    return rejected(violation(RuleViolationCode.ROBBER_LOCKED, 'Der Räuber findet kein Feld'));
-  }
-  return applyMoveRobber(state, player, hex, victimsAt(state, hex, player)[0] ?? null);
 }
 
 /** Die erste legale Kreuzung nach Id, sonst vom Brett in den Vorrat. */

@@ -47,14 +47,18 @@ export function deadlineOf(source: DeadlineSource): Deadline | null {
     case 'aqueductPending':
     case 'progressPending':
       return after(phase.pending[0]);
-    case 'robberPending':
-      return after(source.players[source.currentPlayerIndex]?.id);
     case 'displacePending':
       return after(phase.owner);
     /*
      * Keine Frist fuer `main` und `rollPending`: eine Zugzeit betraefe jeden
      * Zug statt einer Wartephase und bleibt offener Punkt (Spec 5.5).
      */
+    /*
+     * Keine Frist fuers Versetzen des Raeubers: der Zug gehoert dem, der am
+     * Zug ist, und auf niemanden sonst wird gewartet. Wer sich Zeit laesst,
+     * haelt nur den eigenen Zug auf - genau wie in `main`.
+     */
+    case 'robberPending':
     case 'opening':
     case 'setup':
     case 'rollPending':

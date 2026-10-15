@@ -14,6 +14,7 @@ const player: PlayerRow = {
   name: 'Spieler 1',
   color: '#c0392b',
   victoryPoints: 2,
+  pointParts: {},
   cardCount: 8,
   resources: cardAmounts({ brick: 3, lumber: 2, wool: 2, grain: 1, ore: 0 }),
   piecesLeft: pieceCounts({ road: 13, settlement: 3, city: 4 }),

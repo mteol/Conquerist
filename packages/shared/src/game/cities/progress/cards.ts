@@ -136,7 +136,8 @@ export const PROGRESS_TEXTS: Readonly<Record<ProgressCardId, string>> = {
   bishop: 'Räuber versetzen und von jeder Person am neuen Feld eine Handkarte ziehen.',
   deserter:
     'Eine Person entfernt einen Ritter ihrer Wahl; man stellt selbst einen gleichwertigen Ritter auf.',
-  diplomat: 'Eine offene Straße entfernen; eine eigene darf sofort neu gesetzt werden.',
+  diplomat:
+    'Eine offene Straße entfernen - ohne Bauwerk oder Ritter an einem Ende; eine eigene darf sofort neu gesetzt werden.',
   warlord: 'Alle eigenen Ritter gratis aktivieren.',
   wedding: 'Jede Person mit mehr Siegpunkten schenkt zwei Karten ihrer Wahl.',
   intrigue: 'Einen fremden Ritter ohne eigenen Ritter von einer erreichbaren Kreuzung vertreiben.',

@@ -21,10 +21,9 @@ import { CardGlyph } from './CardGlyph';
  * unterscheidet, liest das Motiv; wer schnell schaut, die Farbe.
  *
  * **Handelswaren stehen zwischen den Rohstoffen und sehen anders aus.** Sie
- * haben die Farbe ihres Gelaendes - Papier kommt aus dem Wald -, aber einen
- * hellen Koerper mit farbigem Rand. Holz und Papier liegen gleichzeitig auf
- * der Hand, und vor dem Abwerfen zaehlt man sie unter Zeitdruck: zwei Karten
- * in derselben Farbe und derselben Flaeche waeren im Vorbeisehen eine.
+ * haben eigene Farben ausserhalb der Gelaendetoene und einen hellen
+ * Innenrahmen. Holz und Papier liegen gleichzeitig auf der Hand, und vor dem
+ * Abwerfen zaehlt man sie unter Zeitdruck: sie duerfen sich nicht gleichen.
  */
 export interface HandPanelProps {
   /** `null` heisst: fremde Hand. Dann gibt es hier nichts zu zeigen. */
@@ -121,34 +120,12 @@ function Stack({ card, amount }: { readonly card: CardId; readonly amount: numbe
           key={index}
           className="card__behind"
           aria-hidden="true"
-          /*
-           * Bei der Handelsware **kein** Hintergrund von hier: sie kommt aus
-           * dem Blatt (`.card--ware .card__behind`). Beides zu setzen hiesse,
-           * die Regel mit `!important` gegen den Inline-Stil durchzudruecken -
-           * und ein Blatt, das gegen sein eigenes Bauteil kaempft, ist die
-           * Falle aus `CLAUDE.md` in der zweiten Richtung.
-           */
-          style={
-            ware
-              ? ({ '--i': index + 1 } as CSSProperties)
-              : ({ background: CARD_COLORS[card], '--i': index + 1 } as CSSProperties)
-          }
+          style={{ background: CARD_COLORS[card], '--i': index + 1 } as CSSProperties}
         />
       ))}
 
-      {/*
-       * Bei der Handelsware faerbt die Gelaendefarbe den Rand, bei einem
-       * Rohstoff die Flaeche. Beides per `style`: eine Regel im Blatt kann die
-       * Farbe nicht kennen.
-       */}
-      <span
-        className="card__face"
-        style={
-          ware
-            ? ({ '--ware-edge': CARD_COLORS[card] } as CSSProperties)
-            : { background: CARD_COLORS[card] }
-        }
-      >
+      {/* Die Farbe per `style`: eine Regel im Blatt kann die Sorte nicht kennen. */}
+      <span className="card__face" style={{ background: CARD_COLORS[card] }}>
         <CardGlyph card={card} />
       </span>
 

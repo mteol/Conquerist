@@ -938,13 +938,6 @@ describe('Verlaufssaetze der wartenden Karten', () => {
     );
   });
 
-  it('nennt beim Fristablauf des Raeubers den festen Satz', () => {
-    const state = cities({ phase: { kind: 'robberPending', resume: 'main' } });
-    expect(sentence(state, { type: 'timeout', player: 'p1', at: 0 })).toBe(
-      'Die Zeit ist abgelaufen - der Räuber zieht von selbst weiter',
-    );
-  });
-
   it('nennt beim Fristablauf des Ausweichens den Besitzer', () => {
     const state = cities({
       roads: { [NEXT_EDGE]: 'p2' },

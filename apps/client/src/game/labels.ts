@@ -55,17 +55,18 @@ export const RESOURCE_COLORS: Readonly<Record<ResourceId, string>> = {
 };
 
 /**
- * Die Farbe einer Handelsware ist die des Gelaendes, aus dem sie kommt.
+ * Die Handelswaren tragen den Ton ihres Gelaendes - Zeiger auf `index.css`.
  *
- * Sie traegt sie aber als **Rand** und nicht als Flaeche - siehe
- * `ResourceCard`. Zwei Karten mit derselben Farbe und derselben Flaeche waeren
- * im Vorbeisehen dieselbe Karte, und man haelt Holz und Papier gleichzeitig
- * auf der Hand.
+ * Papier dunkelgruen wie der Wald, Tuch hellgruen wie die Weide, Muenzen blau
+ * wie das Gebirge (kraeftiger als dessen Grau, damit sie nicht blass wirken).
+ * Ganzflaechig statt als Rand auf Pergament; dass es eine Ware ist und kein
+ * Rohstoff, sagen der helle Innenrahmen (`.card--ware`, `.rescard--ware`) und
+ * das eigene Motiv.
  */
 export const COMMODITY_COLORS: Readonly<Record<CommodityId, string>> = {
-  paper: TERRAIN_COLORS.forest,
-  cloth: TERRAIN_COLORS.pasture,
-  coin: TERRAIN_COLORS.mountains,
+  paper: 'var(--ware-paper)',
+  cloth: 'var(--ware-cloth)',
+  coin: 'var(--ware-coin)',
 };
 
 /** Die Farbe zu jeder Kartensorte - Rohstoff wie Handelsware. */

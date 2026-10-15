@@ -113,6 +113,27 @@ const DELAY = 180;
  */
 export const LONG_PRESS = 480;
 
+/**
+ * Der Anker samt dem, was beim Darueberfahren aus dem Element herauswaechst.
+ *
+ * Die Bauleiste zeigt ihre Kosten als Pergament ueber dem Knopf
+ * (`.build__cost`), und das Kaertchen setzte sich genau dorthin - die
+ * Beschreibung lag auf den Rohstoffen, die sie erklaert. Gemessen wird die
+ * Box, nicht die Sichtbarkeit: das Pergament blendet erst ein, steht aber
+ * schon an seinem Platz.
+ */
+export function anchorOf(element: Element): HintAnchor {
+  const rects = [element, ...element.querySelectorAll('.build__cost')].map((part) =>
+    part.getBoundingClientRect(),
+  );
+  return {
+    left: Math.min(...rects.map((rect) => rect.left)),
+    top: Math.min(...rects.map((rect) => rect.top)),
+    right: Math.max(...rects.map((rect) => rect.right)),
+    bottom: Math.max(...rects.map((rect) => rect.bottom)),
+  };
+}
+
 /** Wie weit der Finger wandern darf, bevor es ein Wischen ist, in px. */
 const SLOP = 10;
 
@@ -170,11 +191,7 @@ export function HintLayer(): JSX.Element | null {
       timer = setTimeout(() => {
         const hint = hintOf(element);
         if (hint === null || !element.isConnected) return;
-        const rect = element.getBoundingClientRect();
-        setShown({
-          hint,
-          anchor: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
-        });
+        setShown({ hint, anchor: anchorOf(element) });
         onShown?.();
       }, delay);
     };

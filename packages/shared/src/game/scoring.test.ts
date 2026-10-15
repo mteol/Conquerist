@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { CLASSIC_RULES } from '../rules/index.js';
 import { CENTER_VERTEX, FAR_VERTEX, gameWithCities, testGame } from './fixtures.js';
-import { hasWon, publicVictoryPointsOf, victoryPointsOf } from './scoring.js';
+import {
+  hasWon,
+  publicVictoryPointParts,
+  publicVictoryPointsOf,
+  victoryPointsOf,
+} from './scoring.js';
+import { CITIES_RULES } from '../rules/index.js';
 import type { GameState } from './state.js';
 
 describe('victoryPointsOf', () => {
@@ -194,5 +200,30 @@ describe('Die Metropole zaehlt mit', () => {
 
     expect(victoryPointsOf(state, 'p1')).toBe(2);
     expect(publicVictoryPointsOf(state, 'p1')).toBe(2);
+  });
+});
+
+describe('publicVictoryPointParts', () => {
+  it('schluesselt die oeffentlichen Punkte nach Quelle auf und ergibt ihre Summe', () => {
+    let state = testGame({
+      rules: CITIES_RULES,
+      buildings: {
+        [CENTER_VERTEX]: { owner: 'p1', kind: 'city', wall: false, metropolis: 'trade' },
+        [FAR_VERTEX]: { owner: 'p1', kind: 'settlement', wall: false, metropolis: null },
+      },
+      merchant: { hex: '0,0', owner: 'p1' },
+    });
+    state = {
+      ...state,
+      players: state.players.map((player) =>
+        player.id === 'p1' ? { ...player, defenderPoints: 2 } : player,
+      ),
+    };
+
+    const parts = publicVictoryPointParts(state, 'p1');
+
+    expect(parts).toEqual({ city: 2, metropolis: 2, settlement: 1, defender: 2, merchant: 1 });
+    expect(publicVictoryPointsOf(state, 'p1')).toBe(8);
+    expect(publicVictoryPointParts(state, 'p2')).toEqual({});
   });
 });

@@ -109,7 +109,8 @@ export function longestRoadLength(state: GameState, player: PlayerId): number {
  *
  * **Jedes** Gebaeude sperrt das Ende, nicht nur ein eigenes - gefragt ist, ob
  * die Strasse dort an etwas anschliesst, und ein fremdes Dorf ist etwas.
- * Ritter zaehlen nicht: sie stehen auf der Kreuzung, sie halten sie nicht.
+ * Ein Ritter am Ende sperrt es ebenso - aus demselben Grund und auch ein
+ * fremder: an der Strasse steht dort etwas (Wunsch aus dem Playtest).
  */
 export function openRoads(state: GameState): EdgeId[] {
   const board = boardOf(state.scenario);
@@ -118,6 +119,7 @@ export function openRoads(state: GameState): EdgeId[] {
     .filter(([edge, owner]) =>
       (board.topology.edgeVertices.get(edge) ?? []).some((end) => {
         if (state.buildings[end] !== undefined) return false;
+        if (state.knights[end] !== undefined) return false;
 
         const continues = (board.topology.vertexEdges.get(end) ?? []).some(
           (other) => other !== edge && state.roads[other] === owner,

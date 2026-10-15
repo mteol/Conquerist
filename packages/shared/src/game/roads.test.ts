@@ -303,6 +303,24 @@ describe('openRoads', () => {
     expect(openRoads(state)).toContain(danglingEdge);
   });
 
+  it('schuetzt eine Strasse, an deren freiem Ende ein Ritter steht', () => {
+    for (const owner of ['p1', 'p2'] as const) {
+      const state = chainWithBuildings({
+        knights: {
+          [CORNERS[3]!]: {
+            owner,
+            level: 1,
+            active: false,
+            activatedOnTurn: null,
+            upgradedThisTurn: false,
+          },
+        },
+      });
+
+      expect(openRoads(state)).not.toContain(danglingEdge);
+    }
+  });
+
   it('nennt die offenen Strassen aller Spieler', () => {
     const state = testGame({
       roads: { ...roadsFor('p1', [RING[0]!]), ...roadsFor('p2', [RING[3]!]) },
