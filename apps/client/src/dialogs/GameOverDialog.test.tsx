@@ -92,4 +92,40 @@ describe('Endbildschirm', () => {
 
     expect(onClose).toHaveBeenCalled();
   });
+
+  /*
+   * Die Marke an jeder Saeule: n * Wege / 36. Bei 36 Wuerfen erwartet man die
+   * Sieben sechsmal und die Zwei einmal.
+   */
+  it('nennt zu jeder Summe die Erwartung', () => {
+    render(
+      <GameOverDialog
+        view={finishedView({ '7': 30, '2': 6 })}
+        onClose={vi.fn()}
+        onLeave={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('over-roll-7').getAttribute('aria-label')).toBe(
+      '7: 30-mal, erwartet 6',
+    );
+    expect(screen.getByTestId('over-roll-2').getAttribute('aria-label')).toBe(
+      '2: 6-mal, erwartet 1',
+    );
+    expect(screen.getByText(/erwartet bei 36 Würfen/)).toBeDefined();
+  });
+
+  it('fuehrt zurueck zum Brett und hinaus zum Start', async () => {
+    const onClose = vi.fn();
+    const onLeave = vi.fn();
+    render(<GameOverDialog view={finishedView({})} onClose={onClose} onLeave={onLeave} />);
+
+    expect(screen.getByText('Es wurde nicht gewürfelt.')).toBeDefined();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Brett ansehen' }));
+    expect(onClose).toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Zurück zum Start' }));
+    expect(onLeave).toHaveBeenCalled();
+  });
 });

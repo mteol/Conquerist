@@ -1,7 +1,7 @@
 import { useState, type JSX } from 'react';
 import { CARD_LABELS, type CardId } from '@conquerist/shared';
 import { ResourceCard } from '../panels/ResourceCard';
-import { CloseButton } from './CloseButton';
+import { Modal } from './Modal';
 
 /**
  * Sorten auswaehlen - fuer Erfindung, Monopol, und seit Staedte & Ritter auch
@@ -60,36 +60,13 @@ export function ResourcePickDialog<T extends CardId = CardId>({
   const [picks, setPicks] = useState<readonly T[]>([]);
 
   return (
-    <div className="modal" role="dialog" aria-label={title}>
-      <div className="modal__box">
-        {onClose === undefined ? null : <CloseButton onClose={onClose} label={title} />}
-        <h2>{title}</h2>
-        <p className="modal__hint">{hint}</p>
-
-        <div className="pick">
-          {pool.map((card) => (
-            <button
-              key={card}
-              type="button"
-              className="pick__card"
-              data-testid={`pick-${card}`}
-              data-sound="card"
-              disabled={picks.length >= count}
-              aria-label={CARD_LABELS[card]}
-              onClick={() => setPicks((current) => [...current, card])}
-            >
-              <ResourceCard card={card} />
-            </button>
-          ))}
-        </div>
-
-        <p className="pick__chosen" data-testid="pick-chosen">
-          {picks.length === 0
-            ? 'Noch nichts gewählt.'
-            : picks.map((pick) => CARD_LABELS[pick]).join(' + ')}
-        </p>
-
-        <div className="modal__buttons">
+    <Modal
+      label={title}
+      title={title}
+      hint={hint}
+      onClose={onClose}
+      foot={
+        <>
           <button
             type="button"
             className="button button--ghost"
@@ -111,8 +88,31 @@ export function ResourcePickDialog<T extends CardId = CardId>({
           >
             {confirmLabel}
           </button>
-        </div>
+        </>
+      }
+    >
+      <div className="pick">
+        {pool.map((card) => (
+          <button
+            key={card}
+            type="button"
+            className="pick__card"
+            data-testid={`pick-${card}`}
+            data-sound="card"
+            disabled={picks.length >= count}
+            aria-label={CARD_LABELS[card]}
+            onClick={() => setPicks((current) => [...current, card])}
+          >
+            <ResourceCard card={card} />
+          </button>
+        ))}
       </div>
-    </div>
+
+      <p className="pick__chosen" data-testid="pick-chosen">
+        {picks.length === 0
+          ? 'Noch nichts gewählt.'
+          : picks.map((pick) => CARD_LABELS[pick]).join(' + ')}
+      </p>
+    </Modal>
   );
 }

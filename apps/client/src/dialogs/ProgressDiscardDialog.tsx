@@ -1,7 +1,8 @@
 import type { JSX } from 'react';
 import { PROGRESS_NAMES, PROGRESS_TRACK, type ProgressCardId } from '@conquerist/shared';
 import { TRACK_COLORS } from '../game/labels';
-import { CloseButton } from './CloseButton';
+import { Modal } from './Modal';
+import { Choice } from './Choice';
 
 /**
  * Mehr als vier zaehlende Fortschrittskarten: welche geht zurueck.
@@ -31,35 +32,26 @@ export function ProgressDiscardDialog({
   onClose,
 }: ProgressDiscardDialogProps): JSX.Element {
   return (
-    <div className="modal" role="dialog" aria-label="Fortschrittskarte abgeben">
-      <div className="modal__box">
-        {onClose !== undefined ? (
-          <CloseButton onClose={onClose} label="Fortschrittskarte abgeben" />
-        ) : null}
-        <h2>Welche Karte gibst du ab?</h2>
-        <p className="modal__hint">
-          {onClose !== undefined
-            ? 'Fünf Fortschrittskarten am Zug — spiel eine aus oder gib eine davon zurück.'
-            : 'Mehr als vier zählende Fortschrittskarten — eine davon geht zurück.'}
-        </p>
-
-        <div className="pick">
-          {cards.map((card) => (
-            <button
-              key={card}
-              type="button"
-              className="button"
-              style={{
-                borderLeftColor: TRACK_COLORS[PROGRESS_TRACK[card]],
-                borderLeftWidth: '4px',
-              }}
-              onClick={() => onDiscard(card)}
-            >
-              {PROGRESS_NAMES[card]}
-            </button>
-          ))}
-        </div>
+    <Modal
+      label="Fortschrittskarte abgeben"
+      title="Welche Karte gibst du ab?"
+      hint={
+        onClose !== undefined
+          ? 'Fünf Fortschrittskarten am Zug — spiel eine aus oder gib eine davon zurück.'
+          : 'Mehr als vier zählende Fortschrittskarten — eine davon geht zurück.'
+      }
+      onClose={onClose}
+    >
+      <div className="choices">
+        {cards.map((card) => (
+          <Choice
+            key={card}
+            tone={TRACK_COLORS[PROGRESS_TRACK[card]]}
+            name={PROGRESS_NAMES[card]}
+            onClick={() => onDiscard(card)}
+          />
+        ))}
       </div>
-    </div>
+    </Modal>
   );
 }

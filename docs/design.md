@@ -78,6 +78,12 @@ kämen für dieses Spiel nicht aus dem Material, sondern aus der Gewohnheit.
 
 **Fallen, die schon zugeschnappt sind:**
 
+- **Ein Ersatz, dessen Vorgänger stehen bleibt, liegt darunter.** Der neue
+  Endstand mit Würfelverteilung kam dazu, der alte Kasten „Partie beendet"
+  blieb im Baum — weiter unten im Markup, also obendrauf, und genau über der
+  Verteilung. Wer etwas ersetzt, sucht den Vorgänger und nimmt ihn heraus.
+  Seither gibt es eine Dialog-Hülle (`dialogs/Modal.tsx`); ein neuer Dialog
+  baut auf ihr auf, statt Markup zu kopieren.
 - Eine CSS-Regel schlägt immer das gleichnamige SVG-Präsentationsattribut.
   `.road { stroke: transparent }` hat jede gebaute Straße unsichtbar gemacht,
   obwohl `stroke={farbe}` am Element stand. Farben am SVG deshalb per `style`.

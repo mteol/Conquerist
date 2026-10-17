@@ -37,6 +37,7 @@ import {
 import { HARBOR_MARK, HarborMark } from './harbor';
 import { LAYERS, TerrainPatterns, terrainFill } from './terrain';
 import { Numeral } from '../type/Numerals';
+import { isHotTotal, waysOf } from '../game/rollOdds';
 
 /**
  * Das Brett. Zeichnet den Zustand und meldet, wo geklickt wurde - mehr nicht.
@@ -165,33 +166,11 @@ const BUILDING_SCALE: Readonly<Record<'settlement' | 'city' | 'knight', number>>
   knight: 0.0225,
 };
 
-/** Augenwahrscheinlichkeit eines Chips - fuer die Punktreihe unter der Zahl. */
-const PIPS: Readonly<Record<number, number>> = {
-  2: 1,
-  3: 2,
-  4: 3,
-  5: 4,
-  6: 5,
-  8: 5,
-  9: 4,
-  10: 3,
-  11: 2,
-  12: 1,
-};
-
-/**
- * Die zwei Zahlen, die am haeufigsten fallen - und deshalb rot stehen.
- *
- * Abgeleitet aus `PIPS` und nicht als `chip === 6 || chip === 8` geschrieben:
- * heiss ist, was die hoechste Augenwahrscheinlichkeit hat, und das folgt aus
- * der Wuerfelschale. Ein Regelwerk mit anderen Wuerfeln faerbt damit von selbst
- * die richtigen Chips, ohne dass hier eine Zahl nachgezogen werden muss.
+/*
+ * Augenwahrscheinlichkeit und „heiss" kommen aus `game/rollOdds.ts` - dieselbe
+ * Zaehlung, mit der der Endstand seine Erwartung rechnet.
  */
-const HOTTEST = Math.max(...Object.values(PIPS));
-
-function isHot(chip: number): boolean {
-  return (PIPS[chip] ?? 0) === HOTTEST;
-}
+const isHot = isHotTotal;
 
 /**
  * Die Klickstelle in viewBox-Koordinaten.
@@ -474,7 +453,7 @@ export function BoardSvg({
                * jeder Schrift und auf jedem Rechner.
                */}
               <ChipPips
-                count={PIPS[placement.chip] ?? 0}
+                count={waysOf(placement.chip)}
                 x={center.x}
                 y={center.y + 0.225}
                 hot={isHot(placement.chip)}

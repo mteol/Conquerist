@@ -71,6 +71,7 @@ import { ProgressDiscardDialog } from '../dialogs/ProgressDiscardDialog';
 import { SpyDialog } from '../dialogs/SpyDialog';
 import type { LogEntry } from '../game/hotseat';
 import { useCoarsePointer } from '../useCoarsePointer';
+import { Modal } from '../dialogs/Modal';
 
 /**
  * Setzt Brett, Panels und Dialoge zusammen.
@@ -1790,15 +1791,16 @@ export function GameScreen({
       )}
 
       {over !== null ? (
-        <div className="modal" role="dialog" aria-label="Partie abgebrochen">
-          <div className="modal__box">
-            <h2>Partie abgebrochen</h2>
-            <p>{over}</p>
+        <Modal
+          label="Partie abgebrochen"
+          title="Partie abgebrochen"
+          hint={over}
+          foot={
             <button type="button" className="button button--go" onClick={onLeave}>
               Zurück zum Start
             </button>
-          </div>
-        </div>
+          }
+        />
       ) : null}
     </main>
   );

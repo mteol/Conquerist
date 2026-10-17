@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type JSX } from 'react';
 import { MIN_PASSWORD_LENGTH } from '@conquerist/shared';
-import { CloseButton } from './CloseButton';
+import { Modal } from './Modal';
 
 /**
  * Konto anlegen oder anmelden - ein Dialog, zwei Modi.
@@ -55,68 +55,71 @@ export function AccountDialog({
   }
 
   return (
-    <div className="modal" role="dialog" aria-label={title}>
-      <form className="modal__box" onSubmit={submit}>
-        <CloseButton onClose={onClose} label={title} />
-        <h2>{title}</h2>
+    <Modal
+      label={title}
+      title={title}
+      onClose={onClose}
+      onSubmit={submit}
+      foot={
+        <>
+          <button type="button" className="button button--ghost" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button type="submit" className="button button--go">
+            {warned ? 'Trotzdem anmelden' : title}
+          </button>
+        </>
+      }
+    >
+      {warned ? (
+        <p className="modal__hint modal__hint--warn">
+          Du hast {openGuestGames} offene Partien als Gast. Wenn du dich anmeldest, kommst du über
+          dieses Gerät nicht mehr an sie heran.
+        </p>
+      ) : null}
 
-        {warned ? (
-          <p className="modal__hint modal__hint--warn">
-            Du hast {openGuestGames} offene Partien als Gast. Wenn du dich anmeldest, kommst du über
-            dieses Gerät nicht mehr an sie heran.
-          </p>
-        ) : null}
+      <label className="field">
+        <span>Benutzername</span>
+        <input
+          value={login}
+          onChange={(event) => setLogin(event.target.value)}
+          autoComplete="username"
+          required
+        />
+      </label>
 
+      <label className="field">
+        <span>Passwort</span>
+        <input
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete={registering ? 'new-password' : 'current-password'}
+          minLength={MIN_PASSWORD_LENGTH}
+          required
+        />
+      </label>
+
+      {registering ? (
         <label className="field">
-          <span>Benutzername</span>
+          <span>E-Mail (freiwillig)</span>
           <input
-            value={login}
-            onChange={(event) => setLogin(event.target.value)}
-            autoComplete="username"
-            required
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
           />
+          {/*
+           * Ehrlich beschriftet: die Adresse tut heute nichts. Ein Feld, das
+           * so aussieht, als schicke es Post, waere ein Versprechen.
+           */}
+          <small className="field__note">
+            Tut heute noch nichts. Sie liegt für eine spätere Passwort-Wiederherstellung.
+          </small>
         </label>
+      ) : null}
 
-        <label className="field">
-          <span>Passwort</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete={registering ? 'new-password' : 'current-password'}
-            minLength={MIN_PASSWORD_LENGTH}
-            required
-          />
-        </label>
-
-        {registering ? (
-          <label className="field">
-            <span>E-Mail (freiwillig)</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-            />
-            {/*
-             * Ehrlich beschriftet: die Adresse tut heute nichts. Ein Feld, das
-             * so aussieht, als schicke es Post, waere ein Versprechen.
-             */}
-            <small className="field__note">
-              Tut heute noch nichts. Sie liegt für eine spätere Passwort-Wiederherstellung.
-            </small>
-          </label>
-        ) : null}
-
-        {problem === null ? null : <p className="modal__problem">{problem}</p>}
-
-        <button type="submit" className="button button--go">
-          {warned ? 'Trotzdem anmelden' : title}
-        </button>
-        <button type="button" className="button button--ghost" onClick={onClose}>
-          Abbrechen
-        </button>
-      </form>
-    </div>
+      {problem === null ? null : <p className="modal__problem">{problem}</p>}
+    </Modal>
   );
 }

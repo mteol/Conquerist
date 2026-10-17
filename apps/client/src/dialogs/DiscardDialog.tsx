@@ -3,6 +3,7 @@ import { EMPTY_CARDS, type CardAmounts, type CardId } from '@conquerist/shared';
 import { CARD_LABELS } from '../game/labels';
 import { ResourceCard } from '../panels/ResourceCard';
 import type { PlayerRow } from '../game/view';
+import { Modal } from './Modal';
 
 /**
  * Abwerfen nach einer Sieben.
@@ -116,42 +117,11 @@ export function DiscardDialog({
   };
 
   return (
-    <div className="modal" role="dialog" aria-label={title ?? `${player.name} wirft ab`}>
-      <div className="modal__box">
-        <h2>{title ?? `${player.name}, wirf ${required} Karten ab`}</h2>
-        <p className="modal__hint">
-          {hint ?? `Nur du siehst dieses Fenster. ${player.cardCount} Karten auf der Hand.`}
-        </p>
-
-        <div className="cards">
-          {cards.map((resource) => (
-            <div key={resource} className="cards__item">
-              <ResourceCard card={resource} held={held[resource] ?? 0} />
-              <div className="cards__stepper">
-                <button
-                  type="button"
-                  aria-label={`${CARD_LABELS[resource]} weniger`}
-                  data-sound="card"
-                  disabled={!canStep(resource, -1)}
-                  onClick={() => change(resource, -1)}
-                >
-                  −
-                </button>
-                <span data-testid={`chosen-${resource}`}>{chosen[resource] ?? 0}</span>
-                <button
-                  type="button"
-                  aria-label={`${CARD_LABELS[resource]} mehr`}
-                  data-sound="card"
-                  disabled={!canStep(resource, 1)}
-                  onClick={() => change(resource, 1)}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
+    <Modal
+      label={title ?? `${player.name} wirft ab`}
+      title={title ?? `${player.name}, wirf ${required} Karten ab`}
+      hint={hint ?? `Nur du siehst dieses Fenster. ${player.cardCount} Karten auf der Hand.`}
+      foot={
         <button
           type="button"
           className="button button--go"
@@ -160,7 +130,36 @@ export function DiscardDialog({
         >
           {confirmLabel ?? 'Abwerfen'} ({total}/{required})
         </button>
+      }
+    >
+      <div className="cards">
+        {cards.map((resource) => (
+          <div key={resource} className="cards__item">
+            <ResourceCard card={resource} held={held[resource] ?? 0} />
+            <div className="cards__stepper">
+              <button
+                type="button"
+                aria-label={`${CARD_LABELS[resource]} weniger`}
+                data-sound="card"
+                disabled={!canStep(resource, -1)}
+                onClick={() => change(resource, -1)}
+              >
+                −
+              </button>
+              <span data-testid={`chosen-${resource}`}>{chosen[resource] ?? 0}</span>
+              <button
+                type="button"
+                aria-label={`${CARD_LABELS[resource]} mehr`}
+                data-sound="card"
+                disabled={!canStep(resource, 1)}
+                onClick={() => change(resource, 1)}
+              >
+                +
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
-    </div>
+    </Modal>
   );
 }

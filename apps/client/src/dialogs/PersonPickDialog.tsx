@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import type { PlayerId } from '@conquerist/shared';
-import { CloseButton } from './CloseButton';
+import { Modal } from './Modal';
+import { Choice } from './Choice';
 
 /** Eine Person, wie die Wahl sie zeigt. */
 export interface PersonOption {
@@ -38,33 +39,33 @@ export function PersonPickDialog({
   onClose,
 }: PersonPickDialogProps): JSX.Element {
   return (
-    <div className="modal" role="dialog" aria-label={title}>
-      <div className="modal__box">
-        <CloseButton onClose={onClose} label={title} />
-        <h2>{title}</h2>
-        <p className="modal__hint">{hint}</p>
+    <Modal
+      label={title}
+      title={title}
+      hint={hint}
+      onClose={onClose}
+      foot={
+        <button type="button" className="button button--ghost" onClick={onClose}>
+          Abbrechen
+        </button>
+      }
+    >
+      <div className="choices">
+        {people.map((person) => {
+          const points = `${person.victoryPoints} ${person.victoryPoints === 1 ? 'Siegpunkt' : 'Siegpunkte'}`;
 
-        <div className="pick">
-          {people.map((person) => (
-            <button
+          return (
+            <Choice
               key={person.id}
-              type="button"
-              className="button"
-              style={{ borderLeftColor: person.color, borderLeftWidth: '4px' }}
+              tone={person.color}
+              name={person.name}
+              detail={points}
+              label={`${person.name} · ${points}`}
               onClick={() => onChoose(person.id)}
-            >
-              {person.name} · {person.victoryPoints}{' '}
-              {person.victoryPoints === 1 ? 'Siegpunkt' : 'Siegpunkte'}
-            </button>
-          ))}
-        </div>
-
-        <div className="modal__buttons">
-          <button type="button" className="button button--ghost" onClick={onClose}>
-            Abbrechen
-          </button>
-        </div>
+            />
+          );
+        })}
       </div>
-    </div>
+    </Modal>
   );
 }

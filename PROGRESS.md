@@ -20,21 +20,42 @@ Im Archiv nur gezielt suchen (`grep` nach Stichwort), nie ganz lesen.
 - **10e abgeschlossen** (Burg 1 / Burg 2, Abschnitt unten).
   Davor 10d-3 (Regelfragen aus 10d-2), Details im Archiv 10d.
 
-## Endstand: Würfelverteilung war verdeckt (2026-10-17, `ccr-3c251c28-jv6v25`)
+## Endstand und Dialoge neu (2026-10-17, `ccr-3c251c28-jv6v25`)
 
-Abnahme: `pnpm typecheck` grün; Tests shared 1283, server 222, client 646;
-Build Client 555,65 kB (161,95 kB gzip), CSS 63,34 kB; `format:check` grün.
-Im Browser über eine temporäre Vorschauseite vorher/nachher gesehen.
+Abnahme: `pnpm typecheck` grün; Tests shared 1283, server 222, client 654;
+Build Client 555,32 kB (162,44 kB gzip), CSS 66,86 kB; `format:check` grün.
+Im Browser über eine temporäre Vorschauseite gesehen (1280 px und 390 px),
+Kontraste nachgerechnet.
 
 - **Zwei Dialoge am Ende, der falsche oben:** neben `GameOverDialog` stand in
-  `GameScreen` noch der alte Kasten „Partie beendet" (nur Namen und Punkte).
-  Er kam später im Baum, lag damit obendrauf und genau über der
-  Würfelverteilung. Er ist entfernt; „Zurück zum Start" trägt jetzt der
-  Endstand selbst (`onLeave`).
-- **Abbruch vom Server geht vor:** der Endstand erscheint nur ohne `over`,
-  sonst stünden wieder zwei Kästen übereinander.
-- Nächster Schritt (offen, mit Absprache): Endstand und Dialoge allgemein
-  überarbeiten.
+  `GameScreen` noch der alte Kasten „Partie beendet". Er kam später im Baum,
+  lag obendrauf und genau über der Würfelverteilung. Entfernt; „Zurück zum
+  Start" trägt der Endstand selbst. Ein Abbruch vom Server hat Vorrang.
+- **Endstand:** Sieger groß mit Band in seiner Farbe und Punkten in der
+  gezeichneten Ziffer. Rangliste statt Tabelle (geteilte Plätze bei
+  Gleichstand), darunter die Rechnung aus `pointBreakdown`: dieselben Wörter
+  wie am Tisch statt „Sied./Str." und richtig auch bei Städte & Ritter.
+- **Würfel als Säulen mit Erwartung:** die Glocke ist als Form zu sehen; je
+  Summe eine Marke bei n·Wege/36. Sechs und Acht rot (Säule und Zahl), die
+  Sieben schraffiert (Muster statt nur Farbe).
+- **`game/rollOdds.ts`:** Wege je Summe und „heiß" an einer Stelle. Das Brett
+  (`BoardSvg`, Augen unter den Chips) benutzt sie statt der eigenen Tabelle.
+- **`game/points.ts`:** Namen der Punktquellen und `pointBreakdown`, von Tisch
+  und Endstand geteilt.
+- **Eine Dialog-Hülle (`dialogs/Modal.tsx`)** für alle 15 Dialoge: Kopf
+  linksbündig mit Band (`tone`), Inhalt, abgesetzte Fußleiste mit Rückweg
+  links und Hauptaktion rechts. Grund: alle Dialoge waren dieselbe mittige
+  Vorlage, und „Doch nicht" stand zwischen den Antworten.
+- **Auswahl als Zeilen (`dialogs/Choice.tsx`):** Räuber, Person, Stapel,
+  Spionage, Karte abgeben, Kran. Farbmarke, Name, Zusatz rechts.
+- **Kontrast:** die Gastwarnung stand gemessen bei 1,97:1 (`--warn` auf
+  Pergament). Jetzt Tinte mit Bernsteinkante. Graue Nebenangaben in der
+  hervorgehobenen Siegerzeile wären 4,0:1 und stehen deshalb in Tinte.
+- **Abweichung:** im Angebotsfenster (`TradeOfferDialog`) ist nur die Hülle
+  umgezogen; seine Antwortknöpfe hängen an Verzweigungen unter laufender
+  Frist und bleiben, wo sie waren.
+- **Offen:** das Angebotsfenster nicht im Browser gesehen; Alchemie- und
+  Handelsdialog bei 390 px nicht geprüft.
 
 ## Playtest-Runde Städte & Ritter (2026-10-15, uncommittet in `main`)
 

@@ -1,6 +1,8 @@
 import type { JSX } from 'react';
 import { TRACK_IDS, type TrackId } from '@conquerist/shared';
 import { TRACK_COLORS, TRACK_NAMES } from '../game/labels';
+import { Modal } from './Modal';
+import { Choice } from './Choice';
 
 /**
  * Gleichstand in der Verteidigung: von welchem Stapel die gezogene Karte kommt.
@@ -22,25 +24,22 @@ export interface PickDeckDialogProps {
 
 export function PickDeckDialog({ deckSizes, onPick }: PickDeckDialogProps): JSX.Element {
   return (
-    <div className="modal" role="dialog" aria-label="Fortschrittsstapel wählen">
-      <div className="modal__box">
-        <h2>Von welchem Stapel?</h2>
-        <p className="modal__hint">Gleichstand in der Verteidigung — eine Karte deiner Wahl.</p>
-
-        <div className="pick">
-          {TRACK_IDS.map((track) => (
-            <button
-              key={track}
-              type="button"
-              className="button"
-              style={{ borderLeftColor: TRACK_COLORS[track], borderLeftWidth: '4px' }}
-              onClick={() => onPick(track)}
-            >
-              {TRACK_NAMES[track]} ({deckSizes[track] ?? 0})
-            </button>
-          ))}
-        </div>
+    <Modal
+      label="Fortschrittsstapel wählen"
+      title="Von welchem Stapel?"
+      hint="Gleichstand in der Verteidigung — eine Karte deiner Wahl."
+    >
+      <div className="choices">
+        {TRACK_IDS.map((track) => (
+          <Choice
+            key={track}
+            tone={TRACK_COLORS[track]}
+            name={TRACK_NAMES[track]}
+            detail={`${deckSizes[track] ?? 0} Karten`}
+            onClick={() => onPick(track)}
+          />
+        ))}
       </div>
-    </div>
+    </Modal>
   );
 }

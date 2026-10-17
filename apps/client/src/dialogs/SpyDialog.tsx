@@ -1,6 +1,8 @@
 import type { JSX } from 'react';
 import { PROGRESS_NAMES, PROGRESS_TRACK, type ProgressCardId } from '@conquerist/shared';
 import { TRACK_COLORS } from '../game/labels';
+import { Modal } from './Modal';
+import { Choice } from './Choice';
 
 export interface SpyDialogProps {
   readonly victimName: string;
@@ -21,30 +23,21 @@ export interface SpyDialogProps {
  */
 export function SpyDialog({ victimName, cards, onTake }: SpyDialogProps): JSX.Element {
   return (
-    <div className="modal" role="dialog" aria-label="Spionage">
-      <div className="modal__box">
-        <h2>{victimName}s Fortschrittskarten</h2>
-        <p className="modal__hint">
-          Nur du siehst diese Karten, und nur jetzt. Eine davon nimmst du.
-        </p>
-
-        <div className="pick">
-          {cards.map((card) => (
-            <button
-              key={card}
-              type="button"
-              className="button"
-              style={{
-                borderLeftColor: TRACK_COLORS[PROGRESS_TRACK[card]],
-                borderLeftWidth: '4px',
-              }}
-              onClick={() => onTake(card)}
-            >
-              {PROGRESS_NAMES[card]}
-            </button>
-          ))}
-        </div>
+    <Modal
+      label="Spionage"
+      title={`${victimName}s Fortschrittskarten`}
+      hint="Nur du siehst diese Karten, und nur jetzt. Eine davon nimmst du."
+    >
+      <div className="choices">
+        {cards.map((card) => (
+          <Choice
+            key={card}
+            tone={TRACK_COLORS[PROGRESS_TRACK[card]]}
+            name={PROGRESS_NAMES[card]}
+            onClick={() => onTake(card)}
+          />
+        ))}
       </div>
-    </div>
+    </Modal>
   );
 }

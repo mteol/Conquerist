@@ -3,8 +3,8 @@ import { EMPTY_CARDS, type CardAmounts, type CardId } from '@conquerist/shared';
 import { CARD_LABELS } from '../game/labels';
 import type { PlayerRow } from '../game/view';
 import { ResourceCard } from '../panels/ResourceCard';
-import { CloseButton } from './CloseButton';
 import { NO_AMOUNTS, TradeAmounts, isTradeShapeValid } from './TradeAmounts';
+import { Modal } from './Modal';
 
 /**
  * Handel - zwei Reiter, zwei Gegenueber.
@@ -54,80 +54,16 @@ export function TradeDialog({
   const offerReady = isTradeShapeValid(offerGive, offerWant);
 
   return (
-    <div className="modal" role="dialog" aria-label="Handel">
-      <div className="modal__box">
-        <CloseButton onClose={onClose} label="Handel" />
-        <h2>Handel</h2>
-
-        {canOffer ? (
-          <div className="tabs" role="tablist" aria-label="Mit wem">
-            <button
-              type="button"
-              role="tab"
-              className="tabs__tab"
-              aria-selected={tab === 'bank'}
-              onClick={() => setTab('bank')}
-            >
-              Bank
-            </button>
-            <button
-              type="button"
-              role="tab"
-              className="tabs__tab"
-              aria-selected={tab === 'player'}
-              onClick={() => setTab('player')}
-            >
-              Spieler
-            </button>
-          </div>
-        ) : null}
-
-        {tab === 'bank' ? (
-          <>
-            <p className="modal__hint">
-              Der Kurs ergibt sich aus deinen Häfen — der beste gilt automatisch.
-            </p>
-
-            <fieldset className="cards">
-              <legend>Du gibst ab</legend>
-              {cards.map((resource) => (
-                <Choice
-                  key={resource}
-                  resource={resource}
-                  group="give"
-                  action="abgeben"
-                  held={player.resources?.[resource] ?? 0}
-                  checked={give === resource}
-                  onPick={() => setGive(resource)}
-                />
-              ))}
-            </fieldset>
-
-            <p className="modal__rate" data-testid="rate">
-              {give === null ? (
-                'Kurs: —'
-              ) : (
-                <>
-                  Kurs: <b>{rateFor(give)}:1</b>
-                </>
-              )}
-            </p>
-
-            <fieldset className="cards">
-              <legend>Du bekommst</legend>
-              {cards.map((resource) => (
-                <Choice
-                  key={resource}
-                  resource={resource}
-                  group="receive"
-                  action="bekommen"
-                  held={null}
-                  checked={receive === resource}
-                  onPick={() => setReceive(resource)}
-                />
-              ))}
-            </fieldset>
-
+    <Modal
+      label="Handel"
+      title="Handel"
+      onClose={onClose}
+      foot={
+        <>
+          <button type="button" className="button button--ghost" onClick={onClose}>
+            Abbrechen
+          </button>
+          {tab === 'bank' ? (
             <button
               type="button"
               className="button button--go"
@@ -138,22 +74,7 @@ export function TradeDialog({
             >
               Tauschen
             </button>
-          </>
-        ) : (
-          <>
-            <p className="modal__hint">
-              Solange dein Angebot liegt, wartet dein Zug. Antworten kann jeder am Tisch.
-            </p>
-
-            <TradeAmounts
-              owned={player.resources ?? EMPTY_CARDS}
-              cards={cards}
-              give={offerGive}
-              want={offerWant}
-              onGive={setOfferGive}
-              onWant={setOfferWant}
-            />
-
+          ) : (
             <button
               type="button"
               className="button button--go"
@@ -162,14 +83,96 @@ export function TradeDialog({
             >
               Angebot auf den Tisch legen
             </button>
-          </>
-        )}
+          )}
+        </>
+      }
+    >
+      {canOffer ? (
+        <div className="tabs" role="tablist" aria-label="Mit wem">
+          <button
+            type="button"
+            role="tab"
+            className="tabs__tab"
+            aria-selected={tab === 'bank'}
+            onClick={() => setTab('bank')}
+          >
+            Bank
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className="tabs__tab"
+            aria-selected={tab === 'player'}
+            onClick={() => setTab('player')}
+          >
+            Spieler
+          </button>
+        </div>
+      ) : null}
 
-        <button type="button" className="button button--ghost" onClick={onClose}>
-          Abbrechen
-        </button>
-      </div>
-    </div>
+      {tab === 'bank' ? (
+        <>
+          <p className="modal__hint">
+            Der Kurs ergibt sich aus deinen Häfen — der beste gilt automatisch.
+          </p>
+
+          <fieldset className="cards">
+            <legend>Du gibst ab</legend>
+            {cards.map((resource) => (
+              <Choice
+                key={resource}
+                resource={resource}
+                group="give"
+                action="abgeben"
+                held={player.resources?.[resource] ?? 0}
+                checked={give === resource}
+                onPick={() => setGive(resource)}
+              />
+            ))}
+          </fieldset>
+
+          <p className="modal__rate" data-testid="rate">
+            {give === null ? (
+              'Kurs: —'
+            ) : (
+              <>
+                Kurs: <b>{rateFor(give)}:1</b>
+              </>
+            )}
+          </p>
+
+          <fieldset className="cards">
+            <legend>Du bekommst</legend>
+            {cards.map((resource) => (
+              <Choice
+                key={resource}
+                resource={resource}
+                group="receive"
+                action="bekommen"
+                held={null}
+                checked={receive === resource}
+                onPick={() => setReceive(resource)}
+              />
+            ))}
+          </fieldset>
+        </>
+      ) : (
+        <>
+          <p className="modal__hint">
+            Solange dein Angebot liegt, wartet dein Zug. Antworten kann jeder am Tisch.
+          </p>
+
+          <TradeAmounts
+            owned={player.resources ?? EMPTY_CARDS}
+            cards={cards}
+            give={offerGive}
+            want={offerWant}
+            onGive={setOfferGive}
+            onWant={setOfferWant}
+          />
+        </>
+      )}
+    </Modal>
   );
 }
 

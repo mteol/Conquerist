@@ -1,7 +1,8 @@
 import type { JSX } from 'react';
 import type { HexId, PlayerId } from '@conquerist/shared';
 import type { PlayerRow } from '../game/view';
-import { CloseButton } from './CloseButton';
+import { Modal } from './Modal';
+import { Choice } from './Choice';
 
 /**
  * Wen der Raeuber bestiehlt.
@@ -19,28 +20,29 @@ export interface VictimDialogProps {
 
 export function VictimDialog({ hex, victims, onChoose, onClose }: VictimDialogProps): JSX.Element {
   return (
-    <div className="modal" role="dialog" aria-label="Wen bestehlen?">
-      <div className="modal__box">
-        <CloseButton onClose={onClose} label="Wen bestehlen" />
-        <h2>Wen bestehlen?</h2>
-        <p className="modal__hint">Am Feld {hex} wohnen mehrere mit Karten.</p>
-
-        {victims.map((victim) => (
-          <button
-            key={victim.id}
-            type="button"
-            className="button"
-            style={{ borderLeftColor: victim.color }}
-            onClick={() => onChoose(victim.id)}
-          >
-            {victim.name} ({victim.cardCount} Karten)
-          </button>
-        ))}
-
+    <Modal
+      label="Wen bestehlen?"
+      title="Wen bestehlen?"
+      hint={`Am Feld ${hex} wohnen mehrere mit Karten.`}
+      onClose={onClose}
+      foot={
         <button type="button" className="button button--ghost" onClick={onClose}>
           Doch nicht
         </button>
+      }
+    >
+      <div className="choices">
+        {victims.map((victim) => (
+          <Choice
+            key={victim.id}
+            tone={victim.color}
+            name={victim.name}
+            detail={`${victim.cardCount} ${victim.cardCount === 1 ? 'Karte' : 'Karten'}`}
+            label={`${victim.name} (${victim.cardCount} ${victim.cardCount === 1 ? 'Karte' : 'Karten'})`}
+            onClick={() => onChoose(victim.id)}
+          />
+        ))}
       </div>
-    </div>
+    </Modal>
   );
 }

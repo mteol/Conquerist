@@ -1,7 +1,8 @@
 import { useState, type JSX } from 'react';
 import { TRACK_IDS, type TrackId } from '@conquerist/shared';
 import { TRACK_COLORS, TRACK_NAMES } from '../game/labels';
-import { CloseButton } from './CloseButton';
+import { Modal } from './Modal';
+import { Choice } from './Choice';
 
 /**
  * Die zwei Fortschrittskarten, deren Angabe weder eine Sorte (siehe
@@ -47,44 +48,13 @@ function AlchemistPicker({
   const [second, setSecond] = useState<number | null>(null);
 
   return (
-    <div className="modal" role="dialog" aria-label="Alchemie">
-      <div className="modal__box">
-        <CloseButton onClose={onClose} label="Alchemie" />
-        <h2>Alchemie</h2>
-        <p className="modal__hint">
-          Vor dem Wurf spielen und beide Augenzahlen bestimmen — der Ereigniswürfel fällt trotzdem
-          normal.
-        </p>
-
-        <div className="pick" role="group" aria-label="Erster Würfel">
-          {DICE_FACES.map((face) => (
-            <button
-              key={face}
-              type="button"
-              className="button"
-              aria-pressed={first === face}
-              onClick={() => setFirst(face)}
-            >
-              {face}
-            </button>
-          ))}
-        </div>
-
-        <div className="pick" role="group" aria-label="Zweiter Würfel">
-          {DICE_FACES.map((face) => (
-            <button
-              key={face}
-              type="button"
-              className="button"
-              aria-pressed={second === face}
-              onClick={() => setSecond(face)}
-            >
-              {face}
-            </button>
-          ))}
-        </div>
-
-        <div className="modal__buttons">
+    <Modal
+      label="Alchemie"
+      title="Alchemie"
+      hint="Vor dem Wurf spielen und beide Augenzahlen bestimmen — der Ereigniswürfel fällt trotzdem normal."
+      onClose={onClose}
+      foot={
+        <>
           <button type="button" className="button button--ghost" onClick={onClose}>
             Abbrechen
           </button>
@@ -96,9 +66,36 @@ function AlchemistPicker({
           >
             Karte spielen
           </button>
+        </>
+      }
+    >
+      {(
+        [
+          ['Erster Würfel', first, setFirst],
+          ['Zweiter Würfel', second, setSecond],
+        ] as const
+      ).map(([name, value, set]) => (
+        <div key={name} className="facepick">
+          {/* Sichtbar beschriftet: zwei gleiche Reihen ohne Namen lassen raten, welche welche ist. */}
+          <span className="facepick__label" aria-hidden="true">
+            {name}
+          </span>
+          <div className="pick" role="group" aria-label={name}>
+            {DICE_FACES.map((face) => (
+              <button
+                key={face}
+                type="button"
+                className="button"
+                aria-pressed={value === face}
+                onClick={() => set(face)}
+              >
+                {face}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
-    </div>
+      ))}
+    </Modal>
   );
 }
 
@@ -110,32 +107,27 @@ function CranePicker({
   readonly onClose: () => void;
 }): JSX.Element {
   return (
-    <div className="modal" role="dialog" aria-label="Kran">
-      <div className="modal__box">
-        <CloseButton onClose={onClose} label="Kran" />
-        <h2>Kran</h2>
-        <p className="modal__hint">Welcher Ausbau kostet in diesem Zug eine Handelsware weniger?</p>
-
-        <div className="pick">
-          {TRACK_IDS.map((track) => (
-            <button
-              key={track}
-              type="button"
-              className="button"
-              style={{ borderLeftColor: TRACK_COLORS[track], borderLeftWidth: '4px' }}
-              onClick={() => onConfirm(track)}
-            >
-              {TRACK_NAMES[track]}
-            </button>
-          ))}
-        </div>
-
-        <div className="modal__buttons">
-          <button type="button" className="button button--ghost" onClick={onClose}>
-            Abbrechen
-          </button>
-        </div>
+    <Modal
+      label="Kran"
+      title="Kran"
+      hint="Welcher Ausbau kostet in diesem Zug eine Handelsware weniger?"
+      onClose={onClose}
+      foot={
+        <button type="button" className="button button--ghost" onClick={onClose}>
+          Abbrechen
+        </button>
+      }
+    >
+      <div className="choices">
+        {TRACK_IDS.map((track) => (
+          <Choice
+            key={track}
+            tone={TRACK_COLORS[track]}
+            name={TRACK_NAMES[track]}
+            onClick={() => onConfirm(track)}
+          />
+        ))}
       </div>
-    </div>
+    </Modal>
   );
 }

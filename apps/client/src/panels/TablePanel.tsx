@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import type { PointSource } from '@conquerist/shared';
 import { awardsHeldBy, type Award } from '../game/awards';
+import { POINT_LABELS, pointBreakdown } from '../game/points';
 import type { GameView, PlayerRow as PlayerRowData } from '../game/view';
 import { SeatMarks } from './Awards';
 import { TrackStrip } from './TrackStrip';
@@ -153,18 +154,6 @@ function PlayerRow({
   );
 }
 
-/** Wie eine Quelle am Tisch heisst - dieselben Woerter wie im Verlauf. */
-const POINT_LABELS: Readonly<Record<PointSource, string>> = {
-  settlement: 'Siedlungen',
-  city: 'Städte',
-  metropolis: 'Metropolen',
-  longestRoad: 'Handelsstraße',
-  largestArmy: 'Rittermacht',
-  defender: 'Retter gegen Barbaren',
-  progressCard: 'Fortschrittskarten',
-  merchant: 'Händler',
-};
-
 /**
  * Die Quellen, die nicht schon als Bauwerk auf dem Brett stehen oder als
  * Auszeichnung neben dem Namen (`SeatMarks`) - genau die, nach denen im
@@ -179,13 +168,7 @@ const BADGE_SOURCES: readonly PointSource[] = [
 
 /** Die ganze Rechnung fuer die Auskunft am Punktestand. */
 export function pointLines(player: PlayerRowData): string[] {
-  const parts = player.pointParts;
-  const lines = (Object.keys(POINT_LABELS) as PointSource[])
-    .filter((source) => (parts[source] ?? 0) > 0)
-    .map((source) => `${POINT_LABELS[source]}: ${parts[source]}`);
-  const shown = Object.values(parts).reduce((sum, points) => sum + (points ?? 0), 0);
-  const hidden = player.victoryPoints - shown;
-  if (hidden > 0) lines.push(`Siegpunktkarten: ${hidden}`);
+  const lines = pointBreakdown(player).map((part) => `${part.label}: ${part.points}`);
   return lines.length > 0 ? lines : ['Noch keine Siegpunkte.'];
 }
 
