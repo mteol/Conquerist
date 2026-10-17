@@ -45,13 +45,13 @@ function finishedView(tally: Record<string, number>): PlayerView {
 
 describe('Endbildschirm', () => {
   it('nennt den Sieger', () => {
-    render(<GameOverDialog view={finishedView({ '6': 3 })} onClose={vi.fn()} />);
+    render(<GameOverDialog view={finishedView({ '6': 3 })} onClose={vi.fn()} onLeave={vi.fn()} />);
 
     expect(screen.getByTestId('over-winner').textContent).toContain(seats[1]!.name);
   });
 
   it('fuehrt jeden Spieler mit seinen Siegpunkten auf', () => {
-    render(<GameOverDialog view={finishedView({ '6': 3 })} onClose={vi.fn()} />);
+    render(<GameOverDialog view={finishedView({ '6': 3 })} onClose={vi.fn()} onLeave={vi.fn()} />);
 
     for (const seat of seats) {
       expect(screen.getByTestId(`over-player-${seat.id}`)).toBeDefined();
@@ -63,7 +63,7 @@ describe('Endbildschirm', () => {
    * Verteilung mit Luecken waere keine Verteilung, sondern eine Liste.
    */
   it('zeigt jede moegliche Wurfsumme, auch die ungewuerfelten', () => {
-    render(<GameOverDialog view={finishedView({ '6': 3 })} onClose={vi.fn()} />);
+    render(<GameOverDialog view={finishedView({ '6': 3 })} onClose={vi.fn()} onLeave={vi.fn()} />);
 
     for (let total = 2; total <= 12; total += 1) {
       expect(screen.getByTestId(`over-roll-${total}`)).toBeDefined();
@@ -72,7 +72,13 @@ describe('Endbildschirm', () => {
   });
 
   it('nennt zu jeder Zahl, wie oft sie fiel', () => {
-    render(<GameOverDialog view={finishedView({ '6': 3, '8': 5 })} onClose={vi.fn()} />);
+    render(
+      <GameOverDialog
+        view={finishedView({ '6': 3, '8': 5 })}
+        onClose={vi.fn()}
+        onLeave={vi.fn()}
+      />,
+    );
 
     expect(screen.getByTestId('over-roll-6').textContent).toContain('3');
     expect(screen.getByTestId('over-roll-8').textContent).toContain('5');
@@ -80,7 +86,7 @@ describe('Endbildschirm', () => {
 
   it('laesst sich schliessen', async () => {
     const onClose = vi.fn();
-    render(<GameOverDialog view={finishedView({ '6': 3 })} onClose={onClose} />);
+    render(<GameOverDialog view={finishedView({ '6': 3 })} onClose={onClose} onLeave={vi.fn()} />);
 
     await userEvent.click(screen.getByRole('button', { name: /Endstand/ }));
 

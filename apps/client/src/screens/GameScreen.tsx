@@ -1616,7 +1616,14 @@ export function GameScreen({
         />
       ) : null}
 
-      {view.phase.kind === 'finished' ? (
+      {/*
+       * Der Endstand ist der einzige Dialog am Ende. Bis hierher stand unter
+       * ihm noch der alte Kasten „Partie beendet" - spaeter im Baum, also
+       * obendrauf, und genau ueber der Wuerfelverteilung. Dessen Weg hinaus
+       * (`onLeave`) traegt jetzt der Endstand selbst. Ein Abbruch vom Server
+       * geht vor: dann gibt es nichts mehr nachzuschauen, nur den Ausgang.
+       */}
+      {view.phase.kind === 'finished' && over === null ? (
         overClosed ? (
           /*
            * Die Tuer zurueck zum Endstand. Sie steht da, solange die Partie
@@ -1632,7 +1639,7 @@ export function GameScreen({
             Endstand
           </button>
         ) : (
-          <GameOverDialog view={view} onClose={() => setOverClosed(true)} />
+          <GameOverDialog view={view} onClose={() => setOverClosed(true)} onLeave={onLeave} />
         )
       ) : null}
 
@@ -1787,22 +1794,6 @@ export function GameScreen({
           <div className="modal__box">
             <h2>Partie abgebrochen</h2>
             <p>{over}</p>
-            <button type="button" className="button button--go" onClick={onLeave}>
-              Zurück zum Start
-            </button>
-          </div>
-        </div>
-      ) : view.phase.kind === 'finished' ? (
-        <div className="modal" role="dialog" aria-label="Partie beendet">
-          <div className="modal__box">
-            <h2>{display.phaseText}</h2>
-            <ol className="result">
-              {display.players.map((player) => (
-                <li key={player.id}>
-                  {player.name}: {player.victoryPoints} Siegpunkte
-                </li>
-              ))}
-            </ol>
             <button type="button" className="button button--go" onClick={onLeave}>
               Zurück zum Start
             </button>

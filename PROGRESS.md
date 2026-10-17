@@ -20,6 +20,22 @@ Im Archiv nur gezielt suchen (`grep` nach Stichwort), nie ganz lesen.
 - **10e abgeschlossen** (Burg 1 / Burg 2, Abschnitt unten).
   Davor 10d-3 (Regelfragen aus 10d-2), Details im Archiv 10d.
 
+## Endstand: Würfelverteilung war verdeckt (2026-10-17, `ccr-3c251c28-jv6v25`)
+
+Abnahme: `pnpm typecheck` grün; Tests shared 1283, server 222, client 646;
+Build Client 555,65 kB (161,95 kB gzip), CSS 63,34 kB; `format:check` grün.
+Im Browser über eine temporäre Vorschauseite vorher/nachher gesehen.
+
+- **Zwei Dialoge am Ende, der falsche oben:** neben `GameOverDialog` stand in
+  `GameScreen` noch der alte Kasten „Partie beendet" (nur Namen und Punkte).
+  Er kam später im Baum, lag damit obendrauf und genau über der
+  Würfelverteilung. Er ist entfernt; „Zurück zum Start" trägt jetzt der
+  Endstand selbst (`onLeave`).
+- **Abbruch vom Server geht vor:** der Endstand erscheint nur ohne `over`,
+  sonst stünden wieder zwei Kästen übereinander.
+- Nächster Schritt (offen, mit Absprache): Endstand und Dialoge allgemein
+  überarbeiten.
+
 ## Playtest-Runde Städte & Ritter (2026-10-15, uncommittet in `main`)
 
 Abnahme: `pnpm typecheck` grün; Tests shared 1283, server 222, client 644;

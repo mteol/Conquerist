@@ -765,6 +765,19 @@ describe('Der Endstand', () => {
   });
 
   /*
+   * Bis hierher lag ein zweiter Kasten „Partie beendet" obendrauf - spaeter im
+   * Baum, also ueber dem Endstand und genau auf der Wuerfelverteilung.
+   */
+  it('ist der einzige Dialog am Ende und fuehrt selbst hinaus', () => {
+    render(<LocalGameFrom state={finished} />);
+
+    const dialogs = screen.getAllByRole('dialog');
+    expect(dialogs).toHaveLength(1);
+    expect(dialogs[0]!.getAttribute('aria-label')).toBe('Endstand');
+    expect(screen.getByRole('button', { name: 'Zurück zum Start' })).toBeDefined();
+  });
+
+  /*
    * Wer ihn wegklickt, soll das Brett ansehen koennen - und danach wieder
    * hineinkommen. Ein Endstand, den man genau einmal sieht, zwingt zum
    * Auswendiglernen.

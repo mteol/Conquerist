@@ -27,12 +27,14 @@ import { CloseButton } from './CloseButton';
 export interface GameOverDialogProps {
   readonly view: PlayerView;
   readonly onClose: () => void;
+  /** Zurueck zum Start - der Ausgang, den vorher ein eigener Kasten trug. */
+  readonly onLeave: () => void;
 }
 
 /** Alle Summen, die zwei Wuerfel hergeben. */
 const TOTALS = Array.from({ length: 11 }, (_, index) => index + 2);
 
-export function GameOverDialog({ view, onClose }: GameOverDialogProps): JSX.Element {
+export function GameOverDialog({ view, onClose, onLeave }: GameOverDialogProps): JSX.Element {
   const winner = view.phase.kind === 'finished' ? view.phase.winner : null;
   const nameOf = (id: string): string =>
     view.players.find((player) => player.id === id)?.name ?? id;
@@ -145,6 +147,10 @@ export function GameOverDialog({ view, onClose }: GameOverDialogProps): JSX.Elem
             );
           })}
         </ul>
+
+        <button type="button" className="button button--go" onClick={onLeave}>
+          Zurück zum Start
+        </button>
       </div>
     </div>
   );
