@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import type { CSSProperties, JSX } from 'react';
 import type { PointSource } from '@conquerist/shared';
 import { awardsHeldBy, type Award } from '../game/awards';
 import { POINT_LABELS, pointBreakdown } from '../game/points';
@@ -87,7 +87,7 @@ function PlayerRow({
   return (
     <div
       className={acting ? 'seat seat--acting' : 'seat'}
-      style={{ borderLeftColor: player.color }}
+      style={{ '--seat': player.color } as CSSProperties}
       data-testid={`seat-${player.id}`}
     >
       <span className="seat__name">

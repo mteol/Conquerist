@@ -4632,18 +4632,25 @@ body {
  * trägt `.seat__pending` schon länger, ohne dass es bisher eine Zeile zum
  * Umbrechen brauchte.
  */
+/*
+ * Die Spielerfarbe ist der Grund der Zeile, nicht eine Kante links: in die
+ * Tiefsee gemischt, damit sie den Platz kennzeichnet, ohne zu leuchten. Wer
+ * am Zug ist, bekommt mehr Farbe und einen Goldsaum - der Saum sagt es auch
+ * dem, der Farben schlecht unterscheidet.
+ */
 .seat {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
   align-items: baseline;
-  padding: 0.22rem 0.35rem;
-  border-left: 3px solid var(--ink-muted);
-  border-radius: 0 5px 5px 0;
+  padding: 0.22rem 0.45rem;
+  border-radius: 5px;
+  background: color-mix(in oklab, var(--seat, var(--ink-muted)) 22%, transparent);
 }
 
 .seat--acting {
-  background: rgb(224 179 74 / 26%);
+  background: color-mix(in oklab, var(--seat, var(--ink-muted)) 42%, transparent);
+  box-shadow: inset 0 0 0 1px var(--fields);
 }
 
 .seat__name {
@@ -6517,11 +6524,14 @@ body {
 /*
  * Die Warnung stand in `--warn` auf Pergament - gemessen 1,97:1, das Gelb ist
  * fuer die Tiefsee gemischt. Der Text bekommt deshalb Tinte, und das Bernstein
- * wandert in die Kante: es sagt weiter „Achtung", ohne die Lesbarkeit zu tragen.
+ * wird der Grund des Hinweises: es sagt weiter „Achtung", ohne die Lesbarkeit
+ * zu tragen.
  */
 .modal__hint--warn {
-  padding-left: 0.6rem;
-  border-left: 3px solid var(--warn);
+  padding: 0.45rem 0.6rem;
+  border: 1px solid color-mix(in oklab, var(--warn) 50%, var(--parchment));
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--warn) 18%, var(--parchment));
   color: var(--ink);
 }
 
@@ -6572,17 +6582,23 @@ body {
   gap: 0.4rem;
 }
 
+/*
+ * Die Farbe ist der Grund der ganzen Zeile, gedaempft ins Pergament gemischt
+ * (16 %) - erkennbar als „Rot", ohne knallrot zu sein. Der Rand nimmt denselben
+ * Ton etwas kraeftiger auf; beim Darueberfahren wird beides satter. Die Schrift
+ * bleibt Tinte, damit der Kontrast nicht an der Spielerfarbe haengt.
+ */
 .choice {
   display: grid;
-  grid-template-columns: 0.35rem minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.75rem;
   width: 100%;
   min-height: 2.75rem;
   padding: 0.5rem 0.9rem 0.5rem 0.55rem;
-  border: 1px solid var(--parchment-edge);
+  border: 1px solid color-mix(in oklab, var(--choice-tone) 45%, var(--parchment));
   border-radius: calc(var(--radius) - 4px);
-  background: var(--parchment);
+  background: color-mix(in oklab, var(--choice-tone) 16%, var(--parchment));
   color: var(--ink-base);
   font: inherit;
   text-align: left;
@@ -6593,8 +6609,8 @@ body {
 }
 
 .choice:hover {
-  border-color: var(--ink-base-muted);
-  background: var(--parchment-2);
+  border-color: color-mix(in oklab, var(--choice-tone) 70%, var(--parchment));
+  background: color-mix(in oklab, var(--choice-tone) 28%, var(--parchment));
 }
 
 .choice:focus-visible {
@@ -6602,18 +6618,13 @@ body {
   outline-offset: 2px;
 }
 
-.choice__mark {
-  align-self: stretch;
-  border-radius: 2px;
-  background: var(--choice-tone);
-}
-
 .choice__name {
   font-weight: 600;
 }
 
 .choice__detail {
-  color: var(--ink-muted);
+  color: var(--ink);
+  opacity: 0.8;
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -7116,10 +7127,9 @@ body {
 .counter {
   margin: 0.5rem 0;
   padding: 0.6rem 0.7rem;
-  border: 1px solid var(--parchment-edge);
-  border-left: 3px solid var(--warn-ink);
+  border: 1px solid color-mix(in oklab, var(--warn-ink) 40%, var(--parchment));
   border-radius: 8px;
-  background: rgb(22 32 42 / 5%);
+  background: color-mix(in oklab, var(--warn) 14%, var(--parchment));
   text-align: left;
 }
 
@@ -7616,32 +7626,41 @@ body {
 
 /*
  * Eine Zeile je Spieler: Platz, Name, Punkte - darunter die Rechnung. Die
- * Spielerfarbe ist die Kante, wie am Tisch; der Name steht immer dabei
- * (Designregel 7). Der Sieger liegt eine Stufe dunkler, nicht in Gold - die
- * Farbe hat er schon oben im Band.
+ * Spielerfarbe toent die Zeile, wie am Tisch; der Name steht immer dabei
+ * (Designregel 7).
  */
 .over__rank {
   display: grid;
   grid-template-columns: 1.6rem minmax(0, 1fr) auto;
   align-items: baseline;
   gap: 0.15rem 0.5rem;
-  padding: 0.55rem 0.5rem 0.55rem 0.6rem;
-  border-left: 0.25rem solid var(--seat);
+  padding: 0.55rem 0.7rem;
+  border-radius: calc(var(--radius) - 4px);
+  background: color-mix(in oklab, var(--seat) 14%, var(--parchment));
 }
 
 .over__rank + .over__rank {
-  border-top: 1px solid var(--parchment-edge);
+  margin-top: 0.35rem;
 }
 
+/*
+ * Der Sieger: mehr von seiner Farbe und ein Rand im selben Ton. Grau waere auf
+ * dem getoenten Grund zu schwach - Platz, Punkte und Rechnung stehen in allen
+ * Zeilen in Tinte.
+ */
 .over__rank--won {
-  background: var(--parchment-2);
+  border: 1px solid color-mix(in oklab, var(--seat) 55%, var(--parchment));
+  background: color-mix(in oklab, var(--seat) 26%, var(--parchment));
 }
 
-/* Grau auf der dunkleren Stufe waeren gemessen 4,0:1 - in der Siegerzeile also Tinte. */
-.over__rank--won .over__place,
-.over__rank--won .over__points,
-.over__rank--won .over__parts {
+.over__rank .over__place,
+.over__rank .over__points,
+.over__rank .over__parts {
   color: var(--ink);
+}
+
+.over__rank .over__parts {
+  opacity: 0.8;
 }
 
 .over__place {

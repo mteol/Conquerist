@@ -23,7 +23,7 @@ Im Archiv nur gezielt suchen (`grep` nach Stichwort), nie ganz lesen.
 ## Endstand und Dialoge neu (2026-10-17, `ccr-3c251c28-jv6v25`)
 
 Abnahme: `pnpm typecheck` grün; Tests shared 1283, server 222, client 654;
-Build Client 555,32 kB (162,44 kB gzip), CSS 66,86 kB; `format:check` grün.
+Build Client 555,25 kB (162,42 kB gzip), CSS 67,40 kB; `format:check` grün.
 Im Browser über eine temporäre Vorschauseite gesehen (1280 px und 390 px),
 Kontraste nachgerechnet.
 
@@ -51,6 +51,12 @@ Kontraste nachgerechnet.
 - **Kontrast:** die Gastwarnung stand gemessen bei 1,97:1 (`--warn` auf
   Pergament). Jetzt Tinte mit Bernsteinkante. Graue Nebenangaben in der
   hervorgehobenen Siegerzeile wären 4,0:1 und stehen deshalb in Tinte.
+- **Keine Farbkanten mehr links** (Wunsch nach der ersten Runde): Auswahlzeilen,
+  Rangliste im Endstand, Plätze am Tisch, Gastwarnung und Gegenangebot tragen
+  ihre Farbe als gedämpften Grund (`color-mix`, 14–22 % in Pergament bzw.
+  Tiefsee) statt als 3-px-Kante. Wer am Zug ist, bekommt mehr Farbe und einen
+  Goldsaum; der Sieger mehr Farbe und einen Rand im selben Ton. Schrift bleibt
+  Tinte, damit der Kontrast nicht an der Spielerfarbe hängt.
 - **Abweichung:** im Angebotsfenster (`TradeOfferDialog`) ist nur die Hülle
   umgezogen; seine Antwortknöpfe hängen an Verzweigungen unter laufender
   Frist und bleiben, wo sie waren.
