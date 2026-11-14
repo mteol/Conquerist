@@ -15,13 +15,11 @@ Im Archiv nur gezielt suchen (`grep` nach Stichwort), nie ganz lesen.
 
 ## Aktueller Stand (2026-11-14)
 
-- **Design-Überarbeitung „Seekarte"** auf Branch `design-overhaul`, uncommittet
-  (Abschnitt unten). Der Branch baut auf `origin/ccr-3c251c28-jv6v25` auf
-  (Endstand neu, eine Dialog-Hülle für alle Dialoge), das damit enthalten ist.
-- `main` = `08c9910`: Playtest-Runde Städte & Ritter (15.10.), gepusht.
+- **Design-Überarbeitung „Seekarte"** in `main` (Abschnitt unten); enthält auch
+  den Endstand und die gemeinsame Dialog-Hülle aus `ccr-3c251c28-jv6v25`.
 - 10e abgeschlossen; Etappenplan Städte & Ritter abgearbeitet.
 
-## Design-Überarbeitung „Seekarte" (2026-11-14, `design-overhaul`)
+## Design-Überarbeitung „Seekarte" (2026-11-14, in `main`)
 
 Vorgabe: `docs/design-system.md`. Werte in `styles/tokens.css`, Bausteine in
 `styles/system.css`, Karte in `chart/`.
