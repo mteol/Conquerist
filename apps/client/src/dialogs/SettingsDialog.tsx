@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import type { CSSProperties, JSX } from 'react';
 import type { Bus } from '../audio/settings';
 import { useAudio } from '../audio/useAudio';
 import { Modal } from './Modal';
@@ -65,6 +65,7 @@ export function SettingsDialog({ onClose }: { readonly onClose: () => void }): J
               step={1}
               value={percent}
               aria-label={label}
+              style={{ '--level': `${percent}%` } as CSSProperties}
               onChange={(event) => setBus(bus, { level: Number(event.target.value) / 100 })}
             />
 

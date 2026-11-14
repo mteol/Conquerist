@@ -1,7 +1,8 @@
 import type { CSSProperties, JSX } from 'react';
 import type { Identity } from '../game/useOnlineGame';
 import { AccountCorner } from './AccountCorner';
-import { HexField } from './HexField';
+import { SeaChart } from '../chart/SeaChart';
+import { useRoseAt } from './useRoseAt';
 import { Wordmark } from './Wordmark';
 
 /**
@@ -29,31 +30,20 @@ import { Wordmark } from './Wordmark';
  * Keine Spalten, keine Kacheln - drei Zeilen liest man von oben nach unten,
  * und mehr Struktur haette dieser Bildschirm nicht zu codieren (Regel 6).
  *
- * **Das eine Element:** die Wortmarke ist aus demselben Winkel geschnitten wie
- * das Brett (`Wordmark.tsx`), und sie sitzt auf dem Hexfeld, das mit den
- * Funktionen des Bretts gezeichnet ist (`HexField.tsx`). Beides ist kein Bild,
- * das so aehnlich aussieht - es ist dasselbe Material.
+ * **Das eine Element:** die Seekarte (`chart/SeaChart.tsx`), auf der auch alle
+ * Bildschirme danach liegen. Die Wortmarke ist aus demselben Winkel geschnitten
+ * wie das Brett (`Wordmark.tsx`) und steht auf dem Netz der Karte.
  *
- * **Zur Bewegung.** Dieser Bildschirm hatte bewusst keine, und Regel 5 ist der
- * Grund: Bewegung erklaert einen Zustandswechsel oder entfaellt. Der Eingang
- * ist ein Zustandswechsel - vorher war nichts da, jetzt ist die Anwendung da -
- * und deshalb bekommt er eine Choreografie: die Marke schnellt herein und
- * rastet ein, der Aufprall laeuft einmal als Welle durchs Feld, die drei Wege
- * fallen von oben nach. Danach steht alles still. Was es ausdruecklich nicht
- * gibt: Dauerbewegung, Schweben, Parallaxe am Mauszeiger. Das waere Dekoration
- * und faellt unter denselben Satz.
+ * **Zur Bewegung.** Der Eingang ist ein Zustandswechsel - vorher war nichts da,
+ * jetzt ist die Anwendung da - und bekommt deshalb **eine** Bewegung: die Marke
+ * schnellt herein und rastet ein, und einmal laeuft eine Welle von innen nach
+ * aussen ueber das Netz der Karte (`--d` je Linie, siehe `start.css`). Die
+ * Untertitelzeile kommt als Schrift (`ink-in`), die drei Wege als Pergament
+ * (`sheet-in`). Danach steht alles still: kein Schweben, keine Parallaxe.
  *
- * Alle Animationen sind Eingaenge und enden in ihrer Ruhelage - der Fall, der
- * in `CLAUDE.md` als Falle notiert ist (eine abgeschaltete Ausgangsanimation
- * stuende sofort an ihrem Ende und waere unsichtbar).
- *
- * **Das allein reicht bei `prefers-reduced-motion` aber nicht**, und hier stand
- * eine Zeit lang das Gegenteil. Die Ruhelage am Ende hilft nur, wenn die
- * Animation auch wirklich vorbei ist; die Verzoegerungen dieses Bildschirms
- * (260 ms fuer den Untertitel, 320 + 65 ms je Eintrag) blieben von der
- * Kuerzung der Dauer unberuehrt. Gemessen: die drei Eintraege sprangen bei
- * 333, 396 und 459 ms nacheinander ins Bild - keine Animation mehr, aber immer
- * noch eine Choreografie. Seither kuerzt `index.css` auch die Verzoegerung.
+ * Alle Animationen sind Eingaenge und enden in ihrer Ruhelage (die Falle aus
+ * `CLAUDE.md`: eine abgeschaltete Ausgangsanimation stuende sofort an ihrem
+ * Ende). Bei `prefers-reduced-motion` kuerzt `base.css` auch die Verzoegerung.
  */
 export type MenuChoice = 'online' | 'local' | 'join' | 'resume';
 
@@ -94,21 +84,29 @@ function noop(): void {
  * das Wie danach.
  */
 const ENTRIES: readonly { readonly choice: MenuChoice; readonly label: string }[] = [
-  { choice: 'online', label: 'Partie starten — online' },
-  { choice: 'local', label: 'Partie starten — lokal' },
+  { choice: 'online', label: 'Online spielen' },
+  { choice: 'local', label: 'An einem Gerät spielen' },
   { choice: 'join', label: 'Partie beitreten' },
 ];
 
 /**
  * Der Platz in der Reihe wird als Zahl mitgegeben, nicht als eigene Klasse.
  *
- * Das CSS rechnet daraus die Verzoegerung (`calc(var(--i) * 65ms)`). Vier
+ * Das CSS rechnet daraus die Verzoegerung (`calc(var(--i) * var(--stagger))`). Vier
  * Klassen fuer vier Verzoegerungen waeren dieselbe Information, nur haendisch
  * gepflegt - und beim fuenften Eintrag vergessen.
  */
 function order(index: number): CSSProperties {
   return { '--i': index } as CSSProperties;
 }
+
+/**
+ * Wo die Windrose sitzt: im Querformat im Westen, links der Mitte, im
+ * Hochformat oben links (NNW) - dort ist freie See; Titel und Wege stehen
+ * mittig, die Konto-Ecke oben rechts.
+ */
+const ROSE_LANDSCAPE = 12;
+const ROSE_PORTRAIT = 15;
 
 export function MenuScreen({
   onChoose,
@@ -118,12 +116,13 @@ export function MenuScreen({
   onLogin = noop,
   onLogout = noop,
 }: MenuScreenProps): JSX.Element {
+  const roseAt = useRoseAt(ROSE_LANDSCAPE, ROSE_PORTRAIT);
   // „Weiterspielen" steht vor den drei Wegen und faellt deshalb auch zuerst.
   const resumeShown = openGames > 0;
 
   return (
     <main className="menu">
-      <HexField />
+      <SeaChart className="menu__chart" roseAt={roseAt} />
 
       {/*
        * Die Konto-Ecke faellt zuletzt in die Choreografie ein - ihr `order`
@@ -153,14 +152,16 @@ export function MenuScreen({
              */}
             <span className="visually-hidden">Conquerist</span>
           </h1>
-          <p className="menu__lead">Drei bis sechs Spieler. Sechs Geräte oder eins.</p>
+          <p className="chartlabel ink-in menu__lead">
+            Drei bis sechs Spieler. Sechs Geräte oder eins.
+          </p>
         </header>
 
         <nav className="menu__entries" aria-label="Hauptmenü">
           {resumeShown ? (
             <button
               type="button"
-              className="menu__entry menu__entry--resume"
+              className="button menu__entry menu__entry--resume"
               style={order(0)}
               onClick={() => onChoose('resume')}
             >
@@ -172,7 +173,7 @@ export function MenuScreen({
             <button
               key={entry.choice}
               type="button"
-              className="menu__entry"
+              className="button menu__entry"
               style={order(resumeShown ? index + 1 : index)}
               onClick={() => onChoose(entry.choice)}
             >

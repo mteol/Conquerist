@@ -1,5 +1,5 @@
-import type { JSX, ReactNode } from 'react';
-import type { GameView } from '../game/view';
+import type { CSSProperties, JSX, ReactNode } from 'react';
+import type { GameView, PlayerRow } from '../game/view';
 
 /**
  * Runde und was gerade dran ist.
@@ -28,15 +28,39 @@ export function StatusPanel({
   const waiting = view.waitingFor;
   const away = view.disconnected.filter((player) => !waiting.includes(player));
 
+  /*
+   * Die Kartusche: wer dran ist, ist die größte Schrift der Ecke. Handeln
+   * mehrere (Abwurf nach der Sieben), stehen alle da - eine Farbe allein trüge
+   * nicht (Designregel 7), der Name steht immer dabei.
+   */
+  const actors = view.actingPlayers
+    .map((id) => view.players.find((player) => player.id === id))
+    .filter((player): player is PlayerRow => player !== undefined);
+  const who = nameList(actors.map((player) => player.name));
+  const ask = askOf(view.phaseText, who);
+
   return (
     <section className="panel panel--status">
-      <div className="status__phase">{view.phaseText}</div>
+      {actors.length > 0 ? (
+        <div className="status__who">
+          {/* Die Wimpel bleiben stehen und wechseln nur die Farbe (`transition`), die Namen kommen neu. */}
+          {actors.slice(0, 4).map((player, index) => (
+            <Pennant key={index} color={player.color} />
+          ))}
+          <span key={who} className="status__name ink-in">
+            {who}
+          </span>
+        </div>
+      ) : null}
+      <div key={view.phaseText} className="status__phase chartlabel ink-in">
+        {actors.length > 0 ? ask : view.phaseText}
+      </div>
       {view.adaptedTurn ? (
         <p className="status__note" data-testid="adapted-turn">
           Kein Wurf, Handel nur mit der Bank
         </p>
       ) : null}
-      <div className="status__turn">Runde {view.turn}</div>
+      <div className="status__turn chartlabel">Runde {view.turn}</div>
       {children}
 
       {waiting.length > 0 ? (
@@ -53,6 +77,29 @@ export function StatusPanel({
         </p>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * Was verlangt ist, ohne den Namen: die Zeile darüber hat ihn schon, und
+ * „Spieler 3" / „versetzt den Räuber" liest sich als ein Satz über zwei Zeilen.
+ * Beginnt der Satz anders („Gründung: …", „Sieben: …"), steht er ganz da.
+ */
+function askOf(phaseText: string, who: string): string {
+  return phaseText.startsWith(`${who} `) ? phaseText.slice(who.length + 1) : phaseText;
+}
+
+/** Der Wimpel in Sitzfarbe - ein Schwalbenschwanz, damit er eine Form hat und nicht nur Farbe. */
+function Pennant({ color }: { readonly color: string }): JSX.Element {
+  return (
+    <svg
+      className="status__pennant"
+      viewBox="0 0 20 14"
+      style={{ '--seat': color } as CSSProperties}
+      aria-hidden="true"
+    >
+      <path d="M1 1 H19 L14 7 L19 13 H1 Z" />
+    </svg>
   );
 }
 

@@ -1,0 +1,487 @@
+/*
+ * Was am Rand der Karte steht: Symbolknoepfe, Tisch, Status, Verbindung.
+ *
+ * Alles hier ist Auskunft auf der See und steht deshalb in `--on-sea` und der
+ * Kartenschrift (`.chartlabel`); nur die zwei Blaetter (Verlauf, Vorrat) sind
+ * Pergament. Begruendung der Regeln: `docs/design-system.md`.
+ */
+
+/*
+ * Der Symbolknopf: Tuer, vorratssymbol, Verlauf - und das Zahnrad daneben
+ * (`misc.css`). Auf der See liegt nichts, was man anheben koennte, also fuellt
+ * er sich beim Darueberfahren (wie `.button--ghost`), statt sich zu heben.
+ *
+ * 44 px Trefferflaeche; das Zeichen darin bleibt bei 20 px. `--icon-hit` steht
+ * einmal hier, weil `.topline` damit ihre Mittellinie rechnet.
+ */
+.log-toggle,
+.exit-toggle,
+.supply__toggle {
+  --icon-hit: 2.75rem;
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: var(--space-2);
+  place-items: center;
+  min-width: var(--icon-hit);
+  height: var(--icon-hit);
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--corner-md);
+  corner-shape: bevel;
+  background: transparent;
+  color: var(--on-sea-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    color var(--t-quick) linear,
+    border-color var(--t-quick) linear,
+    background-color var(--t-quick) linear;
+}
+
+.log-toggle:hover,
+.exit-toggle:hover,
+.supply__toggle:hover {
+  border-color: var(--chart-rule);
+  color: var(--on-sea);
+}
+
+/* Gedrueckt und offen sind dasselbe Bild: die Flaeche ist gefuellt. */
+.log-toggle:active,
+.exit-toggle:active,
+.supply__toggle:active,
+.log-toggle--open,
+.supply__toggle--open {
+  border-color: var(--chart-rule);
+  background: color-mix(in oklab, var(--on-sea) 12%, transparent);
+  color: var(--on-sea);
+  transition-duration: var(--t-press);
+}
+
+/* Am schmalen Fenster bleibt das Symbol, das Wort geht in den Namen des Knopfes. */
+@media (width <= 40rem) {
+  .supply__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.exit-toggle__mark,
+.log-toggle__mark,
+.supply__mark {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Der Vorratsstapel ist gefuellte Form, kein Strich. */
+.supply__mark {
+  fill: currentcolor;
+  stroke: none;
+}
+
+/*
+ * Der Verlauf: ein Symbol neben dem Zahnrad, das Blatt darunter. Er war ein
+ * Dauerpanel und hielt dafuer den rechten Streifen frei - den Verlauf liest man
+ * selten und dann genau, also braucht er eine Tuer und keine Wand.
+ *
+ * `position: relative`: das aufgeklappte Blatt haengt mit `right: 0` an dieser
+ * Kante und nicht am Fensterrand.
+ */
+.log-corner {
+  position: relative;
+  pointer-events: auto;
+}
+
+/* Das Zahnrad (`.settings-button`) liegt ueber der Zeile; sein Platz bleibt frei. */
+.log-toggle {
+  margin-right: 2.75rem;
+}
+
+/*
+ * Das Blatt haengt am Symbol und klappt darunter auf, rechtsbuendig, damit es
+ * nach innen waechst. `width` und nicht `max-width`: `.log-corner` ist nur so
+ * breit wie das Symbol, und das deckelte als Containing Block jede Breite.
+ * Die Rahmenwerte kommen von `.sheet`; `.panel.panel--log` schlaegt dessen
+ * `position: relative` und die Tinte von `.panel` (zwei Klassen gegen eine).
+ */
+.panel.panel--log {
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  width: min(21rem, 90vw);
+  max-width: none;
+  padding: var(--space-4);
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+
+.panel__error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--corner-sm);
+  /* Auf der See statt auf Pergament: das satte Rot verschwaende hier, der
+     Schleier muss dunkler und die Schrift heller werden. */
+  background: color-mix(in oklab, var(--bad) 30%, var(--sea-900));
+  color: var(--on-sea);
+  font-size: var(--text-sm);
+}
+
+/*
+ * Der Tisch: eine Zeile je Sitz, Grund ist die Sitzfarbe - gedaempft in die
+ * See gemischt, damit vier Zeilen nicht lauter sind als das Brett. Deckend
+ * statt durchscheinend: das Netz der Karte soll nicht durch den Namen laufen.
+ *
+ * Wer dran ist, traegt den gelben Rand **und** den Pfeil vor dem Namen; wer
+ * noch abwerfen muss, denselben Rand gestrichelt und den Pfeil hohl. Die Farbe
+ * der Zeile sagt nur, wer es ist - nie, was er tut (Designregel 7).
+ */
+/* Eine Breite fuer alle Zeilen: sonst ist die eigene (ohne Ausbauleiste) schmaler als die der anderen. */
+.panel--table {
+  display: grid;
+  gap: var(--space-1);
+  width: 14.5rem;
+}
+
+.seat {
+  --row: color-mix(in oklab, var(--seat, var(--on-sea-muted)) 26%, var(--sea-900));
+  display: grid;
+  gap: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--corner-sm);
+  background: var(--row);
+  color: var(--on-sea);
+}
+
+.seat--acting {
+  --row: color-mix(in oklab, var(--seat, var(--on-sea-muted)) 38%, var(--sea-900));
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.seat--owing {
+  outline-style: dashed;
+}
+
+/*
+ * Die kompakte Zeile (`.panel--dense`, siehe `TablePanel`): bei fuenf und
+ * sechs Sitzen, niedrigen und schmalen Fenstern. Alles in einer Zeile unter
+ * 2,25 rem Hoehe: Name, Punkte als Zahl, Kartenzahl mit Kartenzeichen, die drei
+ * Massstaebe schmaler. Die Woerter bleiben fuer Vorlesegeraete und stehen in
+ * der Auskunft beim Darueberfahren. Schrift bleibt ueber 12 px.
+ */
+.panel--dense {
+  gap: 2px;
+  width: 14.75rem;
+  max-width: none;
+}
+
+.panel--dense .seat {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: 2px var(--space-2);
+}
+
+.panel--dense .seat__head,
+.panel--dense .seat__facts {
+  display: contents;
+}
+
+.panel--dense .seat__name {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel--dense .seat__points {
+  margin-left: 0;
+}
+
+.panel--dense .seat__word {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Das Kartenzeichen: ein kleines Hochformat-Rechteck hinter der Zahl. */
+.panel--dense .seat__hand::after {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.7rem;
+  margin-left: var(--space-1);
+  border: 1px solid currentcolor;
+  border-radius: 2px;
+  vertical-align: -1px;
+}
+
+.panel--dense .trackstrip {
+  margin-left: 0;
+  gap: var(--space-1);
+}
+
+.panel--dense .trackstrip__row {
+  width: 1.6rem;
+}
+
+/* Die Herkunft der Punkte steht in der Auskunft am Punktestand. */
+.panel--dense .seat__sources {
+  display: none;
+}
+
+.panel--dense .seat__castle {
+  line-height: 1.2;
+}
+
+.seat__head,
+.seat__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: center;
+}
+
+.seat__name {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  font-size: var(--text-md);
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.seat__turn {
+  width: 0.6rem;
+  height: 0.75rem;
+  flex: none;
+  fill: var(--accent);
+}
+
+.seat__turn--owing {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+/* Burg 1 / Burg 2: Rahmen in der Schriftfarbe, die Zahl sagt, welcher Zug es ist. */
+.seat__castle {
+  padding: 0 var(--space-1);
+  border: 1px solid currentcolor;
+  color: var(--on-sea-muted);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+.seat__points {
+  margin-left: auto;
+  color: var(--on-sea-muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.seat__points b {
+  color: var(--on-sea);
+  font-size: var(--text-md);
+  font-weight: 650;
+}
+
+.seat__hand {
+  color: var(--on-sea-muted);
+  font-size: var(--text-sm);
+}
+
+/* Die Ausbaubereiche stehen rechts in der Zeile der Karten (`TrackStrip`). */
+.trackstrip {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-left: auto;
+}
+
+.trackstrip__row {
+  width: 2.4rem;
+  height: 0.5rem;
+}
+
+.seat__sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/*
+ * Woher Punkte kommen, die nicht als Bauwerk oder Auszeichnung dastehen.
+ * Der Name steht immer dabei (Designregel 7); die Farbe hilft nur beim
+ * Wiederfinden: Barbaren in der Warnfarbe, Haendler in Handelsgold.
+ */
+.seat__source {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--chart-rule);
+  border-radius: var(--corner-sm);
+  color: var(--on-sea);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.seat__source--defender {
+  border-color: var(--bad-on-sea);
+}
+
+.seat__source--merchant {
+  border-color: var(--track-trade-on-sea);
+}
+
+.seat__pending {
+  color: var(--warn);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+/*
+ * Was seit dem vorigen Stand dazugekommen ist: kommt als Spielstein dazu
+ * (`piece-in`, Klasse im Markup) und bleibt dann stehen - es verblasst NICHT
+ * von selbst, eine abgeschaltete Animation stuende sonst unsichtbar.
+ */
+.seat__gain {
+  padding: 0 var(--space-2);
+  border-radius: var(--corner-sm);
+  background: var(--ok-ink);
+  color: var(--on-sea);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+/*
+ * Verbindung weg: eine ruhige Schicht statt eines eingefrorenen Bildes. Das
+ * Brett bleibt lesbar - man soll weiterschauen koennen, nur nicht mehr
+ * klicken. Die Erklaerung steht im Text und nicht in der Truebung.
+ */
+.offline {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--sea-900) 60%, transparent);
+  animation: ink-in var(--t-enter) linear backwards;
+}
+
+.offline__text {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--chart-rule);
+  border-radius: var(--corner-md);
+  background: var(--sea-800);
+  color: var(--on-sea);
+  font-weight: 650;
+}
+
+/*
+ * Die Kartusche (`StatusPanel`): das Titelfeld einer Karte. Wer dran ist, ist
+ * die groesste Schrift der Ecke und traegt einen Wimpel in Sitzfarbe; darunter
+ * steht in Kartenschrift, was verlangt ist. Rechtsbuendig, weil die rechte
+ * Kante die feste ist - der Satz wird laenger und kuerzer, sein Ende soll
+ * nicht bei jedem Zugwechsel wandern.
+ */
+.status__who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.status__name {
+  font-size: var(--text-lg);
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+/*
+ * Der Wimpel bleibt am Platz und wechselt nur die Farbe - das ist die grosse
+ * Bewegung des Zugwechsels, und sie dauert hoechstens `--t-stage`. `fill`
+ * traegt `var(--seat)`: wechselt die Variable, wechselt der berechnete Wert,
+ * und die Transition laeuft.
+ */
+.status__pennant {
+  width: 1.25rem;
+  height: 0.9rem;
+  flex: none;
+  fill: var(--seat);
+  stroke: var(--on-sea);
+  stroke-width: 1;
+  transition: fill var(--t-travel) var(--ease-move);
+}
+
+.status__phase {
+  /* Die Kartenschrift kommt von `.chartlabel`; hier nur die Grenze nach unten. */
+  margin-top: var(--space-1);
+}
+
+.status__turn {
+  font-size: var(--text-sm);
+}
+
+.status__note,
+.status__away {
+  margin: var(--space-1) 0 0;
+  color: var(--on-sea-muted);
+  font-size: var(--text-sm);
+}
+
+/*
+ * Wer nur weg ist, steht klein da. Wartet die Partie auf ihn, bekommt der Satz
+ * eine Kante - er erklaert dann, warum nichts passiert. Die Kante liegt
+ * rechts, weil der Block rechts ausgerichtet ist.
+ */
+.status__waiting {
+  margin: var(--space-2) 0 0;
+  padding-right: var(--space-2);
+  border-right: 3px solid var(--warn);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+}
+
+/*
+ * Die Restzeit einer Wartephase: ein Massstab, dazu der Satz mit der Zahl.
+ * Tabellenziffern, weil die Zahl jede Sekunde wechselt.
+ */
+.status__clock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: flex-end;
+  margin: var(--space-1) 0 0;
+  color: var(--on-sea-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.status__scale {
+  --scale-ink: var(--warn);
+  width: 5rem;
+}

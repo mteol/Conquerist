@@ -93,7 +93,7 @@ export function BarbarianTrack({
         </span>
       </div>
 
-      <p className="barbarians__eta" data-testid="barbarian-eta">
+      <p className="barbarians__eta chartlabel" data-testid="barbarian-eta">
         {left <= 0
           ? 'Angriff jetzt'
           : left === 1
@@ -114,7 +114,7 @@ export function BarbarianTrack({
        */}
       <p className="barbarians__strength">
         <span className="barbarians__side" aria-label={`Barbaren: ${strength}`}>
-          <span className="barbarians__word">Barbaren</span>
+          <span className="barbarians__word chartlabel">Barbaren</span>
           <NumeralText value={strength} className="barbarians__figure" />
         </span>
 
@@ -129,9 +129,9 @@ export function BarbarianTrack({
             data-standing={defenders >= strength ? 'holding' : 'losing'}
             aria-label={`Ritter: ${defenders}, ${defenders >= strength ? 'hält' : 'unterlegen'}`}
           >
-            <span className="barbarians__word">Ritter</span>
+            <span className="barbarians__word chartlabel">Ritter</span>
             <NumeralText value={defenders} className="barbarians__figure" />
-            <span className="barbarians__standing" aria-hidden="true">
+            <span className="barbarians__standing chartlabel" aria-hidden="true">
               {defenders >= strength ? 'hält' : 'unterlegen'}
             </span>
           </span>

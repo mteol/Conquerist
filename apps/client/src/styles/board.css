@@ -1,0 +1,861 @@
+/* --- Das Brett ------------------------------------------------------------ */
+
+/*
+ * Lokale Werte des Bretts. Spielmaterial hat eigene Farben (Karton, Holz), die
+ * nicht zu den Oberflaechentokens gehoeren - hier stehen sie einmal, unten
+ * nur noch als Variable.
+ *
+ * Bewegungsart je Ding (Designsystem „Bewegung"):
+ *   Stein bauen     `board-piece-in`, `--ease-settle`: von oben hingestellt,
+ *                   der Kontaktschatten wird dabei eng
+ *   Raeuber/Haendler/Ritter ziehen   `--t-travel`, `--ease-move`
+ *   Zielmarken      `ink-in` einmal, dann stehen sie ruhig
+ *   Zeiger darueber `--t-quick`
+ */
+.board {
+  --board-cream: #f6efdf;
+  --board-shadow: rgb(12 18 26 / 45%);
+  --robber-body: #24211d;
+  --robber-edge: #0c0b0a;
+}
+
+/* Ein Strich in Brettmassen verschwindet auf dem Handy unter ein Pixel
+   (`design.md`, Fallen): was nur Kontur ist, rechnet deshalb in Bildschirmpixeln. */
+.board .hex {
+  stroke: var(--ink-base);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+
+/* Der Mauszeiger sitzt immer auf der Fangflaeche (`board__catcher`): sie zeigt
+   die Hand, sobald darunter ein Ziel liegt - `:hover` an der Marke gibt es nicht. */
+.board:has([data-aim]) .board__catcher {
+  cursor: pointer;
+}
+
+/*
+ * Die Feldwahl (Raeuber, Haendler, Bischof): waehlbare Felder mit hellem
+ * Rand, alle anderen gedimmt. Der Rand erscheint einmal (`ink-in`, gestaffelt
+ * ueber `--d`) und steht dann ruhig. Unter dem Zeiger wird er voll und das Feld
+ * hellt auf; beim Druecken sackt es.
+ */
+.hexgoal {
+  fill: color-mix(in srgb, var(--board-cream) 8%, transparent);
+  stroke: var(--board-cream);
+  stroke-width: 0.07;
+  stroke-dasharray: 0.18 0.1;
+  stroke-linejoin: round;
+  animation: ink-in var(--t-enter) linear backwards;
+  animation-delay: calc(var(--d, 0) * var(--stagger));
+  transition:
+    fill var(--t-quick) var(--ease-out),
+    stroke-width var(--t-quick) var(--ease-out);
+}
+
+.hexgoal[data-aim] {
+  fill: color-mix(in srgb, var(--board-cream) 30%, transparent);
+  stroke-width: 0.1;
+  stroke-dasharray: none;
+}
+
+.hexgoal[data-aim='press'] {
+  fill: color-mix(in srgb, var(--board-cream) 44%, transparent);
+  stroke-width: 0.12;
+}
+
+.hexgoal--off {
+  fill: rgb(12 18 26 / 42%);
+  stroke: none;
+  animation: ink-in var(--t-enter) linear backwards;
+}
+
+/*
+ * Die Mattierung - eine Kante, kein Licht.
+ *
+ * Hier standen `.hex__light` und `.hex__bevel`: ein Verlauf ueber der Flaeche
+ * und ein zweiter als Fase mit einem hellen Grat an der Oberkante. Der Grat war
+ * der Fehler. Ein heller Grat ist ein **Glanzlicht**, Glanz heisst glatt, und
+ * ein Plaettchen aus Karton hat keines - das Brett sah aus wie aus Plastik.
+ *
+ * Was bleibt, ist richtungslos: aussen etwas dunkler, wie Farbe, die in den
+ * Karton zieht. Es gibt keine Lichtquelle mehr, also auch keinen Reflex. Die
+ * Tiefe kommt jetzt aus der Textur und aus dem Kuestenschatten.
+ */
+.hex__matte {
+  fill: url(#hex-matte);
+}
+
+/*
+ * Die Gelaendetextur.
+ *
+ * **Sehr leise, und das ist der Punkt.** Die Vorgaengerin war ein Motivband am
+ * unteren Feldrand bei 46 % - dort ging das, weil sie wenig Flaeche belegte.
+ * Eine Textur ueber das **ganze** Feld laeuft unter jeder Strasse und hinter
+ * jedem Bauwerk durch; bei derselben Staerke wuerde sie mit allem streiten, was
+ * auf dem Brett Information traegt. Die Gelaendeunterscheidung kommt jetzt aus
+ * dem Muster und nicht aus der Deutlichkeit einer einzelnen Form: Spitzen gegen
+ * Rundungen gegen Furchen liest man auch leise, weil sie eine Flaeche fuellen.
+ *
+ * Warum es sie ueberhaupt gibt, steht in `board/terrain.tsx`.
+ */
+.terrain-fill {
+  fill: var(--terrain-ink);
+}
+
+.terrain-line {
+  fill: none;
+  stroke: var(--terrain-ink);
+  /*
+   * **0.02 und nicht 0.012, und das ist ein Messbefund.** Bei 65 Pixeln je
+   * Bretteinheit war der alte Strich **0.78 Pixel** breit. Unterhalb eines
+   * Pixels zeichnet der Browser nicht duenner, sondern blasser: er verteilt
+   * den Strich auf zwei Pixelreihen und rechnet die Deckung entsprechend
+   * herunter. Von den 17 Prozent im Blatt kamen so rund 13 an - auf einem
+   * Waldgruen, gegen das sie ohnehin nur 1.23:1 standen. Die Textur war
+   * nicht leise, sie war weg, und das Feld las sich als Farbflaeche.
+   *
+   * 0.02 ergibt 1.3 Pixel. Das ist die Untergrenze, ab der eine Deckkraft
+   * ueberhaupt das bedeutet, was dasteht.
+   */
+  stroke-width: 0.02;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/*
+ * Die Staerke der Textur - je Gelaende gegen seinen **eigenen** Grund
+ * gerechnet, nicht einmal fuer alle geraten.
+ *
+ * Eine Tinte, die auf sechs verschiedenen Farben mit derselben Deckkraft
+ * liegt, ist nicht sechsmal dieselbe Textur. Gemessen stand die alte
+ * Einheitstinte auf der Wueste bei 1.41:1 und auf dem Wald bei 1.23:1 - dort,
+ * wo das Feld am dunkelsten ist und die Unterscheidung am noetigsten waere,
+ * war sie am schwaechsten.
+ *
+ * Der Grundwert ist **1.50:1**, ausgerechnet und nicht nach Augenmass gesetzt
+ * (Luminanz nach WCAG, Tinte ueber Grund gemischt).
+ *
+ * **Die Richtung folgt aus der Helligkeit des Grundes und aus nichts sonst.**
+ * Auf dem Wald (Luminanz 0.114) braucht dunkle Tinte 46 Prozent fuer dasselbe,
+ * wofuer helle 20 genuegen - eine dunkle Marke auf einem dunklen Feld wird zum
+ * Loch, bevor sie sichtbar wird. Wald und Huegel zeichnen deshalb hell, die
+ * vier helleren Gelaende dunkel. Das ist dieselbe Rechnung, aus der die
+ * Strassenkontur entstanden ist: was auf jedem Untergrund gelten soll, richtet
+ * sich nach dem Untergrund.
+ *
+ * **Dichte ist nicht Kontrast - und das war der zweite Befund.** Mit sechsmal
+ * 1.50 im Blatt sahen Huegel und Acker am Bildschirm trotzdem deutlich lauter
+ * aus als der Rest. Nachgemessen (Pfadlaenge mal Strichbreite gegen die
+ * Kachelflaeche) belegt der Ziegelverband **25.3 Prozent** seiner Kachel, der
+ * Wald **9.8** - Faktor 2.58. Ein Muster aus durchlaufenden Linien fuellt eine
+ * Flaeche, ein Muster aus vereinzelten Marken tupft sie an; derselbe Kontrast
+ * je Strich ergibt dann nicht dieselbe Textur.
+ *
+ * Gedaempft wird deshalb mit `sqrt(11.2 / Deckung)`, gedeckelt bei 1 - die
+ * dichten Gelaende werden leiser, die duennen nicht lauter. **Die Wurzel ist
+ * ein Kompromiss und wird auch so genannt:** voll linear korrigiert waere der
+ * Ziegelverband auf 1.22 gefallen, also fast zurueck auf den Zustand, den
+ * diese ganze Etappe beheben sollte. Die halbe Korrektur nimmt ihm die
+ * Lautstaerke und laesst ihn deutlich - nachgesehen, nicht nur gerechnet.
+ *
+ * | Gelaende  | Deckung | Daempfung | Ziel  | Alpha | Tinte     |
+ * | --------- | ------- | --------- | ----- | ----- | --------- |
+ * | forest    | 9.8 %   | 1.000     | 1.500 | 20 %  | Pergament |
+ * | pasture   | 15.2 %  | 0.857     | 1.429 | 21 %  | Tiefsee   |
+ * | mountains | 12.0 %  | 0.969     | 1.484 | 26 %  | Tiefsee   |
+ * | desert    | 15.9 %  | 0.841     | 1.421 | 19 %  | Tiefsee   |
+ * | fields    | 17.7 %  | 0.797     | 1.398 | 19 %  | Tiefsee   |
+ * | hills     | 25.3 %  | 0.666     | 1.333 | 19 %  | Pergament |
+ *
+ * Die Deckung ist gemessen und nicht geschaetzt: Pfadlaenge mal Strichbreite
+ * (bei gefuellten Marken die Flaeche des abgetasteten Umrisses) gegen die
+ * Kachelflaeche. **Wer eine Kachel aendert, aendert ihre Deckung** - und damit
+ * gilt ihre Zeile nicht mehr.
+ *
+ * **Genau das ist der Weide passiert.** Die Schafe in ihrer Streulage
+ * (`board/terrain.tsx`) sind gefuellte Silhouetten und damit die dichteste
+ * Marke, die das Feld je getragen hat: von 12.0 auf 15.2 Prozent, gut ein
+ * Viertel mehr Tinte auf derselben Flaeche. Die Daempfung faellt daraufhin von
+ * 0.965 auf 0.857, das Ziel von 1.483 auf 1.429, und das Alpha von 23 auf 21
+ * Prozent (gerechnet 1.421 - zwischen 21 und 22 liegt das Ziel, und die
+ * leisere Seite ist bei einem Feld, auf dem jetzt mehr steht, die richtige).
+ * Wer hier 23 Prozent stehen liesse, haette die Weide zum lautesten Feld des
+ * Bretts gemacht, ohne eine Zeile darueber zu aendern. Sie steht deshalb hier und nicht nur im Kopf;
+ * `board/terrain.test.tsx` haelt fest, dass jede Kachel ihre Klasse traegt,
+ * damit wenigstens die Kopplung nicht still bricht.
+ */
+.terrain-tile--forest {
+  --terrain-ink: rgb(246 239 223 / 20%);
+}
+
+.terrain-tile--hills {
+  --terrain-ink: rgb(246 239 223 / 19%);
+}
+
+.terrain-tile--pasture {
+  --terrain-ink: rgb(22 32 42 / 21%);
+}
+
+.terrain-tile--fields {
+  --terrain-ink: rgb(22 32 42 / 19%);
+}
+
+.terrain-tile--mountains {
+  --terrain-ink: rgb(22 32 42 / 26%);
+}
+
+.terrain-tile--desert {
+  --terrain-ink: rgb(22 32 42 / 19%);
+}
+.chip circle {
+  fill: var(--board-cream);
+  stroke: var(--ink-base);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+/*
+ * Der Wurf wirkt auf dem Brett: die Chips der gefallenen Zahl heben sich einmal
+ * ab und werfen dabei einen Schatten (`--lift` -> `--lift-raised`, in Brettmassen
+ * nachgebaut: ein Filter wuerde hier den Kasten-Fehler von `.hexfields` wiederholen).
+ * Das Brett bekommt den Wurf erst, wenn die Wuerfel liegen (`useSettledRoll`).
+ */
+.chip__shadow {
+  fill: var(--board-shadow);
+  opacity: 0;
+}
+
+.chip--hit {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chip-lift var(--t-travel) var(--ease-move);
+}
+
+.chip--hit .chip__shadow {
+  animation: chip-shadow var(--t-travel) var(--ease-move);
+}
+
+@keyframes chip-lift {
+  35% {
+    transform: translateY(-0.05px) scale(1.3);
+  }
+}
+
+@keyframes chip-shadow {
+  35% {
+    opacity: 0.5;
+  }
+}
+
+/*
+ * Die Zahl auf dem Chip steht **nicht mehr hier**.
+ *
+ * Sie war ein `text` in 'Segoe UI Bold' und ist eine gezeichnete Form
+ * geworden (`type/Numerals.tsx`, gesetzt in `BoardSvg`). Groesse und Farbe
+ * kommen deshalb vom Element und nicht aus dem Blatt - die Groesse als
+ * Versalhoehe in Brettmassen, die Farbe als `style`.
+ *
+ * **Das ist die Lehre aus zwei Etappen und nicht Geschmack.** An dieser
+ * Stelle standen `.chip text` und `.chip text.chip__hot`, und zweimal hat
+ * eine Klasse plus ein Typ eine Klasse allein geschlagen: die rote Sechs hat
+ * nie gegolten, und die Augen ragten ueber den Chiprand. Was am Element
+ * steht, kann kein Selektor mehr ueberholen.
+ *
+ * Rot ist dabei nicht der einzige Traeger: die Punktreihe unter der Zahl ist
+ * bei der Sechs und der Acht am laengsten, und sie faerbt sich mit. Wer Rot
+ * schlecht sieht, zaehlt die Punkte - das ist dieselbe Auskunft.
+ */
+
+/*
+ * Die Augen unter der Zahl.
+ *
+ * Sie waren ein `text` aus Mittelpunkten und standen ueber den Chiprand hinaus:
+ * `font-size` stand hier in einer Klasse, darueber aber in `.chip text` - eine
+ * Klasse plus ein Typ schlaegt eine Klasse allein, also galten nie 0.19px,
+ * sondern 0.32px. **Dieselbe Falle wie bei der roten Sechs**, zwei Regeln
+ * weiter oben im selben Block, und diesmal ist sie nicht mit einem schaerferen
+ * Selektor behoben, sondern mit dem Verzicht auf die Schrift: die Punkte sind
+ * jetzt Kreise (siehe `BoardSvg`). Eine gezeichnete Form hat keine Metrik, die
+ * eine fehlende Schrift veraendern koennte.
+ */
+.chip__pips circle {
+  fill: var(--ink-base);
+}
+
+.chip__pips--hot circle {
+  fill: var(--bad-ink);
+}
+
+/*
+ * Die Hafenmuenze - heller Koerper, farbiger Rand.
+ *
+ * Derselbe Pergamentton wie der Zahlenchip, und aus demselben Grund: auf dem
+ * Brett heisst heller Koerper mit dunkler Tinte „hier steht eine Auskunft".
+ * Was der Hafen **ist**, sagt der Rand und das Motiv darin; was er **kostet**,
+ * sagen die Ziffern darunter.
+ *
+ * Der Selektor ist `.harbor__coin` und nicht mehr `.harbor circle` - seit im
+ * Anker des allgemeinen Hafens ein zweiter Kreis stecken kann, waere der alte
+ * Selektor ueber ein Motiv gelaufen und haette es cremefarben ausgefuellt.
+ * Eine Klasse trifft, was gemeint ist; ein Typ trifft, was zufaellig danach
+ * kommt.
+ */
+.harbor__coin {
+  fill: var(--board-cream);
+  stroke-width: 0.055;
+}
+
+/*
+ * Das Motiv in der Muenze - dieselbe Zeichnung wie auf der Handkarte.
+ *
+ * `fill` steht hier und nicht am Pfad: die Motive kommen aus
+ * `panels/ResourceGlyph.tsx` und tragen dort keine eigene Farbe, sondern
+ * bekommen sie von ihrem Traeger. Etwas dunkler als auf der Karte (90 statt
+ * 82 Prozent), weil die Muenze klein ist und ein Motiv von zwanzig Pixeln
+ * weniger Deckung vertraegt als eines von fuenfzig.
+ */
+.harbor__glyph {
+  fill: rgb(22 32 42 / 90%);
+}
+
+/*
+ * Die Bruchkanten im Erz.
+ *
+ * **Zwei Klassen gegen eine, und das ist nachgezaehlt.** `.card__glyph-cut`
+ * streicht sie in Pergament - auf der dunkelgrauen Erzkarte richtig, auf der
+ * cremefarbenen Muenze unsichtbar. Diese Regel hier ist eine Klasse plus eine
+ * Klasse und schlaegt sie deshalb; ein `.harbor__glyph path` waere eine Klasse
+ * plus ein Typ und haette dasselbe Gewicht wie eine Klasse plus eine Klasse -
+ * bei Gleichstand gewinnt die spaetere, und darauf will sich in diesem Blatt
+ * niemand mehr verlassen.
+ */
+.harbor__glyph .card__glyph-cut {
+  stroke: rgb(246 239 223 / 75%);
+}
+
+/*
+ * Das Verhaeltnis unter dem Motiv.
+ *
+ * Es war ein `<text>` in 'Segoe UI Bold' und ist eine gezeichnete Form
+ * geworden (`Ratio` in `type/Numerals.tsx`) - dieselbe Umstellung, die die
+ * Chipzahl schon hinter sich hat, und aus demselben Grund: was in einer Zahl
+ * steht, darf nicht an den Metriken einer Schrift haengen, die auf einem
+ * fremden Rechner fehlen kann.
+ */
+.harbor__ratio {
+  fill: var(--ink-base);
+}
+
+/*
+ * Die Stege vom Hafen an Land.
+ *
+ * Duenner als eine Strasse und in der Farbe des Hafens - sie sollen sagen,
+ * welche zwei Knoten der Hafen bedient, und dabei keinen Balken vortaeuschen,
+ * auf dem man bauen koennte. Sie laufen unter die Marke und werden von ihr
+ * verdeckt; deshalb steht der Kreis im Markup danach.
+ */
+.harbor__dock {
+  /* Seit sie ein Bogen sind, sind sie ein `path` - und ein Pfad ohne diese
+     Zeile fuellt die Flaeche zwischen Sehne und Bogen aus. */
+  fill: none;
+  stroke-width: 0.045;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+/*
+ * Bewegung auf dem Brett - jede Dauer und Kurve aus den Tokens.
+ *
+ * Der Raeuber **zieht** (`--t-travel`, `--ease-move`) und setzt auf: der Koerper
+ * huepft ueber dem Boden, sein Schatten bleibt liegen und wird beim Abheben
+ * schmal. Eine Sieben ist die unangenehmste Stelle im Spiel, und wer sie
+ * verpasst, sucht danach das halbe Brett ab. Ein neues Bauwerk wird von oben
+ * hingestellt (`board-piece-in`, `--ease-settle`), sein Kontaktschatten wird
+ * dabei eng. `prefers-reduced-motion` kuerzt alles in `base.css`; nichts hier
+ * erzaehlt etwas, das nicht auch ohne Bewegung am Bildschirm steht.
+ *
+ * `--drop` ist die Fallhoehe in der **Einheit des Elements**: Bauwerke zeichnen
+ * im Pfadmass (~ 0.027 je Einheit), alles andere in Brettmassen. Darum hat
+ * `piece-in` aus `system.css` hier nicht gepasst (feste 14 px).
+ */
+@keyframes board-piece-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--drop, 0.25) * -1px)) scale(1.12);
+  }
+
+  55% {
+    opacity: 1;
+  }
+}
+
+@keyframes board-shadow-settle {
+  from {
+    opacity: 0.15;
+    transform: scale(1.8);
+  }
+}
+
+/* Der Ring geht einmal auf; am Ende ist er unsichtbar, ohne Bewegung auch. */
+@keyframes board-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.25);
+  }
+
+  20% {
+    opacity: 0.85;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes board-travel {
+  from {
+    transform: translate(var(--from-x, 0), var(--from-y, 0));
+  }
+}
+
+/* Abheben, ueber das Feld, aufsetzen - die Kurven wechseln je Strecke. */
+@keyframes robber-hop {
+  0% {
+    transform: translateY(0);
+    animation-timing-function: var(--ease-out);
+  }
+
+  55% {
+    transform: translateY(-0.14px);
+    animation-timing-function: var(--ease-settle);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes robber-shadow {
+  55% {
+    opacity: 0.5;
+    transform: scale(0.65);
+  }
+}
+
+.robber,
+.merchant-mover {
+  transition: transform var(--t-travel) var(--ease-move);
+}
+
+.robber__body {
+  animation: robber-hop var(--t-travel) linear;
+}
+
+.robber__shadow {
+  fill: var(--board-shadow);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: robber-shadow var(--t-travel) var(--ease-move);
+}
+
+.robber circle {
+  fill: var(--robber-body);
+  stroke: var(--robber-edge);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Der Ring am Zielfeld des Raeubers und an jedem neuen Bauwerk. Er faengt am
+   Ziel an: der Raeuber setzt erst nach rund zwei Dritteln seines Wegs auf. */
+.robber__flash,
+.build-flash {
+  fill: none;
+  stroke: var(--board-cream);
+  stroke-width: 0.06;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: board-ring var(--t-enter) var(--ease-out) both;
+  pointer-events: none;
+}
+
+.robber__flash {
+  animation-duration: var(--t-travel);
+  animation-delay: calc(var(--t-travel) * 0.5);
+}
+
+/* Der Kontaktschatten unter einem gebauten Stein: weit und blass, solange er
+   faellt, eng und dunkel, wenn er liegt. */
+.piece-shadow {
+  fill: var(--board-shadow);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: board-shadow-settle var(--t-enter) var(--ease-out) backwards;
+}
+
+.building,
+.piece,
+.piece-hop {
+  /* Ohne fill-box waere der Ursprung die Ecke des SVG, nicht die des Bauwerks. */
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: board-piece-in var(--t-enter) var(--ease-settle) backwards;
+}
+
+/* Pfadmass: 10 Einheiten * 0.027 sind gut ein Viertel Feldbreite Fallhoehe. */
+.building {
+  --drop: 10;
+}
+
+.piece--travel {
+  animation: board-travel var(--t-travel) var(--ease-move) backwards;
+}
+
+/*
+ * `.road` haelt jede Kante als unsichtbare Trefferflaeche bereit. Die Farbe
+ * einer gebauten Strasse kommt deshalb als `style` vom Element und nicht als
+ * `stroke`-Attribut - eine Regel hier wuerde ein Attribut immer schlagen.
+ */
+.road {
+  stroke: transparent;
+  stroke-width: 0.14;
+  stroke-linecap: round;
+}
+
+/*
+ * **Duenner als bisher (0.16), und die Kontur darunter deutlich duenner.**
+ *
+ * Auf dem Brett lag ein Balken von 0.16 in einer Kontur von 0.24: 0.04 Tinte
+ * auf jeder Seite, also ein Viertel der Strassenbreite je Rand, und in Summe
+ * mehr Rand als Strasse ueber die drei Streifen gerechnet. Das las sich nicht
+ * als Kontur, sondern als schwarzer Balken mit einem farbigen Kern - die
+ * Spielerfarbe, an der man die Strasse erkennen soll, war der kleinste Anteil
+ * daran. Jetzt 0.115 in 0.15, also 0.0175 je Seite: eine Haarlinie, die die
+ * Form haelt, statt einer Fassung, die sie traegt.
+ *
+ * Die Trefferflaeche bleibt bei den 0.14 von `.road` - anklickbar ist eine
+ * freie Kante, und die soll nicht mitschrumpfen, nur weil die gebaute Strasse
+ * schmaler geworden ist.
+ */
+.road--built {
+  stroke-width: 0.115;
+}
+
+/*
+ * Die Kontur unter einer gebauten Strasse.
+ *
+ * Sie ist die Antwort auf „am Brettrand sind die Strassen unsichtbar": im
+ * Inneren liegt eine Strasse zwischen zwei hellen Gelaendefeldern, an der
+ * Kueste zur Haelfte auf der dunklen See - und ein dunkelblauer oder violetter
+ * Streifen darauf verschwindet. Dieselbe Tinte wie die Feldraender, damit die
+ * Kontur zum Brett gehoert und nicht wie ein Schlagschatten wirkt.
+ */
+.road__casing {
+  stroke: rgb(22 32 42 / 72%);
+  stroke-width: 0.15;
+  stroke-linecap: round;
+}
+
+/*
+ * Die gestrichelte Vorschau traegt die Breite der Strasse, die daraus wird -
+ * sonst zeigt das Brett eine Stelle breiter an, als sie hinterher belegt ist.
+ * Getroffen wird trotzdem weiter grosszuegig: `.vertex__hit` und die
+ * Linienbreite von `.road` sind die Trefferflaeche, nicht diese Regel - sie
+ * kommt danach und schlaegt sie nur fuer die Zeichnung.
+ */
+.road--target {
+  stroke: color-mix(in srgb, var(--board-cream) 80%, transparent);
+  stroke-width: 0.125;
+  stroke-dasharray: 0.15 0.11;
+  animation: ink-in var(--t-enter) linear backwards;
+  animation-delay: calc(var(--d, 0) * var(--stagger));
+  transition: stroke var(--t-quick) var(--ease-out);
+}
+
+.road--target[data-aim] {
+  stroke: color-mix(in srgb, var(--board-cream) 40%, transparent);
+}
+
+/*
+ * Eine gebaute Strasse, die gewaehlt werden kann (Diplomat): ein heller
+ * Strich ueber der Strasse, gestrichelt wie ein freies Ziel - dieselbe Sprache
+ * fuer „hier anklicken". Er erscheint einmal und steht dann.
+ */
+.road__removable {
+  stroke: var(--board-cream);
+  stroke-width: 0.05;
+  stroke-dasharray: 0.09 0.07;
+  stroke-linecap: round;
+  animation: ink-in var(--t-enter) linear backwards;
+  animation-delay: calc(var(--d, 0) * var(--stagger));
+  transition: stroke-width var(--t-quick) var(--ease-out);
+}
+
+.road__removable[data-aim] {
+  stroke-width: 0.085;
+}
+
+.vertex__hit {
+  fill: transparent;
+}
+
+/*
+ * Die Marke am freien Knoten. Ruhend ist sie allein deutlich genug (Touch hat
+ * keinen Zeiger): heller Koerper, dunkler Rand in Bildschirmpixeln. Unter dem
+ * Zeiger waechst sie und wird voll; die Vorschau (`.aim`) liegt darueber.
+ * Beim Druecken sackt sie.
+ */
+.vertex__target {
+  fill: color-mix(in srgb, var(--board-cream) 78%, transparent);
+  stroke: var(--ink-base);
+  stroke-opacity: 0.55;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ink-in var(--t-enter) linear backwards;
+  animation-delay: calc(var(--d, 0) * var(--stagger));
+  transition:
+    fill var(--t-quick) var(--ease-out),
+    transform var(--t-quick) var(--ease-out);
+}
+
+.vertex__target[data-aim] {
+  fill: var(--board-cream);
+  transform: scale(1.25);
+}
+
+.vertex__target[data-aim='press'] {
+  transform: scale(0.9);
+}
+
+/*
+ * Der Hof unter einem Bauwerk, das gerade ein Ziel ist - beim Ausbau zur Stadt
+ * sind das alle eigenen Siedlungen. Blasser als die Marke am leeren Knoten:
+ * dort ist sie das einzige Zeichen, hier liegt ein Haus darauf.
+ */
+.vertex__target--yard {
+  fill: color-mix(in srgb, var(--board-cream) 38%, transparent);
+}
+
+.vertex__target--yard[data-aim] {
+  fill: color-mix(in srgb, var(--board-cream) 70%, transparent);
+  transform: scale(1.1);
+}
+
+.vertex__target--yard[data-aim='press'] {
+  transform: scale(0.95);
+}
+
+/*
+ * Die Vorschau unter dem Zeiger: das Teil, das gebaut wuerde, in der Sitzfarbe
+ * (`--seat`, vom Brett gesetzt) und halb deckend. Sie erscheint kurz (`ink-in`
+ * bei `--t-quick`), hebt sich leicht und sackt beim Druecken.
+ */
+.aim {
+  fill: var(--seat, var(--board-cream));
+  stroke: var(--ink-base);
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+  opacity: 0.62;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ink-in var(--t-quick) linear backwards;
+  transition: transform var(--t-press) var(--ease-out);
+}
+
+.aim[data-aim='press'] {
+  transform: translateY(0.02px) scale(0.93);
+}
+
+.aim line {
+  fill: none;
+  stroke: var(--seat, var(--board-cream));
+  stroke-width: 0.115;
+  stroke-linecap: round;
+  opacity: 1;
+}
+
+.aim--road {
+  stroke: none;
+}
+
+/*
+ * Siedlung und Stadt tragen ihre Kontur im **Pfadmass**, nicht im Brettmass:
+ * der Pfad steckt in einem `scale(0.027)`, und eine Linienbreite von 0.03 waere
+ * darin auf ein Sechzigstel geschrumpft, also gar nichts.
+ *
+ * **1.15 statt 1.4, seit die Haeuser groesser sind.** Die Kontur wird mit dem
+ * Bauwerk mitskaliert: 1.4 im Pfadraum waren bei `scale(0.023)` rund 0.032 auf
+ * dem Brett, bei `scale(0.027)` waeren daraus 0.038 geworden - das Haus haette
+ * seinen Rand mitwachsen lassen und waere schwaerzer geworden statt groesser.
+ * 1.15 * 0.027 sind wieder 0.031: dieselbe Haarlinie an einem groesseren Haus.
+ */
+.vertex__building {
+  stroke: var(--ink-base);
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+}
+
+/*
+ * Die Stadtmauer traegt dieselbe Kontur wie das Bauwerk darunter - sie ist
+ * dasselbe Material, nur ein anderes Stueck davon. Eine eigene Linienbreite
+ * haette sie zu einem zweiten Gegenstand gemacht.
+ *
+ * Etwas dunkler als die Stadt: ein Band in genau der Farbe des Hauses waere
+ * bei kleiner Darstellung mit ihm verschmolzen, und die Zinnen sind zum
+ * Zaehlen da.
+ */
+.wall {
+  stroke: var(--ink-base);
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+  filter: brightness(0.78);
+}
+
+/*
+ * Der Metropolenaufsatz - dasselbe Material wie Stadt und Mauer, deshalb
+ * dieselbe Kontur im Pfadmaß (`board/BoardSvg.tsx`). Die Fläche kommt per
+ * `style` aus `TRACK_COLORS` (`game/labels.ts`) und steht nicht hier - eine
+ * Regel hier würde jedes `fill` am Element schlagen.
+ */
+.merchant__body,
+.merchant__head,
+.merchant__coin {
+  stroke: var(--ink-base);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+
+.merchant__head {
+  fill: var(--parchment);
+}
+
+.merchant__coin {
+  fill: var(--track-trade-on-sea);
+}
+
+.merchant__shadow {
+  fill: rgb(12 18 26 / 45%);
+}
+
+.metropolis__disc {
+  fill: var(--parchment);
+  stroke: var(--ink-base);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.metropolis {
+  stroke: var(--ink-base);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  fill-rule: evenodd;
+}
+
+/* Der Turm traegt denselben Rumpf wie die Stadt davor - dieselbe Kontur. */
+.metropolis__tower {
+  stroke: var(--ink-base);
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+  filter: brightness(0.9);
+}
+
+/*
+ * Der Ritter.
+ *
+ * Keine Farbe im Blatt, die die Sitzfarbe schluege - Rumpf, Mast und Spitzen
+ * bekommen sie per `style`. Hier steht nur, was fuer alle Ritter gilt: die
+ * Kontur im Pfadmass (derselbe Grund wie bei `.vertex__building`) und der
+ * Helm, der die einzige Form mit eigener Farbe ist.
+ */
+.knight__body {
+  stroke: var(--ink-base);
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+}
+
+/*
+ * **Die Spitzen tragen eine eigene, duennere Kontur.**
+ *
+ * Mit den 1.15 des Rumpfs waren es im Browser 2,4 px Rand bei 1,7 px Lücke
+ * zwischen zwei Spitzen - sie berührten sich, und drei davon wären ein Balken
+ * gewesen. Eine Silhouette, die man zählen soll, darf ihre Zwischenräume nicht
+ * an den Rand verlieren. Die Teilung im Pfad ist mitgewachsen (`shapes.ts`).
+ */
+.knight__pennant {
+  stroke: var(--ink-base);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+
+.knight__mast {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/*
+ * Der Helm ist hell und gehoert keinem Spieler.
+ *
+ * **Aktiv und passiv unterscheidet ein Stueck Material, keine Deckkraft.** Ein
+ * halbdurchsichtiger Ritter laese sich als "gesperrt", nicht als "ruht" - und
+ * ein ruhender Ritter ist nicht gesperrt, ihm fehlt nur sein Getreide.
+ */
+.knight__helmet {
+  fill: var(--board-cream);
+  stroke: var(--ink-base);
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+}
+
+/* --- Dialoge -------------------------------------------------------------- */
+
+/*
+ * **Der Dialog ist erreichbar, auch wenn er hoeher ist als das Fenster.**
+ *
+ * Gerollt wird die **Huelle** und nicht der Kasten: der Kasten traegt sein Kreuz
+ * absolut in der Ecke, und in einem eigenen Rollbereich waere ausgerechnet das
+ * Kreuz nach oben aus dem Bild gefahren. Auf einem Handy quer (844x390) ist der
+ * Handeldialog 630 px hoch - ohne Rollen lag der Knopf, der ihn abschliesst,
+ * ausserhalb.
+ *
+ * `margin: auto` am Kasten und nicht `align-items: center` an der Huelle: eine
+ * automatische Aussenlinie verteilt nur **freien** Platz. Ist keiner da, faellt
+ * sie auf 0 zurueck und der Kasten sitzt am Anfang - zentriert, solange er
+ * passt, vollstaendig erreichbar, sobald er nicht mehr passt.
+ *
+ * Dahinter wird die Karte dunkler, nicht unscharf: die See bleibt zu erkennen,
+ * sie tritt zurueck. Die Abdunklung kommt mit `ink-in` (Antwort, nicht Auftritt);
+ * loest ein Dialog einen anderen ab, setzt `Modal` `data-handover`, und sie
+ * steht sofort da, statt ein zweites Mal aufzublenden.
+ */
+.modal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  padding: var(--space-4);
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: color-mix(in oklab, var(--sea-900) 72%, transparent);
+  animation: ink-in var(--t-quick) linear backwards;
+}
+
+.modal[data-handover] {
+  animation: none;
+}
+
+/* Aufbau und Optik stehen in `.sheet` (system.css) und `dialogs.css`; hier nur die Lage. */
+.modal__box {
+  display: flex;
+  flex-direction: column;
+  margin: auto;
+  min-width: min(22rem, 100%);
+  max-width: min(92vw, 34rem);
+  padding: 0;
+  text-align: left;
+}

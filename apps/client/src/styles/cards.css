@@ -1,0 +1,647 @@
+/*
+ * Karten: eigene Hand, Entwicklungs- und Fortschrittskarten, Auszeichnungen,
+ * Plaketten am Tisch, Rohstoffwahl.
+ *
+ * Karten sind **Spielmaterial**: volle Saettigung, runde Ecken (nie gefast),
+ * eigener Schattenwurf. Sie kommen mit `deal-in` an (`--i` je Lage, hoechstens
+ * fuenf), heben sich unter dem Zeiger (`--lift-raised`) und legen sich beim
+ * Wegfahren zurueck. Mindestgroesse jeder Schrift: 12 px.
+ */
+
+/* --- Die eigene Hand -------------------------------------------------------- *
+ *
+ * Sie liegt offen auf dem Tisch, nicht in einem Kasten; auf der See gilt die
+ * helle Tinte.
+ */
+.hand {
+  --ink: var(--on-sea);
+  --ink-muted: var(--on-sea-muted);
+  color: var(--ink);
+}
+
+/*
+ * Name und Gesamtzahl stehen nebeneinander und nicht auseinandergezogen: die
+ * Kartenreihe darunter waechst mit jeder Sorte, und eine Zahl, die man im Blick
+ * behalten soll, darf bei jedem Zug nicht ueber den Bildschirm wandern.
+ */
+.hand__head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  justify-content: flex-start;
+}
+
+.hand__total {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.hand__empty {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.hand__stacks {
+  display: flex;
+  gap: var(--space-2);
+  /* Oben Luft fuer die Stapeltiefe, die nach oben aus der Karte herausragt. */
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Die Karte in Handgroesse: man soll das Motiv erkennen, ohne hinzusehen.
+ * (Dieser Klassenname war einmal doppelt vergeben - wer hier einen vergibt,
+ * sucht ihn vorher einmal im Blatt.)
+ */
+.card {
+  /*
+   * Ruheversatz je Karte im Stapel. `0px` und nicht `0`: `calc()` rechnet mit
+   * Typen, und eine nackte Null haette die ganze Verschiebung still ungueltig gemacht.
+   */
+  --step-x: 0px;
+  --step-y: -2.5px;
+  --fan: 0;
+
+  position: relative;
+  width: 4.6rem;
+}
+
+/* Die Karten dahinter: Andeutung, nie Traeger einer Information. Versatz nur nach oben, sonst
+   ueberlappt der Stapel seinen Nachbarn und sagt etwas, das nicht stimmt. */
+.card__behind {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5.8rem;
+  border: 1px solid rgb(22 32 42 / 45%);
+  border-radius: var(--corner-md);
+  opacity: 0.5;
+}
+
+/*
+ * Das Auffaechern - fuer alle Stapel des Spiels an **einer** Stelle: Rohstoffe,
+ * Entwicklungskarten, Kaufstapel. Es erklaert (Designregel 5), dass unter der
+ * obersten Karte weitere liegen; die Plakette sagt die Zahl.
+ *
+ * `--i` (Lage im Stapel) kommt aus der Komponente, `--step-x/y` (Ruheversatz) vom
+ * jeweiligen Stapel. `--fan` ist ein Schalter, 0 oder 1, damit
+ * `prefers-reduced-motion` ihn zuruecklegen kann, ohne die Ruhelage ein zweites
+ * Mal hinzuschreiben. Drehpunkt unten in der Mitte: so faechert eine Hand.
+ */
+.card__behind,
+.devcard__behind,
+.deck__behind {
+  transform-origin: 50% 100%;
+  transform: translate(
+      calc(var(--i) * (var(--step-x) + var(--fan) * 3px)),
+      calc(var(--i) * (var(--step-y) + var(--fan) * -3px))
+    )
+    rotate(calc(var(--i) * var(--fan) * 2deg));
+  transition: transform var(--t-move) var(--ease-out);
+}
+
+.card:hover {
+  --fan: 1;
+}
+
+.card__face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 5.8rem;
+  border: 1px solid rgb(22 32 42 / 65%);
+  border-radius: var(--corner-md);
+  box-shadow: var(--lift);
+  transition:
+    transform var(--t-quick) var(--ease-out),
+    box-shadow var(--t-quick) var(--ease-out);
+}
+
+/* Handelsware: heller Innenrahmen. `box-shadow` und nicht `border`, weil `.rescard` die Kurzform `border` setzt. */
+.card--ware .card__face {
+  box-shadow:
+    var(--lift),
+    inset 0 0 0 3px rgb(22 32 42 / 22%),
+    inset 0 0 0 5px rgb(246 239 223 / 70%);
+}
+
+/* Die oberste Karte hebt sich mit, sonst faechert der Stapel hinter einer liegenbleibenden Karte auf. */
+.card:hover .card__face {
+  transform: translateY(-2px);
+  box-shadow: var(--lift-raised);
+}
+
+.card__glyph {
+  width: 3.1rem;
+  height: 3.1rem;
+  fill: rgb(22 32 42 / 82%);
+}
+
+/* Bruchkanten im Erz: Linien, keine Flaechen. */
+.card__glyph-cut {
+  fill: none;
+  stroke: rgb(240 230 210 / 55%);
+  stroke-width: 1.1;
+}
+
+.card__count {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  min-width: 1.4rem;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--parchment-edge);
+  border-radius: 999px;
+  /* Die Plakette sitzt auf der Karte, nicht auf dem Tisch - dunkle Tinte. */
+  background: var(--ink-base);
+  color: var(--parchment);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* Zugedeckt: drei Rueckseiten und die Einladung, hinzusehen. */
+.hand__cover {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-2);
+}
+
+.hand__backs {
+  display: flex;
+}
+
+/*
+ * Die zugedeckten Karten liegen auf der See auf seinesgleichen: das Streifenmuster
+ * ist Kartenrueckseite (Textur, keine Flaeche), die helle Kante und der
+ * Kontaktschatten machen aus dem Muster ein Ding.
+ */
+.hand__backs span {
+  width: 3rem;
+  height: 4.3rem;
+  border: 1px solid rgb(233 225 207 / 45%);
+  border-radius: var(--corner-md);
+  background: repeating-linear-gradient(45deg, var(--sea-700) 0 3px, var(--sea-800) 3px 6px);
+  box-shadow: var(--lift);
+}
+
+.hand__backs span + span {
+  margin-left: -1.8rem;
+}
+
+/* --- Die eigenen Partien (Menue) -------------------------------------------- *
+ *
+ * Jede Karte traegt die Sitzreihe als dieselben Spielsteine wie der
+ * Wartebereich; ein leerer Umriss heisst „gerade nicht da".
+ */
+.resume {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resume__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* Jede Partie ist ein Blatt (`.sheet` am Markup): Pergament mit Kartenrand. */
+  padding: var(--space-3) var(--space-4);
+}
+
+.resume__head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+/* Der Code wird vorgelesen: weite Sperrung und Tabellenziffern sind hier Funktion, nicht Schmuck. */
+.resume__code {
+  color: var(--ink);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.resume__state {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  text-align: right;
+}
+
+.resume__seats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.resume__seat {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+/* Zurueck hinein oder endgueltig hinaus: der zweite Weg ist der seltenere und steht als Geisterknopf daneben. */
+.resume__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.resume__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Was der Klick anrichtet, steht ueber den Knoepfen: die Folge vor der Entscheidung. */
+.resume__warning {
+  margin: 0;
+  /* Auf Pergament traegt das tiefe Rot. */
+  color: var(--bad-ink);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+}
+
+/* --- Entwicklungs- und Fortschrittskarten ----------------------------------- *
+ *
+ * Dieselbe Karte wie in der Hand, anderes Material: Pergament statt
+ * Gelaendefarbe (Rohstoffe kommen vom Brett, Karten von der Bank). Was dieser
+ * Zug nicht hergibt, liegt blass und flach da - die Regel wird sichtbar, statt
+ * erst beim Klick als Absage aufzutauchen.
+ *
+ * Die Huelle gibt es nur, damit die Erklaerzeile einen Bezug hat (absolut
+ * gesetzt braucht sie einen gesetzten Vorfahren, und die Reihe bricht um).
+ */
+.devcards {
+  position: relative;
+  margin: var(--space-3) 0 0;
+}
+
+.devcards__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Was die Karte tut - beim Darueberfahren und beim Antabben. Sie kostet keinen
+ * Platz im Layout (absolut ueber der Reihe: eine Erklaerung, die den Stapel
+ * verschiebt, auf den man zielt, nimmt einem das Ziel) und faengt keine Maus ab
+ * (sonst flackerte sie an der eigenen Unterkante). Geschnitten, nicht gerundet:
+ * sie erklaert die Karten, ist aber selbst Oberflaeche (Fasenliste in base.css).
+ *
+ * Die Ruhelage ist **sichtbar** - nur der Anfang der Animation versteckt, sonst
+ * gaebe es sie bei `prefers-reduced-motion` nie.
+ */
+.devcards__hint {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: max-content;
+  max-width: 100%;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--corner-md);
+  background: var(--ink-base);
+  color: var(--parchment);
+  box-shadow: var(--lift-raised);
+  pointer-events: none;
+  animation: sheet-in var(--t-move) var(--ease-out) backwards;
+}
+
+/* Der Name zuerst: fuenf Karten liegen nebeneinander, und ein Satz ohne Anschrift sagt nicht, welche gemeint ist. */
+.devcards__hint-name {
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.devcards__hint-text {
+  font-size: var(--text-sm);
+  line-height: 1.3;
+}
+
+.devcard {
+  /* Ruheversatz und Faecherschalter - erklaert bei `.card__behind`. */
+  --step-x: 0px;
+  --step-y: -2.5px;
+  --fan: 0;
+
+  position: relative;
+  width: 4.6rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  /* Ein Knopf ohne eigene Flaeche: die Karte darin ist der Koerper (wie `.deck__pile`). */
+  cursor: pointer;
+}
+
+/* Der Siegpunkt ist kein Knopf. Denselben Koerper bekommt er trotzdem - am Zeiger sieht man, dass es nichts zu druecken gibt. */
+.devcard--kept {
+  cursor: default;
+}
+
+.devcard:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.devcard__behind {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5.8rem;
+  border: 1px solid rgb(22 32 42 / 45%);
+  border-radius: var(--corner-md);
+  background: var(--parchment-2);
+  opacity: 0.5;
+}
+
+/*
+ * Auffaechern wie bei den Rohstoffen - eine Bewegung, eine Bedeutung. Auch die
+ * gesperrte Karte faechert (wie viele es sind, gilt unabhaengig davon), und die
+ * Tastatur bekommt es mit: was ein Zeiger kann und eine Tastatur nicht, ist
+ * eine halbe Oberflaeche.
+ */
+.devcard:hover,
+.devcard:focus-visible {
+  --fan: 1;
+}
+
+.devcard__face {
+  position: relative;
+  display: grid;
+  gap: var(--space-1);
+  align-content: center;
+  justify-items: center;
+  height: 5.8rem;
+  border: 1px solid rgb(22 32 42 / 65%);
+  border-radius: var(--corner-md);
+  /*
+   * Vorgabe fuer Entwicklungskarten; die Fortschrittskarten ueberschreiben sie
+   * je Bereich per Inline-`style` auf demselben Element, `.devcard__name` erbt.
+   */
+  color: var(--ink-base);
+  background: var(--parchment-2);
+  box-shadow: var(--lift);
+  transition:
+    transform var(--t-quick) var(--ease-out),
+    box-shadow var(--t-quick) var(--ease-out);
+}
+
+/* Blass **und** flach: ohne Schatten liegt nichts mehr da, was man anheben koennte. */
+.devcard:disabled .devcard__face {
+  box-shadow: none;
+}
+
+.devcard:not(:disabled):hover .devcard__face,
+.devcard:not(:disabled):focus-visible .devcard__face {
+  transform: translateY(-2px);
+  box-shadow: var(--lift-raised);
+}
+
+.devcard:not(:disabled):active .devcard__face {
+  transform: translateY(0);
+  box-shadow: var(--lift);
+  transition-duration: var(--t-press);
+}
+
+.devcard__glyph {
+  width: 2.4rem;
+  height: 2.4rem;
+  fill: rgb(22 32 42 / 82%);
+}
+
+/*
+ * Der Name steht auf der Karte, wie auf einer Spielkarte. 12 px: lange Namen
+ * („Handelsmonopol", „Großhändler") brechen um und trennen, statt unter 12 px
+ * zu schrumpfen; die Karte (74 px breit) hat fuer zwei Zeilen Platz.
+ * `color: inherit` - sonst gewaenne diese Regel immer gegen die Bereichsfarbe.
+ */
+.devcard__name {
+  max-width: 100%;
+  padding: 0 var(--space-1);
+  color: inherit;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  line-height: 1.15;
+  hyphens: auto;
+  overflow-wrap: break-word;
+  text-align: center;
+}
+
+/* Spielbar: gelber Ring - Gelb heisst „jetzt dran". */
+.devcard--ready .devcard__face {
+  box-shadow:
+    var(--lift),
+    0 0 0 2px var(--accent);
+}
+
+/*
+ * Der Ring darf beim Anheben nicht verschwinden: `box-shadow` ist keine Liste,
+ * die sich ergaenzt, die Anhebe-Regel setzt sie neu. Diese Regel hat dieselbe
+ * Spezifitaet (vier Klassen/Pseudoklassen) und steht **spaeter**.
+ */
+.devcard--ready:not(:disabled):hover .devcard__face,
+.devcard--ready:not(:disabled):focus-visible .devcard__face {
+  box-shadow:
+    var(--lift-raised),
+    0 0 0 2px var(--accent);
+}
+
+/* --- Die Auszeichnungen -------------------------------------------------------- *
+ *
+ * Laengste Handelsstrasse und Groesste Rittermacht: **breit statt hoch** - alle
+ * anderen Karten stehen hoch, diese liegen quer, also trennt man sie von
+ * Rohstoff- und Entwicklungskarten, bevor man ein Motiv gelesen hat. Material ist
+ * Karte: gerundet, Pergament, eigener Schatten. 5.8 rem breit, damit „Handelsstraße"
+ * in 12 px ohne Umbruch passt; 4.6 rem hoch wie vorher, damit die Ecke links
+ * nicht noch hoeher wird.
+ *
+ * Kein Stapelversatz: es gibt von jeder genau eine. Sie kommen mit `piece-in`
+ * an - ein neuer Besitz ist ein Ding, das auf den Tisch gelegt wird.
+ */
+.awards {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Was noch frei liegt, steht links am Tisch unter der Fahrstrecke und bricht dort um. */
+.awards--open {
+  margin: 0;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.awardcard {
+  /* Dunkle Tinte auch dann, wenn die Karte in ein Panel mit heller `--ink` gehaengt wird. */
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
+
+  position: relative;
+  display: grid;
+  gap: var(--space-1);
+  align-content: center;
+  justify-items: center;
+  width: 5.8rem;
+  height: 4.6rem;
+  padding: 0 var(--space-1);
+  border: 1px solid rgb(22 32 42 / 65%);
+  border-radius: var(--corner-md);
+  background: var(--parchment-2);
+  box-shadow: var(--lift);
+  color: var(--ink);
+  animation: piece-in var(--t-enter) var(--ease-settle) backwards;
+}
+
+/*
+ * Die eigene Karte traegt die eigene Sitzfarbe an der Kante - damit man sie
+ * wiedererkennt, wenn sie den Besitzer wechselt. Ein zweiter Rahmen, kein
+ * breiterer, damit die Kontur auch bei hellem Sitz erhalten bleibt.
+ */
+.awardcard--held {
+  box-shadow:
+    var(--lift),
+    inset 0 0 0 2px var(--seat, transparent);
+}
+
+/* Frei zu haben: dieselbe Karte, ohne Besitzer. Ihren Zustand traegt die Fusszeile (die Bedingung). */
+.awardcard--open {
+  background: var(--parchment);
+}
+
+.awardcard__glyph {
+  width: 1.8rem;
+  height: 1.8rem;
+  fill: rgb(22 32 42 / 82%);
+}
+
+/*
+ * Die Strecke der Handelsstrasse ist gezogen, nicht gefuellt: ein Kantenzug ist
+ * ein Weg, der durchgeht. Als Regel und nicht als Attribut, weil ein
+ * Praesentationsattribut gegen jede gleichnamige Regel verliert.
+ */
+.glyph__route {
+  fill: none;
+  stroke: rgb(22 32 42 / 82%);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.awardcard__name {
+  max-width: 100%;
+  color: var(--ink);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  line-height: 1.15;
+  text-align: center;
+}
+
+/*
+ * Die Fusszeile: der Wert, der sie traegt - oder die Bedingung. Volle Tinte
+ * statt `--ink-muted`: die gedaempfte hat auf `--parchment-2` nur 4,0:1.
+ */
+.awardcard__foot {
+  color: var(--ink);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  text-align: center;
+}
+
+/* --- Die Plaketten am Tisch: fremde Auszeichnungen und ausgespielte Ritter -------- *
+ *
+ * Aus demselben Pergament wie die Karte, die sie vertreten, nur handgross: es
+ * soll aussehen, als laege etwas vor jemandem. `align-self: center`, weil die
+ * Sitzzeile auf der Grundlinie ausgerichtet ist und ein Kaestchen ohne Text
+ * keine hat. Eine neue Plakette wird hingelegt (`piece-in`).
+ */
+.seat__marks {
+  display: flex;
+  gap: var(--space-1);
+  align-self: center;
+}
+
+.seat__mark {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+  padding: var(--space-1);
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--corner-sm);
+  background: var(--parchment-2);
+  line-height: 1;
+  animation: piece-in var(--t-enter) var(--ease-settle) backwards;
+}
+
+.seat__mark-glyph {
+  width: 1rem;
+  height: 1rem;
+  fill: rgb(22 32 42 / 82%);
+}
+
+/* Die Zahl ist der Inhalt der Plakette, der Helm sagt nur, was gezaehlt wird: Tabellenziffern, dunkle Tinte. */
+.seat__mark-number {
+  color: var(--ink-base);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+/* --- Rohstoffe waehlen: Erfindung und Monopol ------------------------------------ */
+.pick {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+/* Der Knopf ist nur der Griff - die Karte darin ist der Koerper (wie bei Kaufstapel und Entwicklungskarten). */
+.pick__card {
+  padding: 0;
+  border: 0;
+  border-radius: var(--corner-md);
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pick__card:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pick__chosen {
+  margin: 0 0 var(--space-3);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+/* Der Hauptknopf einer Partie liegt auf Pergament: dunkler als das Blatt, sonst waere er nur ein Schatten. */
+.resume__card .button:not(.button--ghost, .button--no) {
+  border-color: var(--parchment-edge);
+  background: var(--parchment-2);
+}

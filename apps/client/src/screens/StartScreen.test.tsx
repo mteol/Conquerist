@@ -356,13 +356,11 @@ describe('Der Eingang', () => {
     expect(screen.queryByLabelText('3 Spieler')).toBeNull();
   });
 
-  it('zeichnet das Hexfeld als Hintergrund, nicht als Bild', () => {
+  it('legt dieselbe Seekarte dahinter wie auf dem Titel', () => {
     const { container } = render(<StartScreen onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />);
 
-    // Dasselbe Raster wie im Spiel, mit denselben Funktionen gesetzt.
-    const field = container.querySelector('.hexfield');
-    expect(field).not.toBeNull();
-    expect(field?.querySelectorAll('polygon').length).toBeGreaterThan(50);
+    expect(container.querySelector('.seachart')).not.toBeNull();
+    expect(container.querySelector('.hexfield')).toBeNull();
   });
 
   /*
@@ -399,26 +397,8 @@ describe('Der Eingang', () => {
 
     // Die Ueberschrift ersetzt die Reiterreihe: sie sagt nicht mehr, welche
     // Wege es gibt, sondern nur noch, auf welchem man steht.
-    expect(screen.getByRole('heading', { name: 'An einem Gerät' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'An einem Gerät spielen' })).toBeDefined();
     expect(screen.getAllByLabelText(/^Name von Spieler/)).toHaveLength(3);
-  });
-
-  it('laesst den Aufprall von innen nach aussen laufen, nicht ueberall zugleich', () => {
-    const { container } = render(<StartScreen onStartLocal={vi.fn()} onJoinRoom={vi.fn()} />);
-
-    const delays = [...container.querySelectorAll<HTMLElement>('.hexfield polygon')].map((hex) =>
-      Number.parseInt(hex.style.animationDelay, 10),
-    );
-
-    // Das mittlere Hex wird zuerst erreicht, das aeusserste zuletzt. Waeren
-    // alle Verzoegerungen gleich, blinkte die Flaeche statt zu schwingen.
-    expect(Math.min(...delays)).toBeLessThan(Math.max(...delays));
-    expect(new Set(delays).size).toBeGreaterThan(3);
-
-    // Und jedes Hex kennt seine Ruhelage - die Welle beginnt und endet dort,
-    // wo das Hex ohnehin liegt. Ohne `--rest` faellt es danach auf null.
-    const first = container.querySelector<HTMLElement>('.hexfield polygon');
-    expect(Number(first?.style.getPropertyValue('--rest'))).toBeGreaterThan(0);
   });
 
   it('laesst Ueberschrift, Formular und Ecke in dieser Reihenfolge einfallen', () => {

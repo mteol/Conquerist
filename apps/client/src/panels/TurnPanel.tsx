@@ -38,7 +38,7 @@ export function TurnPanel({
   onShedProgress,
 }: TurnPanelProps): JSX.Element {
   return (
-    <div className="panel__buttons tray__turn" role="group" aria-label="Zug">
+    <div className="tray__turn" role="group" aria-label="Zug">
       <button
         type="button"
         className="button"

@@ -1,0 +1,684 @@
+/*
+ * Zwei Reihen: oben das Brett, unten die Ablage.
+ *
+ * Bis zum neuen Layout stand die Hoehe der Ablage als Zahl im Einzug des
+ * Bretts (`bottom: 11rem`). Eine Zahl, die an zwei Stellen stimmen muss, stimmt
+ * irgendwann an einer nicht mehr - beim naechsten Umbau der Ablage haette sie
+ * das Brett entweder beschnitten oder eine Luecke gelassen. Als Raster misst
+ * sich die Ablage selbst aus, und `1fr` gibt dem Brett den Rest.
+ *
+ * `minmax(0, 1fr)` und nicht `1fr`: ein Rasterfeld ist von Haus aus mindestens
+ * so hoch wie sein Inhalt, und das SVG darin wuerde es aufblaehen statt sich
+ * einzupassen.
+ */
+.game {
+  /*
+   * Die Breite einer unteren Ecke - und zugleich der seitliche Einzug des
+   * Bretts. **Beides ist derselbe Wert, und daran haengt, dass sich Brett und
+   * Ablage nie ueberdecken koennen.**
+   *
+   * Das Brett passt sich mit `xMidYMid meet` in seine Flaeche ein: auf einem
+   * breiten Bildschirm ist es hoehen- und nie breitenbegrenzt, also braucht es
+   * bei voller Hoehe nur `Seitenverhaeltnis x Hoehe` an Breite - der Rest der
+   * Zeile bleibt leere See. Genau diesen Rest bekommen die zwei Ecken, je zur
+   * Haelfte. Was uebrig bliebe, wenn das Brett breiter waere als der Platz,
+   * faengt `max(...)` ab: dann gilt der alte feste Einzug, das Brett wird
+   * breitenbegrenzt und steht wieder ueber der Ablage statt neben ihr.
+   *
+   * 1.09 ist das Seitenverhaeltnis der `viewBox` (9.76 / 9.1 = 1.0725) plus
+   * etwas Luft. Es steht hier als Zahl und nicht als Variable aus dem Brett:
+   * eine CSS-Datei kann `viewBoxOf` nicht fragen, und ein zu kleiner Wert
+   * kostet nur Ecke, kein Brett.
+   */
+  --tray-strip: max(14.75rem, calc((100vw - 1.5rem - 1.09 * (100vh - 1.5rem)) / 2));
+
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  width: 100vw;
+  height: 100vh;
+  padding: 0.75rem;
+  overflow: hidden;
+  background:
+    radial-gradient(62% 58% at 50% 48%, var(--sea-700) 0%, transparent 78%), var(--sea-900);
+}
+
+/*
+ * Der Punkt, an dem die schwebenden Panels unschaedlich werden: das Brett wird
+ * nicht unter sie gerechnet, sondern in die freie Flaeche dazwischen eingepasst.
+ * Ohne diesen Einzug laegen genau die Randknoten unter den Panels, auf die man
+ * in der Gruendungsphase klickt.
+ *
+ * Links und rechts derselbe Betrag: das Brett passt sich mit `xMidYMid meet`
+ * ein und steht in der Mitte seiner Flaeche - ein einseitig kleinerer Einzug
+ * wuerde es nicht groesser machen, sondern aus der Bildschirmmitte schieben.
+ *
+ * **Der Betrag ist seit der Ecken-Ablage keine feste Zahl mehr**, sondern
+ * `--tray-strip` (siehe `.game`). Er ist nie kleiner als die alten 14.75rem,
+ * also wird das Brett an keiner Fenstergroesse kleiner als vorher - und dort,
+ * wo Platz war, faellt die Zeile unter dem Brett weg und es waechst um deren
+ * ganze Hoehe.
+ */
+.board-area {
+  position: relative;
+  min-height: 0;
+  margin: 0 var(--tray-strip);
+}
+
+.board {
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * Panels sind keine Fenster mehr, sondern Beschriftungen auf dem Tisch.
+ *
+ * Vier Dinge trugen denselben Pergamentkasten: die Spielerliste, der Status,
+ * die Bedienleiste und die Hand. Genau dieser Kasten liess das Spiel wie eine
+ * Anwendung aussehen und nicht wie ein Tisch, auf dem etwas liegt. Die Regel,
+ * nach der hier aufgeraeumt ist:
+ *
+ *   **Was man anfassen koennte, behaelt einen Koerper. Was nur Auskunft ist,
+ *   wird Schrift auf dem Tisch.**
+ *
+ * Karten, Wuerfel, der Kaufstapel, die Bauteile und die Knoepfe sind Dinge -
+ * sie behalten ihren hellen Koerper und bekommen den Kontaktschatten. Die
+ * Spielerliste und der Status sind keine Dinge; sie stehen jetzt einfach da.
+ *
+ * Die zwei Zeilen mit `--ink` sind der ganze Trick: darunter liegt kein
+ * Pergament mehr, also wird die Tinte zur Schrift auf dem Wasser - und alles,
+ * was im Panel `var(--ink)` benutzt (Sitze, Punkte, Zahlen, Beschriftungen),
+ * folgt ohne eine einzige weitere Regel.
+ */
+.panel {
+  position: absolute;
+  max-width: 14.5rem;
+  --ink: var(--on-sea);
+  --ink-muted: var(--on-sea-muted);
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+
+/*
+ * Die linke Spalte: der Tisch, darunter die Fahrstrecke des Barbarenheers.
+ *
+ * Die Lage sitzt an der Spalte und nicht mehr am Tisch. Der Grund ist
+ * gemessen: der Tisch ist zu dritt 104 px hoch und zu sechst mehr, also kann
+ * kein fester Abstand fuer die Leiste darunter stimmen. In einer Spalte
+ * fliessen beide, und die Leiste rutscht mit.
+ */
+.leftrail {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  /*
+   * `0` und nicht mehr `2`: ein Dialog (`.modal`, ohne eigenen Stapelindex)
+   * soll die Karte **samt Rand** abdunkeln. Bei 396 px lagen die Sitzzeilen
+   * sonst deckend ueber dem Blatt. Vor dem Brett bleibt die Spalte durch ihre
+   * Stelle im Baum.
+   */
+  z-index: 0;
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  pointer-events: none;
+}
+
+.panel--table {
+  position: static;
+}
+
+/*
+ * Die obere rechte Zeile: der Status und die Tuer zum Verlauf.
+ *
+ * `pointer-events: none` aus demselben Grund wie bei `.tray`: die Zeile liegt
+ * ueber dem Brett, und der Status ist Schrift ohne Koerper - ohne das `none`
+ * finge sein Kasten Klicks ab, die einem Feld darunter gelten. Der
+ * Verlaufsknopf holt sich das Fangen einzeln zurueck, der Satz daneben nicht:
+ * ihn soll man lesen und nicht treffen.
+ *
+ * Das Zahnrad steht **nicht** hier drin - es gilt allen Bildschirmen und haengt
+ * deshalb in `App.tsx`. Seinen Platz haelt der Verlaufsknopf mit dem eigenen
+ * `margin-right` frei, wie vorher auch.
+ */
+/*
+ * Die Fahrstrecke des Barbarenheers - oben links, gegenueber der Topline.
+ *
+ * Der Ort ist die halbe Aussage: das Schiff kommt von draussen und faehrt auf
+ * die Insel zu. Es links anzusetzen und nach rechts laufen zu lassen, ist
+ * dieselbe Richtung, in der man liest, und dieselbe, in der die Gefahr
+ * naeherkommt.
+ *
+ * `pointer-events: none` wie bei der Topline: es ist eine Anzeige und kein
+ * Bedienelement, und es liegt ueber dem Brett.
+ */
+.barbarians {
+  --lane: 11rem;
+  --ship: 1.5rem;
+
+  display: grid;
+  gap: var(--space-1);
+}
+
+.barbarians__lane {
+  position: relative;
+  width: var(--lane);
+  height: var(--ship);
+}
+
+.barbarians__stations {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  margin: 0;
+  /*
+   * Die Mitte der ersten und der letzten Station liegt dort, wo die Mitte des
+   * Schiffs am Anfang und am Ende steht - sonst sitzt es zwischen zwei Punkten
+   * und man zaehlt falsch.
+   */
+  padding: 0 calc(var(--ship) / 2 - 0.31rem) 0 calc(var(--ship) / 2 - 0.21rem);
+  list-style: none;
+}
+
+/* Kartenschrift (`.chartlabel` im Markup); hier nur das Gewicht der Zeile. */
+.barbarians__eta {
+  margin: 0;
+  color: var(--on-sea);
+}
+
+.barbarians__station {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: var(--chart-rule);
+}
+
+/*
+ * Das letzte Feld ist die Kueste. Es ist groesser und traegt die Warnfarbe -
+ * dort landet das Heer, und das ist die einzige Station, die etwas bedeutet.
+ */
+.barbarians__station--coast {
+  width: 0.62rem;
+  height: 0.62rem;
+  background: var(--bad-on-sea);
+}
+
+/*
+ * Das Schiff gleitet, es springt nicht - `--t-travel`, die Dauer, in der ein
+ * Spielstein ueber das Brett zieht.
+ *
+ * Eine `transition` und keine `animation`: eine Animation laeuft beim
+ * Einhaengen und nicht beim Aktualisieren, und hier bleibt derselbe Knoten
+ * stehen (die Falle aus CLAUDE.md). Die Transition laeuft genau bei der
+ * Aenderung - und die Aenderung ist der Zustandswechsel, den sie erklaert.
+ */
+.barbarians__ship {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: var(--ship);
+  height: var(--ship);
+  transform: translate(calc(var(--progress) * (var(--lane) - var(--ship))), -50%);
+  transition: transform var(--t-travel) var(--ease-move);
+}
+
+.barbarians__ship svg {
+  width: 100%;
+  height: 100%;
+  fill: var(--on-sea);
+}
+
+.barbarians__mast {
+  fill: none;
+  stroke: var(--on-sea);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.barbarians__strength {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  margin: 0;
+}
+
+.barbarians__side {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: baseline;
+}
+
+/* Die Zahl ist die Auskunft: gezeichnete Ziffer in Lesegroesse, die Namen daneben in Kartenschrift. */
+.barbarians__figure {
+  font-size: var(--text-lg);
+  fill: var(--on-sea);
+}
+
+/*
+ * Wer vorn liegt, faerbt seine Seite - **und sagt es ausserdem**.
+ *
+ * Die Klasse traegt die Farbe, das Wort daneben traegt die Bedeutung
+ * (Designregel 7: Farbe ist nie der einzige Traeger). Die Spezifitaet reicht:
+ * `.barbarians__side--holding .barbarians__figure` sind zwei Klassen gegen die
+ * eine von `.barbarians__figure` darueber.
+ */
+.barbarians__side--holding .barbarians__figure {
+  fill: var(--ok-on-sea);
+}
+
+.barbarians__side--losing .barbarians__figure {
+  fill: var(--bad-on-sea);
+}
+
+/* Kartenschrift in Satzschreibung: „haelt" und „unterlegen" statt gesperrter Versalien. */
+.barbarians__side--holding .barbarians__standing {
+  color: var(--ok-on-sea);
+}
+
+.barbarians__side--losing .barbarians__standing {
+  color: var(--bad-on-sea);
+}
+
+/* Am schmalen Fenster kuerzer, damit die Leiste nicht in die Topline laeuft. */
+@media (width <= 40rem) {
+  .barbarians {
+    --lane: 7rem;
+    --ship: 1.15rem;
+  }
+}
+
+/*
+ * `top` rechnet die Mittellinie des Zahnrads (0.85rem + halbe Hoehe 1.05rem)
+ * auf die 44-px-Symbolknoepfe um: Tuer, Vorrat, Verlauf und Zahnrad liegen so
+ * auf einer Linie.
+ */
+.topline {
+  position: fixed;
+  top: calc(0.85rem + 1.05rem - 2.75rem / 2);
+  right: 0.95rem;
+  z-index: 0; /* wie `.leftrail`: unter dem Dialog */
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+/*
+ * Der Status steht oben rechts, links neben der Tuer zum Verlauf.
+ *
+ * Er ist zweimal umgezogen, und beide Male wegen desselben Befunds: er ist
+ * Auskunft und keine Bedienung. Zuletzt lag er am Fuss der rechten Ecke, unter
+ * Kaufstapel und Bauteilen - also mitten zwischen den Dingen, nach denen man
+ * greift, und dort unterbrach ein Satz die Reihe, die die Maus abfaehrt. Oben
+ * liegt er ueber leerer See und neben dem Verlauf: beides sagt, wie die Partie
+ * steht, das eine staendig und beilaeufig, das andere selten und dann genau.
+ *
+ * `text-align: right`, weil die rechte Kante die feste ist. Der Satz wird
+ * laenger und kuerzer („Spieler 2 ist am Zug" gegen „Gruendung: Spieler 3 setzt
+ * eine Siedlung"); links ausgerichtet wanderte sein Ende bei jedem Zugwechsel,
+ * und mit ihm der Abstand zum Knopf daneben.
+ */
+.panel--status {
+  position: static;
+  max-width: min(22rem, 34vw);
+  text-align: right;
+}
+
+/*
+ * Am schmalen Fenster teilen sich vier 44-px-Symbole die Zeile mit dem Status
+ * (gemessen: 200 px fest bei 396). Der Status bekommt den Rest statt 34vw, und
+ * der Vorrat gibt sein Wort ab (`hud.css`), damit die Kartusche nicht auf
+ * fuenf Zeilen bricht.
+ */
+@media (width <= 40rem) {
+  .panel--status {
+    max-width: calc(100vw - 14rem);
+  }
+}
+
+/*
+ * Unten liegt die Ablage, und sie liest sich von links nach rechts wie ein Zug:
+ * was man hat, was man kaufen kann, was man damit tut.
+ *
+ * Bis zum ersten Playtest war das eine Spalte, und der Kaufstapel gar kein
+ * Material, sondern ein Knopf mit der Aufschrift „Karte kaufen" zwischen zwei
+ * anderen Knoepfen. Als Zeile bekommt jedes Stueck seinen Platz, und die
+ * Ablage wird flacher statt hoeher - das Brett darueber gewinnt dabei.
+ *
+ * `flex-end` und nicht `stretch`: die drei Bereiche sind verschieden hoch und
+ * sollen unten auf einer Linie stehen, nicht auf gleiche Hoehe gezogen werden.
+ */
+/*
+ * Die Ablage liegt in den zwei unteren Ecken, ueber dem Brett.
+ *
+ * Sie war eine Rasterzeile unter dem Brett und hat ihm gemessene 187 von 889 px
+ * Hoehe abgenommen - waehrend links und rechts davon je 640 px leere See lagen.
+ * Als Ueberlagerung in den Ecken kostet sie nichts: das Brett laeuft ueber die
+ * volle Hoehe, und die Ecken sind genau so breit wie der Streifen, den es bei
+ * dieser Hoehe ohnehin nicht braucht.
+ *
+ * `pointer-events` steht bewusst zweimal da: die Ablage spannt sich ueber die
+ * ganze Breite, und ohne das `none` faenge ihre leere Mitte jeden Klick ab, der
+ * dem Brett gilt. Die Kinder holen sich das Fangen einzeln zurueck.
+ */
+.tray {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+/*
+ * Der Geist und sein Knopf: zwischen Absicht und Ausfuehrung.
+ *
+ * Halbdurchsichtig und ohne eigene Farbe - er ist kein Bauwerk, sondern ein
+ * Vorschlag. Der Knopf steht darunter am Fuss des Bretts, wo er unter keinem
+ * Finger liegt, der gerade gezielt hat.
+ */
+.pending {
+  fill: var(--parchment);
+  stroke: rgb(0 0 0 / 45%);
+  stroke-width: 0.035;
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+/* Genau die Staerke einer gebauten Strasse (`.road--built`) - ein Geist zeigt
+   das Bauteil und nicht eine dickere Fassung davon. */
+.pending line {
+  stroke: var(--parchment);
+  stroke-width: 0.115;
+  stroke-linecap: round;
+}
+
+.pending--hex circle {
+  fill: rgb(0 0 0 / 35%);
+  stroke: var(--parchment);
+}
+
+/*
+ * Die Leiste bekommt einen eigenen dunklen Grund - und das ist eine Korrektur.
+ *
+ * Sie stand nackt auf dem Brett, und „Doch nicht" ist ein `.button--ghost`:
+ * durchsichtiger Koerper, Rand und Schrift in `--on-sea`. Diese Farben sind
+ * fuer die **See** gemacht, also fuer den dunklen Grund um das Brett herum. Auf
+ * einem gelben Feld oder einer Wiese stand der Knopf hell auf hell und war
+ * schlicht nicht zu lesen - und er liegt dort mitten im Brett, weil er ueber
+ * dem Fuss schwebt.
+ *
+ * Ein Stueck See unter der Leiste stellt die Voraussetzung wieder her, unter
+ * der beide Knoepfe entworfen sind, statt einen davon umzufaerben.
+ */
+.confirm {
+  position: absolute;
+  bottom: 5.5rem;
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  transform: translateX(-50%);
+  border-radius: 12px;
+  background: rgb(11 31 42 / 88%);
+  box-shadow: var(--lift-raised);
+}
+
+/*
+ * Die Auftakttafel: sie liegt mittig auf dem Brett, solange ausgewuerfelt wird.
+ *
+ * Ein Ding auf dem Tisch (heller Koerper, Kontaktschatten) und trotzdem
+ * `pointer-events: none`: sie ist Auskunft und keine Bedienung. Der
+ * Wuerfelknopf liegt in der Ecke, wo er in jeder anderen Phase auch liegt -
+ * eine zweite Stelle zum Wuerfeln waere ein zweiter Weg fuer denselben Zug.
+ *
+ * Mittig und nicht am Rand, weil sie in diesen Sekunden das Einzige ist, worum
+ * es geht. Danach verschwindet sie und kommt nie wieder.
+ */
+.opening {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 13rem;
+  padding: var(--space-4) var(--space-5);
+  translate: -50% -50%;
+  border-radius: var(--corner-md);
+  corner-shape: bevel;
+  background: var(--parchment);
+  box-shadow: var(--lift-raised);
+  pointer-events: none;
+  /* `sheet-in` animiert `transform` - die Mittelung steht deshalb auf `translate`. */
+  animation: sheet-in var(--t-enter) var(--ease-out) backwards;
+}
+
+.opening__title {
+  margin: 0;
+  color: var(--ink-base);
+  font-size: var(--text-lg);
+  text-align: center;
+}
+
+.opening__seats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.opening__seat {
+  display: grid;
+  grid-template-columns: 0.75rem 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--corner-sm);
+  color: var(--ink-base);
+  font-size: var(--text-md);
+}
+
+/*
+ * Der Werfer wird hinterlegt und nicht eingefaerbt: die Farbe daneben gehoert
+ * schon dem Sitz, und zwei Farben an derselben Zeile sagen weniger als eine.
+ */
+.opening__seat[data-active='true'] {
+  background: var(--parchment-2);
+  font-weight: 650;
+}
+
+.opening__dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+}
+
+.opening__total {
+  min-width: 1.2rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.tray > * {
+  pointer-events: auto;
+}
+
+/*
+ * Die zwei Ecken sind so breit wie der Streifen und nicht breiter.
+ *
+ * Das ist die halbe Garantie gegen Ueberdeckung: was breiter waere, ragte unter
+ * das Brett. Was nicht mehr in die Breite passt, bricht deshalb um und waechst
+ * nach oben - dort ist in einer Ecke Platz, unter dem Brett nicht.
+ */
+.tray__hand,
+.tray__controls {
+  max-width: var(--tray-strip);
+}
+
+/*
+ * Die rechte Ecke: Kaufstapel, Bauteile, Wuerfel - in dieser Reihenfolge nach
+ * aussen. Umbrechend, damit sie in einer schmalen Ecke nach oben ausweichen
+ * statt unter das Brett.
+ *
+ * Sie steckte bis hierher in einer zweiten Huelle (`.tray__side`), die es nur
+ * gab, um den Statussatz auf eine eigene Zeile darueber zu heben. Der Satz
+ * steht jetzt oben am Bildschirm, und mit ihm ist die Huelle weg: eine Ecke,
+ * ein Element.
+ */
+.tray__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+  justify-content: flex-end;
+  /*
+   * Ohne dies darf die Ecke nicht unter ihre Inhaltsbreite schrumpfen
+   * (`min-width` steht bei Flex-Items auf `auto`), und die Bauleiste darin
+   * schiebt sie ueber den Fensterrand: bei 396 px gemessen endete sie bei
+   * x 546. Zusammen mit `flex-wrap` an `.build` bricht sie statt dessen um.
+   */
+  min-width: 0;
+}
+
+/*
+ * Die unterste Zeile der rechten Ecke: Bauleiste und Wuerfel nebeneinander.
+ *
+ * Die Wuerfel aussen, die Leiste daneben nach innen - wie am Tisch aus Holz,
+ * wo die Baukostenkarte neben der Schale liegt und nicht darauf. Der Grund
+ * steht bei `tray__throw` in `GameScreen.tsx`.
+ *
+ * **Eine Zeile, und sie bricht nicht.** Weder die Zeile selbst (`nowrap` hier)
+ * noch die Leiste darin (`nowrap` unten): was hier steht, steht nebeneinander,
+ * und zwar bei jeder Fenstergroesse. `align-items: flex-end` stellt beide auf
+ * dieselbe Grundlinie - die Leiste ist hoeher als die Schale, und oben
+ * ausgerichtet haetten die Wuerfel in der Luft gehangen.
+ *
+ * **Sie darf dabei ueber das Brett ragen, und das ist eine Entscheidung und
+ * kein Versehen.** Die Ecke ist sonst so breit wie der Streifen neben dem Brett
+ * (`--tray-strip`), und dieser Streifen ist die Garantie, dass sich Ablage und
+ * Brett nie ueberdecken. Fuer diese Zeile gilt sie nicht: gemessen ist der
+ * Streifen 266 px breit (1366x768) bis 372 px (1920x1080), fuenf Bauteile in
+ * einer Reihe sind 341 px, mit der Schale daneben 509. Entweder die Zeile
+ * bricht um - dann steht die Leiste wieder ueber den Wuerfeln, und genau das
+ * war der Befund -, oder sie legt sich ueber den Brettrand. Das Zweite ist
+ * gewollt.
+ *
+ * Wie weit sie ragt, entscheidet ihr Inhalt: `width: max-content` und eine
+ * automatische linke Aussenlinie geben ihr genau ihre Inhaltsbreite und
+ * schieben den Ueberhang nach links, wo die unterste Reihe des Sechsecks
+ * ohnehin schmaler ist als seine Mitte. Bei breiten Fenstern ragt nichts.
+ */
+.tray__throw {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.6rem;
+  align-items: flex-end;
+  justify-content: flex-end;
+
+  /*
+   * Die Zeile nimmt sich ihre Inhaltsbreite, auch wenn die Ecke schmaler ist -
+   * sonst schluckt `max-width` an `.tray__controls` den Ueberhang und die
+   * Leiste wird doch wieder gequetscht. `margin-left: auto` haelt sie am
+   * rechten Rand: die Wuerfel bleiben in der Ecke, gewachsen wird nach links.
+   */
+  width: max-content;
+  max-width: none;
+  margin-left: auto;
+}
+
+/*
+ * Die Leiste gibt nichts ab: volle Breite, eine Reihe, kein Umbruch.
+ *
+ * `flex: 0 0 auto` und `nowrap` sagen dasselbe von zwei Seiten - das Stueck
+ * darf nicht schrumpfen, und sein Inhalt darf nicht umbrechen. Ohne beides
+ * stellte die Leiste ihre Bauteile in zwei oder drei Reihen, sobald die Ecke
+ * eng wird; gemessen waren das bei 1184x615 fuenf Bauteile untereinander.
+ */
+.tray__throw > .panel--actions {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+.tray__throw .build {
+  flex-wrap: nowrap;
+}
+
+/*
+ * Die linke Spalte: Handkarten, Entwicklungskarten, Zugknoepfe - in dieser
+ * Reihenfolge von oben nach unten.
+ *
+ * Sie trug bis hierher nur die Karten. „Handel" und „Zug beenden" standen am
+ * rechten Ende der Bedienleiste, und damit lag der Knopf, den man in jedem
+ * einzelnen Zug drueckt, diagonal gegenueber der Hand, auf die man dabei
+ * sieht. Unter die Karten gelegt steht er in der Ecke, die eine Maus ohne
+ * Zielen trifft - und der Weg vom Ueberlegen zum Beenden ist ein kurzer Blick
+ * nach unten statt einer Diagonale.
+ */
+.tray__hand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+/*
+ * Die zwei Knoepfe unter den Karten.
+ *
+ * Etwas groesser als die Knoepfe in den Dialogen: sie sind die einzige
+ * Bedienung, die in jedem Zug angefasst wird, und stehen als einzige frei auf
+ * dem Tisch statt in einem Fenster. `margin-top` gibt ihnen die Fuge zur
+ * Kartenreihe darueber - die 0.5rem der Spalte lesen sich sonst wie eine
+ * weitere Kartenzeile.
+ */
+.tray__turn {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+/*
+ * Die Bedienleiste liegt seit dem neuen Layout **quer statt hoch**.
+ *
+ * Sie war ein 14.5rem schmales Panel, in dem sich vier Zeilen uebereinander
+ * stapelten: Wuerfel, Bauleiste, Knoepfe, Phasentext. Jede Zeile ging dem Brett
+ * an Hoehe ab - und Hoehe ist genau das, woran es dem Brett fehlt: es passt
+ * sich mit `xMidYMid meet` ein und ist auf einem breiten Bildschirm immer
+ * hoehen- und nie breitenbegrenzt. Waagerecht gelegt braucht dieselbe Bedienung
+ * eine Zeile statt vier, und die Breite dafuer ist ohnehin da.
+ *
+ * `max-width: none` hebt die Panelbreite auf - sie galt fuer ein Panel, das in
+ * einer Ecke schwebt, und hier schwebt nichts mehr.
+ */
+.tray .panel--actions {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  max-width: none;
+}
+
+.tray .panel--actions .build {
+  margin-bottom: 0;
+}
+
+/*
+ * Der Fehler bricht die Zeile um und legt sich unter sie.
+ *
+ * Er ist selten und dann wichtig: als schmale Spalte in der Zeile waere er
+ * unlesbar, und ihn zu kuerzen hiesse, die Auskunft wegzulassen, die er ist.
+ * `width: 100%` in einer umbrechenden Flexzeile heisst genau „eigene Zeile".
+ */
+.tray .panel--actions .panel__error {
+  width: 100%;
+}

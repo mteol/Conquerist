@@ -77,8 +77,12 @@ Paket-Scope: `@conquerist/shared`, `@conquerist/server`, `@conquerist/client`
 - Lange Ausgaben kürzen (`| tail -30`), nicht komplett in den Verlauf holen.
 
 ## Design
-Die ausführlichen Regeln und die Liste der Fallen stehen in **`docs/design.md`
-— vor jeder Arbeit an der Oberfläche lesen.** Kurzfassung:
+Woraus gebaut wird, steht in **`docs/design-system.md`** (Designsystem
+„Seekarte": drei Materialien, Kartenschrift, Tokens für Schrift, Abstand,
+Tiefe und Bewegung); Grundsätze und die Liste der Fallen in **`docs/design.md`**.
+**Beides vor jeder Arbeit an der Oberfläche lesen.** CSS liegt je Fläche in
+`apps/client/src/styles/`, `index.css` ist nur die Importreihenfolge.
+Kurzfassung:
 1. Erst der Entwurf (Rolle, Aufbau, das eine Element), dann das Markup.
 2. Farbwelt steht: Tiefsee-Tinte, Pergament, Geländefarben. Kein Hex-Wert in
    Komponenten — nur Variablen aus `index.css`.
@@ -86,8 +90,9 @@ Die ausführlichen Regeln und die Liste der Fallen stehen in **`docs/design.md`
    (`Wordmark.tsx`, `Numerals.tsx`) auf einem Raster. Fase per
    `corner-shape: bevel`, nie `clip-path`; Spielmaterial wird nicht geschnitten.
 4. Das Brett ist der Held.
-5. Bewegung erklärt einen Zustandswechsel oder entfällt; `prefers-reduced-motion`
-   kürzt auch Verzögerungen.
+5. Bewegung erklärt einen Zustandswechsel oder entfällt; Dauer und Kurve nur
+   aus `styles/tokens.css`, Art der Bewegung nach Material;
+   `prefers-reduced-motion` kürzt auch Verzögerungen.
 6. Struktur codiert Inhalt.
 7. Bedienbar bis zum schmalen Handy, sichtbarer Fokus, Kontrast, Farbe nie
    einziger Informationsträger.

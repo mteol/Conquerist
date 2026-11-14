@@ -97,7 +97,9 @@ export function KnightPanel({
           <button
             key={entry}
             type="button"
-            className={active ? 'knights__pick knights__pick--active' : 'knights__pick'}
+            className={
+              active ? 'button knights__pick knights__pick--active' : 'button knights__pick'
+            }
             data-testid={`knight-${entry}`}
             aria-pressed={active}
             disabled={count === 0}

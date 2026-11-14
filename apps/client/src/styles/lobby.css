@@ -1,0 +1,457 @@
+/*
+ * Der Wartebereich: links Code, Tisch und Einstellungen, rechts das Brett.
+ *
+ * Der Grund (Tiefsee, Untiefe, Seekarte) steht in `start.css`, das Raster in
+ * `mode.css`. Der Code und die Fusszeile stehen auf der See, Tisch und
+ * Einstellungen liegen als Blaetter (`.sheet`) darauf. Eingang: Schrift kommt
+ * als `ink-in`, Blaetter als `sheet-in`, hoechstens drei Lagen Versatz.
+ */
+
+/*
+ * Die linke Haelfte: alles, was man anfassen kann.
+ *
+ * `overflow-y: auto` als Notausgang und nicht als Entwurf - der Bildschirm
+ * soll passen, aber wer die Schriftgroesse hochstellt, sprengt jede Rechnung,
+ * und abgeschnitten waere schlimmer als scrollbar (Regel 7).
+ */
+.lobby__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(var(--space-3), 2vh, var(--space-5));
+  justify-content: center;
+  padding: clamp(var(--space-4), 3vh, var(--space-6)) clamp(var(--space-4), 3vw, var(--space-6));
+  /* Oben so viel Luft, wie das Zahnrad hoch ist - im schmalen Fenster steht
+     es sonst auf dem Raumcode. */
+  padding-top: 2.75rem;
+  overflow-y: auto;
+}
+
+/*
+ * Eine Achse: Code, Einladung, Tafeln und Fuss stehen alle an der linken Kante
+ * der Spalte. Gemischt (Code mittig, Tafeln links) waeren es drei Kanten.
+ */
+.lobby__head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  width: 100%;
+}
+
+/*
+ * Der Code ist das groesste Element der Anwendung - er wird vorgelesen. Weite
+ * Sperrung, Tabellenziffern aus der Grundschrift; die Groesse haengt am
+ * Schriftgrad `--text-2xl`, nicht an einer eigenen Zahl.
+ */
+.lobby__code {
+  margin: 0;
+  font-size: clamp(var(--text-2xl), min(6vw, 9vh), calc(var(--text-2xl) * 2.2));
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  color: var(--parchment);
+}
+
+.lobby__invite {
+  display: flex;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.lobby__invite input {
+  flex: 1 1 auto;
+  font-size: var(--text-sm);
+}
+
+/*
+ * Tisch und Einstellungen nebeneinander.
+ *
+ * `align-items: start` und nicht `stretch`: die Einstellungsliste soll nicht
+ * auf die Hoehe eines Sechser-Tisches gezogen werden, sonst steht in ihr eine
+ * Luecke, die nichts bedeutet.
+ */
+.lobby__body {
+  display: grid;
+  /*
+   * Der Tisch bekommt die breitere Spalte, und das ist gemessen: „Platz
+   * entfernen" und „Platz hinzufuegen" nebeneinander brauchen rund 290 Pixel,
+   * sonst rutscht der zweite Knopf in eine eigene Zeile.
+   */
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+  gap: clamp(var(--space-3), 1.6vw, var(--space-5));
+  align-items: start;
+  width: 100%;
+}
+
+/* Die zwei Blaetter. Der Versatz folgt der Lesereihenfolge: Tisch, Einstellungen, Fuss. */
+.lobby__table,
+.lobby__settings {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+}
+
+.lobby__table {
+  gap: var(--space-2);
+}
+
+.lobby__settings {
+  animation-delay: var(--stagger);
+}
+
+.lobby__foot {
+  animation-delay: calc(var(--stagger) * 2);
+}
+
+/* Auf einem Blatt steht Tinte: die Trennlinien sind Tinte in schwach. */
+.lobby .sheet {
+  --rule: color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+.lobby__seats {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Eine Zeile je Platz; die Linien trennen, sie umrahmen nichts. */
+.lobby__seat {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-1) 0;
+}
+
+.lobby__seat + .lobby__seat {
+  border-top: 1px solid var(--rule);
+}
+
+/* Der leere Platz: gestrichelter Stein, und leiser als ein Sitz. */
+.lobby__seat--open {
+  color: var(--ink-muted);
+}
+
+.lobby__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lobby__status {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.piece--seat {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+/*
+ * Die Tischgroesse wird am Tisch eingestellt, nicht daneben: die Knoepfe
+ * stehen direkt unter der Sitzliste, und der gestrichelte Umriss ist das
+ * Ergebnis.
+ */
+.lobby__resize {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin-top: var(--space-1);
+}
+
+/*
+ * Linienknoepfe auf einem Blatt: der Geisterknopf der See (helle Linie) waere
+ * auf Pergament unsichtbar, hier ist es dunkle Tinte. Er hebt sich nicht, er
+ * fuellt sich. Die getroffene Wahl ist gesperrt - und **sichtbar** gesperrt:
+ * `disabled` allein aendert an einem Knopf mit eigenem Hintergrund nichts
+ * (CLAUDE.md), und hier ist der gesperrte der, auf dem man steht. Sie liegt
+ * eingedrueckt wie ueberall (dunkler Rand, Papier etwas dunkler), kein Verbotszeichen.
+ */
+.sheet .button--ghost {
+  padding: var(--space-1) var(--space-3);
+  border-color: var(--parchment-edge);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.sheet .button--ghost:hover:not(:disabled) {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.sheet .button--ghost:active:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.sheet .button--ghost.is-chosen {
+  border-color: var(--ink);
+  background: var(--parchment-2);
+  box-shadow: inset 0 0 0 1px var(--ink);
+  color: var(--ink);
+  opacity: 1;
+  cursor: default;
+}
+
+/*
+ * Eine Zeile der Einstellungen. Die Trennlinie steht als `border-top` an jeder
+ * ausser der ersten und nicht als `border-bottom` an allen ausser der letzten:
+ * die erste Zeile faellt weg, wenn man nicht am Tisch sitzt (Zuschauer).
+ */
+.lobby__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+  padding: var(--space-2) 0;
+}
+
+.lobby__row:first-child {
+  padding-top: 0;
+}
+
+.lobby__row:last-child {
+  padding-bottom: 0;
+}
+
+.lobby__row + .lobby__row {
+  border-top: 1px solid var(--rule);
+}
+
+/* Die Beschriftung einer Zeile auf dem Blatt: Grundschrift, Satzschreibung. */
+.lobby__label {
+  font-size: var(--text-sm);
+  font-weight: 650;
+  color: var(--ink-muted);
+}
+
+/*
+ * Wert und Bedienung in einer Zeile. Was den Wert aendert, steht rechts aussen.
+ * `> .button` und nicht `.button`, sonst faengt die Regel auch die zwei Knoepfe
+ * **in** `.lobby__resize` und schiebt sie auseinander.
+ */
+.lobby__value {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  width: 100%;
+}
+
+.lobby__value > .button,
+.lobby__value > .lobby__resize {
+  margin-top: 0;
+  margin-left: auto;
+}
+
+/*
+ * Das Seedfeld - eintippbar fuer den Gastgeber, blosse Angabe fuer alle
+ * anderen. Es sieht aus wie der Seed daneben (gleiche Groesse und Gewicht):
+ * was man aendern darf, soll wie das aussehen, was dort steht. Der Rand sagt,
+ * dass man hineinschreiben kann. Tabellenziffern, keine Festbreitenschrift.
+ */
+.lobby__seedfield {
+  flex: 0 1 10rem;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.lobby__seed {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* Das Siegpunktziel sagt, wie lange der Abend dauert: eine Zahl, gross. */
+.lobby__goal {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink);
+}
+
+/* Der Name des Regelwerks: ein Wort, kleiner als eine Zahl. */
+.lobby__variant {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+/* Woher die Zehn kommt - ein Zusatz, kein Satz. */
+.lobby__origin {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.lobby__namefield {
+  width: min(100%, 14rem);
+}
+
+.lobby__namefield input {
+  width: 100%;
+  font-weight: 650;
+}
+
+/*
+ * Die sechs Farben: umbruchfaehige Reihe statt Raster. Jede traegt ihren Namen
+ * (Farbe ist nie alleiniger Traeger). Die eigene liegt eingedrueckt, belegte
+ * sind blass und flach gesperrt - der `title` sagt, bei wem die Farbe liegt.
+ */
+.colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.colors__pick {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--corner-sm);
+  corner-shape: bevel;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    border-color var(--t-quick) linear,
+    background-color var(--t-quick) linear;
+}
+
+.colors__pick:hover:not(:disabled) {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.colors__pick:active:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  transition-duration: var(--t-press);
+}
+
+.colors__pick--mine {
+  border-color: var(--ink);
+  background: var(--parchment-2);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.colors__pick:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.colors__pick .piece--seat {
+  width: 1.05rem;
+  height: 1.15rem;
+}
+
+/*
+ * Der Fuss steht links, an derselben Kante wie der Code.
+ */
+.lobby__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+/* Gesperrt ist Pergament, blass und flach, wie .button:disabled; Gelb erst, wenn gestartet werden kann. */
+.lobby__foot .button--go:disabled {
+  background: var(--parchment);
+  color: var(--ink-base);
+}
+
+.lobby__actions {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.lobby__hint {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+/*
+ * Die rechte Haelfte: das Brett, auf dem gleich gespielt wird. Dieselben
+ * Regeln wie `.start__preview` - dasselbe Bauteil an derselben Stelle.
+ */
+.lobby__preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: clamp(var(--space-3), 1.5vw, var(--space-5));
+  overflow: hidden;
+  animation-delay: var(--t-move);
+}
+
+/*
+ * **Das Brett haengt an der Hoehe und nicht an der Breite.** Es ist mit einer
+ * viewBox von 9.84 zu 9.18 annaehernd quadratisch; in einer Zelle, die
+ * breiter als hoch ist, entscheidet allein `max-height`, wie gross es wird.
+ */
+.lobby__preview .board {
+  width: 100%;
+  height: 100%;
+  max-height: 94vh;
+}
+
+/*
+ * Im schmalen Fenster wieder eine Spalte, und das Brett zuerst: wer beitritt,
+ * sieht erst, worauf gespielt wird, und darunter, wer schon da ist. Hier darf
+ * der Bildschirm scrollen - „passt ohne Scrollen" gilt fuers Querformat.
+ */
+@media (max-width: 62rem) {
+  .lobby {
+    --shoal-x: 50%;
+    grid-template-columns: 1fr;
+  }
+
+  .lobby__panel {
+    justify-content: flex-start;
+  }
+
+  .lobby__preview {
+    order: -1;
+    min-height: 40vh;
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 40rem) {
+  .lobby__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Auf groben Zeigern (Finger) mindestens 44 px Trefferflaeche. */
+@media (pointer: coarse) {
+  .sheet .button--ghost,
+  .colors__pick {
+    min-height: 2.75rem;
+  }
+}
+
+/* --- Spielbildschirm ------------------------------------------------------ */

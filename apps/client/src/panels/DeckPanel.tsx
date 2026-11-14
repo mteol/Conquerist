@@ -96,7 +96,9 @@ export function DeckPanel({ left, canBuy, cost, onBuy }: DeckPanelProps): JSX.El
           {left}
         </span>
 
-        <span className="deck__label">{left === 0 ? 'Stapel leer' : 'Karte kaufen'}</span>
+        <span className="deck__label chartlabel">
+          {left === 0 ? 'Stapel leer' : 'Karte kaufen'}
+        </span>
 
         <span className="visually-hidden">
           {left === 0
@@ -148,11 +150,6 @@ function CardBack(): JSX.Element {
   return (
     <svg className="deck__face" viewBox="0 0 46 58" aria-hidden="true">
       <defs>
-        <linearGradient id="conquerist-deck-paper" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" className="deck__paper-light" />
-          <stop offset="1" className="deck__paper-dark" />
-        </linearGradient>
-
         {/*
          * Zwei versetzte Sechsecke je Kachel, beide vollstaendig innerhalb der
          * Kachel: so setzt sich das Gitter ohne Naht fort, ohne dass irgendwo
@@ -170,32 +167,24 @@ function CardBack(): JSX.Element {
         </pattern>
       </defs>
 
+      <rect x="0.6" y="0.6" width="44.8" height="56.8" rx="7" className="deck__paper" />
       <rect
         x="0.6"
         y="0.6"
         width="44.8"
         height="56.8"
-        rx="4"
-        fill="url(#conquerist-deck-paper)"
-        className="deck__paper"
-      />
-      <rect
-        x="0.6"
-        y="0.6"
-        width="44.8"
-        height="56.8"
-        rx="4"
+        rx="7"
         fill="url(#conquerist-deck-lattice)"
       />
 
-      <rect className="deck__rule" x="3.4" y="3.4" width="39.2" height="51.2" rx="2.6" />
+      <rect className="deck__rule" x="3.4" y="3.4" width="39.2" height="51.2" rx="5.2" />
       <rect
         className="deck__rule deck__rule--fine"
         x="6.4"
         y="6.4"
         width="33.2"
         height="45.2"
-        rx="1.8"
+        rx="3.8"
       />
 
       <circle className="deck__perforation" cx="23" cy="29" r="14" />

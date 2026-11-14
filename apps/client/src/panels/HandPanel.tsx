@@ -56,9 +56,11 @@ export function HandPanel({
       aria-label={owner === undefined ? 'Deine Karten' : `${owner}s Karten`}
     >
       <header className="hand__head">
-        <span className="panel__title">{owner === undefined ? 'Deine Karten' : owner}</span>
-        <span className="hand__total" data-testid="hand-total">
-          {cardCount}
+        <span className="hand__name chartlabel">
+          {owner === undefined ? 'Deine Karten' : owner}
+        </span>
+        <span className="hand__total">
+          <span data-testid="hand-total">{cardCount}</span> {cardCount === 1 ? 'Karte' : 'Karten'}
         </span>
       </header>
 
@@ -77,8 +79,9 @@ export function HandPanel({
         <p className="hand__empty">Keine Karten auf der Hand.</p>
       ) : (
         <ol className="hand__stacks">
-          {stacks.map(({ card, amount }) => (
-            <li key={card}>
+          {stacks.map(({ card, amount }, index) => (
+            // Die Karten werden nacheinander zugeschoben (`deal-in`, hoechstens fuenf Lagen).
+            <li key={card} className="deal-in" style={{ '--i': index } as CSSProperties}>
               <Stack card={card} amount={amount} />
             </li>
           ))}

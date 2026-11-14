@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type CSSProperties, type JSX } from 'react';
 import { CARD_IDS, type CardAmounts, type CardId } from '@conquerist/shared';
 import { CARD_LABELS } from '../game/labels';
 import { CardGlyph } from './CardGlyph';
@@ -35,6 +35,9 @@ export interface SupplyPanelProps {
   readonly deckStart: number;
 }
 
+/** Felder je Massstab - der Rest als Zahl steht daneben, die Leiste gibt den Ueberblick. */
+const FIELDS = 10;
+
 /** Eine Zeile: Stapel, Rest, Ausgangsmenge, und wie voll er noch ist. */
 function Row({
   testId,
@@ -56,6 +59,8 @@ function Row({
    * still `NaN` in die Breite schreibt.
    */
   const share = total > 0 ? Math.max(0, Math.min(1, left / total)) : 0;
+  // Zehn Felder: ein Rest ueber null zeigt mindestens eins, ein voller Stapel alle.
+  const on = left > 0 ? Math.max(1, Math.round(share * FIELDS)) : 0;
 
   return (
     <li className="supply__row" data-testid={testId}>
@@ -64,8 +69,14 @@ function Row({
       <span className="supply__count">
         <strong>{left}</strong> von {total}
       </span>
-      <span className="supply__bar" aria-hidden="true">
-        <span className="supply__fill" style={{ width: `${share * 100}%` }} />
+      <span
+        className="scalebar supply__bar"
+        style={{ '--of': FIELDS } as CSSProperties}
+        aria-hidden="true"
+      >
+        {Array.from({ length: FIELDS }, (_unused, index) => (
+          <i key={index} className={index < on ? 'is-on' : undefined} />
+        ))}
       </span>
     </li>
   );
@@ -73,6 +84,14 @@ function Row({
 
 export function SupplyPanel({ bank, start, deckLeft, deckStart }: SupplyPanelProps): JSX.Element {
   const [open, setOpen] = useState(false);
+  /* Nur ein Blatt zugleich: das andere (Verlauf/Vorrat) schliesst, wenn dieses aufgeht. */
+  useEffect(() => {
+    const close = (event: Event): void => {
+      if ((event as CustomEvent<string>).detail !== 'supply') setOpen(false);
+    };
+    window.addEventListener('conquerist:sheet', close);
+    return () => window.removeEventListener('conquerist:sheet', close);
+  }, []);
 
   return (
     <div className="supply">
@@ -81,18 +100,22 @@ export function SupplyPanel({ bank, start, deckLeft, deckStart }: SupplyPanelPro
         className={open ? 'supply__toggle supply__toggle--open' : 'supply__toggle'}
         data-testid="supply-toggle"
         aria-expanded={open}
-        onClick={() => setOpen((was) => !was)}
+        onClick={() => {
+          if (!open)
+            window.dispatchEvent(new CustomEvent('conquerist:sheet', { detail: 'supply' }));
+          setOpen((was) => !was);
+        }}
       >
         <svg className="supply__mark" viewBox="0 0 24 24" aria-hidden="true">
           <rect x="3" y="14" width="18" height="4" rx="1" />
           <rect x="5" y="9" width="14" height="4" rx="1" />
           <rect x="7" y="4" width="10" height="4" rx="1" />
         </svg>
-        Vorrat
+        <span className="supply__label">Vorrat</span>
       </button>
 
       {open ? (
-        <section className="supply__sheet" aria-label="Vorrat der Bank">
+        <section className="supply__sheet sheet sheet-in" aria-label="Vorrat der Bank">
           <ul className="supply__list">
             {/* Handelswaren nur, wo es sie gibt - im Basisspiel ist ihr Bestand null. */}
             {CARD_IDS.filter((card: CardId) => (start[card] ?? 0) > 0).map((card) => (

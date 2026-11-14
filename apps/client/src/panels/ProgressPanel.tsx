@@ -282,7 +282,7 @@ export function ProgressPanel({
 
   return (
     <section className="progress" aria-label="Fortschritt">
-      <h2 className="progress__title">Fortschritt</h2>
+      <h2 className="progress__title chartlabel">Fortschritt</h2>
 
       <ul className="progress__decks">
         {TRACK_IDS.map((track) => (
@@ -329,6 +329,8 @@ export function ProgressPanel({
                  */
                 <li
                   key={`${card}-${index}`}
+                  className="deal-in"
+                  style={{ '--i': index } as CSSProperties}
                   onPointerEnter={show(card)}
                   onPointerLeave={hide(card)}
                   onFocus={show(card)}

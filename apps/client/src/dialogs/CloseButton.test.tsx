@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 // Roher Dateiinhalt statt `node:fs` - siehe AccountCorner.test.tsx: Vites
 // `?raw`-Import braucht keine Node-Typen, das Client-Paket haelt `types: []`.
-import css from '../index.css?raw';
+import { stylesheet as css } from '../test/stylesheet';
 
 /** Liefert den Inhalt der ersten Regel `selector { ... }` ab `fromIndex`. */
 function ruleBody(selector: string, fromIndex = 0): string {

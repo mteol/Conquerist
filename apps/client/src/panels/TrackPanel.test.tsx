@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import {
+  CARD_IDS,
   CITIES_RULES,
   CLASSIC_RULES,
+  type CardAmounts,
   TRACK_IDS,
   type GameAction,
   type TrackId,
@@ -12,7 +14,7 @@ import { EMPTY_TARGETS, targetsFrom } from '../game/targets';
 import { TrackPanel } from './TrackPanel';
 // Roher Dateiinhalt statt `node:fs`, wie in `AccountCorner.test.tsx`: das
 // Client-Paket hält sich bewusst frei von Node-Typen.
-import css from '../index.css?raw';
+import { stylesheet as css } from '../test/stylesheet';
 
 const player = (levels: Partial<Record<TrackId, number>>) => ({
   improvements: levels,
@@ -105,6 +107,26 @@ describe('TrackPanel', () => {
     expect(screen.getByTestId('track-trade-3').getAttribute('title')).toBe('Gilde: 3 Tuch');
   });
 
+  it('schreibt die Bereiche aus und sagt am gesperrten Knopf, was fehlt', () => {
+    render(
+      <TrackPanel
+        targets={EMPTY_TARGETS}
+        barbarianTrack={CITIES_RULES.barbarianTrack}
+        player={player({ trade: 2 })}
+        hand={Object.fromEntries(CARD_IDS.map((id) => [id, id === 'cloth' ? 1 : 0])) as CardAmounts}
+        onImprove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Handel')).toBeTruthy();
+    expect(screen.getByText('Politik')).toBeTruthy();
+    expect(screen.getByText('Wissenschaft')).toBeTruthy();
+    // Stufe 3 kostet 3 Tuch, die Hand hat eins: es fehlen zwei.
+    expect(screen.getByTestId('track-trade-3').getAttribute('data-hint')).toContain(
+      'Dir fehlt 2 Tuch.',
+    );
+  });
+
   it('traegt an jeder Stufe ihre Schwelle als Ziffer - Stufe 1 zeigt 2, Stufe 5 zeigt 6', () => {
     const { container } = render(
       <TrackPanel
@@ -193,13 +215,11 @@ describe('Tableau im CSS (index.css)', () => {
     );
   });
 
-  it('Befund D: die ungebaute Stufe trägt dunkle Tinte auf ihrem Pergamentkörper', () => {
-    // `.tracks__word {` steht als Teilstring auch in
-    // `.tracks__step--built .tracks__word {` weiter oben im Blatt - erst
-    // hinter dessen gesamter Kopfzeile weitersuchen, sonst findet `ruleBody`
-    // dieselbe falsche Regel wieder.
-    const builtRuleHead = '.tracks__step--built .tracks__word {';
-    const afterBuiltRule = css.indexOf(builtRuleHead) + builtRuleHead.length;
-    expect(ruleBody('.tracks__word', afterBuiltRule)).toMatch(/color:\s*var\(--ink\)/);
+  it('Befund D: die ungebaute Stufe liegt auf der See und liest die helle Tinte, nicht die dunkle', () => {
+    // Seit dem Umbau steht die Sprosse, die noch nicht gebaut ist, als bloßer
+    // Umriss auf der Tiefsee (nicht mehr auf eigenem Pergament): dunkle Tinte
+    // wäre dort unsichtbar. `.tracks__word` ist die Grundregel, die erste ihres
+    // Namens im Blatt - die Zustandsregeln davor tragen ein Präfix.
+    expect(ruleBody('.tracks__word')).toMatch(/color:\s*var\(--on-sea-muted\)/);
   });
 });

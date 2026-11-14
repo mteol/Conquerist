@@ -14,7 +14,7 @@ import { TRACK_BUILT_WORD_COLORS } from '../game/labels';
 // Roher Dateiinhalt statt `node:fs`, wie in `AccountCorner.test.tsx` und
 // `TrackPanel.test.tsx`: das Client-Paket haelt sich bewusst frei von
 // Node-Typen.
-import css from '../index.css?raw';
+import { stylesheet as css } from '../test/stylesheet';
 
 /**
  * Eine minimale Sicht - so viel `PlayerView`, wie `ProgressPanel` wirklich

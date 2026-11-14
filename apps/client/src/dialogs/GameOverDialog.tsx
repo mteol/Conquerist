@@ -70,6 +70,8 @@ export function GameOverDialog({ view, onClose, onLeave }: GameOverDialogProps):
    * gefallen ist.
    */
   const top = Math.max(1, ...DICE_TOTALS.map(countOf), expectedCount(7, rolls));
+  /* Der Massstab reicht bis zum besten Stand - der Sieger fuellt ihn ganz. */
+  const scaleOf = Math.max(10, ranked[0]?.victoryPoints ?? 0);
   const share = (value: number): string => `${(value / top) * 100}%`;
 
   return (
@@ -105,7 +107,7 @@ export function GameOverDialog({ view, onClose, onLeave }: GameOverDialogProps):
             Rangliste
           </h3>
           <ol className="over__ranks">
-            {ranked.map((player) => {
+            {ranked.map((player, index) => {
               const parts = pointBreakdown(player);
 
               return (
@@ -113,7 +115,7 @@ export function GameOverDialog({ view, onClose, onLeave }: GameOverDialogProps):
                   key={player.id}
                   className={player.id === winnerId ? 'over__rank over__rank--won' : 'over__rank'}
                   data-testid={`over-player-${player.id}`}
-                  style={{ '--seat': player.color } as CSSProperties}
+                  style={{ '--seat': player.color, '--i': Math.min(index, 4) } as CSSProperties}
                 >
                   <span className="over__place">{placeOf(player.victoryPoints)}.</span>
                   <span className="over__name">
@@ -131,7 +133,20 @@ export function GameOverDialog({ view, onClose, onLeave }: GameOverDialogProps):
                       ))}
                   </span>
                   <span className="over__points">
-                    <strong>{player.victoryPoints}</strong> SP
+                    <span
+                      className="scalebar over__scale"
+                      style={{ '--scale-ink': player.color } as CSSProperties}
+                      aria-hidden="true"
+                    >
+                      {Array.from({ length: scaleOf }, (_, step) => (
+                        <i
+                          key={step}
+                          className={step < player.victoryPoints ? 'is-on' : undefined}
+                        />
+                      ))}
+                    </span>
+                    <strong>{player.victoryPoints}</strong>
+                    <span className="over__unit">Siegpunkte</span>
                   </span>
                   <span className="over__parts">
                     {parts.length === 0

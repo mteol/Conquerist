@@ -18,7 +18,7 @@ import { EMPTY_TARGETS } from '../game/targets';
 import { ConnectionPanel } from '../diagnostics/ConnectionPanel';
 import type { Identity } from '../game/useOnlineGame';
 import { AccountCorner } from './AccountCorner';
-import { HexField } from './HexField';
+import { SeaChart } from '../chart/SeaChart';
 import { SeatPiece } from './LobbyScreen';
 
 /** Tut nichts - Vorgabewert fuer die drei Konto-Aktionen ohne Identitaet. */
@@ -141,13 +141,16 @@ const SEAT_COUNTS = Array.from(
 /**
  * Der Platz in der Eingangsreihe, als Zahl statt als eigene Klasse.
  *
- * Das CSS rechnet daraus die Verzoegerung (`calc(var(--i) * 65ms)`). Eine
+ * Das CSS rechnet daraus die Verzoegerung (`calc(var(--i) * var(--stagger))`). Eine
  * Klasse je Verzoegerung waere dieselbe Auskunft, nur haendisch gepflegt - und
  * beim naechsten Element vergessen.
  */
 function order(index: number): CSSProperties {
   return { '--i': index } as CSSProperties;
 }
+
+/** Wo die Windrose sitzt: unten rechts, wo neben dem Brett freie See bleibt. */
+const ROSE_AT = 6;
 
 /**
  * Wo eine Partie anfaengt - und seit dem Wegfall des Hauptmenues der Eingang.
@@ -180,12 +183,10 @@ function order(index: number): CSSProperties {
  * Vorlesegeraet ohne Zutun richtig bedient. Ein zweites Bedienmuster fuer
  * dieselbe Sache waere Regel 8 auf der Bedienebene.
  *
- * Wortmarke, Hexfeld und die Eingangschoreografie kommen aus dem Hauptmenue
- * mit: sie gehoerten nie zu jenem Bildschirm, sondern zum **Eingang**, und der
- * ist jetzt hier. Die Marke ist aus demselben Winkel geschnitten wie das Brett
- * (`Wordmark.tsx`), das Feld dahinter mit den Funktionen des Bretts gezeichnet
- * (`HexField.tsx`) - kein Bild, das so aehnlich aussieht, sondern dasselbe
- * Material.
+ * Dahinter liegt dieselbe Seekarte wie auf dem Titel (`chart/SeaChart.tsx`); die
+ * Wortmarke und der Aufprall der Welle bleiben dem Titel vorbehalten. Hier kommt
+ * die Ueberschrift als Schrift herein (`ink-in`), das Formular als Pergament
+ * (`sheet-in`).
  */
 export function StartScreen({
   onStartLocal,
@@ -318,23 +319,20 @@ export function StartScreen({
   const showsName = way === 'join';
 
   /*
-   * Die Ueberschrift des Bildschirms - je Weg eine, und je Weg eine andere.
-   *
-   * Sie ersetzt die Reiterreihe: die sagte, **welche** Wege es gibt, und der
-   * offene Reiter nebenbei, auf welchem man steht. Gebraucht wird nur das
-   * Zweite. Der Bau ist der des Wartebereichs: Kleinlabel, darunter das eine
-   * grosse Wort.
+   * Die Ueberschrift des Bildschirms - je Weg eine. Sie nennt den Weg mit
+   * denselben Worten wie der Eintrag im Titel (Regel 8) und traegt keine
+   * Ueberzeile: ueber einem einzigen grossen Wort braucht es keine zweite.
    */
-  const heading: Readonly<Record<Way, { readonly eyebrow: string; readonly title: string }>> = {
-    online: { eyebrow: 'Partie starten', title: 'Online' },
-    local: { eyebrow: 'Partie starten', title: 'An einem Gerät' },
-    join: { eyebrow: 'Partie beitreten', title: 'Raumcode' },
-    resume: { eyebrow: 'Weiterspielen', title: 'Deine Partien' },
+  const heading: Readonly<Record<Way, string>> = {
+    online: 'Online spielen',
+    local: 'An einem Gerät spielen',
+    join: 'Partie beitreten',
+    resume: 'Deine Partien',
   };
 
   return (
     <main className="start">
-      <HexField />
+      <SeaChart roseAt={ROSE_AT} />
 
       {/* Die Ecke faellt zuletzt ein - ihr `--i` liegt deshalb hinter dem der
           Reiter und des Formulars. */}
@@ -363,7 +361,11 @@ export function StartScreen({
            * den ganzen Ablauf gleich (Regel 8), und „zurueck" gehoert hier
            * denen, die in eine Partie fuehren.
            */
-          <button type="button" className="button button--ghost start__back" onClick={onBack}>
+          <button
+            type="button"
+            className="button button--ghost start__back ink-in"
+            onClick={onBack}
+          >
             <svg viewBox="0 0 10 10" aria-hidden="true">
               <path d="M7 1 L3 5 L7 9" />
             </svg>
@@ -371,9 +373,8 @@ export function StartScreen({
           </button>
         )}
 
-        <header className="start__head" style={order(0)}>
-          <span className="eyebrow">{heading[way].eyebrow}</span>
-          <h1 className="start__heading">{heading[way].title}</h1>
+        <header className="start__head ink-in" style={order(0)}>
+          <h1 className="start__heading">{heading[way]}</h1>
         </header>
 
         {/*
@@ -383,10 +384,10 @@ export function StartScreen({
          * Reiterwechsel neu - Bewegung, die keinen Zustandswechsel erklaert,
          * sondern ihn bloss begleitet (Regel 5).
          */}
-        <div className="start__form" style={order(1)}>
+        <div className="start__form sheet-in" style={order(1)}>
           {showsBoard ? (
             <fieldset className="field-group">
-              <legend>Spieler</legend>
+              <legend className="chartlabel">Spieler</legend>
               <div className="seatcount">
                 {SEAT_COUNTS.map((count) => (
                   <span key={count}>
@@ -413,7 +414,7 @@ export function StartScreen({
                * hier vor dem Seed, weil sie bestimmt, was das Brett traegt -
                * und die Vorschau daneben rechnet mit ihr.
                */}
-              <legend>Regelwerk</legend>
+              <legend className="chartlabel">Regelwerk</legend>
               <div className="variantpick">
                 {(['classic', 'cities'] as const).map((choice) => (
                   <span key={choice}>
@@ -436,7 +437,7 @@ export function StartScreen({
 
           {showsBoard ? (
             <fieldset className="field-group">
-              <legend>Seed</legend>
+              <legend className="chartlabel">Seed</legend>
               <div className="seedrow">
                 <input
                   aria-label="Seed"
@@ -461,7 +462,7 @@ export function StartScreen({
                * laesst, sieht es stehen bleiben. Eine Zusage neben ihrem
                * eigenen Beweis ist eine Zeile zu viel.
                */}
-              <p className="start__note">{blueprint?.name ?? 'Kein passendes Brett'}</p>
+              <p className="chartlabel start__note">{blueprint?.name ?? 'Kein passendes Brett'}</p>
             </fieldset>
           ) : null}
 
@@ -474,7 +475,7 @@ export function StartScreen({
            */}
           {showsName ? (
             <fieldset className="field-group">
-              <legend>Dein Name</legend>
+              <legend className="chartlabel">Dein Name</legend>
               <input
                 id="displayname"
                 aria-label="Dein Name"
@@ -488,7 +489,7 @@ export function StartScreen({
 
           {way === 'join' ? (
             <section className="way">
-              <p className="way__lead">Vier Zeichen, vorgelesen oder aus dem Einladungslink.</p>
+              <p className="chartlabel">Vier Zeichen, vorgelesen oder aus dem Einladungslink.</p>
 
               <div className="seedrow">
                 <input
@@ -500,7 +501,7 @@ export function StartScreen({
                 />
                 <button
                   type="button"
-                  className="button"
+                  className="button button--go"
                   // Aus dem Einladungslink gekommen: der Code steht schon da, es
                   // fehlt nur noch der Griff zur Maus.
                   autoFocus={initialCode !== null}
@@ -515,7 +516,7 @@ export function StartScreen({
 
           {way === 'local' ? (
             <section className="way">
-              <p className="way__lead">Alle am selben Bildschirm, reihum.</p>
+              <p className="chartlabel">Alle am selben Bildschirm, reihum.</p>
 
               <ol className="seats">
                 {seats.map((seat, index) => (
@@ -531,7 +532,7 @@ export function StartScreen({
                 ))}
               </ol>
 
-              <button type="button" className="button" onClick={startLocal}>
+              <button type="button" className="button button--go" onClick={startLocal}>
                 Lokale Partie starten
               </button>
             </section>
@@ -539,10 +540,9 @@ export function StartScreen({
 
           {way === 'resume' ? (
             <section className="way">
-              <span className="eyebrow">Deine Partien</span>
               <ol className="resume">
                 {myRooms.map((entry) => (
-                  <li key={entry.code} className="resume__card">
+                  <li key={entry.code} className="resume__card sheet sheet-in">
                     <div className="resume__head">
                       <span className="resume__code">{entry.code}</span>
                       <span className="resume__state">

@@ -9,16 +9,17 @@ import {
   levelOf,
   progressThreshold,
   stepName,
+  type CardAmounts,
   type TrackId,
   type TrackLevelSource,
 } from '@conquerist/shared';
 import {
-  TRACK_ABBR,
   TRACK_BUILT_WORD_COLORS,
   TRACK_COLORS,
   TRACK_COLORS_ON_SEA,
   TRACK_NAMES,
 } from '../game/labels';
+import { CardGlyph } from './CardGlyph';
 import { METROPOLIS_EMBLEMS } from '../board/shapes';
 import { NumeralText } from '../type/Numerals';
 import type { ActionTargets } from '../game/targets';
@@ -43,7 +44,7 @@ import type { ActionTargets } from '../game/targets';
  * wäre eine Auskunft über nichts.
  *
  * **Zwei Stufen tragen eine feste Marke, unabhängig vom eigenen Stand:** die
- * Zusatznutzenstufe ihr Wort (Aquädukt / Gilde / Festung - `TRACK_BONUS_LEVEL`
+ * Zusatznutzenstufe ihr Zeichen (Aquädukt / Gilde / Festung - `TRACK_BONUS_LEVEL`
  * aus `shared` sagt je Bereich, welche das ist, nicht diese Datei), Stufe 4
  * die Metropolenform aus `shapes.ts` - dieselbe wie auf dem Brett, damit man
  * sie am Knoten wiedererkennt. Beide stehen an ihrer Stufe, ob gebaut,
@@ -57,6 +58,8 @@ export interface TrackPanelProps {
   readonly barbarianTrack: number;
   /** Der eigene Stand - `PlayerState` wie `PlayerInView` genügen beide. */
   readonly player: TrackLevelSource;
+  /** Die eigene Hand - nur fuer die Auskunft "dir fehlt ...". `null`, solange sie verdeckt ist. */
+  readonly hand?: CardAmounts | null;
   /** Ein Klick auf die nächste Stufe eines Bereichs - der Bereich, sonst nichts. */
   readonly onImprove: (track: TrackId) => void;
 }
@@ -68,6 +71,7 @@ export function TrackPanel({
   targets,
   barbarianTrack,
   player,
+  hand = null,
   onImprove,
 }: TrackPanelProps): JSX.Element | null {
   if (barbarianTrack <= 0) return null;
@@ -80,6 +84,7 @@ export function TrackPanel({
           track={track}
           level={levelOf(player, track)}
           targets={targets}
+          hand={hand}
           onImprove={onImprove}
         />
       ))}
@@ -91,11 +96,13 @@ function TrackLadder({
   track,
   level,
   targets,
+  hand,
   onImprove,
 }: {
   readonly track: TrackId;
   readonly level: number;
   readonly targets: ActionTargets;
+  readonly hand: CardAmounts | null;
   readonly onImprove: (track: TrackId) => void;
 }): JSX.Element {
   // Von oben nach unten wie eine echte Leiter: die höchste Stufe steht zuoberst.
@@ -113,7 +120,7 @@ function TrackLadder({
       }
     >
       <span className="tracks__name" title={TRACK_NAMES[track]}>
-        {TRACK_ABBR[track]}
+        {TRACK_NAMES[track]}
       </span>
 
       {steps.map((step) => (
@@ -123,10 +130,35 @@ function TrackLadder({
           step={step}
           level={level}
           targets={targets}
+          hand={hand}
           onImprove={onImprove}
         />
       ))}
     </div>
+  );
+}
+
+/** Gilde, Festung, Aquaedukt als Zeichen im 24er-Raster - dasselbe Raster wie die Rittermodi. */
+function BonusMark({ track }: { readonly track: TrackId }): JSX.Element {
+  return (
+    <svg className="tracks__bonus" viewBox="0 0 24 24" aria-hidden="true">
+      {track === 'trade' ? (
+        // Zwei Pfeile gegeneinander: der Tausch 2:1.
+        <path
+          className="tracks__bonus--line"
+          d="M4 8 H18 M14 4 L18 8 L14 12 M20 16 H6 M10 12 L6 16 L10 20"
+        />
+      ) : track === 'politics' ? (
+        // Ein Turm mit Zinnen: die Festung.
+        <path fill="currentColor" d="M5 21 V9 H8 V5 H10.5 V9 H13.5 V5 H16 V9 H19 V21 Z" />
+      ) : (
+        // Drei Bogen auf einem Damm: der Aquaedukt.
+        <path
+          fill="currentColor"
+          d="M2 8 H22 V20 H18 V15 A2 2 0 0 0 14 15 V20 H10 V15 A2 2 0 0 0 6 15 V20 H2 Z"
+        />
+      )}
+    </svg>
   );
 }
 
@@ -135,12 +167,14 @@ function TrackStep({
   step,
   level,
   targets,
+  hand,
   onImprove,
 }: {
   readonly track: TrackId;
   readonly step: number;
   readonly level: number;
   readonly targets: ActionTargets;
+  readonly hand: CardAmounts | null;
   readonly onImprove: (track: TrackId) => void;
 }): JSX.Element {
   const built = level >= step;
@@ -155,7 +189,13 @@ function TrackStep({
         <NumeralText value={progressThreshold(step)} className="tracks__threshold" />
       </span>
       {step === bonusLevel ? (
-        <span className="tracks__word">{stepName(track, bonusLevel)}</span>
+        <>
+          {/* Zeichen statt Wort: in 12 px passt es nicht neben die Plakette (Auskunft: Hint und Text). */}
+          <span className="tracks__word" aria-hidden="true">
+            <BonusMark track={track} />
+          </span>
+          <span className="visually-hidden">{stepName(track, bonusLevel)}</span>
+        </>
       ) : null}
       {step === METROPOLIS_LEVEL ? (
         <svg className="tracks__metropolis" viewBox={METROPOLIS_VIEWBOX} aria-hidden="true">
@@ -170,16 +210,32 @@ function TrackStep({
           <path
             d={METROPOLIS_EMBLEMS[track]}
             fillRule="evenodd"
-            style={{ fill: built ? TRACK_BUILT_WORD_COLORS[track] : TRACK_COLORS[track] }}
+            style={{
+              fill: built
+                ? TRACK_BUILT_WORD_COLORS[track]
+                : isNext
+                  ? TRACK_COLORS[track]
+                  : TRACK_COLORS_ON_SEA[track],
+            }}
           />
         </svg>
       ) : null}
     </>
   );
 
+  const commodity = TRACK_COMMODITY[track];
+  const price = improvementCost(track, step)[commodity] ?? 0;
+  const offered = targets.improve.has(track) || (targets.metropolis.get(track)?.size ?? 0) > 0;
+  const hintLines = trackStepHint(track, step, built);
+  // Ein gesperrter Knopf sagt, woran es fehlt - nicht nur "nein".
+  const owned = hand?.[commodity] ?? 0;
+  if (isNext && !offered && hand !== null && owned < price) {
+    hintLines.push(`Dir fehlt ${price - owned} ${COMMODITY_LABELS[commodity]}.`);
+  }
+
   const hint = {
     'data-hint-title': `${TRACK_NAMES[track]}, Stufe ${step}: ${stepName(track, step)}`,
-    'data-hint': trackStepHint(track, step, built).join('\n'),
+    'data-hint': hintLines.join('\n'),
   };
 
   if (!isNext) {
@@ -195,9 +251,6 @@ function TrackStep({
     );
   }
 
-  const price = improvementCost(track, step)[TRACK_COMMODITY[track]] ?? 0;
-  const offered = targets.improve.has(track) || (targets.metropolis.get(track)?.size ?? 0) > 0;
-
   return (
     <button
       type="button"
@@ -210,6 +263,10 @@ function TrackStep({
       onClick={() => onImprove(track)}
     >
       {marks}
+      <span className="tracks__price" aria-hidden="true">
+        {price}
+        <CardGlyph card={commodity} />
+      </span>
     </button>
   );
 }

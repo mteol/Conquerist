@@ -7,6 +7,16 @@ export default defineConfig({
   },
   test: {
     /**
+     * Hoechstens die halbe Kernzahl an Prozessen. Mit einem Prozess je Kern
+     * und jsdom in fast jeder Datei kamen im vollen Lauf einzelne Prozesse
+     * nicht mehr rechtzeitig hoch ("Timeout waiting for worker to respond") -
+     * drei Dateien liefen dann gar nicht, und der Lauf war rot ohne einen
+     * einzigen gefallenen Test. Derselbe Druck liess `GameScreen.test.tsx` und
+     * `hotseatClock.test.tsx` flackern.
+     */
+    maxWorkers: '50%',
+    testTimeout: 15_000,
+    /**
      * `node` als Voreinstellung. `src/net` ist bewusst framework- und DOM-frei
      * (Fake-Socket-Factory, Zugriff auf `window`/`document` nur ueber Guards),
      * und die reinen Module aus Etappe 3 - Layout, Klickkarten, Anzeigemodell,

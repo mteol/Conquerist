@@ -8,10 +8,11 @@ import {
   createGame,
   generateScenario,
 } from '@conquerist/shared';
-import { render, screen } from '../test/dom';
+import { fireEvent, render, screen } from '../test/dom';
 import { defaultSeats } from '../seats';
-import { EMPTY_TARGETS } from '../game/targets';
+import { EMPTY_TARGETS, targetsFrom } from '../game/targets';
 import { BoardSvg } from './BoardSvg';
+import { vertexPoint } from './layout';
 import { TablePanel } from '../panels/TablePanel';
 import type { GameView } from '../game/view';
 
@@ -138,5 +139,116 @@ describe('Bewegung', () => {
 
     expect(animated.getAttribute('transform')).toBeNull();
     expect(animated.parentElement!.getAttribute('transform')).toContain('translate');
+  });
+});
+
+describe('Bewegung auf dem Brett', () => {
+  const chipHexes = scenario.hexes.filter((placement) => placement.chip === 8);
+
+  it('hebt die Chips der gefallenen Zahl ab, nicht den mit dem Raeuber', () => {
+    expect(chipHexes.length).toBeGreaterThan(1);
+    const robberHex = chipHexes[0]!.hex;
+
+    render(
+      <BoardSvg
+        state={{ ...start, robber: robberHex }}
+        targets={EMPTY_TARGETS}
+        seats={seats}
+        onPick={vi.fn()}
+        roll={{ total: 8, key: 't1' }}
+      />,
+    );
+
+    expect(screen.getByTestId(`chip-${robberHex}`).getAttribute('data-hit')).toBeNull();
+    for (const placement of chipHexes.slice(1)) {
+      expect(screen.getByTestId(`chip-${placement.hex}`).getAttribute('data-hit')).toBe('true');
+    }
+    const other = scenario.hexes.find(
+      (placement) => placement.chip !== undefined && placement.chip !== 8,
+    )!;
+    expect(screen.getByTestId(`chip-${other.hex}`).getAttribute('data-hit')).toBeNull();
+  });
+
+  it('haengt die Chips mit jedem neuen Wurf neu ein, damit die Antwort noch einmal laeuft', () => {
+    const target = chipHexes[1]!.hex;
+    const view = (key: string) => (
+      <BoardSvg
+        state={start}
+        targets={EMPTY_TARGETS}
+        seats={seats}
+        onPick={vi.fn()}
+        roll={{ total: 8, key }}
+      />
+    );
+    const { rerender } = render(view('t1'));
+    const first = screen.getByTestId(`chip-${target}`);
+
+    rerender(view('t1'));
+    expect(screen.getByTestId(`chip-${target}`)).toBe(first);
+
+    rerender(view('t2'));
+    expect(screen.getByTestId(`chip-${target}`)).not.toBe(first);
+  });
+
+  it('zeigt unter dem Mauszeiger die Vorschau in der Sitzfarbe', () => {
+    const vertex = boardOf(scenario).topology.vertices[0]!;
+    const targets = targetsFrom([
+      { type: 'buildSettlement', player: seats[0]!.id, vertex } as never,
+    ]);
+
+    const { container } = render(
+      <BoardSvg
+        state={start}
+        targets={targets}
+        seats={seats}
+        onPick={vi.fn()}
+        previewColor="rgb(1, 2, 3)"
+      />,
+    );
+    const svg = container.querySelector('svg')!;
+    svg.getScreenCTM = () =>
+      ({ inverse: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) }) as unknown as DOMMatrix;
+    const catcher = screen.getByTestId('board-catcher');
+
+    expect(screen.queryByTestId('aim-ghost')).toBeNull();
+
+    const at = vertexPoint(vertex);
+    fireEvent.pointerMove(catcher, { pointerType: 'mouse', clientX: at.x, clientY: at.y });
+    const ghost = screen.getByTestId('aim-ghost');
+    expect(ghost.getAttribute('data-aim')).toBe('true');
+    expect(ghost.getAttribute('style')).toContain('rgb(1, 2, 3)');
+
+    fireEvent.pointerDown(catcher, {
+      pointerType: 'mouse',
+      clientX: at.x,
+      clientY: at.y,
+      buttons: 1,
+    });
+    expect(screen.getByTestId('aim-ghost').getAttribute('data-aim')).toBe('press');
+
+    fireEvent.pointerLeave(catcher, { pointerType: 'mouse' });
+    expect(screen.queryByTestId('aim-ghost')).toBeNull();
+  });
+
+  it('laesst einen versetzten Ritter von seinem alten Knoten herueberziehen', () => {
+    const [from, to] = boardOf(scenario).topology.vertices;
+    const knight = {
+      owner: seats[0]!.id,
+      level: 1 as const,
+      active: false,
+      activatedOnTurn: null,
+      upgradedThisTurn: false,
+    };
+    const props = { targets: EMPTY_TARGETS, seats, onPick: vi.fn() };
+    const { rerender } = render(
+      <BoardSvg state={{ ...start, knights: { [from!]: knight } }} {...props} />,
+    );
+
+    expect(screen.getByTestId(`knight-${from}`).parentElement!.getAttribute('class')).toBe('piece');
+
+    rerender(<BoardSvg state={{ ...start, knights: { [to!]: knight } }} {...props} />);
+    const moved = screen.getByTestId(`knight-${to}`).parentElement!;
+    expect(moved.getAttribute('class')).toContain('piece--travel');
+    expect(moved.getAttribute('style')).toContain('--from-x');
   });
 });

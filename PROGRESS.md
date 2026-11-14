@@ -13,57 +13,83 @@ vollständig ins Archiv — dort stehen alle Entscheidungen samt Begründung.
 
 Im Archiv nur gezielt suchen (`grep` nach Stichwort), nie ganz lesen.
 
-## Aktueller Stand (2026-09-18)
+## Aktueller Stand (2026-11-14)
 
-- Politur nach 10e in `main`: Bauleiste neben den Würfeln, Sieben im Auftakt,
-  Auskunft beim Darüberfahren und langes Drücken (Abschnitte unten).
-- **10e abgeschlossen** (Burg 1 / Burg 2, Abschnitt unten).
-  Davor 10d-3 (Regelfragen aus 10d-2), Details im Archiv 10d.
+- **Design-Überarbeitung „Seekarte"** auf Branch `design-overhaul`, uncommittet
+  (Abschnitt unten). Der Branch baut auf `origin/ccr-3c251c28-jv6v25` auf
+  (Endstand neu, eine Dialog-Hülle für alle Dialoge), das damit enthalten ist.
+- `main` = `08c9910`: Playtest-Runde Städte & Ritter (15.10.), gepusht.
+- 10e abgeschlossen; Etappenplan Städte & Ritter abgearbeitet.
 
-## Endstand und Dialoge neu (2026-10-17, `ccr-3c251c28-jv6v25`)
+## Design-Überarbeitung „Seekarte" (2026-11-14, `design-overhaul`)
 
-Abnahme: `pnpm typecheck` grün; Tests shared 1283, server 222, client 654;
-Build Client 555,25 kB (162,42 kB gzip), CSS 67,40 kB; `format:check` grün.
-Im Browser über eine temporäre Vorschauseite gesehen (1280 px und 390 px),
-Kontraste nachgerechnet.
+Vorgabe: `docs/design-system.md`. Werte in `styles/tokens.css`, Bausteine in
+`styles/system.css`, Karte in `chart/`.
 
-- **Zwei Dialoge am Ende, der falsche oben:** neben `GameOverDialog` stand in
-  `GameScreen` noch der alte Kasten „Partie beendet". Er kam später im Baum,
-  lag obendrauf und genau über der Würfelverteilung. Entfernt; „Zurück zum
-  Start" trägt der Endstand selbst. Ein Abbruch vom Server hat Vorrang.
-- **Endstand:** Sieger groß mit Band in seiner Farbe und Punkten in der
-  gezeichneten Ziffer. Rangliste statt Tabelle (geteilte Plätze bei
-  Gleichstand), darunter die Rechnung aus `pointBreakdown`: dieselben Wörter
-  wie am Tisch statt „Sied./Str." und richtig auch bei Städte & Ritter.
-- **Würfel als Säulen mit Erwartung:** die Glocke ist als Form zu sehen; je
-  Summe eine Marke bei n·Wege/36. Sechs und Acht rot (Säule und Zahl), die
-  Sieben schraffiert (Muster statt nur Farbe).
-- **`game/rollOdds.ts`:** Wege je Summe und „heiß" an einer Stelle. Das Brett
-  (`BoardSvg`, Augen unter den Chips) benutzt sie statt der eigenen Tabelle.
-- **`game/points.ts`:** Namen der Punktquellen und `pointBreakdown`, von Tisch
-  und Endstand geteilt.
-- **Eine Dialog-Hülle (`dialogs/Modal.tsx`)** für alle 15 Dialoge: Kopf
-  linksbündig mit Band (`tone`), Inhalt, abgesetzte Fußleiste mit Rückweg
-  links und Hauptaktion rechts. Grund: alle Dialoge waren dieselbe mittige
-  Vorlage, und „Doch nicht" stand zwischen den Antworten.
-- **Auswahl als Zeilen (`dialogs/Choice.tsx`):** Räuber, Person, Stapel,
-  Spionage, Karte abgeben, Kran. Farbmarke, Name, Zusatz rechts.
-- **Kontrast:** die Gastwarnung stand gemessen bei 1,97:1 (`--warn` auf
-  Pergament). Jetzt Tinte mit Bernsteinkante. Graue Nebenangaben in der
-  hervorgehobenen Siegerzeile wären 4,0:1 und stehen deshalb in Tinte.
-- **Keine Farbkanten mehr links** (Wunsch nach der ersten Runde): Auswahlzeilen,
-  Rangliste im Endstand, Plätze am Tisch, Gastwarnung und Gegenangebot tragen
-  ihre Farbe als gedämpften Grund (`color-mix`, 14–22 % in Pergament bzw.
-  Tiefsee) statt als 3-px-Kante. Wer am Zug ist, bekommt mehr Farbe und einen
-  Goldsaum; der Sieger mehr Farbe und einen Rand im selben Ton. Schrift bleibt
-  Tinte, damit der Kontrast nicht an der Spielerfarbe hängt.
-- **Abweichung:** im Angebotsfenster (`TradeOfferDialog`) ist nur die Hülle
-  umgezogen; seine Antwortknöpfe hängen an Verzweigungen unter laufender
-  Frist und bleiben, wo sie waren.
-- **Offen:** das Angebotsfenster nicht im Browser gesehen; Alchemie- und
-  Handelsdialog bei 390 px nicht geprüft.
+### Abnahme
 
-## Playtest-Runde Städte & Ritter (2026-10-15, uncommittet in `main`)
+| Prüfung             | Ergebnis                                           |
+| ------------------- | -------------------------------------------------- |
+| `pnpm typecheck`    | grün                                               |
+| `pnpm -r test`      | shared 1283 (68), server 222 (22), client 663 (65) |
+| `pnpm build`        | Client 564,34 kB (165,05 kB gzip), CSS 86,21 kB    |
+| `pnpm format:check` | grün                                               |
+
+Im Browser gesehen (headless Chrome, lokal): Titel, Anlegen, Beitreten,
+Wartebereich, Spiel Basis und Städte & Ritter bei 1440×900, 1184×615, 396×800,
+844×390; Abwurf, Handel, Einstellungen, Konto, Auskunft. **Nicht gesehen:**
+Endstand und Weiterspielen-Karten nur über eine Testseite; Gegenangebot, Spion,
+Fortschrittskarten-Dialoge; Ritter versetzen und Metropole nur im Test;
+laufende Animationen nur als Standbild und per `getComputedStyle`.
+
+### Getroffene Entscheidungen
+
+**Drei Materialien, jedes mit einer Aufgabe:** See (Grund, Auskunft),
+Pergament (Bedienbares), Spielmaterial. Kein Glas, keine durchscheinende
+Kachel — die drei Wege im Titel sind deshalb Pergament.
+
+**Die Seekarte ersetzt das Hexfeld** und liegt auf jedem Bildschirm
+(`SeaChart`): das Windstrahlennetz einer Portolankarte mit einer Windrose,
+Linien nach Wind in drei Tinten. Die Welle beim Einrasten der Wortmarke läuft
+jetzt über das Netz. Im Spiel sitzt die Rose im Südwesten; im Westen stand sie
+unter der Barbarenleiste.
+
+**Kartenschrift statt Versal-Kleinlabel.** Was auf der See steht, ist kursive
+Antiqua in Satzschreibung (Seekarten setzen Wasser kursiv); auf Pergament steht
+`--font-ui`. Nichts unter 12 px, keine Festbreitenschrift, Abkürzungen
+ausgeschrieben (Handel/Politik/Wissenschaft, „Punkte").
+
+**Bewegung ist ein System:** Dauer und Kurve nur aus `tokens.css`, Art nach
+Material (`ink-in`, `sheet-in`, `piece-in`, `deal-in`), drei Stufen nach
+Gewicht. Alle Dauerschleifen sind weg (Zielmarken, Würfelruf). Ausnahme mit
+eigenen Zeiten: die Würfelphysik in `dice.css`.
+
+**Neu auf dem Brett:** Vorschau des Bauwerks unter dem Zeiger (`data-aim`,
+die Fangfläche liegt über den Marken — ein echtes `:hover` gab es nie); die
+Chips der gefallenen Zahl heben sich einmal, außer auf dem Räuberfeld; Steine
+werden hingestellt (Kontaktschatten wird eng), Räuber und Händler ziehen.
+
+**Status als Kartusche, Sitzliste mit Maßstäben** (`.scalebar` statt
+`ooooo`); kompakte Zeile ab 5 Sitzen und in kleinen Fenstern. Dialoge sind
+Blätter mit Kartenrand; öffnet man Verlauf oder Vorrat, schließt das andere.
+
+**`index.css` ist nur noch die Importreihenfolge**; das Blatt liegt je Fläche
+in `styles/`. Tests, die es als Text prüfen, lesen `test/stylesheet.ts`.
+
+**Testläufe:** `maxWorkers: 50%` in `apps/client/vitest.config.ts`. Mit einem
+Prozess je Kern kamen im vollen Lauf Prozesse nicht hoch („Timeout waiting for
+worker"), drei Dateien liefen nicht; voller Lauf jetzt ~140 s statt ~345 s.
+
+### Offene Punkte
+
+- Hochformat 396 px: Würfel und „Zug beenden" sind erreichbar, das Brett liegt
+  unter der Spalte — ein eigenes Hochformat-Layout bleibt eine eigene Etappe.
+- 844×390: die Barbarenzeile streift den linken Brettrand.
+- Start-Panel rollt bei 6 Personen und 615 px Höhe intern.
+- Die Bildränder der Abschnittsbanner in `styles/*.css` stammen vom
+  mechanischen Aufteilen und stehen teils am Ende der Vordatei.
+
+## Playtest-Runde Städte & Ritter (2026-10-15, `main` = `08c9910`)
 
 Abnahme: `pnpm typecheck` grün; Tests shared 1283, server 222, client 644;
 Build Client 556,04 kB (161,98 kB gzip), CSS 63,34 kB; `format:check` grün.
@@ -98,7 +124,6 @@ Rechteck-Messung geprüft.
 
 - **Keine Zugzeit** für `main` und `rollPending`: wer nicht würfelt oder den Zug
   nicht beendet, hält die Partie unbegrenzt an.
-- **Flackernde Tests unter Last:** `GameScreen.test.tsx`, `hotseatClock.test.tsx`.
 - Nicht erreicht im Browser: Hochzeit „alle", trennscharfe Leckprüfung der
   Spionage, Spionage-Dialoge bei 900 px.
 - Kleinere Review-Punkte (ungetestete Randfälle in `timeout.ts`, `log.ts`,

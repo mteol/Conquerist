@@ -1,0 +1,276 @@
+/*
+ * Das Designsystem „Seekarte" - die Bausteine.
+ *
+ * Steht direkt hinter `base.css` und vor jeder Flaeche: was hier steht, darf
+ * von einer Flaeche verfeinert werden, aber keine Flaeche erfindet einen
+ * zweiten Knopf, ein zweites Blatt oder eine zweite Art von Beschriftung.
+ * Begruendungen in `docs/design-system.md`.
+ */
+
+:root {
+  font-family: var(--font-ui);
+}
+
+/*
+ * Die Seekarte (`chart/SeaChart.tsx`).
+ *
+ * Sie liegt unter allem und faengt keinen Zeiger. Der Verlauf dahinter ist
+ * die Wassertiefe: in der Mitte, wo die Insel liegt, flacher und heller.
+ */
+.seachart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.seachart__line {
+  fill: none;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.seachart__line--wind {
+  stroke: var(--chart-wind);
+}
+
+.seachart__line--half {
+  stroke: var(--chart-half);
+}
+
+.seachart__line--quarter {
+  stroke: var(--chart-quarter);
+}
+
+.seachart__ring {
+  fill: none;
+  stroke: var(--chart-rose);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.seachart__ray {
+  stroke: var(--chart-rose);
+  stroke-width: 1px;
+  stroke-linejoin: miter;
+  vector-effect: non-scaling-stroke;
+}
+
+.seachart__ray--lit {
+  fill: var(--sea-800);
+}
+
+.seachart__ray--shade,
+.seachart__north {
+  fill: var(--chart-rose);
+}
+
+.seachart__north {
+  stroke: none;
+}
+
+/*
+ * Kartenschrift: die Beschriftung der See.
+ *
+ * Ersetzt das gesperrte Versal-Kleinlabel. Satzschreibung, kursiv, ohne
+ * Sperrung - so beschriftet eine Seekarte Wasser. `.eyebrow` ist der alte
+ * Name derselben Sache und bleibt als Alias stehen, solange Markup ihn traegt.
+ *
+ * Nur auf der See. Auf Pergament steht `--font-ui` (`.sheet__label`).
+ */
+.chartlabel,
+.eyebrow {
+  font-family: var(--font-chart);
+  font-size: var(--text-md);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--on-sea-muted);
+}
+
+/*
+ * Der Knopf.
+ *
+ * Drei Zustaende, drei Bewegungen, alle aus dem Material: ein Stueck
+ * Pergament liegt (`--lift`), hebt sich unter dem Zeiger einen Pixel und wird
+ * beim Druecken auf den Tisch gedrueckt - der Schatten geht mit, sonst
+ * bewegt sich nur ein Rechteck.
+ */
+.button {
+  border-radius: var(--corner-md);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  line-height: 1.3;
+  transition:
+    transform var(--t-quick) var(--ease-out),
+    box-shadow var(--t-quick) var(--ease-out),
+    background-color var(--t-quick) linear,
+    border-color var(--t-quick) linear,
+    filter var(--t-quick) linear;
+}
+
+.button:hover:not(:disabled) {
+  filter: none;
+  transform: translateY(-1px);
+  box-shadow: var(--lift-raised);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    0 0 0 rgb(0 0 0 / 0%),
+    0 1px 1px rgb(0 0 0 / 40%);
+  transition-duration: var(--t-press);
+}
+
+/*
+ * Gesperrt heisst blass **und** flach: ohne Schatten liegt nichts mehr da,
+ * was man anheben koennte. (`disabled` allein sieht man nicht - design.md.)
+ */
+.button:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+/*
+ * Der Knopf auf der See: kein Pergamentkoerper, sondern eine Linie der Karte.
+ * Er hebt sich nicht (da liegt nichts) - er fuellt sich.
+ */
+.button--ghost {
+  border-color: var(--chart-rule);
+  background: rgb(233 225 207 / 0%);
+}
+
+.button--ghost:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  border-color: rgb(233 225 207 / 55%);
+  background: rgb(233 225 207 / 8%);
+}
+
+.button--ghost:active:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  background: rgb(233 225 207 / 14%);
+}
+
+/*
+ * Das Blatt: Pergament, das ueber die Karte gelegt wurde.
+ *
+ * Sein Rand ist der Kartenrand - die doppelte Linie, mit der ein Kartenblatt
+ * gefasst ist. Zwei Linien mit Luft dazwischen, innen auf dem Pergament, und
+ * das ist die ganze Verzierung des Systems. Dialoge, das Verlaufsblatt und
+ * die Tafeln des Wartebereichs sind Blaetter; alles andere nicht.
+ */
+.sheet {
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
+  position: relative;
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--corner-lg);
+  background: var(--parchment);
+  color: var(--ink);
+  box-shadow: var(--sheet);
+  corner-shape: bevel;
+}
+
+.sheet::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgb(22 32 42 / 22%);
+  border-radius: calc(var(--corner-lg) - 4px);
+  corner-shape: bevel;
+  pointer-events: none;
+}
+
+/*
+ * Der Massstab: die Leiste aus abwechselnd vollen und leeren Feldern, an der
+ * man auf einer Karte Entfernungen abgreift. Hier misst sie alles, was ein
+ * „n von m" ist - Siegpunkte, Restzeit, Fortschritt. Ein Feld je Einheit:
+ *
+ *   <span class="scalebar" style="--of: 10"><i class="is-on"></i>…</span>
+ *
+ * Die Farbe der vollen Felder kommt aus `--scale-ink` (Vorgabe: die
+ * Schriftfarbe), damit eine Leiste die Sitzfarbe tragen kann.
+ */
+.scalebar {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0.3rem, 1fr);
+  height: 0.4rem;
+  border: 1px solid var(--scale-ink, currentColor);
+}
+
+.scalebar > i {
+  border-left: 1px solid var(--scale-ink, currentColor);
+}
+
+.scalebar > i:first-child {
+  border-left: 0;
+}
+
+.scalebar > i.is-on {
+  background: var(--scale-ink, currentColor);
+}
+
+/*
+ * Die gemeinsamen Bewegungen. Vier Arten, etwas erscheinen zu lassen, je nach
+ * Material - eine Flaeche sucht sich hier eine aus und erfindet keine fuenfte.
+ *
+ *   ink-in     Schrift auf der See: sie erscheint, sie bewegt sich nicht.
+ *   sheet-in   ein Blatt wird aufgelegt: kommt von knapp darueber, ohne Federn.
+ *   piece-in   Spielmaterial wird hingestellt: von oben, ein Hauch zu weit.
+ *   deal-in    eine Karte wird zugeschoben: von der Seite ihres Stapels.
+ *
+ * Alle vier sind Eingaenge (design.md: fuer Information nie Ausgaenge).
+ */
+@keyframes ink-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.985);
+  }
+}
+
+@keyframes piece-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(1.12);
+  }
+
+  55% {
+    opacity: 1;
+  }
+}
+
+@keyframes deal-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--deal-x, 18px), var(--deal-y, 0)) rotate(var(--deal-turn, 4deg));
+  }
+}
+
+.ink-in {
+  animation: ink-in var(--t-enter) linear backwards;
+}
+
+.sheet-in {
+  animation: sheet-in var(--t-enter) var(--ease-out) backwards;
+}
+
+.piece-in {
+  animation: piece-in var(--t-enter) var(--ease-settle) backwards;
+}
+
+.deal-in {
+  animation: deal-in var(--t-move) var(--ease-out) backwards;
+  animation-delay: calc(min(var(--i, 0), 5) * var(--stagger));
+}

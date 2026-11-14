@@ -15,11 +15,15 @@ import {
   type RoomVariant,
 } from '@conquerist/shared';
 import { BoardSvg } from '../board/BoardSvg';
+import { SeaChart } from '../chart/SeaChart';
 import { SETTLEMENT_PATH, VIEWBOX } from '../board/shapes';
 import { EMPTY_TARGETS } from '../game/targets';
 import { invitationLink } from '../net/session';
 import { defaultSeats } from '../seats';
 import { blueprintsFor, randomSeed } from './StartScreen';
+
+/** Wo die Windrose sitzt (wie auf dem Startbildschirm): unten rechts neben dem Brett. */
+const ROSE_AT = 6;
 
 /**
  * Der Wartebereich.
@@ -237,9 +241,11 @@ export function LobbyScreen({
 
   return (
     <main className="lobby">
+      <SeaChart roseAt={ROSE_AT} />
+
       <section className="lobby__panel">
-        <header className="lobby__head">
-          <span className="eyebrow">Raumcode</span>
+        <header className="lobby__head ink-in">
+          <span className="chartlabel">Raumcode</span>
           <p className="lobby__code">{room.code}</p>
           <div className="lobby__invite">
             <input readOnly aria-label="Einladungslink" value={invitationLink(room.code)} />
@@ -264,8 +270,7 @@ export function LobbyScreen({
          * bekommt beide Spalten wieder untereinander.
          */}
         <div className="lobby__body">
-          <section className="lobby__table" aria-label="Am Tisch">
-            <span className="eyebrow">Am Tisch</span>
+          <section className="lobby__table sheet sheet-in" aria-label="Am Tisch">
             <ol className="lobby__seats">
               {room.seats.map((seat) => (
                 <li key={seat.userId} className="lobby__seat" data-testid="seat-taken">
@@ -328,11 +333,9 @@ export function LobbyScreen({
            * Was jedem selbst gehoert, steht trotzdem zuoberst und nicht dazwischen:
            * Name und Farbe darf jeder aendern, Brett und Ziel nur der Host.
            */}
-          <div className="lobby__settings">
+          <div className="lobby__settings sheet sheet-in">
             {you === undefined ? null : (
               <section className="lobby__row" aria-label="Du">
-                <span className="eyebrow">Dein Platz</span>
-
                 <label className="lobby__namefield">
                   <span className="visually-hidden">Dein Name</span>
                   <input
@@ -386,7 +389,7 @@ export function LobbyScreen({
             )}
 
             <section className="lobby__row" aria-label="Brett">
-              <span className="eyebrow">Seed</span>
+              <span className="lobby__label">Seed</span>
               <div className="lobby__value">
                 {canConfigure ? (
                   <input
@@ -427,7 +430,7 @@ export function LobbyScreen({
              * Angebots hinter einem Klick.
              */}
             <section className="lobby__row" aria-label="Regelwerk">
-              <span className="eyebrow">Regelwerk</span>
+              <span className="lobby__label">Regelwerk</span>
               <div className="lobby__value">
                 <p className="lobby__variant" data-testid="variant">
                   {room.variant === 'cities' ? 'Städte & Ritter' : 'Basisspiel'}
@@ -474,7 +477,7 @@ export function LobbyScreen({
              * je nach eingestellter Zahl etwas anderes erklaert.
              */}
             <section className="lobby__row" aria-label="Siegpunkte">
-              <span className="eyebrow">Siegpunkte zum Sieg</span>
+              <span className="lobby__label">Siegpunkte zum Sieg</span>
               <div className="lobby__value">
                 <p className="lobby__goal" data-testid="goal">
                   {room.victoryPointGoal}
@@ -529,7 +532,7 @@ export function LobbyScreen({
          * fuer einen Bildschirm, der ohne Scrollen passen soll - und der Rang
          * steht ohnehin in der Farbe, nicht in der Reihenfolge.
          */}
-        <footer className="lobby__foot">
+        <footer className="lobby__foot sheet-in">
           <div className="lobby__actions">
             {youAreHost ? (
               <button
@@ -546,21 +549,16 @@ export function LobbyScreen({
             </button>
           </div>
 
-          {/*
-           * **Nur noch fuer die, die nicht starten koennen.**
-           *
-           * Hier stand fuer den Gastgeber „Es fehlen noch 3 Mitspieler" - eine
-           * Zahl, die drei Zentimeter darueber schon als drei gestrichelte
-           * Plaetze dasteht, und zwar besser: man sieht sie, ohne zu lesen. Der
-           * gesperrte Startknopf sagt dasselbe ein zweites Mal. Dreimal
-           * dieselbe Auskunft ist keine Betonung, sondern eine Zeile zu viel.
-           *
-           * Fuer alle anderen bleibt der Satz, denn er sagt etwas, das nirgends
-           * sonst steht: **wer** starten muss. Wer der Gastgeber ist, ist der
-           * Sitzliste nicht anzusehen.
-           */}
+          {/* Warum der Start noch gesperrt ist - aus `missing`, keine neue Logik. */}
+          {youAreHost && missing > 0 ? (
+            <p className="chartlabel lobby__hint">
+              {missing === 1 ? 'Es fehlt noch ein Spieler' : `Es fehlen noch ${missing} Spieler`}
+            </p>
+          ) : null}
+
+          {/* Wer nicht starten kann, erfaehrt, wer es muss - das steht sonst nirgends. */}
           {youAreHost ? null : (
-            <p className="lobby__hint">
+            <p className="chartlabel lobby__hint">
               Wartet auf {host?.name ?? 'die Person, die den Raum erstellt hat'}.
             </p>
           )}
@@ -575,7 +573,7 @@ export function LobbyScreen({
        * sie zeigt, ist die Antwort auf die Frage, die im Wartebereich sonst
        * offen bleibt - worauf spielen wir gleich.
        */}
-      <div className="lobby__preview">
+      <div className="lobby__preview ink-in">
         {preview === null ? null : (
           <BoardSvg
             state={preview}

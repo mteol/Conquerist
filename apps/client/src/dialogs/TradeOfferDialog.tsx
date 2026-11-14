@@ -165,7 +165,6 @@ export function TradeOfferDialog({
     <Modal
       label="Angebot auf dem Tisch"
       title={mine ? 'Dein Angebot liegt' : `${nameOf(trade.offer.from)} bietet an`}
-      className="modal__box--enter"
     >
       {/*
        * **Die Bedingungen als Karten und nicht als Satz.**

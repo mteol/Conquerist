@@ -1,4 +1,11 @@
-import type { CSSProperties, FormEvent, JSX, ReactNode } from 'react';
+import {
+  useLayoutEffect,
+  useRef,
+  type CSSProperties,
+  type FormEvent,
+  type JSX,
+  type ReactNode,
+} from 'react';
 import { CloseButton } from './CloseButton';
 
 /**
@@ -17,9 +24,10 @@ import { CloseButton } from './CloseButton';
  * neben „Spieler 2" steht, liest sich wie eine vierte Antwort. Die Huelle legt
  * die Anatomie einmal fest:
  *
- * - **Kopf** linksbuendig, mit einem Band in `tone` (Vorgabe: Tinte). Der
- *   Endstand faerbt es in der Farbe des Siegers - sonst bleibt es ruhig, denn
- *   der Held ist das Brett (Designregel 4).
+ * - **Kopf** linksbuendig. Mit `tone` traegt das Blatt oben ein Band in dieser
+ *   Farbe - nur dort, wo es sagt, wessen Dialog es ist oder welche Art Karte
+ *   gemeint ist (Opfer, Fortschrittsbereich, Sieger). Sonst bleibt es ruhig,
+ *   denn der Held ist das Brett (Designregel 4).
  * - **Fussleiste** abgesetzt: Rueckweg links (Geisterknopf), Hauptaktion
  *   rechts. Die Reihenfolge im Markup ist die Lesereihenfolge; die Leiste
  *   schiebt nur das erste Kind nach links.
@@ -44,12 +52,20 @@ export interface ModalProps {
   readonly tone?: string | undefined;
   /** Die Knoepfe, die den Dialog beenden; Rueckweg zuerst. */
   readonly foot?: ReactNode | undefined;
-  /** Zusatzklasse am Kasten (`modal__box--over`, `modal__box--enter`). */
+  /** Zusatzklasse am Kasten (`modal__box--over`). */
   readonly className?: string | undefined;
   /** Macht den Kasten zum Formular - fuer Anmelden mit Eingabetaste. */
   readonly onSubmit?: ((event: FormEvent<HTMLFormElement>) => void) | undefined;
   readonly children?: ReactNode | undefined;
 }
+
+/*
+ * Wann der letzte Dialog ging. Loest einer den anderen ab (Opfer waehlen, dann
+ * Karte waehlen), steht der neue im selben Schritt da: dann wird die Karte
+ * nicht ein zweites Mal dunkel eingeblendet - das waere ein Flackern.
+ */
+let lastClosed = Number.NEGATIVE_INFINITY;
+const HANDOVER_MS = 120;
 
 export function Modal({
   label,
@@ -64,7 +80,23 @@ export function Modal({
   onSubmit,
   children,
 }: ModalProps): JSX.Element {
-  const boxClass = className === undefined ? 'modal__box' : `modal__box ${className}`;
+  const backdrop = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (performance.now() - lastClosed < HANDOVER_MS) {
+      backdrop.current?.setAttribute('data-handover', '');
+    }
+
+    return () => {
+      lastClosed = performance.now();
+    };
+  }, []);
+
+  const base =
+    tone === undefined
+      ? 'modal__box sheet sheet-in'
+      : 'modal__box modal__box--toned sheet sheet-in';
+  const boxClass = className === undefined ? base : `${base} ${className}`;
   const style = tone === undefined ? undefined : ({ '--modal-tone': tone } as CSSProperties);
 
   const inner = (
@@ -85,7 +117,7 @@ export function Modal({
   );
 
   return (
-    <div className="modal" role="dialog" aria-label={label}>
+    <div ref={backdrop} className="modal" role="dialog" aria-label={label}>
       {onSubmit === undefined ? (
         <div className={boxClass} style={style}>
           {inner}

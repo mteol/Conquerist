@@ -5,7 +5,7 @@ import { AccountCorner } from './AccountCorner';
 // Roher Dateiinhalt statt `node:fs`: das Client-Paket haelt sich bewusst frei
 // von Node-Typen (`types: []` in `tsconfig.json`), Vites `?raw`-Import
 // braucht keine.
-import css from '../index.css?raw';
+import { stylesheet as css } from '../test/stylesheet';
 
 const gast = { userId: 'u1', name: 'Gast', isGuest: true };
 const konto = { userId: 'u2', name: 'Anna', isGuest: false, login: 'anna' };

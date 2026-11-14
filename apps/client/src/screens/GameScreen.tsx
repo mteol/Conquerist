@@ -1,3 +1,4 @@
+import { SeaChart } from '../chart/SeaChart';
 import {
   useCallback,
   useEffect,
@@ -1085,6 +1086,12 @@ export function GameScreen({
       const space = mode === undefined ? 0 : Math.round(mode.height + 6);
       game.style.setProperty('--topline-bottom', `${below}px`);
       game.style.setProperty('--mode-space', `${space}px`);
+      // Unterkante der linken Spalte: hochkant rueckt das Brett darunter (`misc.css`).
+      const rail = game.querySelector('.leftrail')?.getBoundingClientRect();
+      game.style.setProperty(
+        '--rail-bottom',
+        `${rail === undefined ? 0 : Math.round(rail.bottom - top)}px`,
+      );
     };
 
     measure();
@@ -1094,6 +1101,8 @@ export function GameScreen({
 
   return (
     <main className="game" ref={gameRef}>
+      {/* Südwesten: zwischen Hand und Insel ist See; im Westen stand die Rose unter der Barbarenleiste. */}
+      <SeaChart roseAt={10} />
       <div className="board-area">
         <BoardSvg
           state={view}
@@ -1106,6 +1115,15 @@ export function GameScreen({
           onPick={pick}
           hintRules={{ commodities: view.rules.barbarianTrack > 0 }}
           pending={pending}
+          roll={
+            display.rollTotal === null || display.lastRoll === null
+              ? null
+              : {
+                  total: display.rollTotal,
+                  key: `${display.turn}-${JSON.stringify(display.lastRoll)}`,
+                }
+          }
+          previewColor={you?.color}
         />
 
         {offline ? (
@@ -1345,6 +1363,7 @@ export function GameScreen({
               targets={targets}
               barbarianTrack={view.rules.barbarianTrack}
               player={you}
+              hand={revealed ? you.resources : null}
               onImprove={(track) => {
                 const direct = targets.improve.get(track);
                 if (direct !== undefined) {

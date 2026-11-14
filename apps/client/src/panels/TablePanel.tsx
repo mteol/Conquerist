@@ -1,4 +1,4 @@
-import type { CSSProperties, JSX } from 'react';
+import { useSyncExternalStore, type CSSProperties, type JSX } from 'react';
 import type { PointSource } from '@conquerist/shared';
 import { awardsHeldBy, type Award } from '../game/awards';
 import { POINT_LABELS, pointBreakdown } from '../game/points';
@@ -46,10 +46,32 @@ export interface TablePanelProps {
   readonly barbarianTrack: number;
 }
 
+/*
+ * Wann der Tisch eng gesetzt wird: ab fuenf Sitzen, bei niedrigen und bei
+ * schmalen Fenstern. Eine Abfrage im Skript statt dreier Kopien derselben
+ * Regeln im Blatt - dort steht die kompakte Zeile einmal (`.panel--dense`).
+ */
+const TIGHT = '(max-height: 44rem), (max-width: 40rem)';
+
+function subscribeTight(notify: () => void): () => void {
+  if (typeof window.matchMedia !== 'function') return () => undefined;
+  const query = window.matchMedia(TIGHT);
+  query.addEventListener('change', notify);
+  return () => query.removeEventListener('change', notify);
+}
+
+function isTight(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia(TIGHT).matches;
+}
+
 export function TablePanel({ view, barbarianTrack }: TablePanelProps): JSX.Element {
+  const tight = useSyncExternalStore(subscribeTight, isTight, () => false);
+  const dense = tight || view.players.length >= 5;
+
   return (
-    <section className="panel panel--table">
-      <h2 className="panel__title">Tisch</h2>
+    <section className={dense ? 'panel panel--table panel--dense' : 'panel panel--table'}>
+      {/* Keine Überzeile „Tisch": man sieht die Sitze. Für Vorlesegeräte bleibt sie als Name der Liste. */}
+      <h2 className="visually-hidden">Tisch</h2>
 
       {view.players.map((player) => (
         <PlayerRow
@@ -84,73 +106,101 @@ function PlayerRow({
   /** Ob dieser Tisch den Stadtausbau kennt - sonst bleibt die Leiste weg. */
   readonly showTracks: boolean;
 }): JSX.Element {
+  const owing = player.mustDiscard > 0;
+  const classes = ['seat'];
+  if (acting) classes.push('seat--acting');
+  if (owing) classes.push('seat--owing');
+
   return (
     <div
-      className={acting ? 'seat seat--acting' : 'seat'}
+      className={classes.join(' ')}
       style={{ '--seat': player.color } as CSSProperties}
       data-testid={`seat-${player.id}`}
     >
-      <span className="seat__name">
-        {player.name}
-        {isYou ? ' (du)' : ''}
-      </span>
+      <div className="seat__head">
+        <span className="seat__name">
+          {acting ? <TurnMark owing={owing} /> : null}
+          {player.name}
+          {isYou ? ' (du)' : ''}
+        </span>
 
-      {player.castle === null ? null : (
+        {player.castle === null ? null : (
+          <span
+            className="seat__castle"
+            data-testid={`castle-${player.id}`}
+            title={
+              player.castle === 1
+                ? 'Burg 1: voller Zug'
+                : 'Burg 2: angepasster Zug – kein Wurf, Handel nur mit der Bank'
+            }
+          >
+            <span className="seat__word">Burg </span>
+            {player.castle}
+          </span>
+        )}
+
+        <SeatMarks player={player.id} awards={awards} knights={player.playedKnights} />
+
         <span
-          className="seat__castle"
-          data-testid={`castle-${player.id}`}
-          title={
-            player.castle === 1
-              ? 'Burg 1: voller Zug'
-              : 'Burg 2: angepasster Zug – kein Wurf, Handel nur mit der Bank'
-          }
+          className="seat__points"
+          data-testid={`points-${player.id}`}
+          data-hint-title={`${player.victoryPoints} Siegpunkte`}
+          data-hint={pointLines(player).join('\n')}
         >
-          Burg {player.castle}
+          <b>{player.victoryPoints}</b>{' '}
+          <span className="seat__word">{player.victoryPoints === 1 ? 'Punkt' : 'Punkte'}</span>
         </span>
-      )}
+      </div>
 
-      <SeatMarks player={player.id} awards={awards} knights={player.playedKnights} />
-
-      <span
-        className="seat__points"
-        data-testid={`points-${player.id}`}
-        data-hint-title={`${player.victoryPoints} Siegpunkte`}
-        data-hint={pointLines(player).join('\n')}
-      >
-        {player.victoryPoints} SP
-      </span>
-
-      <span
-        className="seat__hand"
-        data-testid={`hand-count-${player.id}`}
-        data-hint-title={`${player.cardCount} ${player.cardCount === 1 ? 'Karte' : 'Karten'} auf der Hand`}
-        data-hint="Rohstoffe und Handelswaren. Bei einer 7 wirft ab, wer zu viele hat."
-      >
-        {player.cardCount} {player.cardCount === 1 ? 'Karte' : 'Karten'}
-      </span>
-
-      {/*
-       * Der Zuwachs steigt beim Erscheinen kurz auf - und bleibt dann stehen,
-       * bis der naechste Stand kommt. Er verblasst NICHT von selbst: wer
-       * `prefers-reduced-motion` gesetzt hat, saehe sonst gar nichts, weil eine
-       * abgeschaltete Animation sofort an ihrem Ende steht.
-       */}
-      {gained > 0 ? (
-        <span className="seat__gain" data-testid={`gain-${player.id}`}>
-          +{gained}
+      <div className="seat__facts">
+        <span
+          className="seat__hand"
+          data-testid={`hand-count-${player.id}`}
+          data-hint-title={`${player.cardCount} ${player.cardCount === 1 ? 'Karte' : 'Karten'} auf der Hand`}
+          data-hint="Rohstoffe und Handelswaren. Bei einer 7 wirft ab, wer zu viele hat."
+        >
+          {player.cardCount}{' '}
+          <span className="seat__word">{player.cardCount === 1 ? 'Karte' : 'Karten'}</span>
         </span>
-      ) : null}
 
-      {player.mustDiscard > 0 ? (
-        <span className="seat__pending">wirft {player.mustDiscard} ab</span>
-      ) : null}
+        {/*
+         * Der Zuwachs wird hingelegt (`piece-in`) und bleibt dann stehen, bis
+         * der naechste Stand kommt. Er verblasst NICHT von selbst: wer
+         * `prefers-reduced-motion` gesetzt hat, saehe sonst gar nichts, weil eine
+         * abgeschaltete Animation sofort an ihrem Ende steht.
+         */}
+        {gained > 0 ? (
+          <span className="seat__gain piece-in" data-testid={`gain-${player.id}`}>
+            +{gained}
+          </span>
+        ) : null}
 
-      {player.connected ? null : <span className="seat__pending">getrennt</span>}
+        {owing ? <span className="seat__pending">wirft {player.mustDiscard} ab</span> : null}
 
-      {showTracks ? <TrackStrip player={player.id} levels={player} /> : null}
+        {player.connected ? null : <span className="seat__pending">getrennt</span>}
+
+        {showTracks ? <TrackStrip player={player.id} levels={player} /> : null}
+      </div>
 
       <PointBadges player={player} />
     </div>
+  );
+}
+
+/**
+ * Das Zeichen für „ist dran": ein Pfeil nach rechts; wer abwerfen muss, trägt
+ * stattdessen einen Hohlpfeil - dieselbe Form, aber nicht ausgefüllt, wie der
+ * gestrichelte Rand der Zeile.
+ */
+function TurnMark({ owing }: { readonly owing: boolean }): JSX.Element {
+  return (
+    <svg
+      className={owing ? 'seat__turn seat__turn--owing' : 'seat__turn'}
+      viewBox="0 0 10 12"
+      aria-hidden="true"
+    >
+      <path d="M1 1 L9 6 L1 11 Z" />
+    </svg>
   );
 }
 

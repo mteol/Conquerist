@@ -1,0 +1,389 @@
+/*
+ * Conquerist - Oberflaeche.
+ *
+ * Die Farbwelt kommt aus dem Material des Spiels und nicht aus einer
+ * Designvorlage: Tiefsee-Tinte fuer die Flaeche, Pergament fuer alles
+ * Bedienbare, und als Akzente genau die Gelaendefarben, die auch auf dem Brett
+ * liegen (`game/labels.ts`). Wer eine Farbe hier aendert, aendert sie dort mit.
+ *
+ * Schrift: kein Webfont. Die Persoenlichkeit kommt aus der Setzung - grosser
+ * Gewichtssprung, sehr enge Laufweite in der Anzeige, weite Sperrung in den
+ * Kleinlabels, und ueberall Tabellenziffern. Ein Spiel, in dem staendig Zahlen
+ * verglichen werden, darf keine springenden Ziffernbreiten haben.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Flaeche */
+  --sea-900: #0b1f2a;
+  --sea-800: #0f2c3b;
+  --sea-700: #14384a;
+  --sea-500: #1d5468;
+
+  /* Bedienbares */
+  --parchment: #f0e6d2;
+  --parchment-2: #e3d5b8;
+  --parchment-edge: #b9a684;
+
+  /*
+   * Schrift.
+   *
+   * `--ink` und `--ink-muted` sind **umdefinierbar** und werden es auch: alles,
+   * was seinen Pergamentkoerper verloren hat, setzt sie weiter unten auf die
+   * Farben fuer den dunklen Grund um, und jedes `var(--ink)` darin folgt von
+   * selbst. Damit die Dinge, die *innerhalb* davon noch einen hellen Koerper
+   * haben (eine Karte, ein Knopf, das Verlaufsblatt), ihre dunkle Tinte
+   * zurueckholen koennen, steht der Grundwert daneben und wird nie ueberschrieben.
+   */
+  --ink-base: #16202a;
+  --ink-base-muted: #6a6558;
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
+  --on-sea: #e9e1cf;
+  --on-sea-muted: #94a7b0;
+
+  /* Gelaende, gleichlautend mit game/labels.ts */
+  --hills: #b4623a;
+  --forest: #2f6b3a;
+  --pasture: #7fb069;
+  --fields: #e0b34a;
+  --mountains: #8a8f98;
+  --desert: #ddc9a3;
+
+  /*
+   * Die drei Bereiche von Staedte & Ritter: Handel, Politik, Wissenschaft.
+   *
+   * Sie kommen aus derselben Welt wie die Gelaendefarben und sind keine neue
+   * Palette: Handel nimmt das Gelb des Ackerlands, Politik ein Blau aus der
+   * Tiefsee-Familie, Wissenschaft das Gruen des Waldes. Alle drei sind auf dem
+   * hellen Wuerfelkoerper (#fbf6ea) gemischt, nicht auf der Tiefsee - dort
+   * stehen sie, und dort muessen sie tragen.
+   */
+  --track-trade: #c08a12;
+  /* Handelswaren - Ton ihres Gelaendes (labels.ts), Muenzen kraeftig blau. */
+  --ware-paper: #2f6b3a;
+  --ware-cloth: #7fb069;
+  --ware-coin: #4f74a8;
+  --track-politics: #2f5c8f;
+  --track-science: #2f6b3a;
+
+  --accent: var(--fields);
+  --ok: #3f8f5b;
+  --warn: #d99a2b;
+  --bad: #c0503f;
+
+  /*
+   * Dieselben drei Bedeutungen, aber auf Pergament statt auf Tiefsee.
+   *
+   * `--ok`, `--warn` und `--bad` sind fuer die dunkle Flaeche gemischt. Auf
+   * einem Zahlenchip oder einem Knopf aus Pergament stehen sie zu hell: die
+   * Sechs auf ihrem Chip und ein rotes „Ablehnen" brauchen den satteren Ton,
+   * sonst traegt die Farbe die Bedeutung nur noch halb. Gleiche Bedeutung,
+   * anderer Untergrund - deshalb ein zweites Tripel und keine Ausnahme im
+   * Einzelfall.
+   */
+  --ok-ink: #2f6b3a;
+  --warn-ink: #a8741a;
+  --bad-ink: #a52a1e;
+  /*
+   * Der rote Augenwuerfel von Staedte & Ritter. Dunkler als `--bad`, damit die
+   * hellen Augen darauf tragen (Pergament auf diesem Rot: 6,04:1), und kein
+   * Warnrot - er meldet nichts, er ist ein Stueck Material.
+   */
+  --die-red: #9e2a20;
+
+  /*
+   * Und dieselben Bedeutungen noch einmal als **Schrift auf der Tiefsee**.
+   *
+   * Der Kommentar darueber sagte, `--ok` und `--bad` seien fuer die dunkle
+   * Flaeche gemischt. Als *Flaeche* stimmt das - `.seat__gain` traegt helle
+   * Schrift auf `--ok`, und heller gemischt verloere die ihren Halt. Als
+   * *Schrift* stimmt es nicht: im Browser gegen den Tiefsee-Grund gemessen
+   * kamen `--ok` auf 3,67:1 und `--bad` auf 3,09:1, und der Stand in der
+   * Barbarenleiste steht in 9,28 px - kleiner Text, der 4,5:1 braucht.
+   *
+   * Nachgemessen: 4,96:1 und 4,61:1.
+   */
+  --ok-on-sea: #4fa86d;
+  --bad-on-sea: #e0705e;
+
+  /*
+   * Und dieselben drei Bereiche noch einmal als **Schrift und Punkt auf der
+   * Tiefsee**.
+   *
+   * `--track-trade`, `--track-politics` und `--track-science` sind für den
+   * hellen Würfelkörper gemischt (Kommentar oben) und tragen dort. Die
+   * kompakte Leiste je Sitz stellt sie auf zwei dunkle Gründe - die Tiefsee
+   * rgb(15,44,59) hinter den übrigen Sitzen und rgb(69,79,63) hinter dem
+   * aktiven, olivfarben hinterlegten Sitz -, und das Tableau-Kopfwort
+   * (`.tracks__name`) auf dieselbe Tiefsee. Im Browser gemessen kamen
+   * `--track-politics` dort auf 1,25:1 und `--track-science` auf 1,34:1 -
+   * beide praktisch unsichtbar, gefordert sind 4,5:1.
+   *
+   * Nachgemessen gegen den helleren, bindenden Grund rgb(69,79,63):
+   * 4,92:1 / 4,87:1 / 4,82:1. Gegen die Tiefsee rgb(15,44,59) liegen alle drei
+   * bei 8,2:1 oder mehr.
+   */
+  --track-trade-on-sea: #e8bf5a;
+  --track-politics-on-sea: #a0c8e6;
+  --track-science-on-sea: #94d09e;
+
+  --radius: 10px;
+  --shadow: 0 12px 32px rgb(0 0 0 / 35%);
+
+  /*
+   * Der Unterschied zwischen „schwebt" und „liegt".
+   *
+   * `--shadow` ist ein Panelschatten: weit, weich, weit weg vom Element - das
+   * liest sich als Fenster ueber der Flaeche. Ein Ding, das auf dem Tisch
+   * **liegt**, wirft einen kurzen dunklen Schatten dicht unter seiner Kante.
+   * Das ist die eigentliche Arbeit an „es soll aussehen wie auf dem Tisch";
+   * Rahmen wegzunehmen allein macht Dinge nur flach, nicht liegend.
+   */
+  --lift: 0 1px 1px rgb(0 0 0 / 30%), 0 3px 7px rgb(0 0 0 / 26%);
+
+  /*
+   * Dasselbe Ding, eine Fingerbreite angehoben.
+   *
+   * Der Kontaktschatten wird dabei nicht dunkler, sondern **weiter und
+   * weicher** - das ist der ganze Unterschied zwischen „liegt" und „ist
+   * angehoben", und wer ihn nur dunkler macht, bekommt einen fetteren Rand
+   * statt Hoehe. Die Zahlen sind dieselben, die der Kaufstapel seit Etappe 8
+   * als `drop-shadow` an der obersten Karte fuehrt; sie standen dort doppelt
+   * im Blatt und stehen jetzt einmal hier.
+   */
+  --lift-raised: 0 2px 2px rgb(0 0 0 / 26%), 0 9px 12px rgb(0 0 0 / 34%);
+
+  font-family: 'Segoe UI', system-ui, ui-sans-serif, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--sea-900);
+  color: var(--on-sea);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/*
+ * Bewegung abbestellt heisst: die Flaeche steht fertig da, nicht sie laeuft
+ * schneller ab.
+ *
+ * **Die Dauer allein genuegt nicht.** Eine Verzoegerung, die stehen bleibt,
+ * haelt das Element mit `backwards` in seiner Anfangsstellung fest - und die
+ * heisst bei einem Eingang „unsichtbar". Gemessen am Eingang, bevor
+ * `animation-delay` hier stand: die drei Eintraege sprangen bei 333, 396 und
+ * 459 ms nacheinander ins Bild. Also keine Animation mehr, aber immer noch
+ * eine Choreografie - genau das, was hier abbestellt wurde.
+ *
+ * Die Verzoegerung ist deshalb negativ: die Animation ist damit schon vorbei,
+ * bevor das erste Bild gezeichnet wird. Eine Verzoegerung von null waere nur
+ * fast richtig - sie liesse den Anfangszustand noch ein Bild lang stehen.
+ * `!important` schlaegt auch ein `style`-Attribut mit eigener Verzoegerung.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: -1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+}
+
+/* --- Wiederkehrende Bausteine -------------------------------------------- */
+
+/*
+ * Text, der nur fuer Vorlesegeraete da ist.
+ *
+ * Gebraucht, wo eine Ueberschrift gezeichnet und nicht gesetzt ist: die
+ * Wortmarke ist ein SVG, und aus Pfaddaten laesst sich kein Name ableiten.
+ * Nicht `display: none` - das nimmt den Text auch aus der Vorlesereihenfolge.
+ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.button {
+  padding: 0.55rem 1.1rem;
+  border: 1px solid transparent;
+  /* Ein Knopf ist ein Ding auf dem Tisch: heller Koerper, dunkle Tinte - auch
+     dort, wo das umgebende Panel seine Tinte auf den Grund umgestellt hat. */
+  --ink: var(--ink-base);
+  background: var(--parchment);
+  color: var(--ink);
+  box-shadow: var(--lift);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  /* Bewegung und Zustaende des Knopfs stehen in `system.css`. */
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.button--go {
+  background: var(--accent);
+  color: #2a1f06;
+}
+
+.button--ghost {
+  background: transparent;
+  border-color: rgb(233 225 207 / 30%);
+  /* Kein Koerper, also kein Schatten - er liegt nicht, er steht nur da. */
+  box-shadow: none;
+  color: var(--on-sea);
+  font-weight: 500;
+}
+
+/*
+ * Zusagen, absagen, nachbessern - die drei Antworten auf ein Angebot.
+ *
+ * Sie sind der einzige Ort im Spiel, an dem drei Knoepfe nebeneinander stehen
+ * und verschiedene Richtungen meinen. Bisher trugen sie `button`, `button` und
+ * `button--ghost`: zwei sahen gleich aus, und der dritte war auf Pergament
+ * praktisch unsichtbar - im Playtest hat niemand gesehen, dass man ein Angebot
+ * auch anpassen kann. Also bekommt jede Richtung ihre Farbe.
+ *
+ * Die Farbe traegt das nicht allein: auf jedem Knopf steht, was er tut. Wer
+ * Rot und Gruen nicht unterscheidet, liest „Annehmen" und „Ablehnen" - deshalb
+ * auch kein Symbol statt der Woerter (Regel 7).
+ */
+.button--yes {
+  background: var(--ok-ink);
+  color: #f4f9f5;
+}
+
+.button--no {
+  background: var(--bad-ink);
+  color: #fdf3f1;
+}
+
+.button--adjust {
+  background: var(--warn);
+  color: #2a1f06;
+}
+
+/*
+ * Die gezeichneten Ziffern (`type/Numerals.tsx`).
+ *
+ * Eine einzige Zeile, und die Regel steht bewusst **am Traeger und nicht am
+ * Pfad**. `.numeral path { fill }` waere eine Klasse plus ein Typ - und ein
+ * geerbter Wert verliert gegen jede Regel, die das Kind direkt trifft. Das
+ * `style` am Chip, das der roten Sechs ihre Farbe gibt, waere damit still
+ * ueberholt worden: genau die Falle aus `CLAUDE.md`, nur diesmal von der
+ * anderen Seite. Am Traeger gesetzt erben die Pfade den Wert, und ein `style`
+ * am selben Element schlaegt ihn.
+ *
+ * `currentColor` heisst: die Zahl traegt die Tinte ihrer Umgebung. Wo ein
+ * Panel seine `--ink` auf den dunklen Grund umgestellt hat, folgt sie ohne
+ * eine weitere Zeile.
+ */
+.numeral {
+  fill: currentColor;
+}
+
+/*
+ * Die Fase - das Bedienbare wird aus demselben Winkel geschnitten wie das
+ * Brett.
+ *
+ * **Die Idee steht schon zweimal im Spiel.** Die Wortmarke ist so gezeichnet:
+ * wo eine Schrift rundet, sitzt eine Schraege, Stammbreite 17, Fase 17. Die
+ * Zahlen auf dem Brett sind seit `type/Numerals.tsx` genauso geschnitten. Was
+ * dazwischen lag - jeder Knopf, jedes Feld, jeder Dialog - trug einen
+ * gleichmaessigen Radius, also genau die eine Form, die auf jeder Oberflaeche
+ * sitzt und auf keiner gemeint ist. Drittens dasselbe Werkzeug: damit ist es
+ * ein System und nicht ein huebscher Titel ueber einer Anwendung.
+ *
+ * **Es kostet keinen Radius und keinen Schatten.** `corner-shape` schneidet
+ * die Ecke, die `border-radius` bereits vermasst hat; die Betraege bleiben
+ * also unveraendert stehen, und `box-shadow` folgt der neuen Kontur von
+ * selbst. Ein `clip-path` haette dieselbe Form gemacht **und den
+ * Kontaktschatten mit abgeschnitten** - und der ist der ganze Unterschied
+ * zwischen „liegt auf dem Tisch" und „ist ein Rechteck".
+ *
+ * Wo `corner-shape` fehlt, bleibt die Ecke rund. Das ist kein Ausfall,
+ * sondern der Stand von vorher: niemand sieht etwas Kaputtes, nur etwas
+ * weniger Eigenes.
+ *
+ * **Was die Fase nicht bekommt, und warum.** Karten, Wuerfel, Zahlenchips und
+ * Bauteile sind Spielmaterial und haben ihre Form aus der Wirklichkeit - eine
+ * Spielkarte mit geschnittenen Ecken ist keine Karte mehr, sondern ein
+ * Plaettchen. Geschnitten wird, was Oberflaeche ist: was man drueckt, was man
+ * ausfuellt, und die Rahmen, die das Spiel halten. Die Trennlinie ist damit
+ * nicht Geschmack, sondern eine Auskunft (Regel 6) - gedrucktes Papier gegen
+ * gestanzte Bedienung.
+ */
+.button,
+.mode,
+.field input,
+.cards__stepper button,
+.modal__box,
+.choice,
+.panel--log,
+.panel__error,
+.offline__text,
+.devcards__hint,
+.counter,
+.hintcard {
+  corner-shape: bevel;
+}
+
+/* --- Titelbildschirm ------------------------------------------------------ *
+ *
+ * **Er ist zurueck, und der Grund ist ein anderer als beim ersten Mal.**
+ * Gestrichen wurde er, weil er genau eine Frage stellte - welcher Weg - und der
+ * Bildschirm dahinter sie als Ueberschrift noch einmal vortrug: zwei Flaechen
+ * fuer eine Entscheidung. Seither hat der Wartebereich sein Brett bekommen, und
+ * damit sahen Einrichtung und Wartebereich gleich aus - links ein Panel, rechts
+ * das Brett, zweimal derselbe Bau. Ein Eingang, der aussieht wie die Flaeche
+ * dahinter, ist kein Eingang.
+ *
+ * Die alte Doppelung kommt dabei **nicht** mit zurueck: der Bildschirm dahinter
+ * traegt keine Wortmarke mehr; seine Ueberschrift nennt den gewaehlten Weg
+ * mit denselben Worten wie der Knopf hier.
+ */
+
+.menu {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+}
+
+.menu__inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(var(--space-6), 6vh, var(--space-7));
+  align-items: center;
+  padding: var(--space-6) var(--space-4);
+  /* Oben so viel Luft, wie die Konto-Ecke hoch ist - sonst laeuft die
+     Wortmarke im schmalen Fenster darunter hindurch. */
+  padding-top: 4rem;
+  text-align: center;
+}

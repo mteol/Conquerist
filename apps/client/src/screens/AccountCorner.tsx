@@ -5,8 +5,8 @@ import type { Identity } from '../game/useOnlineGame';
  * Wer gerade spielt - oben rechts auf dem Menue.
  *
  * **Rolle:** eine Zustandsanzeige, kein vierter Weg in eine Partie. Deshalb
- * die Sprache der Kleinlabels (klein, gesperrt, gedaempft) und nicht die der
- * drei Eintraege darunter. Boldness wird an einer Stelle ausgegeben, und das
+ * die Sprache der Kartenschrift (leise, auf der See) und nicht die der drei
+ * Pergamentknoepfe darunter. Boldness wird an einer Stelle ausgegeben, und das
  * ist die Wortmarke (Regel 4).
  *
  * **Solange niemand feststeht, steht hier nichts.** Ein „Gast", der eine
@@ -33,7 +33,7 @@ export function AccountCorner({
 
   return (
     <div className="corner" style={{ '--i': order } as CSSProperties}>
-      <span className="corner__who">{identity.isGuest ? 'Gast' : identity.name}</span>
+      <span className="chartlabel corner__who">{identity.isGuest ? 'Gast' : identity.name}</span>
 
       {identity.isGuest ? (
         <>

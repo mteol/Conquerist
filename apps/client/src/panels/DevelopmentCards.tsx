@@ -101,7 +101,7 @@ export function DevelopmentCards({
       {described === null ? null : <Hint card={described} />}
 
       <ol className="devcards__row" aria-label="Entwicklungskarten">
-        {stacks.map(({ id, amount }) => (
+        {stacks.map(({ id, amount }, index) => (
           /*
            * Zeigen und Verbergen haengen am Listeneintrag, nicht am Knopf.
            *
@@ -115,6 +115,8 @@ export function DevelopmentCards({
            */
           <li
             key={id}
+            className="deal-in"
+            style={{ '--i': index } as CSSProperties}
             onPointerEnter={show(id)}
             onPointerLeave={hide(id)}
             onFocus={show(id)}

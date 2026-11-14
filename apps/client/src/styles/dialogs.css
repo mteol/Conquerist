@@ -1,0 +1,868 @@
+/*
+ * Die Anatomie aus `dialogs/Modal.tsx`: Kopf, Inhalt, Fussleiste.
+ *
+ * Der Kasten ist ein Blatt (`.sheet` in `system.css`: Pergament, Kartenrand,
+ * `--sheet`) - hier steht nur, was ein Dialog darauf ordnet. Der Kartenrand
+ * liegt 4 px innen; Kopf, Inhalt und Fussleiste halten deshalb mehr Luft, als
+ * der Rand allein brauchte.
+ *
+ * Das Band oben (`--modal-tone`, nur mit `tone`) sagt, **wessen** Dialog es ist
+ * oder welche Art Karte gemeint ist - Opfer, Fortschrittsbereich, Sieger.
+ * Ohne Aussage steht es nicht da. Es sitzt innerhalb des Kartenrands.
+ *
+ * Alles hier ist Bedienung und steht deshalb in `--font-ui`; die Kartenschrift
+ * gehoert auf die See.
+ */
+.modal__head {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5) var(--space-2);
+}
+
+.modal__box--toned .modal__head::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  left: 5px;
+  height: 4px;
+  background: var(--modal-tone);
+}
+
+.modal__box--toned .modal__head {
+  padding-top: var(--space-5);
+}
+
+/* Das Kreuz liegt im Rand; der Kopf haelt ihm nur Platz frei, wenn es da ist. */
+.modal__head:has(> .modal__close) {
+  padding-right: 3.25rem;
+}
+
+.modal__heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.modal__aside {
+  flex: none;
+}
+
+.modal__body {
+  padding: var(--space-1) var(--space-5) var(--space-4);
+}
+
+/*
+ * Was den Dialog beendet, steht auf einer eigenen Leiste innerhalb des
+ * Kartenrands: Rueckweg links (Geisterknopf), Hauptaktion rechts. Die Leiste
+ * ist eine Stufe dunkler, damit sie als Boden des Blattes liest und nicht als
+ * weitere Antwortzeile.
+ */
+.modal__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin: 0 5px 5px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: calc(var(--corner-lg) - 5px);
+  background: var(--parchment-2);
+  corner-shape: bevel;
+}
+
+/*
+ * Beide Regeln mit derselben Wurzel: `.modal__box .button` (zwei Klassen) setzt
+ * jedem Knopf im Kasten einen Rand, und eine einzelne Klasse hier verloere
+ * dagegen - der Rueckweg stand dann rechts neben der Hauptaktion.
+ */
+.modal__box .modal__foot .button {
+  margin: 0;
+}
+
+.modal__box .modal__foot > :first-child:not(:only-child) {
+  margin-right: auto;
+}
+
+/* Am schmalen Handy passen Rueckweg und Hauptaktion so noch in eine Zeile. */
+@media (width <= 30rem) {
+  .modal__head,
+  .modal__body {
+    padding-inline: var(--space-4);
+  }
+
+  .modal__head:has(> .modal__close) {
+    padding-right: 3rem;
+  }
+
+  .modal__foot {
+    padding-inline: var(--space-3);
+  }
+}
+
+/*
+ * Das Kreuz oben rechts.
+ *
+ * Der sichtbare Kreis bleibt 2,25 rem; `::before` traegt eine unsichtbare,
+ * groessere Flaeche darueber (derselbe Mittelpunkt, 44 px im Quadrat), damit
+ * die Trefferflaeche reicht, ohne den Kreis naeher an den Titel zu ruecken.
+ */
+.modal__close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--t-quick) linear,
+    color var(--t-quick) linear;
+}
+
+.modal__close::before {
+  content: '';
+  position: absolute;
+  inset: -0.25rem;
+}
+
+.modal__close:hover {
+  background: color-mix(in oklab, var(--ink-base) 10%, transparent);
+  color: var(--ink);
+}
+
+.modal__close:active {
+  background: color-mix(in oklab, var(--ink-base) 18%, transparent);
+  transition-duration: var(--t-press);
+}
+
+.modal__close svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  stroke: currentcolor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/* Fokus ist ueberall derselbe Ring in Tinte - auf Pergament traegt Gelb nicht. */
+.modal__box :focus-visible {
+  outline: 2px solid var(--ink-base);
+  outline-offset: 2px;
+}
+
+.modal__box h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 650;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.modal__hint,
+.modal__rate {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+/*
+ * Die Warnung stand in `--warn` auf Pergament - gemessen 1,97:1, das Gelb ist
+ * fuer die Tiefsee gemischt. Der Text bekommt deshalb Tinte, und das Bernstein
+ * wird der Grund des Hinweises: es sagt weiter „Achtung", ohne die Lesbarkeit
+ * zu tragen.
+ */
+.modal__hint--warn {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in oklab, var(--warn) 50%, var(--parchment));
+  border-radius: var(--corner-sm);
+  background: color-mix(in oklab, var(--warn) 18%, var(--parchment));
+  color: var(--ink);
+  corner-shape: bevel;
+}
+
+.modal__rate b {
+  color: var(--ink);
+}
+
+.modal__problem {
+  margin: var(--space-3) 0 0;
+  color: var(--bad-ink);
+  font-size: var(--text-sm);
+}
+
+.modal__box .button {
+  margin: var(--space-1) var(--space-1) 0;
+}
+
+/*
+ * **Der Geisterknopf auf Pergament war creme auf creme** (1,05:1) - alle
+ * Nebenwege eines Dialogs waren unsichtbar. `.button--ghost` ist fuer die See
+ * gemacht; der Dialogkasten ist der eine Ort, an dem der Grund **immer**
+ * Pergament ist, also dreht er Linie, Schrift und die Zustaende hier um: Tinte
+ * statt Creme, und beim Darueberfahren fuellt sich der Knopf mit Tinte.
+ */
+.modal__box .button--ghost {
+  border-color: color-mix(in oklab, var(--ink-base) 45%, transparent);
+  color: var(--ink-base);
+}
+
+.modal__box .button--ghost:hover:not(:disabled) {
+  border-color: var(--ink-base);
+  background: color-mix(in oklab, var(--ink-base) 9%, transparent);
+}
+
+.modal__box .button--ghost:active:not(:disabled) {
+  background: color-mix(in oklab, var(--ink-base) 16%, transparent);
+}
+
+/*
+ * Antworten auf „wen?" und „welche?" (`dialogs/Choice.tsx`): eine Zeile je
+ * Antwort, Farbmarke links, Name, Zusatz rechts. Untereinander statt als
+ * Knopfwolke, damit Zusatzangaben an derselben Stelle stehen und vergleichbar
+ * sind wie am Tisch.
+ */
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/*
+ * Vier Zustaende:
+ *   Ruhe      die Farbe als Grund der Zeile, gedaempft ins Pergament gemischt
+ *   darueber  Farbe satter, die Zeile hebt sich (Schatten geht mit)
+ *   gewaehlt  `aria-pressed`: Ring in Tinte, damit es nicht an der Farbe haengt
+ *   gesperrt  blass und flach, kein Zeiger
+ * Die Schrift bleibt Tinte, damit der Kontrast nicht an der Spielerfarbe haengt.
+ */
+.choice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in oklab, var(--choice-tone) 45%, var(--parchment));
+  border-radius: var(--corner-md);
+  background: color-mix(in oklab, var(--choice-tone) 16%, var(--parchment));
+  color: var(--ink-base);
+  box-shadow: var(--lift);
+  font: inherit;
+  font-size: var(--text-md);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--t-quick) var(--ease-out),
+    box-shadow var(--t-quick) var(--ease-out),
+    background-color var(--t-quick) linear,
+    border-color var(--t-quick) linear;
+}
+
+.choice:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--choice-tone) 70%, var(--parchment));
+  background: color-mix(in oklab, var(--choice-tone) 28%, var(--parchment));
+  box-shadow: var(--lift-raised);
+}
+
+.choice:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 40%);
+  transition-duration: var(--t-press);
+}
+
+.choice[aria-pressed='true'] {
+  border-color: var(--ink-base);
+  box-shadow:
+    0 0 0 1px var(--ink-base),
+    var(--lift);
+}
+
+.choice:disabled {
+  border-color: var(--parchment-edge);
+  background: var(--parchment-2);
+  box-shadow: none;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.choice__name {
+  font-weight: 650;
+}
+
+.choice__detail {
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/*
+ * Kartenreihen beginnen im Dialog links, wie ihre Beschriftung („Du gibst
+ * ab"). Mittig standen sie unter einer linksbuendigen Zeile und gehoerten
+ * sichtbar zu nichts.
+ */
+.modal__body .cards {
+  justify-content: flex-start;
+}
+
+/* Alchemie: zwei Wuerfelreihen, jede mit ihrem Namen davor. */
+.facepick {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.facepick__label {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.facepick .pick {
+  flex-wrap: wrap;
+  margin: var(--space-1) 0;
+}
+
+@media (width <= 30rem) {
+  .facepick {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+/* Beschriftetes Eingabefeld in Dialogen - Konto anlegen/anmelden. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-3) 0 0;
+  text-align: left;
+}
+
+.field > span {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.field input {
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--corner-sm);
+  background: var(--parchment-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-md);
+  transition: border-color var(--t-quick) linear;
+}
+
+.field input:hover {
+  border-color: var(--ink-muted);
+}
+
+.field input:focus-visible {
+  border-color: var(--ink-base);
+}
+
+.field__note {
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+  margin: var(--space-4) 0;
+  padding: 0;
+  border: 0;
+}
+
+.cards legend {
+  padding: 0;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+/*
+ * Eine Sorte mit ihrem Schrittzaehler.
+ *
+ * Der Zaehler haengt unter der Karte, wo er hingehoert - er bedient die Karte,
+ * er ist nicht Teil von ihr.
+ */
+.cards__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.cards__stepper {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-md);
+  font-weight: 650;
+}
+
+.cards__stepper > span {
+  min-width: 1.5ch;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* Ein Stueck Pergament, das sich unter dem Zeiger hebt - wie jeder Knopf. */
+.cards__stepper button {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--corner-sm);
+  background: var(--parchment);
+  color: var(--ink);
+  box-shadow: var(--lift);
+  font: inherit;
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    transform var(--t-quick) var(--ease-out),
+    box-shadow var(--t-quick) var(--ease-out),
+    background-color var(--t-quick) linear;
+}
+
+.cards__stepper button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: color-mix(in oklab, var(--parchment) 60%, white);
+  box-shadow: var(--lift-raised);
+}
+
+.cards__stepper button:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 40%);
+  transition-duration: var(--t-press);
+}
+
+/*
+ * Ein Schritt, der nichts bewirken kann, sieht auch so aus: blass, flach, auf
+ * dem dunkleren Pergament - und der Zeiger sagt es auch. (`disabled` allein
+ * aendert an einem Knopf mit eigenem Hintergrund nichts.)
+ */
+.cards__stepper button:disabled {
+  border-style: dashed;
+  background: var(--parchment-2);
+  box-shadow: none;
+  color: var(--ink-muted);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/*
+ * Mit dem Finger reichen 32 px nicht. Auf groben Zeigern bekommen die Schritte
+ * die 44 px, die jede Flaeche zum Antippen braucht; mit der Maus bleiben sie
+ * kleiner, damit der Zaehler die Karte darueber nicht ueberragt.
+ */
+@media (pointer: coarse) {
+  .cards__stepper button {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
+/*
+ * **Ein Rohstoff als Karte - und zwar ueberall dieselbe**
+ * (`panels/ResourceCard.tsx`): Abwurf, Angebot, Bankhandel, Erfindung. Spiel-
+ * material, also nicht gefast, mit eigenem Schatten; auswaehlbar heisst sie
+ * sich unter dem Zeiger heben. `--rescard-lift` haelt den Schatten, damit
+ * Auswahlringe und Hebung sich nicht gegenseitig ueberschreiben.
+ */
+.rescard {
+  --rescard-lift: var(--lift);
+  position: relative;
+  display: grid;
+  gap: 0.08rem;
+  justify-items: center;
+  width: 4.5rem;
+  padding: var(--space-2) var(--space-1);
+  border: 1px solid rgb(22 32 42 / 55%);
+  border-radius: 6px;
+  color: var(--ink-base);
+  box-shadow: var(--rescard-lift);
+  transition:
+    transform var(--t-quick) var(--ease-out),
+    box-shadow var(--t-quick) var(--ease-out);
+}
+
+/*
+ * Dieselbe Handelsware, dieselbe Aussage - und hier, hinter `.rescard`, damit
+ * sie die Kurzform `border` von dort auch schlaegt.
+ */
+.rescard--ware {
+  box-shadow:
+    inset 0 0 0 2px rgb(22 32 42 / 22%),
+    inset 0 0 0 3px rgb(246 239 223 / 70%),
+    var(--rescard-lift);
+}
+
+/* Kleiner als auf der Handkarte - die Karte hier ist eine Auswahl, kein Stapel. */
+.rescard .card__glyph {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.rescard__name {
+  font-size: var(--text-xs);
+  font-weight: 650;
+}
+
+/*
+ * Die Zeile steht auch leer da, wo sie nichts zu sagen hat: beim Bekommen ist
+ * ein Bestand keine Auskunft, und ohne die Zeile waeren zwei Reihen
+ * nebeneinander verschieden hoch.
+ */
+.rescard__held {
+  min-height: 1rem;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.rescard__held--empty {
+  opacity: 0.6;
+}
+
+/* Ein Posten aus mehreren Sorten - was in einem Angebot ueber den Tisch geht. */
+.rescards {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.rescards__empty {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+/* Die Huelle um eine waehlbare Karte: ein `label` mit verstecktem Radiofeld. */
+.cards__choice {
+  display: block;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cards__choice:hover .rescard,
+.pick__card:hover:not(:disabled) .rescard {
+  --rescard-lift: var(--lift-raised);
+  transform: translateY(-2px);
+}
+
+/*
+ * Gewaehlt: zwei Ringe, innen Tinte und aussen Gold - ein einzelner Ring
+ * ginge auf fuenf Gelaendefarben und gegen die Pergamentflaeche nicht.
+ */
+.cards__choice:has(input:checked) .rescard {
+  box-shadow:
+    0 0 0 2px var(--ink-base),
+    0 0 0 4px var(--accent),
+    var(--rescard-lift);
+}
+
+/* Das Feld ist versteckt, sein Fokus darf es nicht sein. */
+.cards__choice:has(input:focus-visible) .rescard {
+  outline: 2px solid var(--ink-base);
+  outline-offset: 4px;
+}
+
+/* --- Diagnose aus Etappe 0 ------------------------------------------------- */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-7);
+}
+
+.page__header h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: 650;
+}
+
+.page__subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--on-sea-muted);
+}
+
+.status {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.status__dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--on-sea-muted);
+}
+
+.status__dot--open {
+  background: var(--ok);
+}
+
+/* Kein Blinken: „verbindet" steht als Farbe da, die Zeile daneben sagt es. */
+.status__dot--connecting,
+.status__dot--reconnecting {
+  background: var(--warn);
+}
+
+.status__dot--closed {
+  background: var(--bad);
+}
+
+.status__hint {
+  color: var(--on-sea-muted);
+  font-size: var(--text-sm);
+}
+
+.metrics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  width: 100%;
+}
+
+.metrics__row {
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+  font-size: var(--text-sm);
+}
+
+.metrics__row dt {
+  color: var(--on-sea-muted);
+}
+
+.metrics__row dd {
+  margin: 0;
+}
+
+.hint {
+  margin: 0;
+  color: var(--on-sea-muted);
+  font-size: var(--text-sm);
+}
+
+.error {
+  margin: 0;
+  color: color-mix(in oklab, var(--bad) 55%, var(--on-sea));
+  font-size: var(--text-sm);
+}
+
+/*
+ * Reiterleiste im Handelsfenster: Bank oder Spieler. Eine eingelassene Rinne
+ * aus dunklerem Pergament, darin liegt der gewaehlte Reiter als Stueck
+ * Pergament - gefast wie alles Bedienbare.
+ */
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-1);
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--corner-md);
+  background: var(--parchment-2);
+  corner-shape: bevel;
+}
+
+.tabs__tab {
+  flex: 1;
+  min-height: 2.25rem;
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--corner-sm);
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 650;
+  corner-shape: bevel;
+  cursor: pointer;
+  transition:
+    background-color var(--t-quick) linear,
+    color var(--t-quick) linear,
+    box-shadow var(--t-quick) var(--ease-out);
+}
+
+.tabs__tab:hover {
+  color: var(--ink);
+}
+
+.tabs__tab:active {
+  background: color-mix(in oklab, var(--ink-base) 10%, transparent);
+  transition-duration: var(--t-press);
+}
+
+.tabs__tab[aria-selected='true'] {
+  background: var(--parchment);
+  color: var(--ink);
+  box-shadow: var(--lift);
+}
+
+@media (pointer: coarse) {
+  .tabs__tab {
+    min-height: 2.75rem;
+  }
+}
+
+/*
+ * Die beiden Mengenspalten eines Angebots. Nebeneinander, solange Platz ist -
+ * im schmalen Fenster untereinander, damit kein Schrittzaehler abgeschnitten
+ * wird.
+ */
+.trade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-3);
+}
+
+.trade .cards {
+  margin: 0;
+}
+
+/*
+ * Bedingungen mit Beschriftung statt mit Reihenfolge.
+ *
+ * Dieselbe Form fuer das Angebot und fuer ein Gegenangebot: eine Reihe „X für
+ * Y" liest jeder aus seiner eigenen Richtung, und die Haelfte am Tisch liest
+ * sie damit verkehrt. „Du gibst" und „Du bekommst" lassen sich nicht falsch
+ * herum lesen.
+ */
+.terms {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.terms > div {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+}
+
+.terms dt {
+  color: var(--ink-muted);
+}
+
+.terms dd {
+  margin: 0;
+  font-weight: 650;
+  text-align: right;
+}
+
+.offer__terms {
+  margin: var(--space-1) 0 var(--space-3);
+}
+
+.offer__clock {
+  margin: 0 0 var(--space-3);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  /* In einem Spiel, in dem dauernd Zahlen verglichen werden, springt keine. */
+  font-variant-numeric: tabular-nums;
+}
+
+.offer__answers {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.offer__answer {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--parchment-edge);
+  font-size: var(--text-sm);
+}
+
+.offer__answer:last-child {
+  border-bottom: 0;
+}
+
+.offer__answer .button {
+  margin-left: auto;
+}
+
+/*
+ * Ein offenes Gegenangebot: keine Auskunft, sondern eine **Frage an den
+ * Anbieter**. Eigener Kasten mit dem Rand, den sonst nur Bedienbares hat, und
+ * zwei beschriftete Zeilen statt einer Reihenfolge, die man raten muss.
+ */
+.counter {
+  margin: var(--space-2) 0;
+  padding: var(--space-3);
+  border: 1px solid color-mix(in oklab, var(--warn-ink) 40%, var(--parchment));
+  border-radius: var(--corner-md);
+  background: color-mix(in oklab, var(--warn) 14%, var(--parchment));
+  text-align: left;
+}
+
+.counter__who {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+/* Die Form steht in `.terms`; hier bleibt nur, was der Kasten dazutut. */
+.counter__terms {
+  margin: 0 0 var(--space-2);
+}
+
+.counter__buttons {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Im Kasten sitzen die Knoepfe enger als im Dialog ringsum. */
+.counter__buttons .button {
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.counter__buttons .modal__problem {
+  margin: 0 auto 0 0;
+  font-size: var(--text-sm);
+}
+
+/* Wer geantwortet hat, liest seine Antwort - und nicht drei graue Knoepfe. */
+.offer__done {
+  margin-top: var(--space-3);
+}
+
+.offer__mine {
+  margin: 0 0 var(--space-1);
+  font-weight: 650;
+}

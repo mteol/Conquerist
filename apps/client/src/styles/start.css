@@ -1,0 +1,198 @@
+/*
+ * Der Eingang: Titelbildschirm, Wortmarke und die Welle auf der Karte.
+ *
+ * Alles davor (Startbildschirm, Wartebereich) steht in `menu.css` und
+ * `lobby.css`; hier liegt, was nur der Titel braucht, und der gemeinsame Grund.
+ */
+
+/*
+ * Der Grund aller drei Bildschirme vor dem Spiel: Tiefsee mit einer Untiefe
+ * darunter, wo die Insel liegen wird - dieselbe Rechnung wie in `.game`. Die
+ * Seekarte liegt als erstes Kind obenauf (`system.css`), und `overflow: hidden`
+ * beschneidet ihr Netz am Fensterrand, damit es sich verliert statt aufzuhoeren.
+ *
+ * `--shoal-x` ist die Mitte der Untiefe: auf dem Titel in der Mitte, auf den
+ * zweispaltigen Bildschirmen unter dem Brett rechts.
+ */
+.menu,
+.start,
+.lobby {
+  --shoal-x: 50%;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(62% 58% at var(--shoal-x) 48%, var(--sea-700) 0%, transparent 78%),
+    var(--sea-900);
+}
+
+.start,
+.lobby {
+  --shoal-x: 68%;
+}
+
+/* --- Titelbildschirm ------------------------------------------------------ */
+
+/*
+ * Wann die Marke einrastet: knapp vor dem Ende ihres Eingangs. Von hier an
+ * laeuft die Welle, und hierhinter kommen Untertitel, Wege und Konto-Ecke.
+ */
+.menu {
+  --arrive: calc(var(--t-enter) * 0.7);
+}
+
+/*
+ * Die Ueberschrift traegt keinen Text, sondern die gezeichnete Wortmarke
+ * (`Wordmark.tsx`) und daneben denselben Namen unsichtbar fuer Vorlesegeraete.
+ * Deshalb hier keine Schriftsetzung - es gibt nichts zu setzen.
+ */
+.menu__title {
+  margin: 0;
+  line-height: 0;
+}
+
+.menu__lead {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-lg);
+  animation-delay: var(--arrive);
+}
+
+.menu__entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(100%, 22rem);
+}
+
+/*
+ * Drei gleichwertige Knoepfe aus Pergament (`.button` traegt Koerper, Fase,
+ * Schatten und die drei Zustaende). Keiner wird hervorgehoben - welcher Weg der
+ * richtige ist, weiss der Spieler und nicht der Bildschirm.
+ *
+ * Sie werden nacheinander aufgelegt. Der Platz in der Reihe kommt als `--i` aus
+ * `MenuScreen.tsx`; hoechstens fuenf Lagen Versatz.
+ */
+.menu__entry {
+  width: 100%;
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-lg);
+  font-weight: 650;
+  animation: sheet-in var(--t-enter) var(--ease-out) backwards;
+  animation-delay: calc(var(--arrive) + (min(var(--i, 0), 4) + 1) * var(--stagger));
+}
+
+/* Weiterspielen steht oben und traegt als einziges den Akzent - es ist kein
+   vierter Weg, sondern die Rueckkehr in etwas Angefangenes. */
+.menu__entry--resume {
+  border: 2px solid var(--accent);
+  padding-block: calc(var(--space-3) - 1px);
+}
+
+/*
+ * Die Welle: einmal, wenn die Marke einrastet, laeuft sie von der Mitte des
+ * Netzes nach aussen. Jede Linie traegt ihren Abstand `--d` (0 in der Mitte,
+ * 1 am Rand); daraus kommt die Verzoegerung. Die Linie wird kurz deutlicher
+ * und faellt in ihre Ruhe zurueck - die Ruhelage steht nirgends im Keyframe,
+ * der Wert kommt aus `system.css`, und die Welle kann sie deshalb nie verfehlen.
+ */
+.menu__chart .seachart__line {
+  animation: net-wave var(--t-stage) var(--ease-out) backwards;
+  animation-delay: calc(var(--arrive) + var(--d, 0) * var(--t-travel));
+}
+
+.menu__chart .seachart__line--wind {
+  --wave-ink: color-mix(in srgb, var(--on-sea) 50%, transparent);
+}
+
+.menu__chart .seachart__line--half {
+  --wave-ink: color-mix(in srgb, var(--pasture) 48%, transparent);
+}
+
+.menu__chart .seachart__line--quarter {
+  --wave-ink: color-mix(in srgb, var(--hills) 42%, transparent);
+}
+
+@keyframes net-wave {
+  35% {
+    stroke: var(--wave-ink);
+    stroke-width: 1.5px;
+  }
+}
+
+/* --- Wortmarke ------------------------------------------------------------ */
+
+/*
+ * Die Marke steht mittig auf einer freien Flaeche. `78vw` ist die Schranke,
+ * die im schmalen Fenster bindet, `40rem` die im breiten - eine von beiden
+ * allein reicht nicht: ohne `vw` sprengt sie das Handy, ohne `rem` waechst sie
+ * auf einem Fernseher ins Alberne.
+ */
+.wordmark {
+  display: block;
+  width: 100%;
+  max-width: min(78vw, 40rem);
+  height: auto;
+  fill: var(--parchment);
+}
+
+/*
+ * Der Zap. Der Drehpunkt liegt rechts: was sich nach rechts bewegt, wird nach
+ * hinten in die Laenge gezogen und nicht nach vorne. Beim Einrasten staucht
+ * dieselbe Achse zurueck - der Aufprall sitzt vorne.
+ */
+.wordmark--enter {
+  transform-origin: 100% 50%;
+  animation: wordmark-zap var(--t-enter) var(--ease-out) backwards;
+}
+
+@keyframes wordmark-zap {
+  0% {
+    transform: translate3d(-128%, 0, 0) skewX(-16deg) scaleX(1.4);
+    opacity: 0;
+  }
+
+  45% {
+    opacity: 1;
+  }
+
+  72% {
+    transform: translate3d(2.2%, 0, 0) skewX(3deg) scaleX(1.05) scaleY(0.98);
+    opacity: 1;
+  }
+
+  88% {
+    transform: translate3d(-0.6%, 0, 0) scaleX(0.975) scaleY(1.035);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+/*
+ * Der Nachschlag je Buchstabe - sie landen leicht versetzt, damit das Wort
+ * hereinschnellt statt hereinzurutschen.
+ *
+ * **Das laeuft auf dem `path`, nicht auf der `g`.** Die Gruppe traegt ihre
+ * Position als `transform`-Attribut, und eine CSS-Regel schlaegt immer das
+ * gleichnamige SVG-Praesentationsattribut - die Animation haette alle zehn
+ * Buchstaben auf x = 0 uebereinandergelegt.
+ */
+.wordmark--enter .wordmark__letter > path {
+  animation: wordmark-whip var(--t-enter) var(--ease-out) backwards;
+  animation-delay: calc(var(--i) * var(--stagger) / 5);
+}
+
+@keyframes wordmark-whip {
+  0% {
+    transform: translateX(-55px);
+  }
+
+  70% {
+    transform: translateX(7px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}

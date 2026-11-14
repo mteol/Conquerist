@@ -6,27 +6,26 @@ import {
   type PlayerId,
   type TrackId,
 } from '@conquerist/shared';
-import { TRACK_ABBR, TRACK_COLORS_ON_SEA, TRACK_NAMES } from '../game/labels';
+import { TRACK_COLORS_ON_SEA, TRACK_NAMES } from '../game/labels';
 
 /**
  * Die kompakte Leiste: derselbe Stand, aber für die anderen am Tisch.
  *
  * **Rolle:** dieselbe Auskunft wie das Tableau, nur über die *anderen*, in
- * einer Zeile. **Aufbau:** drei Punktreihen null bis fünf, je Bereich, in
- * Bereichsfarbe. **Woran man sich erinnert:** wer nah an der Vier ist - also
+ * einer Zeile. **Aufbau:** drei Maßstäbe (`.scalebar`) mit fünf Feldern,
+ * je Bereich in Bereichsfarbe. **Woran man sich erinnert:** wer nah an der Vier ist - also
  * kurz vor der Metropole steht.
  *
  * Sie steht je Sitz in `TablePanel`, unter dem Namen - dort, wo schon steht,
  * was öffentlich ist (Karten, Punkte, Auszeichnungen).
  *
- * **Farbe ist hier nie der einzige Träger (Designregel 7).** Drei Punktreihen
- * allein in Bereichsfarbe wären für Rot-Grün-Blinde dieselbe Reihe dreimal.
- * Deshalb trägt jede Reihe zusätzlich ein Kürzel aus `labels.ts` - dieselbe
- * Tabelle wie im Tableau (`TrackPanel.tsx`), damit beide Anzeigen nicht
- * auseinanderlaufen können.
+ * **Farbe ist hier nie der einzige Träger (Designregel 7).** Der ausgeschriebene
+ * Name steht in der Auskunft beim Darüberfahren (`data-hint-title`) und für
+ * Vorlesegeräte im Knoten selbst; die Reihenfolge Handel, Politik, Wissenschaft
+ * ist an jedem Sitz dieselbe, ein Kürzel in 9 px trug sie nicht.
  */
 export interface TrackStripProps {
-  /** Wessen Zeile das ist - die Punktreihen tragen ihn in ihrer Testkennung. */
+  /** Wessen Zeile das ist - die Felder tragen ihn in ihrer Testkennung. */
   readonly player: PlayerId;
   /** Der Stand dieses Spielers - `levelOf` liest daraus. */
   readonly levels: { readonly improvements: Partial<Record<TrackId, number>> };
@@ -43,24 +42,24 @@ export function TrackStrip({ player, levels }: TrackStripProps): JSX.Element {
         return (
           <span
             key={track}
-            className="trackstrip__row"
-            style={{ '--track-color-on-sea': TRACK_COLORS_ON_SEA[track] } as CSSProperties}
-            title={`${TRACK_NAMES[track]}: Stufe ${level}`}
+            className="scalebar trackstrip__row"
+            style={
+              {
+                '--scale-ink': TRACK_COLORS_ON_SEA[track],
+                '--of': MAX_TRACK_LEVEL,
+              } as CSSProperties
+            }
+            data-hint-title={TRACK_NAMES[track]}
+            data-hint={`Stufe ${level} von ${MAX_TRACK_LEVEL}`}
           >
-            <span className="trackstrip__abbr" aria-hidden="true">
-              {TRACK_ABBR[track]}
-            </span>
-            <span className="trackstrip__dots" aria-hidden="true">
-              {steps.map((step) => (
-                <span
-                  key={step}
-                  className={
-                    step <= level ? 'trackstrip__dot trackstrip__dot--filled' : 'trackstrip__dot'
-                  }
-                  data-testid={`trackstrip-${player}-${track}-${step}`}
-                />
-              ))}
-            </span>
+            {steps.map((step) => (
+              <i
+                key={step}
+                className={step <= level ? 'is-on' : undefined}
+                aria-hidden="true"
+                data-testid={`trackstrip-${player}-${track}-${step}`}
+              />
+            ))}
             <span className="visually-hidden">{`${TRACK_NAMES[track]}: Stufe ${level}`}</span>
           </span>
         );

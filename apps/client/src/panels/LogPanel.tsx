@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import type { LogEntry } from '../game/hotseat';
 
 /**
@@ -35,6 +35,20 @@ import type { LogEntry } from '../game/hotseat';
  */
 export function LogPanel({ entries }: { readonly entries: readonly LogEntry[] }): JSX.Element {
   const [open, setOpen] = useState(false);
+  /* Nur ein Blatt zugleich: das andere (Verlauf/Vorrat) schliesst, wenn dieses aufgeht. */
+  useEffect(() => {
+    const close = (event: Event): void => {
+      if ((event as CustomEvent<string>).detail !== 'log') setOpen(false);
+    };
+    window.addEventListener('conquerist:sheet', close);
+    return () => window.removeEventListener('conquerist:sheet', close);
+  }, []);
+  /*
+   * Wie viele Eintraege beim Aufklappen schon da waren. Nur was danach kommt,
+   * erscheint mit `ink-in` - sonst fuehren zweihundert Zeilen beim Oeffnen
+   * einen Eingang vor, der nichts erklaert.
+   */
+  const [seenAtOpen, setSeenAtOpen] = useState(0);
 
   /*
    * Juengster Eintrag oben, und zwar alle.
@@ -52,21 +66,25 @@ export function LogPanel({ entries }: { readonly entries: readonly LogEntry[] })
         className={open ? 'log-toggle log-toggle--open' : 'log-toggle'}
         data-testid="log-toggle"
         aria-expanded={open}
-        onClick={() => setOpen((was) => !was)}
+        onClick={() => {
+          setSeenAtOpen(entries.length);
+          if (!open) window.dispatchEvent(new CustomEvent('conquerist:sheet', { detail: 'log' }));
+          setOpen((was) => !was);
+        }}
       >
         <ScrollMark />
         <span className="visually-hidden">Verlauf</span>
       </button>
 
       {open ? (
-        <section className="panel panel--log" aria-label="Verlauf">
+        <section className="panel panel--log sheet sheet-in" aria-label="Verlauf">
           {/*
            * Die Ueberschrift steht ueber dem Rollbereich und nicht darin: sie
            * soll stehenbleiben, waehrend man durch zweihundert Zeilen faehrt.
            * Die Zahl daneben ist die Auskunft, die vorher das Abschneiden
            * verschwiegen hat - jetzt sagt sie schlicht, wie viel da ist.
            */}
-          <p className="panel__title log__head">
+          <p className="log__head">
             Verlauf
             <span className="log__total">{entries.length}</span>
           </p>
@@ -83,7 +101,12 @@ export function LogPanel({ entries }: { readonly entries: readonly LogEntry[] })
               const opensRound = previous === undefined || previous.turn !== entry.turn;
 
               return (
-                <li key={entries.length - index} className="log__entry">
+                <li
+                  key={entries.length - index}
+                  className={
+                    entries.length - index > seenAtOpen ? 'log__entry ink-in' : 'log__entry'
+                  }
+                >
                   {opensRound ? <b className="log__round">Runde {entry.turn}</b> : null}
                   {entry.text}
                 </li>

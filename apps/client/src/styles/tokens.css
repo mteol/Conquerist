@@ -1,0 +1,110 @@
+/*
+ * Das Designsystem „Seekarte" - die Massstaebe.
+ *
+ * Farben stehen weiter in `base.css` (sie haengen an `game/labels.ts` und
+ * `shared/seats.ts`). Hier steht alles, was vorher je Regel neu erfunden
+ * wurde: Schriftgrade, Abstaende, Tiefe und Bewegung. Die ausfuehrliche
+ * Begruendung steht in `docs/design-system.md`.
+ *
+ * **Wer einen Wert braucht, der hier fehlt, legt ihn hier an** - nicht in der
+ * Komponente. Eine Dauer von 190 ms neben einer von 180 ms ist kein Entwurf.
+ */
+
+:root {
+  /*
+   * Schrift - zwei Stimmen.
+   *
+   * `--font-ui` traegt alles Bedienbare und jede Zahl.
+   * `--font-chart` ist die Kartenschrift: eine kursive Antiqua, wie Seekarten
+   * alles beschriften, was Wasser ist. Sie steht ausschliesslich **auf der
+   * See** - Bereichsnamen, Statuszeilen, Hinweise - und nie auf Pergament und
+   * nie in einem Knopf. Kein Webfont: die Reihe nimmt, was das Geraet hat.
+   */
+  --font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, ui-sans-serif, sans-serif;
+  --font-chart: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+
+  /*
+   * Schriftgrade. Nichts steht unter 12 px: die alten Kleinlabels standen bei
+   * 9 bis 11 px in Versalien und waren am Tisch nicht zu lesen.
+   */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2.125rem;
+
+  /* Abstaende auf einem 4-px-Raster. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  /*
+   * Ecken. Bedienbares ist gefast (`corner-shape: bevel` in `base.css`), der
+   * Radius ist dort die Tiefe der Fase. Spielmaterial behaelt seine Form.
+   */
+  --corner-sm: 5px;
+  --corner-md: 9px;
+  --corner-lg: 14px;
+
+  /*
+   * Die Karte. Drei Tinten fuer drei Windklassen - so unterscheiden
+   * Portolankarten ihre Kurslinien: Hauptwinde dunkel (hier: helle Tinte auf
+   * dunkler See), Halbwinde gruen, Viertelwinde rot. Gemischt aus dem
+   * Bestand (`--on-sea`, `--pasture`, `--hills`), keine neue Palette.
+   */
+  --chart-wind: rgb(233 225 207 / 13%);
+  --chart-half: rgb(127 176 105 / 12%);
+  --chart-quarter: rgb(196 112 74 / 9%);
+  --chart-rose: rgb(233 225 207 / 30%);
+  --chart-rule: rgb(233 225 207 / 22%);
+
+  /*
+   * Tiefe - drei Lagen, mehr gibt es auf einem Tisch nicht.
+   *
+   * `--lift` liegt, `--lift-raised` ist angehoben (beide in `base.css`),
+   * `--sheet` ist ein Blatt, das ueber die Karte gelegt wurde: ein Dialog.
+   */
+  --sheet:
+    0 1px 0 rgb(255 255 255 / 35%) inset, 0 2px 3px rgb(0 0 0 / 30%), 0 18px 40px rgb(0 0 0 / 45%);
+
+  /*
+   * Bewegung.
+   *
+   * Dauer nach Groesse dessen, was sich aendert - nicht nach Laune:
+   *   press   der Finger auf dem Knopf (Antwort auf die eigene Eingabe)
+   *   quick   Zeiger darueber, Schalter, Farbe
+   *   move    etwas Kleines wechselt Platz oder Groesse
+   *   enter   ein Blatt oder eine Leiste kommt an
+   *   exit    dasselbe geht - kuerzer, weil niemand zusieht
+   *   travel  ein Spielstein zieht ueber das Brett
+   *   stage   die grossen Momente: Wurf, Zugwechsel, Sieg
+   */
+  --t-press: 80ms;
+  --t-quick: 140ms;
+  --t-move: 220ms;
+  --t-enter: 320ms;
+  --t-exit: 200ms;
+  --t-travel: 520ms;
+  --t-stage: 900ms;
+
+  /*
+   * Kurven nach Material:
+   *   out     etwas kommt an und bremst (Papier, Schrift)
+   *   in      etwas geht und beschleunigt
+   *   move    Platzwechsel innerhalb des Bildes
+   *   settle  ein Ding aus Holz oder Karton wird hingelegt: ein Hauch zu
+   *           weit, dann liegt es. Nur fuer Spielmaterial - Papier federt nicht.
+   */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.5, 0, 0.9, 0.4);
+  --ease-move: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-settle: cubic-bezier(0.3, 1.45, 0.5, 1);
+
+  /* Der Versatz zwischen Dingen, die nacheinander ankommen. Hoechstens fuenf Lagen. */
+  --stagger: 45ms;
+}

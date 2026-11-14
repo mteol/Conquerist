@@ -1,0 +1,501 @@
+/*
+ * Die Konto-Ecke.
+ *
+ * Eine Zustandsanzeige, kein vierter Weg: der Name in Kartenschrift, die
+ * Aktionen als leise Linienknoepfe auf der See (`.button--ghost`-Familie). Sie
+ * kommt als Schrift herein (`ink-in`) und fuegt sich mit demselben Versatz in
+ * die Reihe des Bildschirms ein, auf dem sie steht.
+ */
+.corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  /* Ohne das bricht der Inhalt im schmalen Fenster nicht um, er wird von
+     `.start`s `overflow: hidden` abgeschnitten - „Anmelden" waere dann nicht
+     nur unsichtbar, sondern unklickbar (Regel 7). `flex-end`, damit
+     umgebrochene Zeilen weiter an der Kante haengen, an der die Ecke sitzt. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  align-items: center;
+  /* Rechts liegt seit dem Ton das Zahnrad fest verankert. Ohne diesen Platz
+     laege „Abmelden" darunter - und im schmalen Fenster, wo die Ecke umbricht,
+     gleich zweizeilig. */
+  padding: var(--space-4) 3.6rem var(--space-4) var(--space-5);
+  font-size: var(--text-sm);
+  animation: ink-in var(--t-enter) linear backwards;
+  animation-delay: calc(var(--t-move) + min(var(--i, 4), 5) * var(--stagger));
+}
+
+.corner__who {
+  font-size: var(--text-md);
+}
+
+.corner__action {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--chart-rule);
+  border-radius: var(--corner-sm);
+  corner-shape: bevel;
+  background: transparent;
+  color: var(--on-sea);
+  font: inherit;
+  cursor: pointer;
+  /* Auf der See hebt sich nichts: der Knopf fuellt sich (wie `.button--ghost`). */
+  transition:
+    border-color var(--t-quick) linear,
+    background-color var(--t-quick) linear;
+}
+
+.corner__action:hover {
+  border-color: color-mix(in srgb, var(--on-sea) 55%, transparent);
+  background: color-mix(in srgb, var(--on-sea) 8%, transparent);
+}
+
+.corner__action:active {
+  background: color-mix(in srgb, var(--on-sea) 14%, transparent);
+  transition-duration: var(--t-press);
+}
+
+/* --- Startbildschirm ------------------------------------------------------ */
+
+/*
+ * Zweispaltig: links die Bedienung, rechts das Brett, das gleich gespielt
+ * wird. Das Brett ist keine Dekoration - es entsteht aus dem Seed im Formular
+ * und aendert sich beim Tippen. Deshalb steht es gross und nicht als
+ * Vorschaubildchen. Der Grund (Tiefsee, Untiefe, Karte) steht in `start.css`.
+ */
+.start {
+  display: grid;
+  /*
+   * Die linke Spalte bemisst sich an der Bedienung (Namenszeilen, Felder).
+   * **Ohne Brett faellt die zweite Spalte weg, nicht bloss ihr Inhalt** -
+   * „Beitreten" und „Weiterspielen" kennen keinen Seed, und das Panel soll
+   * nicht in einem Drittel des Fensters stehen (siehe `:has` unten).
+   */
+  grid-template-columns: minmax(20rem, 34rem) 1fr;
+  /* `minmax(0, 1fr)`: eine `auto`-Zeile waechst mit dem Panel (bei sechs
+     Spielern auf 922 Pixel im 615er Fenster) und `max-height` schneidet dann
+     bloss ab - das Panel scrollt nie. Mit fester Zeilenhoehe greift sein
+     `overflow-y: auto`. */
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 100vh;
+  /*
+   * **Und nicht mehr als das Fenster.** Ohne diese Zeile wuchs die Rasterzeile
+   * mit dem Panel mit: bei sechs Spielern stand es auf 902 Pixel in einem 889
+   * Pixel hohen Fenster, und die ganze Seite bekam einen Rollbalken. Mit
+   * `max-height` begrenzt die Zeile das Panel, und dessen `overflow-y: auto`
+   * faengt den Rest ab.
+   */
+  max-height: 100vh;
+}
+
+/* Beide Spalten liegen ueber der Karte: sie ist absolut gesetzt und steht im
+   Markup davor. */
+.start__panel,
+.start__preview {
+  position: relative;
+}
+
+.start__panel {
+  display: flex;
+  flex-direction: column;
+  /*
+   * `min-height: 0` ist die Bedingung dafuer, dass die Rasterzeile oben
+   * ueberhaupt begrenzen kann: ein Rasterfeld ist von Haus aus mindestens so
+   * hoch wie sein Inhalt.
+   */
+  min-height: 0;
+  gap: var(--space-3);
+  padding: clamp(1.5rem, 4vw, 3rem);
+  /* Oben so viel Luft, wie die Konto-Ecke hoch ist - sonst laeuft die
+     Ueberschrift im schmalen Fenster darunter hindurch. */
+  padding-top: 4rem;
+  /* Ein Netz, kein Entwurf: wer die Schriftgroesse hochstellt, sprengt jede
+     Rechnung, und abgeschnitten waere schlimmer als scrollbar (Regel 7). */
+  overflow-y: auto;
+}
+
+/* Der Weg zurueck zum Titel: eine Ebene darueber, kein vierter Weg. Ein
+   gezeichneter Winkel davor - ein „<" aus der Systemschrift waere das einzige
+   gesetzte Zeichen der Flaeche. */
+.start__back {
+  align-self: flex-start;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding-left: var(--space-3);
+}
+
+.start__back svg {
+  width: 0.6rem;
+  height: 0.6rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/*
+ * Die Ueberschrift je Weg, ein grosses Wort ohne Ueberzeile. Schrift auf der
+ * See: sie erscheint (`ink-in`), das Formular darunter wird aufgelegt
+ * (`sheet-in`). Beides haengt an `--i` aus `StartScreen.tsx`.
+ */
+.start__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.start__heading {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--parchment);
+}
+
+.start__head,
+.start__form,
+.start__back {
+  animation-delay: calc(var(--i, 0) * var(--stagger));
+}
+
+/* Der Traeger unter der Ueberschrift. Er faellt als ein Stueck herein und
+   haelt den Abstand, den `.start__panel` sonst zwischen seinen Kindern haelt. */
+.start__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/*
+ * Unter 26rem (~416px) wird aus dem Umbruch der Regelfall, nicht die
+ * Ausnahme: „Gast" plus zwei Aktionen passen dort nicht mehr in eine Zeile.
+ * Engere Masse halten die Ecke trotzdem klein, und `.start__panel` bekommt
+ * mehr Luft nach oben - sonst liefe die Ueberschrift unter die jetzt hoehere,
+ * zweizeilige Ecke. Beides gehoert zusammen.
+ */
+@media (max-width: 26rem) {
+  .corner {
+    gap: var(--space-2);
+    /* 3,25rem und nicht 2,9rem: bei 392 px lagen sonst die letzten drei Pixel
+       von „Anmelden" unter dem Zahnrad - dort nicht mehr klickbar. */
+    padding: var(--space-3) 3.25rem var(--space-3) var(--space-4);
+    font-size: var(--text-xs);
+  }
+
+  .start__panel {
+    padding-top: 6rem;
+  }
+}
+
+/* --- Felder und Wahlen ---------------------------------------------------- */
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Die Beschriftung ist Kartenschrift (`.chartlabel` am Markup); hier nur der
+   Abstand - in einem Fieldset greift `gap` nicht auf die Legende. */
+.field-group > legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+}
+
+/*
+ * Felder sind Pergament: heller Koerper, dunkle Tinte, gefaste Ecke. Eine
+ * Regel fuer alle Felder dieser Bildschirme - Namen, Seed, Raumcode, Einladung.
+ * Zustaende: Zeiger darueber (Rand dunkler), Fokus (Akzentring aus `base.css`,
+ * dazu ein voller Rand), schreibgeschuetzt (matter) und gesperrt (blass).
+ */
+.seats input,
+.seedrow input,
+.field-group > input,
+.lobby__invite input,
+.lobby__seedfield,
+.lobby__namefield input {
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--corner-sm);
+  corner-shape: bevel;
+  background: var(--parchment);
+  color: var(--ink-base);
+  font: inherit;
+  font-size: var(--text-md);
+  transition: border-color var(--t-quick) linear;
+}
+
+.seats input:hover,
+.seedrow input:hover,
+.field-group > input:hover,
+.lobby__invite input:hover,
+.lobby__seedfield:hover,
+.lobby__namefield input:hover {
+  border-color: var(--ink-base-muted);
+}
+
+.seats input:focus,
+.seedrow input:focus,
+.field-group > input:focus,
+.lobby__invite input:focus,
+.lobby__seedfield:focus,
+.lobby__namefield input:focus {
+  border-color: var(--ink-base);
+}
+
+.seats input::placeholder,
+.seedrow input::placeholder,
+.field-group > input::placeholder {
+  color: var(--ink-base-muted);
+}
+
+.seats input:read-only,
+.seedrow input:read-only,
+.lobby__invite input:read-only {
+  background: var(--parchment-2);
+  color: var(--ink-base-muted);
+}
+
+.seats input:disabled,
+.seedrow input:disabled,
+.field-group > input:disabled,
+.lobby__seedfield:disabled,
+.lobby__namefield input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/*
+ * Wahl aus wenigen (Sitzzahl, Regelwerk): ein verstecktes Radiofeld traegt die
+ * Bedeutung, das Label ist der Knopf - Pergament wie jeder Knopf. Der gewaehlte
+ * liegt **eingedrueckt**: flach, mit dunklem Rand, ohne Schatten. Der Rand
+ * ist ein Innenring, damit sich die Masse nicht aendern.
+ */
+.seatcount,
+.variantpick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.seatcount input,
+.variantpick input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.seatcount label,
+.variantpick label {
+  display: grid;
+  place-items: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--corner-md);
+  corner-shape: bevel;
+  background: var(--parchment);
+  color: var(--ink-base);
+  font-size: var(--text-md);
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: var(--lift);
+  transition:
+    transform var(--t-quick) var(--ease-out),
+    box-shadow var(--t-quick) var(--ease-out),
+    background-color var(--t-quick) linear,
+    border-color var(--t-quick) linear;
+}
+
+.seatcount label:hover,
+.variantpick label:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--lift-raised);
+}
+
+.seatcount label:active,
+.variantpick label:active {
+  transform: translateY(1px);
+  box-shadow: none;
+  transition-duration: var(--t-press);
+}
+
+.seatcount input:checked + label,
+.variantpick input:checked + label {
+  transform: none;
+  border-color: var(--ink-base);
+  background: var(--parchment-2);
+  box-shadow: inset 0 0 0 1px var(--ink-base);
+}
+
+.seatcount input:focus-visible + label,
+.variantpick input:focus-visible + label {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.seatcount input:disabled + label,
+.variantpick input:disabled + label {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/*
+ * Eine Zeile je Sitz, mit dem Bauwerk in Spielerfarbe davor. Die Masse sind
+ * gegen den Sechserfall gerechnet: sechs Namenszeilen sind das, was den
+ * lokalen Bildschirm ueber das Fenster schiebt.
+ */
+.seats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.seats li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.seats input {
+  flex: 1;
+  padding-block: var(--space-1);
+}
+
+/* Der Inhalt eines Weges: Zeile in Kartenschrift, darunter die Bedienung. */
+.way {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.way > p {
+  margin: 0;
+}
+
+.piece {
+  flex: 0 0 auto;
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.seedrow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.seedrow input {
+  flex: 1;
+}
+
+.start__note {
+  margin: 0;
+}
+
+/* Die Etappe-0-Diagnose: vorhanden und bedienbar, aber optisch ganz zurueck. */
+.start__diagnostics {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--chart-rule);
+}
+
+.start__diagnostics > summary {
+  cursor: pointer;
+  color: var(--on-sea-muted);
+  font-size: var(--text-xs);
+}
+
+.start__diagnostics[open] > summary {
+  margin-bottom: var(--space-3);
+}
+
+.start__diagnostics .metrics,
+.start__diagnostics .status,
+.start__diagnostics .button {
+  margin-top: var(--space-2);
+}
+
+/* Rechte Haelfte: das Brett zum eingestellten Seed. */
+.start__preview {
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  overflow: hidden;
+}
+
+.start__preview .board {
+  width: 100%;
+  height: 100%;
+  max-height: 82vh;
+}
+
+/*
+ * Ohne zweite Spalte hoert das Panel bei seiner eigenen Breite auf.
+ *
+ * `:has()` fragt nach dem, was wirklich da ist, statt eine Klasse zu setzen,
+ * die dasselbe noch einmal behauptet.
+ */
+.start:not(:has(.start__preview)) {
+  grid-template-columns: minmax(20rem, 34rem);
+}
+
+@media (max-width: 62rem) {
+  .start {
+    --shoal-x: 50%;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    /* Untereinander passt es nicht mehr ins Fenster, und das ist in Ordnung -
+       die Rechnung „ohne Scrollen" gilt fuer das Querformat. */
+    max-height: none;
+  }
+
+  .start__preview {
+    order: -1;
+    min-height: 44vh;
+    /* Oben so viel Luft, wie die Konto-Ecke hoch ist - sie liegt ueber dem Brett. */
+    padding: 3.5rem var(--space-4) var(--space-4);
+  }
+}
+
+/* Auf groben Zeigern (Finger) mindestens 44 px Trefferflaeche. */
+@media (pointer: coarse) {
+  .seats input,
+  .seedrow input,
+  .field-group > input,
+  .lobby__invite input,
+  .lobby__seedfield,
+  .lobby__namefield input,
+  .corner__action {
+    min-height: 2.75rem;
+  }
+}
+
+/* Gesperrt ist Pergament, blass und flach (`.button:disabled`); Gelb erst, wenn der Schritt moeglich ist. */
+.start .button--go:disabled {
+  background: var(--parchment);
+  color: var(--ink-base);
+}
+
+/* --- Handkarten ----------------------------------------------------------- *
+ *
+ * Ein Stapel je Ressource. Die Kartenfarbe ist die Gelaendefarbe vom Brett -
+ * wer Lehm sucht, sucht die Farbe der Huegel. Die Zahl steht als Plakette in
+ * der Ecke, statt gezaehlt zu werden; die Stapeltiefe darunter gibt trotzdem
+ * den schnellen Eindruck.
+ */

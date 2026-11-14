@@ -2,19 +2,13 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_TRACK_LEVEL, TRACK_IDS, type TrackId } from '@conquerist/shared';
 import { render, screen } from '../test/dom';
-import { TRACK_ABBR } from '../game/labels';
+import { TRACK_COLORS_ON_SEA, TRACK_NAMES } from '../game/labels';
 import { TrackStrip } from './TrackStrip';
-// Roher Dateiinhalt statt `node:fs`, wie in `AccountCorner.test.tsx`: das
-// Client-Paket hält sich bewusst frei von Node-Typen.
-import css from '../index.css?raw';
 
 /*
- * Befund B (Aufgabe 11): die kompakte Leiste je Sitz stand mit `--track-color`
- * auf der Tiefsee - der Wert ist für den hellen Würfelkörper gemischt und
- * riss dort den Kontrast (Politik 1,25:1, Wissenschaft 1,34:1 gegen den
- * aktiven, olivfarben hinterlegten Sitz). jsdom rechnet kein Layout und
- * keinen Kontrast - was sich prüfen läßt, ist, daß die Leiste jetzt die
- * Tiefsee-Variante der Bereichsfarbe liest.
+ * Befund B (Aufgabe 11): die Bereichsfarbe muss auf der Tiefsee tragen. Die
+ * Leiste liest deshalb die `-on-sea`-Variante (`--scale-ink` am Maßstab); den
+ * Kontrast selbst rechnet jsdom nicht, das bleibt der Browser-Durchlauf.
  */
 
 /*
@@ -44,62 +38,36 @@ describe('TrackStrip (Rendering)', () => {
 
     for (let step = 1; step <= MAX_TRACK_LEVEL; step += 1) {
       const filled = step <= 2;
-      expect(
-        screen
-          .getByTestId(`trackstrip-p1-trade-${step}`)
-          .classList.contains('trackstrip__dot--filled'),
-      ).toBe(filled);
-      expect(
-        screen
-          .getByTestId(`trackstrip-p1-politics-${step}`)
-          .classList.contains('trackstrip__dot--filled'),
-      ).toBe(false);
-      expect(
-        screen
-          .getByTestId(`trackstrip-p1-science-${step}`)
-          .classList.contains('trackstrip__dot--filled'),
-      ).toBe(true);
+      expect(screen.getByTestId(`trackstrip-p1-trade-${step}`).classList.contains('is-on')).toBe(
+        filled,
+      );
+      expect(screen.getByTestId(`trackstrip-p1-politics-${step}`).classList.contains('is-on')).toBe(
+        false,
+      );
+      expect(screen.getByTestId(`trackstrip-p1-science-${step}`).classList.contains('is-on')).toBe(
+        true,
+      );
     }
   });
 
-  it('trägt das Kürzel je Bereich, nicht nur die Farbe (Designregel 7)', () => {
-    render(<TrackStrip player="p1" levels={levels({})} />);
+  it('nennt den Bereich beim Namen, nicht nur in der Farbe (Designregel 7)', () => {
+    render(<TrackStrip player="p1" levels={levels({ trade: 2 })} />);
 
     const strip = screen.getByTestId('trackstrip-p1');
     for (const track of TRACK_IDS) {
-      expect(strip.textContent).toContain(TRACK_ABBR[track]);
+      expect(strip.textContent).toContain(TRACK_NAMES[track]);
     }
-  });
-});
-
-/** Liefert den Inhalt der ersten Regel `selector { ... }` ab `fromIndex`. */
-function ruleBody(selector: string, fromIndex = 0): string {
-  const needle = `${selector} {`;
-  const start = css.indexOf(needle, fromIndex);
-  if (start === -1) throw new Error(`Regel nicht gefunden: ${selector}`);
-  const openBrace = start + needle.length - 1;
-  let depth = 1;
-  let i = openBrace + 1;
-  while (depth > 0) {
-    if (css[i] === '{') depth += 1;
-    else if (css[i] === '}') depth -= 1;
-    i += 1;
-  }
-  return css.slice(openBrace + 1, i - 1);
-}
-
-describe('Kompakte Leiste im CSS (index.css)', () => {
-  it('färbt das Kürzel mit der Tiefsee-Variante der Bereichsfarbe', () => {
-    expect(ruleBody('.trackstrip__abbr')).toMatch(/color:\s*var\(--track-color-on-sea\)/);
+    // Und beim Darüberfahren: der Name als Titel der Auskunft, die Stufe als Text.
+    const row = strip.querySelector('[data-hint-title="Handel"]');
+    expect(row?.getAttribute('data-hint')).toBe(`Stufe 2 von ${MAX_TRACK_LEVEL}`);
   });
 
-  it('färbt den leeren Punkt mit derselben Tiefsee-Variante', () => {
-    expect(ruleBody('.trackstrip__dot')).toMatch(/border:\s*1px solid var\(--track-color-on-sea\)/);
-  });
+  it('färbt den Maßstab mit der Tiefsee-Variante der Bereichsfarbe', () => {
+    render(<TrackStrip player="p1" levels={levels({})} />);
 
-  it('färbt den gefüllten Punkt mit derselben Tiefsee-Variante', () => {
-    expect(ruleBody('.trackstrip__dot--filled')).toMatch(
-      /background:\s*var\(--track-color-on-sea\)/,
+    const rows = screen.getByTestId('trackstrip-p1').querySelectorAll<HTMLElement>('.scalebar');
+    expect([...rows].map((row) => row.style.getPropertyValue('--scale-ink'))).toEqual(
+      TRACK_IDS.map((track) => TRACK_COLORS_ON_SEA[track]),
     );
   });
 });

@@ -159,7 +159,9 @@ export function DiceTray({
        * man am Zug ist, und schiebt Hand und Knoepfe darunter weg.
        */}
       <span
-        className={canRoll && !flying ? 'dice__call dice__call--waiting' : 'dice__call'}
+        className={
+          canRoll && !flying ? 'dice__call chartlabel dice__call--waiting' : 'dice__call chartlabel'
+        }
         aria-hidden="true"
       >
         {canRoll && !flying ? 'Würfeln' : ''}

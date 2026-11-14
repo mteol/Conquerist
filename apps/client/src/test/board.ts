@@ -18,7 +18,7 @@ import { hexFromId } from '@conquerist/shared';
  * Genauigkeit weg.
  */
 export function tapBoardAt(container: HTMLElement, point: Point): void {
-  const svg = container.querySelector('svg');
+  const svg = container.querySelector<SVGSVGElement>('svg.board');
   if (svg === null) throw new Error('tapBoardAt: kein Brett im Bildschirm');
 
   svg.getScreenCTM = () =>

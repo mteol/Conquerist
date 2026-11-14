@@ -1,0 +1,53 @@
+/*
+ * Der Modusbalken: was gerade auf dem Brett zu tun ist.
+ *
+ * Er liegt auf der See (Tiefsee-Grund, Kartenschrift-Ton) und ist **die eine
+ * gelb gefasste Stelle**: Gelb heisst „jetzt dran", und der Modus ist genau das.
+ * Oben statt unten, weil unten die Ablage liegt; unter dem Statussatz und
+ * rechtsbuendig, weil beide dasselbe Thema haben und sonst bei 1184 px
+ * uebereinanderstuenden. Der Abbrechen-Knopf darin ist ein Nebenweg
+ * (`.button--ghost`). Er kommt einmal an (`sheet-in`) und steht dann.
+ */
+.mode {
+  position: absolute;
+  top: calc(var(--topline-bottom, 3.25rem) + var(--space-2));
+  right: var(--space-4);
+  z-index: 6;
+  max-width: calc(100% - var(--space-5) - var(--space-4));
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--accent);
+  border-radius: var(--corner-md);
+  background: var(--sea-800);
+  box-shadow: var(--lift);
+  color: var(--on-sea);
+  font-size: var(--text-md);
+  animation: sheet-in var(--t-enter) var(--ease-out) backwards;
+}
+
+/* --- Wartebereich --------------------------------------------------------- *
+ *
+ * **Dieselbe Ordnung wie der Eingang: links das Bedienbare, rechts das Brett.**
+ * Das Brett zeigt, was die Einstellungen links bedeuten - ohne es waere
+ * „Neu wuerfeln" eine Handlung ohne Rueckmeldung.
+ *
+ * **Und er passt ohne Scrollen - das ist eine Anforderung, keine Vorliebe.** Auf
+ * dem einen Bildschirm, auf dem es nichts zu tun gibt ausser warten, darf
+ * „Partie starten" nie unterhalb des Randes liegen. Die Hebel, alle gemessen:
+ * zwei Spalten im Panel (`.lobby__body`: Tisch und Einstellungen), eine
+ * Einstellungsliste statt drei Kaesten (`.lobby__row`), zwei Knoepfe
+ * nebeneinander im Fuss. Im schlechtesten Fall nachgemessen: sechs Plaetze,
+ * alle Einstellungen offen. Wer hier eine Zeile hinzufuegt, misst nach.
+ */
+.lobby {
+  display: grid;
+  /*
+   * **50rem und nicht 44** - die Spalte darf sich das nehmen, weil das Brett
+   * daneben nicht an der Breite haengt, sondern an der Hoehe. Unter rund 40rem
+   * stehen sechs Farbknoepfe nicht mehr in zwei Zeilen, sondern in drei.
+   */
+  grid-template-columns: minmax(26rem, 50rem) 1fr;
+  min-height: 100vh;
+}

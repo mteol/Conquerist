@@ -11,24 +11,20 @@ describe('Hauptmenue', () => {
 
     // Ein Wort durch den ganzen Ablauf: „Partie", wie ueberall sonst (Regel 8).
     const entries = screen.getAllByRole('button').map((node) => node.textContent);
-    expect(entries).toEqual([
-      'Partie starten — online',
-      'Partie starten — lokal',
-      'Partie beitreten',
-    ]);
+    expect(entries).toEqual(['Online spielen', 'An einem Gerät spielen', 'Partie beitreten']);
   });
 
   it('meldet, welchen Weg jemand gewaehlt hat', async () => {
     const onChoose = vi.fn();
     render(<MenuScreen onChoose={onChoose} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Partie starten — lokal' }));
+    await userEvent.click(screen.getByRole('button', { name: 'An einem Gerät spielen' }));
     expect(onChoose).toHaveBeenCalledWith('local');
 
     await userEvent.click(screen.getByRole('button', { name: 'Partie beitreten' }));
     expect(onChoose).toHaveBeenCalledWith('join');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Partie starten — online' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Online spielen' }));
     expect(onChoose).toHaveBeenCalledWith('online');
   });
 
@@ -40,13 +36,13 @@ describe('Hauptmenue', () => {
     expect(screen.getByRole('button', { name: /Weiterspielen/ })).toBeDefined();
   });
 
-  it('zeichnet das Hexfeld als Hintergrund, nicht als Bild', () => {
+  it('legt die Seekarte als Hintergrund, nicht ein Hexfeld', () => {
     const { container } = render(<MenuScreen onChoose={vi.fn()} />);
 
-    // Dasselbe Raster wie im Spiel, mit denselben Funktionen gesetzt.
-    const field = container.querySelector('.hexfield');
-    expect(field).not.toBeNull();
-    expect(field?.querySelectorAll('polygon').length).toBeGreaterThan(50);
+    // Das Windstrahlennetz mit seiner Windrose - auf jedem Bildschirm dieselbe.
+    expect(container.querySelector('.seachart')).not.toBeNull();
+    expect(container.querySelector('.seachart__rose')).not.toBeNull();
+    expect(container.querySelector('.hexfield')).toBeNull();
   });
 
   it('traegt den Titel als gezeichnete Wortmarke, den Namen trotzdem als Text', () => {
@@ -59,22 +55,19 @@ describe('Hauptmenue', () => {
     expect(container.querySelectorAll('.wordmark__letter').length).toBe(10);
   });
 
-  it('laesst den Aufprall von innen nach aussen laufen, nicht ueberall zugleich', () => {
+  it('traegt den Abstand zur Mitte an jeder Linie - daran haengt die Welle', () => {
     const { container } = render(<MenuScreen onChoose={vi.fn()} />);
 
-    const delays = [...container.querySelectorAll<HTMLElement>('.hexfield polygon')].map((hex) =>
-      Number.parseInt(hex.style.animationDelay, 10),
-    );
+    // Dieselbe Karte wie im Spiel. Die Welle laeuft von innen nach aussen,
+    // weil jede Linie ihren Abstand `--d` (0..1) kennt; ohne ihn gaebe es
+    // nichts, woraus eine Verzoegerung zu rechnen waere.
+    const lines = [...container.querySelectorAll<SVGElement>('.seachart__line')];
+    expect(lines.length).toBeGreaterThan(50);
 
-    // Das mittlere Hex wird zuerst erreicht, das aeusserste zuletzt. Waeren
-    // alle Verzoegerungen gleich, blinkte die Flaeche statt zu schwingen.
-    expect(Math.min(...delays)).toBeLessThan(Math.max(...delays));
-    expect(new Set(delays).size).toBeGreaterThan(3);
-
-    // Und jedes Hex kennt seine Ruhelage - die Welle beginnt und endet dort,
-    // wo das Hex ohnehin liegt. Ohne `--rest` faellt es danach auf null.
-    const first = container.querySelector<HTMLElement>('.hexfield polygon');
-    expect(Number(first?.style.getPropertyValue('--rest'))).toBeGreaterThan(0);
+    const distances = lines.map((line) => Number(line.style.getPropertyValue('--d')));
+    expect(Math.min(...distances)).toBeLessThan(0.3);
+    expect(Math.max(...distances)).toBeGreaterThan(0.5);
+    expect(new Set(distances).size).toBeGreaterThan(3);
   });
 
   it('gibt jedem Weg seinen Platz in der Reihe, auch mit Weiterspielen davor', () => {

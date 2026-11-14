@@ -1,0 +1,667 @@
+/*
+ * Der Wuerfelbecher.
+ *
+ * Er hat den Knopf „Wuerfeln" ersetzt: geworfen wird an den Wuerfeln selbst.
+ * Sie standen dafuer erst oben in der Aktionsleiste und liegen jetzt ganz
+ * aussen in der unteren rechten Ecke - der einzige Ort, den eine Maus ohne
+ * Zielen erreicht, und das fuer den Knopf, mit dem jeder Zug anfaengt.
+ *
+ * Rechtsbuendig, seit die Wuerfel in der Bildschirmecke liegen: die Aufschrift
+ * „Wuerfeln" haengt unter ihnen, und die feste Kante ist jetzt die rechte. An
+ * der linken ausgerichtet ruecke sie mit, sobald neben den Augen die Summe
+ * erscheint und der Becher breiter wird.
+ */
+/*
+ * **Die Schale hat keinen Koerper mehr, also braucht sie die helle Tinte.**
+ *
+ * Genau das steht seit dem Wegfall des Bechers weiter unten an
+ * `.dice--waiting` als bereits getan beschrieben - „dunkle Tinte waere dort
+ * dieselbe unsichtbare Schrift". Getan war es nie: dort wurden die zwei Zeilen
+ * nur **entfernt**, und ohne eine Umstellung faellt `--ink` auf den Grundwert
+ * aus `:root` zurueck, und der ist die dunkle Tinte. Gemessen stand die
+ * Wurfsumme damit bei 1.13:1 auf der Tiefsee und die Aufforderung „Wuerfeln"
+ * bei 2.5:1 - die eine praktisch unsichtbar, die andere unter jeder Norm.
+ *
+ * **Die Zeilen stehen an der Huelle und nicht am Becher.** Die Aufforderung
+ * ist eine Schwester der Wuerfel und keine Tochter; am Becher gesetzt haette
+ * die Umstellung die Summe geholt und das Wort daneben stehen lassen - also
+ * genau den halben Fix, der aussieht wie ein ganzer.
+ *
+ * Der Wuerfel holt sich seine dunkle Tinte in `.die` zurueck: er ist das
+ * einzige Ding hier mit einer hellen Flaeche.
+ *
+ * Aufgefallen ist beides erst, als die Summe eine gezeichnete Form wurde und
+ * jemand nachsah, ob sie ankommt. **Ein Kommentar, der eine Absicht
+ * beschreibt, ist kein Nachweis, dass sie im Blatt steht.**
+ */
+.dice-tray {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-end;
+  --ink: var(--on-sea);
+  --ink-muted: var(--on-sea-muted);
+
+  /* Die Flaeche eines Wuerfels: heller als `--parchment`, damit er auf Pergament und See als Ding steht. */
+  --die-face: #fbf6ea;
+}
+
+/*
+ * Die Wuerfel liegen auf dem Tisch - der Becher darum ist weg.
+ *
+ * Er war eine Pergamentplatte mit Rand und Kontaktschatten, also derselbe
+ * Koerper, den auch die Bauteile und der Kaufstapel einmal hatten und aus
+ * demselben Grund verloren haben: **ein Wuerfel ist selbst das Ding.** Er hat
+ * eine helle Flaeche, eine Kante und einen Schatten; eine zweite helle Flaeche
+ * darunter macht daraus ein Bedienelement mit einem Bild darin.
+ *
+ * Der Knopf bleibt ein Knopf - er ist nur unsichtbar geworden. Was man
+ * anfasst, sind die Wuerfel.
+ */
+.dice {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: default;
+}
+
+.dice__faces {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.dice__total {
+  min-width: 1.4rem;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Der Wurfruf: Kartenschrift (`.chartlabel` im Markup), Satzschreibung. Er steht
+ * auch leer da - sonst waechst die Leiste um seine Hoehe, sobald jemand am Zug
+ * ist, und schiebt Hand und Karten darunter weg.
+ */
+.dice__call {
+  min-height: 1.6em;
+  font-size: var(--text-lg);
+  line-height: 1.5;
+}
+
+/*
+ * Wer werfen darf, sieht es an drei Dingen - und keines davon ist ein Rahmen:
+ * die Wuerfel stehen **einmal** hingestellt da (`piece-in`) und bleiben danach
+ * angehoben mit gelber Linie, das Wort „Würfeln" darunter steht in Gelb, und der
+ * Zeiger wird zur Hand. Nichts schlaegt oder blinkt ohne Ende: was auf eine
+ * Handlung wartet, zeigt das einmal beim Erscheinen und danach durch seinen
+ * Zustand. Das Wort traegt die Auskunft auch dort, wo Bewegung abbestellt ist.
+ *
+ * Die Wuerfel liegen auf der See: die helle Tinte steht deshalb an `.dice`
+ * selbst; der Wuerfel holt sich seine dunkle in `.die` zurueck.
+ */
+.dice--waiting {
+  cursor: pointer;
+}
+
+/*
+ * Ein Wuerfel ist ein Ding mit heller Flaeche - also braucht er die dunkle
+ * Tinte, auch wenn die Leiste um ihn herum ihre auf den Grund umgestellt hat.
+ *
+ * Ohne diese zwei Zeilen erbt `.die__pip` das helle `--ink` der Bedienleiste
+ * und zeichnet cremefarbene Augen auf eine cremefarbene Flaeche: im Browser
+ * standen da zwei leere Kaestchen. Derselbe Fehler wie bei den unsichtbaren
+ * Strassen in Etappe 3, nur ueber eine Variable statt ueber die Kaskade.
+ */
+.die {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  padding: 0.32rem;
+  border: 1px solid var(--parchment-edge);
+  border-radius: var(--corner-sm);
+  --ink: var(--ink-base);
+  --ink-muted: var(--ink-base-muted);
+  background: var(--die-face);
+  box-shadow:
+    inset 0 -2px 0 rgb(0 0 0 / 8%),
+    var(--lift);
+  color: var(--ink);
+  font-weight: 700;
+  transition:
+    transform var(--t-quick) var(--ease-out),
+    box-shadow var(--t-quick) var(--ease-out);
+}
+
+.die--red {
+  border-color: rgb(0 0 0 / 35%);
+  --ink: var(--parchment);
+  background: var(--die-red);
+}
+
+.die--numeral {
+  display: grid;
+  place-items: center;
+  font-size: var(--text-lg);
+}
+
+/*
+ * Der Ereigniswuerfel: ein Zeichen statt neun Punktplaetzen.
+ *
+ * Deshalb ein eigenes Raster - das 3x3 der Augenwuerfel setzte ein einzelnes
+ * Kind in die Mitte einer von neun Zellen statt in die Mitte des Wuerfels.
+ */
+.die--event {
+  grid-template-columns: 1fr;
+  padding: 0.24rem;
+}
+
+.die__event {
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * Das Schiff ist dunkel wie die Augen der anderen Wuerfel - es ist die Gefahr
+ * und kein Bereich, und eine vierte Farbe daneben waere eine Bedeutung, die es
+ * nicht gibt.
+ */
+.die__event-ship {
+  fill: var(--ink);
+}
+
+.die__event-mast {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+/*
+ * Der Torbogen ist eine Linie, das Motiv darin die Flaeche.
+ *
+ * 1.8 und nicht 2.2: im Browser gemessen sind das 2.9 statt 3.5 Pixel auf
+ * einer 38 Pixel breiten Seite. Bei 3.5 war der Rahmen der Held und das Motiv
+ * der Zusatz - genau umgekehrt zur Absicht.
+ */
+.die__event-gate {
+  fill: currentcolor;
+}
+
+.die__event-arch {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.die__event-gate--trade {
+  color: var(--track-trade);
+}
+
+.die__event-gate--politics {
+  color: var(--track-politics);
+}
+
+.die__event-gate--science {
+  color: var(--track-science);
+}
+
+/*
+ * Die Binnenlinien der Motive stehen sonst in Pergament - auf dem hellen
+ * Wuerfelkoerper waeren sie unsichtbar. Hier schneiden sie hell in die
+ * Bereichsfarbe.
+ */
+.die__event-gate .card__glyph-cut {
+  stroke: var(--die-face);
+}
+
+/* Vor dem ersten Wurf: ein Wuerfel, der noch nichts zeigt. */
+.die--blank {
+  opacity: 0.45;
+}
+
+.die__pip {
+  width: 0.46rem;
+  height: 0.46rem;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.die__pip--empty {
+  background: transparent;
+}
+
+/*
+ * Der Eingang der Aufforderung: die Wuerfel werden hingestellt, das Wort
+ * erscheint. `:not(--flying)`, weil `dice--waiting` an `canRoll` haengt und die
+ * Klickkarte waehrend des Fluges weiter gilt - ein Eingang, der dort liefe,
+ * skalierte die Perspektive, durch die die Kuben gerade fliegen.
+ */
+.dice--waiting .dice__faces:not(.dice__faces--flying) {
+  animation: piece-in var(--t-enter) var(--ease-settle) backwards;
+}
+
+.dice__call--waiting {
+  color: var(--accent);
+  animation: ink-in var(--t-enter) linear backwards;
+}
+
+/* Stehender Zustand: angehoben, gelb gefasst (derselbe Ring wie bei spielbaren Karten). */
+.dice--waiting .dice__faces:not(.dice__faces--flying) .die {
+  box-shadow:
+    var(--lift-raised),
+    0 0 0 2px var(--accent);
+}
+
+/* Wartend ist der leere Wuerfel nicht mehr "noch nichts", sondern das Ziel: volle Deckkraft. */
+.dice--waiting .die--blank {
+  opacity: 1;
+}
+
+/* Zeiger darueber: der Wurf wird greifbar - die Wuerfel heben sich noch ein Stueck; gedrueckt setzen sie sich. */
+.dice--waiting:hover:not(:disabled) .dice__faces:not(.dice__faces--flying) .die {
+  transform: translateY(-2px);
+}
+
+.dice--waiting:active:not(:disabled) .dice__faces:not(.dice__faces--flying) .die {
+  transform: translateY(1px);
+  transition-duration: var(--t-press);
+}
+
+@keyframes dice-fall {
+  from {
+    transform: scale(0.72) rotate(-9deg);
+  }
+
+  to {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.dice--fell .die {
+  animation: dice-fall var(--t-move) var(--ease-out);
+}
+
+/* --- Der Wurf ueber das Brett --------------------------------------------- */
+
+/*
+ * Die Buehne fuer die zwei Kuben.
+ *
+ * `perspective` steht hier und nicht am Kubus: eine Perspektive je Element
+ * gaebe jedem Wuerfel seinen eigenen Fluchtpunkt, und zwei Wuerfel nebeneinander
+ * saehen dann aus, als flogen sie in zwei verschiedenen Raeumen. Ein Raum, zwei
+ * Wuerfel.
+ *
+ * `overflow: visible` ist keine Vorsicht, sondern Bedingung: der Wurf verlaesst
+ * seine Ablage um ein Vielfaches ihrer Groesse.
+ */
+.dice__faces--flying {
+  perspective: 900px;
+  overflow: visible;
+}
+
+/*
+ * Der Wurf in vier Lagen - Weg, Sprung, Drehung, Schatten.
+ *
+ * **Warum vier und nicht eine.** Bis hierher stand alles in einem `transform`
+ * am Kubus, und damit hatten die vier Bewegungen **eine** Zeitkurve. Genau
+ * daran ist der Wurf gescheitert: er sah aus, als flogen die Wuerfel kurz zur
+ * Mitte und wieder zurueck. Was ihn zum Bumerang machte, waren zwei Dinge - der
+ * Rueckweg lief in der Luft statt am Boden, und Steigen und Ziehen teilten
+ * sich dieselbe Beschleunigung. Ein geworfener Wuerfel zieht dagegen
+ * gleichmaessig durch und springt dabei mehrfach immer kuerzer: die waagerechte
+ * Bewegung hoert erst auf, wenn die Reibung sie aufbraucht, die senkrechte
+ * schon beim ersten Aufprall.
+ *
+ * Getrennt bekommt jede Bewegung ihre eigene Kurve, und der Schatten - der
+ * eigentliche Traeger des Wortes „Tisch" - bleibt unten liegen, waehrend der
+ * Wuerfel steigt.
+ *
+ * `z-index` hebt den Wurf ueber das Brett; er fliegt darueber, nicht darunter.
+ * Alle vier Lagen teilen sich `--delay` aus `DiceTray.tsx`, sonst faengt der
+ * Schatten des zweiten Wuerfels vor dem Wuerfel an.
+ */
+.throw {
+  position: relative;
+  z-index: 4;
+  display: block;
+  width: 3rem;
+  height: 3rem;
+  transform-style: preserve-3d;
+  animation: throw-path 1050ms linear var(--delay) both;
+}
+
+/*
+ * Der Sprung. Er traegt auch die Groesse: naeher an der Kamera ist groesser,
+ * und beides gehoert zur Hoehe.
+ *
+ * `preserve-3d` steht hier, weil sonst die `perspective` der Buehne nicht bis
+ * zum Kubus durchreicht - eine Zwischenhuelle ohne 3D-Kontext plattet alles
+ * darunter zu einem Bild, und aus dem Wuerfel wuerde ein Aufkleber.
+ */
+.throw__hop {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  animation: throw-hop 1050ms linear var(--delay) both;
+}
+
+/*
+ * Der Schatten ist der Tisch.
+ *
+ * Er haengt an der waagerechten Bahn und nicht am Sprung: er folgt dem Wurf,
+ * aber nicht der Hoehe - genau das macht ihn zur Flaeche, auf der etwas liegen
+ * kann. Weit und blass heisst „weit oben", eng und dunkel heisst „gleich
+ * aufgeschlagen"; das ist dieselbe Auskunft wie in `--lift` gegen
+ * `--lift-raised`, nur bewegt.
+ *
+ * **`translateZ` und nicht `z-index`.** In einem `preserve-3d`-Raum sortiert
+ * der Browser nach Tiefe und nicht nach Stapelindex - ein `z-index: -1` ist
+ * dort schlicht wirkungslos, und der Schatten schnitte quer durch den Wuerfel,
+ * dessen vordere Flaeche 1.5rem vor der Mitte sitzt. Zwei Zentimeter nach
+ * hinten legen ihn sauber dahinter, und das ist obendrein die Stelle, an der
+ * ein Schatten hingehoert.
+ */
+.throw__shadow {
+  position: absolute;
+  bottom: -0.3rem;
+  left: 50%;
+  width: 2.7rem;
+  height: 0.62rem;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(0 0 0 / 68%), transparent);
+  transform: translateX(-50%) translateZ(-2.2rem);
+  animation: throw-shadow 1050ms linear var(--delay) both;
+}
+
+/*
+ * Ein Wuerfel als Koerper.
+ *
+ * Der Ruhezustand traegt schon die Enddrehung, damit zwischen dem Ende der
+ * Animation und dem Aushaengen des Kubus keine falsche Flaeche aufblitzt.
+ */
+.cube {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: rotateX(var(--fx)) rotateY(var(--fy));
+  transform-style: preserve-3d;
+  animation: throw-spin 1050ms linear var(--delay) both;
+}
+
+.cube__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+/*
+ * Die sechs Seiten, je um die halbe Kantenlaenge (1.5rem) nach aussen geschoben.
+ * Welche Augenzahl wo sitzt, steht in `DiceTray.tsx` - hier steht nur, wo
+ * „vorn", „oben" und „rechts" sind.
+ */
+.cube__face--front {
+  transform: translateZ(1.5rem);
+}
+
+.cube__face--back {
+  transform: rotateY(180deg) translateZ(1.5rem);
+}
+
+.cube__face--right {
+  transform: rotateY(90deg) translateZ(1.5rem);
+}
+
+.cube__face--left {
+  transform: rotateY(-90deg) translateZ(1.5rem);
+}
+
+.cube__face--top {
+  transform: rotateX(90deg) translateZ(1.5rem);
+}
+
+.cube__face--bottom {
+  transform: rotateX(-90deg) translateZ(1.5rem);
+}
+
+.cube__face .die {
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * Die waagerechte Bahn: hinaus ueber das Brett, dann ueber den Tisch zurueck.
+ *
+ * **Sie faengt und endet an Ort und Stelle** - `translateX(0)` an beiden Enden.
+ * Damit braucht niemand die Bildschirmkoordinaten der Ablage zu messen; der
+ * Wuerfel verlaesst seinen Platz und kommt darauf zur Ruhe. `--peak-x` steht in
+ * `vw` und kommt aus `DiceTray.tsx`: wie weit „ueber das Brett“ ist, weiss nur
+ * das Fenster.
+ *
+ * **Wo der Bumerang herkam, und es war die Verteilung.** Anfang und Ende sind
+ * derselbe Ort - die Bahn muss also irgendwann umkehren, daran fuehrt kein Weg
+ * vorbei. Ob das nach Wurf oder nach Gummiband aussieht, entscheidet allein,
+ * **wo** der Rueckweg stattfindet. In der ersten Fassung lag der Aufschlag bei
+ * 52 Prozent und dicht an der Ablage: von 460 Pixeln Rueckweg lagen 370 in der
+ * Luft und 90 auf dem Tisch. Man sah einen Bogen hin und einen Bogen zurueck -
+ * genau die Beschreibung, die aus dem Playtest kam.
+ *
+ * Jetzt schlaegt er bei 42 Prozent auf, und zwar **weit draussen** (bei gut
+ * zwei Dritteln des Scheitelwegs). Die restlichen 58 Prozent der Zeit rollt er
+ * ueber den Tisch, und das ist die laengste zusammenhaengende Bewegung des
+ * ganzen Wurfs. Wer ihn ansieht, sieht ihn rollen.
+ *
+ * Die Kurven: hinaus mit `ease-out`, weil ein Wurf aus der Hand ausrollt; ueber
+ * den Scheitel eine weiche S-Kurve; ab dem Aufschlag eine lange Verzoegerung -
+ * das ist die Reibung, und sie ist der Grund, warum die Bewegung ueberhaupt
+ * aufhoert.
+ */
+@keyframes throw-path {
+  0% {
+    transform: translate3d(0, 0, 0);
+    animation-timing-function: cubic-bezier(0.25, 0.5, 0.5, 1);
+  }
+
+  26% {
+    transform: translate3d(var(--peak-x), 0, 0);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
+  }
+
+  /* Aufschlag - weit draussen. Ab hier ist alles Rollen. */
+  42% {
+    transform: translate3d(calc(var(--peak-x) * 0.68), 0, 0);
+    animation-timing-function: cubic-bezier(0.16, 0.62, 0.3, 1);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/*
+ * Der Sprung: einmal hoch, dann drei Aufschlaege, jeder kuerzer als der vorige.
+ *
+ * **Die Aufschlaege sind das, was den Tisch behauptet.** Ein Bogen ohne
+ * Aufschlag ist ein Flug; erst dass die Hoehe dreimal auf null geht und jedes
+ * Mal weniger zurueckkommt, sagt, dass da unten etwas ist.
+ *
+ * **Die Sprunghoehen stehen in `rem` und nicht im Verhaeltnis zum Scheitel.**
+ * Das war der zweite Messbefund: der zweite Sprung stand auf 0.28 des Scheitels
+ * und war damit **82 Pixel** hoch - ein Wurf, kein Aufprall. Ein Wuerfel ist
+ * klein und schwer und springt schlecht; wie hoch er zurueckkommt, haengt an
+ * ihm und nicht daran, wie weit jemand ihn geworfen hat. 1.5rem, 0.6rem,
+ * 0.22rem - je gut vier Zehntel des vorigen.
+ *
+ * **Jede Halbwelle bekommt ihre eigene Kurve.** Hinauf `ease-out`, weil die
+ * Schwerkraft bremst; herunter `ease-in`, weil sie beschleunigt. Und zwar die
+ * quadratischen: mit der ersten Kurve stand der Wuerfel nach der Haelfte der
+ * Steigzeit schon auf 92 Prozent der Hoehe und hing dann oben herum. Ein
+ * geworfener Koerper ist zur Halbzeit auf drei Vierteln - das ist keine
+ * Geschmacksfrage, sondern `v*t - g*t^2/2`.
+ *
+ * `scale` gehoert dazu: was hoeher liegt, ist naeher an der Kamera und damit
+ * groesser. Ohne das waere der Bogen ein Schieben auf der Tischplatte.
+ */
+@keyframes throw-hop {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  26% {
+    transform: translate3d(0, var(--peak-y), 0) scale(1.55);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  42% {
+    transform: translate3d(0, 0, 0) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  54% {
+    transform: translate3d(0, -1.5rem, 0) scale(1.07);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  66% {
+    transform: translate3d(0, 0, 0) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  76% {
+    transform: translate3d(0, -0.6rem, 0) scale(1.03);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  85% {
+    transform: translate3d(0, 0, 0) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  92% {
+    transform: translate3d(0, -0.22rem, 0) scale(1.01);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/*
+ * Die Drehung - **rueckwaerts auf ihr Ziel zu**.
+ *
+ * Der Kubus startet mit ganzen Umdrehungen *vor* seiner Endlage und dreht sich
+ * in sie hinein: er taumelt sichtbar und liegt am Ende trotzdem exakt auf der
+ * geworfenen Zahl, ohne dass irgendwo eine Zufallszahl im Spiel waere. Das
+ * Ergebnis steht schliesslich vorher fest (Architekturregel 2).
+ *
+ * **In der Luft frei, am Boden nur noch um eine Achse.** Das ist der
+ * Unterschied zwischen Taumeln und Rollen, und er ist der Kern des ganzen
+ * Umbaus: bis zum Aufschlag drehen sich beide Achsen, danach steht `--fx` fest
+ * und nur noch `rotateY` laeuft weiter. Ein Wuerfel, der auf dem Tisch liegt,
+ * kann sich nicht mehr in zwei Richtungen ueberschlagen; er kippt ueber seine
+ * Kanten.
+ *
+ * **Und er kippt in Vierteln.** Die letzten Schluesselbilder stehen auf 270,
+ * 180, 90 und 0 Grad - jede Zwischenstufe ist damit wieder eine Lage, in der
+ * eine Flaeche unten liegt. Krumme Winkel dazwischen saehen aus, als schwebe
+ * der Wuerfel durch seine eigene Kante. Die Vierteldrehungen liegen auf
+ * denselben Prozentzahlen wie die Aufschlaege: ein Wuerfel kippt beim
+ * Aufsetzen und nicht dazwischen.
+ */
+@keyframes throw-spin {
+  0% {
+    transform: rotateX(calc(var(--fx) - 1080deg)) rotateY(calc(var(--fy) - 1440deg));
+    animation-timing-function: linear;
+  }
+
+  26% {
+    transform: rotateX(calc(var(--fx) - 360deg)) rotateY(calc(var(--fy) - 720deg));
+    animation-timing-function: linear;
+  }
+
+  42% {
+    transform: rotateX(var(--fx)) rotateY(calc(var(--fy) - 270deg));
+    animation-timing-function: cubic-bezier(0.25, 0.6, 0.4, 1);
+  }
+
+  66% {
+    transform: rotateX(var(--fx)) rotateY(calc(var(--fy) - 180deg));
+    animation-timing-function: cubic-bezier(0.25, 0.6, 0.4, 1);
+  }
+
+  85% {
+    transform: rotateX(var(--fx)) rotateY(calc(var(--fy) - 90deg));
+    animation-timing-function: cubic-bezier(0.3, 0.6, 0.4, 1);
+  }
+
+  100% {
+    transform: rotateX(var(--fx)) rotateY(var(--fy));
+  }
+}
+
+/*
+ * Der Schatten: eng und dunkel am Boden, weit und blass in der Hoehe.
+ *
+ * Er laeuft auf **denselben** Prozentzahlen wie der Sprung - er ist dessen
+ * Gegenstueck und muesste sonst irgendwo eine eigene Physik behaupten. Am
+ * Scheitel ist er fast weg; an jedem Aufschlag ist er am dunkelsten, und genau
+ * dort sieht man ihn als Aufschlag und nicht als Verlauf.
+ */
+@keyframes throw-shadow {
+  0% {
+    opacity: 0.55;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  26% {
+    opacity: 0.12;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(2.1);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  42% {
+    opacity: 0.6;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  54% {
+    opacity: 0.4;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1.24);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  66% {
+    opacity: 0.58;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  76% {
+    opacity: 0.48;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1.1);
+    animation-timing-function: cubic-bezier(0.34, 0, 0.66, 0.34);
+  }
+
+  85% {
+    opacity: 0.56;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1);
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.66, 1);
+  }
+
+  100% {
+    opacity: 0.55;
+    transform: translateX(-50%) translateZ(-2.2rem) scale(1);
+  }
+}

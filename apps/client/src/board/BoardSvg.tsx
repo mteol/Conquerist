@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type JSX } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type JSX } from 'react';
 import {
   boardOf,
   hexFromId,
@@ -79,6 +79,47 @@ export interface BoardSvgProps {
   readonly pending?: Place | null;
   /** Sonderregeln fuer die Auskunft beim Darueberfahren (`hint.ts`). */
   readonly hintRules?: HintRules;
+  /**
+   * Der Wurf, auf den das Brett reagiert: seine Summe und ein Schluessel, der
+   * sich mit jedem neuen Wurf aendert (sonst laeuft die Antwort nur einmal).
+   * `null` ohne Wurf. Das Brett rechnet nichts nach - die Summe kommt fertig.
+   */
+  readonly roll?: { readonly total: number | null; readonly key: string } | null;
+  /** Die Sitzfarbe dessen, der gerade baut - die Vorschau unter dem Zeiger traegt sie. */
+  readonly previewColor?: string | undefined;
+}
+
+/** Ein Ort als Zeichenkette - Schluessel fuer Zeiger und Staffelung. */
+const placeKey = (place: Place): string => `${place.kind}:${place.id}`;
+
+/** Hoechstens fuenf Lagen Versatz, danach kommt alles zugleich (Designsystem, Bewegung). */
+const STAGGER_LANES = 5;
+
+const laneStyle = (lane: number | undefined): CSSProperties =>
+  ({ '--d': (lane ?? 0) % STAGGER_LANES }) as CSSProperties;
+
+/**
+ * Was ein Ritter beim Versetzen zurueckgelegt hat: vom alten zum neuen Knoten.
+ * Das Brett erkennt es am Unterschied zweier Staende - es kennt keine Regel.
+ */
+function knightMoves(
+  before: BoardSource['knights'],
+  after: BoardSource['knights'],
+): ReadonlyMap<VertexId, Point> {
+  const moves = new Map<VertexId, Point>();
+  const gone = Object.entries(before).filter(([vertex]) => after[vertex] === undefined);
+  const arrived = Object.entries(after).filter(([vertex]) => before[vertex] === undefined);
+  // Nur der eindeutige Fall: genau ein Ritter verschwindet und genau einer kommt.
+  if (gone.length === 1 && arrived.length === 1) {
+    const [from, was] = gone[0]!;
+    const [to, now] = arrived[0]!;
+    if (was.owner === now.owner) {
+      const a = vertexPoint(from as VertexId);
+      const b = vertexPoint(to as VertexId);
+      moves.set(to as VertexId, { x: a.x - b.x, y: a.y - b.y });
+    }
+  }
+  return moves;
 }
 
 /**
@@ -200,6 +241,8 @@ export function BoardSvg({
   onPick,
   pending = null,
   hintRules,
+  roll = null,
+  previewColor,
 }: BoardSvgProps): JSX.Element {
   const board = boardOf(state.scenario);
   const colors = seatsById(seats);
@@ -211,6 +254,37 @@ export function BoardSvg({
   const viewBox = viewBoxOf(board.topology.hexes, PADDING + HARBOR_REACH);
   const [boxX = 0, boxY = 0, boxWidth = 0, boxHeight = 0] = viewBox.split(' ').map(Number);
   const picks = targetPoints(targets);
+  /** Die Staffelung der Zielmarken: nach Reihenfolge, auf fuenf Lagen gedeckelt. */
+  const lanes = new Map(picks.map((pick, index) => [placeKey(pick.place), index]));
+  /** Worauf der Mauszeiger zielt - das naechste Ziel in Reichweite, wie beim Klick. */
+  const [aim, setAim] = useState<{ place: Place; pressed: boolean } | null>(null);
+  const aimKey = aim === null ? null : placeKey(aim.place);
+  const aimPressed = aim?.pressed === true;
+  const aimAt = (place: Place | null, pressed: boolean): void =>
+    setAim((before) => {
+      if (place === null) return before === null ? before : null;
+      if (
+        before !== null &&
+        placeKey(before.place) === placeKey(place) &&
+        before.pressed === pressed
+      )
+        return before;
+      return { place, pressed };
+    });
+  /** Zwischen zwei Staenden wandernde Ritter: ihr Weg wird einmal zurueckgelegt. */
+  const knightsKey = JSON.stringify(state.knights);
+  const [seen, setSeen] = useState({
+    key: knightsKey,
+    knights: state.knights,
+    moves: new Map<VertexId, Point>() as ReadonlyMap<VertexId, Point>,
+  });
+  if (seen.key !== knightsKey) {
+    setSeen({
+      key: knightsKey,
+      knights: state.knights,
+      moves: knightMoves(seen.knights, state.knights),
+    });
+  }
   const [hover, setHover] = useState<{ hint: BoardHint; x: number; y: number } | null>(null);
   /**
    * Ein Finger, der liegen bleibt: nach `LONG_PRESS` wird daraus eine Auskunft,
@@ -373,7 +447,15 @@ export function BoardSvg({
                 .map((corner) => `${corner.x},${corner.y}`)
                 .join(' ');
               return targets.hexes.has(placement.hex) ? (
-                <polygon key={placement.hex} className="hexgoal" points={points} />
+                <polygon
+                  key={placement.hex}
+                  className="hexgoal"
+                  data-aim={
+                    aimKey === `hex:${placement.hex}` ? (aimPressed ? 'press' : 'true') : undefined
+                  }
+                  style={laneStyle(lanes.get(`hex:${placement.hex}`))}
+                  points={points}
+                />
               ) : (
                 <polygon key={placement.hex} className="hexgoal--off" points={points} />
               );
@@ -392,14 +474,30 @@ export function BoardSvg({
         {state.scenario.hexes.map((placement) => {
           if (placement.chip === undefined) return null;
           const center = hexCenter(hexFromId(placement.hex));
+          /*
+           * Der Wurf zeigt, wo der Ertrag herkommt: die Chips seiner Zahl heben
+           * sich einmal ab. Das Feld mit dem Raeuber bleibt liegen - es traegt
+           * nichts. `key` mit dem Wurf, sonst laeuft die Antwort nur beim ersten
+           * Mal (Falle "Animation beim Einhaengen").
+           */
+          const hit =
+            roll !== null && roll.total === placement.chip && state.robber !== placement.hex;
 
           return (
             <g
-              className="chip"
-              key={placement.hex}
+              className={hit ? 'chip chip--hit' : 'chip'}
+              key={hit ? `${placement.hex}-${roll.key}` : placement.hex}
               data-testid={`chip-${placement.hex}`}
+              data-hit={hit ? 'true' : undefined}
               pointerEvents="none"
             >
+              <ellipse
+                className="chip__shadow"
+                cx={center.x}
+                cy={center.y + 0.05}
+                rx={0.34}
+                ry={0.34}
+              />
               <circle cx={center.x} cy={center.y} r={0.34} />
               {/*
                * Die Zahl ist gezeichnet und nicht gesetzt - dieselben Ziffern,
@@ -553,8 +651,19 @@ export function BoardSvg({
           data-hex={state.robber}
           style={{ transform: `translate(${robber.x}px, ${robber.y}px)` }}
         >
-          <circle cx={0} cy={0} r={0.2} />
-          <circle cx={0} cy={-0.16} r={0.1} />
+          {/* Der Schatten bleibt am Boden, der Koerper huepft darueber (`key`: bei jedem Versetzen neu). */}
+          <ellipse
+            className="robber__shadow"
+            key={`shadow-${state.robber}`}
+            cx={0}
+            cy={0.17}
+            rx={0.2}
+            ry={0.05}
+          />
+          <g className="robber__body" key={state.robber}>
+            <circle cx={0} cy={0} r={0.2} />
+            <circle cx={0} cy={-0.16} r={0.1} />
+          </g>
         </g>
 
         {/*
@@ -562,12 +671,11 @@ export function BoardSvg({
          * Er steht rechts neben der Feldmitte, damit Chip und Raeuber frei
          * bleiben, und traegt die Farbe seines Besitzers mit einer Muenze in
          * der Hand: er bringt einen Siegpunkt und 2:1 auf den Rohstoff des
-         * Feldes. Wechselt er das Feld, haengt `key` ihn neu ein, und die
-         * Einblendung `settle` laeuft noch einmal.
+         * Feldes. Wechselt er das Feld, gleitet er hinueber und setzt auf
+         * (`piece-hop` per `key`).
          */}
         {state.merchant != null ? (
           <MerchantMark
-            key={`merchant-${state.merchant.hex}`}
             at={hexCenter(hexFromId(state.merchant.hex))}
             color={colorOf(state.merchant.owner)}
             owner={colors.get(state.merchant.owner)?.name ?? state.merchant.owner}
@@ -619,6 +727,7 @@ export function BoardSvg({
               key={edge}
               data-testid={`edge-${edge}`}
               data-target={isTarget ? 'true' : 'false'}
+              data-aim={aimKey === `edge:${edge}` ? (aimPressed ? 'press' : 'true') : undefined}
               className={roadClass(owner !== undefined, isTarget)}
               x1={from.x}
               y1={from.y}
@@ -632,7 +741,13 @@ export function BoardSvg({
                * Strasse durchsichtig - genau der Fehler, den `roads.test.tsx`
                * festhaelt.
                */
-              style={owner === undefined ? undefined : { stroke: colorOf(owner) }}
+              style={
+                owner === undefined
+                  ? isTarget
+                    ? laneStyle(lanes.get(`edge:${edge}`))
+                    : undefined
+                  : { stroke: colorOf(owner) }
+              }
             />
           );
         })}
@@ -651,6 +766,8 @@ export function BoardSvg({
               <line
                 key={`removable-${edge}`}
                 className="road__removable"
+                data-aim={aimKey === `edge:${edge}` ? (aimPressed ? 'press' : 'true') : undefined}
+                style={laneStyle(lanes.get(`edge:${edge}`))}
                 data-testid={`removable-${edge}`}
                 pointerEvents="none"
                 x1={from.x}
@@ -667,9 +784,21 @@ export function BoardSvg({
             vertex={vertex}
             state={state}
             isTarget={targets.vertices.has(vertex)}
+            aim={aimKey === `vertex:${vertex}` ? (aimPressed ? 'press' : 'true') : undefined}
+            lane={lanes.get(`vertex:${vertex}`)}
+            travel={seen.moves.get(vertex)}
             colorOf={colorOf}
           />
         ))}
+
+        {aim !== null ? (
+          <AimGhost
+            place={aim.place}
+            targets={targets}
+            color={previewColor}
+            pressed={aim.pressed}
+          />
+        ) : null}
 
         {/*
          * Die Fangflaeche: **ein** Ort, an dem aus einem Klick ein Ziel wird.
@@ -719,6 +848,9 @@ export function BoardSvg({
            */
           onPointerMove={(event) => {
             if (event.pointerType === 'mouse') {
+              const svg = event.currentTarget.ownerSVGElement;
+              const at = svg === null ? null : viewBoxPointOf(svg, event.clientX, event.clientY);
+              aimAt(at === null ? null : nearestTarget(at, picks), (event.buttons & 1) === 1);
               setHover(
                 hintAtClient(event.currentTarget.ownerSVGElement, event.clientX, event.clientY),
               );
@@ -733,10 +865,18 @@ export function BoardSvg({
             }
           }}
           onPointerLeave={(event) => {
-            if (event.pointerType === 'mouse') setHover(null);
+            if (event.pointerType === 'mouse') {
+              setHover(null);
+              aimAt(null, false);
+            }
           }}
           onPointerDown={(event) => {
             setHover(null);
+            if (event.pointerType === 'mouse') {
+              const svg = event.currentTarget.ownerSVGElement;
+              const at = svg === null ? null : viewBoxPointOf(svg, event.clientX, event.clientY);
+              aimAt(at === null ? null : nearestTarget(at, picks), true);
+            }
             clearTimeout(press.current?.timer);
             press.current = null;
             if (event.pointerType === 'mouse') return;
@@ -755,6 +895,7 @@ export function BoardSvg({
             };
           }}
           onPointerUp={() => {
+            setAim((before) => (before === null ? before : { ...before, pressed: false }));
             const held = press.current;
             if (held !== null && !held.fired) {
               clearTimeout(held.timer);
@@ -835,10 +976,11 @@ function MerchantMark({
     <g
       data-testid="merchant"
       pointerEvents="none"
-      transform={`translate(${round(at.x + 0.47)} ${round(at.y + 0.02)})`}
+      className="merchant-mover"
+      style={{ transform: `translate(${round(at.x + 0.47)}px, ${round(at.y + 0.02)}px)` }}
     >
-      {/* `building` innen: die Einblendung animiert `transform` und haette die Lage ueberschrieben. */}
-      <g className="merchant building">
+      {/* Lage aussen (`merchant-mover` gleitet), Hupfer innen: beide animieren `transform`. */}
+      <g className="merchant piece-hop" key={`merchant-${at.x}-${at.y}`}>
         <title>{`Händler von ${owner}: 1 Siegpunkt, 2:1 auf den Rohstoff dieses Feldes`}</title>
         <ellipse className="merchant__shadow" cx={0} cy={0.2} rx={0.15} ry={0.035} />
         <path
@@ -895,11 +1037,19 @@ function VertexMark({
   vertex,
   state,
   isTarget,
+  aim,
+  lane,
+  travel,
   colorOf,
 }: {
   readonly vertex: VertexId;
   readonly state: BoardSource;
   readonly isTarget: boolean;
+  /** `true` unter dem Zeiger, `press` beim Druecken, sonst nichts. */
+  readonly aim: 'true' | 'press' | undefined;
+  readonly lane: number | undefined;
+  /** Der Weg, den ein gerade versetzter Ritter hierher zurueckgelegt hat. */
+  readonly travel: Point | undefined;
   readonly colorOf: (player: PlayerId) => string;
 }): JSX.Element {
   const point = vertexPoint(vertex);
@@ -921,6 +1071,8 @@ function VertexMark({
         {isTarget ? (
           <circle
             className="vertex__target vertex__target--yard"
+            data-aim={aim}
+            style={laneStyle(lane)}
             cx={point.x}
             cy={point.y}
             r={0.235}
@@ -934,30 +1086,43 @@ function VertexMark({
          * Aufwerten und Aufsetzen des Helms sollen beide sichtbar sein.
          */}
         <g
-          key={`knight-${knight.level}-${knight.active}`}
-          data-testid={`knight-${vertex}`}
-          data-level={knight.level}
-          data-active={knight.active ? 'true' : 'false'}
-          className="knight"
-          transform={`translate(${point.x} ${point.y}) scale(${BUILDING_SCALE.knight})`}
+          key={`knight-${knight.level}-${knight.active}-${travel === undefined ? 'here' : 'moved'}`}
+          className={travel === undefined ? 'piece' : 'piece piece--travel'}
+          style={
+            travel === undefined
+              ? undefined
+              : ({ '--from-x': `${travel.x}px`, '--from-y': `${travel.y}px` } as CSSProperties)
+          }
         >
-          {/* Farbe per `style` - eine gleichnamige CSS-Regel schlaegt jedes
+          <g
+            data-testid={`knight-${vertex}`}
+            data-level={knight.level}
+            data-active={knight.active ? 'true' : 'false'}
+            className="knight"
+            transform={`translate(${point.x} ${point.y}) scale(${BUILDING_SCALE.knight})`}
+          >
+            {/* Farbe per `style` - eine gleichnamige CSS-Regel schlaegt jedes
               SVG-Praesentationsattribut. */}
-          <path className="knight__body" d={KNIGHT_PATH} style={{ fill: colorOf(knight.owner) }} />
-          <path
-            className="knight__mast"
-            d={KNIGHT_MAST_PATH}
-            style={{ stroke: colorOf(knight.owner) }}
-          />
-          {KNIGHT_PENNANTS.slice(0, knight.level).map((pennant, index) => (
             <path
-              key={index}
-              className="knight__pennant"
-              d={pennant}
+              className="knight__body"
+              d={KNIGHT_PATH}
               style={{ fill: colorOf(knight.owner) }}
             />
-          ))}
-          {knight.active ? <path className="knight__helmet" d={KNIGHT_HELMET_PATH} /> : null}
+            <path
+              className="knight__mast"
+              d={KNIGHT_MAST_PATH}
+              style={{ stroke: colorOf(knight.owner) }}
+            />
+            {KNIGHT_PENNANTS.slice(0, knight.level).map((pennant, index) => (
+              <path
+                key={index}
+                className="knight__pennant"
+                d={pennant}
+                style={{ fill: colorOf(knight.owner) }}
+              />
+            ))}
+            {knight.active ? <path className="knight__helmet" d={KNIGHT_HELMET_PATH} /> : null}
+          </g>
         </g>
       </g>
     );
@@ -971,7 +1136,14 @@ function VertexMark({
     >
       {building === undefined ? (
         isTarget ? (
-          <circle className="vertex__target" cx={point.x} cy={point.y} r={0.13} />
+          <circle
+            className="vertex__target"
+            data-aim={aim}
+            style={laneStyle(lane)}
+            cx={point.x}
+            cy={point.y}
+            r={0.13}
+          />
         ) : null
       ) : (
         <>
@@ -996,11 +1168,23 @@ function VertexMark({
           {isTarget ? (
             <circle
               className="vertex__target vertex__target--yard"
+              data-aim={aim}
+              style={laneStyle(lane)}
               cx={point.x}
               cy={point.y}
               r={0.235}
             />
           ) : null}
+
+          {/* Der Kontaktschatten: weit und blass, solange der Stein faellt, eng und dunkel, wenn er liegt. */}
+          <ellipse
+            key={`shadow-${building.kind}`}
+            className="piece-shadow"
+            cx={point.x}
+            cy={point.y + 0.15}
+            rx={building.kind === 'city' ? 0.2 : 0.15}
+            ry={0.05}
+          />
 
           {/*
            * Der Ring beim Bauen - und `key` ist hier die ganze Mechanik.
@@ -1023,7 +1207,7 @@ function VertexMark({
           {/*
            * Lage aussen, Bewegung innen - und das ist kein Geschmack.
            *
-           * Die Einblendung `settle` animiert `transform`. Eine CSS-Animation
+           * Die Einblendung `board-piece-in` animiert `transform`. Eine CSS-Animation
            * schlaegt das gleichnamige Praesentationsattribut, also war das
            * `translate(...) scale(0.023)` fuer die Dauer der Animation weg:
            * der Pfad stand in seinem eigenen Mass da - rund 20 Einheiten
@@ -1085,7 +1269,7 @@ function VertexMark({
               <path
                 key="wall"
                 data-testid={`wall-${vertex}`}
-                className="wall"
+                className="wall building"
                 d={WALL_PATH}
                 style={{ fill: colorOf(building.owner) }}
               />
@@ -1101,7 +1285,7 @@ function VertexMark({
              * `key` trägt den Bereich, nicht nur "metropolis": eine
              * Metropole, die den Bereich wechselt (Stufe 5 nimmt einem
              * anderen den Aufsatz ab), soll neu einhängen, damit die
-             * Einblendung `settle` (über die Klasse `building`) noch einmal
+             * Einblendung `board-piece-in` (über die Klasse `building`) noch einmal
              * läuft - dieselbe Falle wie beim Ausbau zur Stadt, siehe
              * `CLAUDE.md`.
              *
@@ -1132,6 +1316,66 @@ function VertexMark({
       )}
     </g>
   );
+}
+
+/**
+ * Die Vorschau unter dem Zeiger: was gebaut wuerde, in der Sitzfarbe, halb
+ * deckend. Sie ersetzt die Marke nicht, sie liegt darueber; wo nichts
+ * Sichtbares entsteht (Ritter versetzen, Feld waehlen), tut es die Marke selbst.
+ */
+function AimGhost({
+  place,
+  targets,
+  color,
+  pressed,
+}: {
+  readonly place: Place;
+  readonly targets: ActionTargets;
+  readonly color: string | undefined;
+  readonly pressed: boolean;
+}): JSX.Element | null {
+  const style = { '--seat': color ?? 'var(--board-cream)' } as CSSProperties;
+  const data = pressed ? 'press' : 'true';
+
+  if (place.kind === 'vertex') {
+    const action = targets.vertices.get(place.id);
+    if (action === undefined) return null;
+    const kind =
+      action.type === 'buildCity'
+        ? 'city'
+        : action.type === 'buildSettlement' || action.type === 'placeSetupSettlement'
+          ? 'settlement'
+          : null;
+    if (kind === null) return null;
+    const point = vertexPoint(place.id);
+
+    return (
+      <g className="aim" data-aim={data} style={style} pointerEvents="none" data-testid="aim-ghost">
+        <path
+          d={kind === 'city' ? CITY_PATH : SETTLEMENT_PATH}
+          transform={`translate(${point.x} ${point.y}) scale(${BUILDING_SCALE[kind]})`}
+        />
+      </g>
+    );
+  }
+
+  if (place.kind === 'edge') {
+    if (!targets.edges.has(place.id)) return null;
+    const [from, to] = edgeSegment(place.id);
+    return (
+      <g
+        className="aim aim--road"
+        data-aim={data}
+        style={style}
+        pointerEvents="none"
+        data-testid="aim-ghost"
+      >
+        <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} />
+      </g>
+    );
+  }
+
+  return null;
 }
 
 /**
